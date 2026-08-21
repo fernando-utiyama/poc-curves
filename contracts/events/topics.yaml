@@ -1,0 +1,201 @@
+# ==============================================================================
+# CATÁLOGO DE TÓPICOS KAFKA - PLATAFORMA DE CURVAS FINANCEIRAS
+# ==============================================================================
+# Ambiente: POC Local (6 partições por tópico, replicationFactor = 1)
+#
+# DECISÕES ARQUITETURAIS FUNDAMENTAIS:
+#
+# 1. Por que a chave de partição da ingestão é "source|dataset|referenceDate"?
+#    - Ordenação e Afinidade: Garante que todos os eventos do mesmo conjunto de dados
+#      e da mesma data de pregão sejam entregues estritamente em ordem na mesma partição.
+#    - Integridade de Lote: Como o loteId é determinístico (baseado no conteúdo e metadados),
+#      todos os blocos (sequência 1..N) de um lote caem na mesma partição Kafka, viabilizando
+#      a montagem e validação de completude no consumidor sem concorrência entre partições.
+#
+# 2. Por que três faixas de ingestão isoladas (rotina, prioritária, massa)?
+#    - Prevenção de Head-of-Line Blocking: Em uma fila única, se uma ingestão travar ou
+#      uma carga massiva estiver sendo processada, um redisparo manual emergencial feito
+#      pelo operador entraria ATRÁS das mensagens travadas/lentas (mesma chave de partição).
+#    - Isolamento de Recursos: Três faixas com tópicos e grupos de consumo independentes
+#      permitem alocação separada de threads/workers, garantindo que correções pontuais
+#      prioritárias tenham SLA imediato mesmo durante backfills históricos pesados.
+#
+# 3. Por que Dead-Letter Queues (DLQ) exclusivas por grupo e com retenção de 30 dias?
+#    - Isolamento: Cada grupo consumidor possui sua própria DLQ (<tópico>.<grupo>.dlq),
+#      evitando contaminação e facilitando reprocessamento direcionado.
+#    - Retenção Estendida: A retenção da DLQ (30 dias) é DELIBERADAMENTE MAIOR que a do
+#      tópico de origem (7 dias), pois mensagens descartadas para DLQ dependem de análise,
+#      triagem e correção humana (e operadores/engenheiros tiram férias).
+
+version: "1.0"
+
+defaults:
+  partitions: 6
+  replicationFactor: 1
+
+# ------------------------------------------------------------------------------
+# 1. FAIXAS DE INGESTÃO DE DADOS BRUTOS (MARKETDATA RAW)
+# ------------------------------------------------------------------------------
+ingestionTopics:
+  - name: marketdata.rotina.v1
+    description: "Faixa de rotina: ingestões diárias automáticas agendadas via cron/orquestrador."
+    partitions: 6
+    replicationFactor: 1
+    retentionDays: 7
+    retentionMs: 604800000
+    partitionKey: "source|dataset|referenceDate"
+    consumerGroups:
+      - name: curve-processor-rotina
+        deadLetterTopic: marketdata.rotina.v1.curve-processor-rotina.dlq
+
+  - name: marketdata.prioritaria.v1
+    description: "Faixa prioritária: disparos manuais, correções e reprocessamentos sob demanda via UI/API."
+    partitions: 6
+    replicationFactor: 1
+    retentionDays: 7
+    retentionMs: 604800000
+    partitionKey: "source|dataset|referenceDate"
+    consumerGroups:
+      - name: curve-processor-prioritaria
+        deadLetterTopic: marketdata.prioritaria.v1.curve-processor-prioritaria.dlq
+
+  - name: marketdata.massa.v1
+    description: "Faixa de massa: cargas históricas, migrações e backfill de grandes períodos."
+    partitions: 6
+    replicationFactor: 1
+    retentionDays: 7
+    retentionMs: 604800000
+    partitionKey: "source|dataset|referenceDate"
+    consumerGroups:
+      - name: curve-processor-massa
+        deadLetterTopic: marketdata.massa.v1.curve-processor-massa.dlq
+
+# ------------------------------------------------------------------------------
+# 2. TÓPICOS DE PROCESSAMENTO, ORQUESTRAÇÃO E PUBLICAÇÃO
+# ------------------------------------------------------------------------------
+processingTopics:
+  - name: marketdata.normalized.v1
+    description: "Notificação emitida pelo curve-processor após commit de lote normalizado completo."
+    partitions: 6
+    replicationFactor: 1
+    retentionDays: 7
+    retentionMs: 604800000
+    partitionKey: "source|dataset|referenceDate"
+    consumerGroups:
+      - name: curve-orchestrator-normalized
+        deadLetterTopic: marketdata.normalized.v1.curve-orchestrator-normalized.dlq
+
+  - name: curve.build.requested.v1
+    description: "Comando de solicitação de construção/cálculo emitido pelo curve-orchestrator para curvas calculadas."
+    partitions: 6
+    replicationFactor: 1
+    retentionDays: 7
+    retentionMs: 604800000
+    partitionKey: "curveCode|referenceDate"
+    consumerGroups:
+      - name: curve-engine-build
+        deadLetterTopic: curve.build.requested.v1.curve-engine-build.dlq
+
+  - name: curve.published.v1
+    description: "Evento de curva financeira publicada (calculada, importada ou carregada)."
+    partitions: 6
+    replicationFactor: 1
+    retentionDays: 30
+    retentionMs: 2592000000
+    partitionKey: "curveCode|referenceDate"
+    consumerGroups:
+      - name: curve-orchestrator-published
+        deadLetterTopic: curve.published.v1.curve-orchestrator-published.dlq
+
+# ------------------------------------------------------------------------------
+# 3. DEAD-LETTER QUEUES (UMA POR GRUPO DE CONSUMO - RETENÇÃO DE 30 DIAS)
+# ------------------------------------------------------------------------------
+deadLetterTopics:
+  - name: marketdata.rotina.v1.curve-processor-rotina.dlq
+    originTopic: marketdata.rotina.v1
+    consumerGroup: curve-processor-rotina
+    partitions: 6
+    replicationFactor: 1
+    retentionDays: 30
+    retentionMs: 2592000000
+
+  - name: marketdata.prioritaria.v1.curve-processor-prioritaria.dlq
+    originTopic: marketdata.prioritaria.v1
+    consumerGroup: curve-processor-prioritaria
+    partitions: 6
+    replicationFactor: 1
+    retentionDays: 30
+    retentionMs: 2592000000
+
+  - name: marketdata.massa.v1.curve-processor-massa.dlq
+    originTopic: marketdata.massa.v1
+    consumerGroup: curve-processor-massa
+    partitions: 6
+    replicationFactor: 1
+    retentionDays: 30
+    retentionMs: 2592000000
+
+  - name: marketdata.normalized.v1.curve-orchestrator-normalized.dlq
+    originTopic: marketdata.normalized.v1
+    consumerGroup: curve-orchestrator-normalized
+    partitions: 6
+    replicationFactor: 1
+    retentionDays: 30
+    retentionMs: 2592000000
+
+  - name: curve.build.requested.v1.curve-engine-build.dlq
+    originTopic: curve.build.requested.v1
+    consumerGroup: curve-engine-build
+    partitions: 6
+    replicationFactor: 1
+    retentionDays: 30
+    retentionMs: 2592000000
+
+  - name: curve.published.v1.curve-orchestrator-published.dlq
+    originTopic: curve.published.v1
+    consumerGroup: curve-orchestrator-published
+    partitions: 6
+    replicationFactor: 1
+    retentionDays: 30
+    retentionMs: 2592000000
+
+# ------------------------------------------------------------------------------
+# 4. CABEÇALHOS OBRIGATÓRIOS EM MENSAGENS ENCAMINHADAS À DLQ
+# ------------------------------------------------------------------------------
+deadLetterHeaders:
+  - x-dlq-reason          # Categoria resumida da falha (ex.: DESERIALIZATION_ERROR, VALIDATION_ERROR, TIMEOUT)
+  - x-dlq-detail          # Stacktrace, mensagem de erro ou detalhe técnico da falha
+  - x-correlation-id      # correlationId extraído do envelope ou cabeçalho original
+  - x-event-id            # eventId original (se parseável) ou nulo
+  - x-original-topic      # Nome do tópico Kafka de onde a mensagem foi lida
+  - x-original-partition  # Número da partição original
+  - x-original-offset     # Offset original da mensagem com falha
+  - x-failed-at           # Timestamp ISO-8601 UTC do momento do desvio para DLQ
+  - x-attempts            # Número total de tentativas de processamento executadas
+  - x-consumer-group      # Nome do grupo de consumo que rejeitou a mensagem
+  - x-app-version         # Versão do binário/artefato da aplicação consumidora
+
+# ------------------------------------------------------------------------------
+# 5. LIMITES OPERACIONAIS DE CONSUMO (CONSUMER LIMITS)
+# ------------------------------------------------------------------------------
+# DIRETRIZES DE CALIBRAÇÃO:
+# - maxPollRecords e maxPollIntervalMs devem ser calibrados com base em medições
+#   do pior caso real de processamento de um lote completo.
+# - REGRA INEGOCIÁVEL: externalCallTimeoutMs DEVE SER ESTRITAMENTE MENOR que
+#   maxPollIntervalMs para garantir que timeouts externos ocorram antes do vencimento
+#   do heartbeat do poll, prevenindo rebalances em cascata e livelocks no cluster.
+# ------------------------------------------------------------------------------
+# 6. LIMITES DE CONSUMO
+# ------------------------------------------------------------------------------
+# ATENÇÃO: os valores abaixo são PROVISÓRIOS e precisam ser calibrados com medição
+# do pior caso real — o maior arquivo da B3 processado ponta a ponta —, não com
+# estimativa. maxPollIntervalMs igual ao padrão do Kafka (5 min) é ponto de partida,
+# não decisão: se o processamento de um poll se aproximar dele, o broker considera o
+# consumidor morto, dispara rebalance e a mesma mensagem é reentregue para outro que
+# também vai demorar demais — livelock, e a partição para de avançar na prática.
+#
+# Regra invariável: externalCallTimeoutMs < maxPollIntervalMs, sempre.
+consumerLimits:
+  maxPollRecords: 50               # provisório — dimensionar pelo tamanho do bloco medido
+  maxPollIntervalMs: 300000        # provisório — 5 min (padrão Kafka); medir o pior caso
+  externalCallTimeoutMs: 15000     # 15 s — obrigatoriamente menor que maxPollIntervalMs

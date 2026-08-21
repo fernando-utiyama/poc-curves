@@ -8,14 +8,14 @@
 
 ## 2. Contratos de evento
 
-- [ ] 2.1 Escrever `contracts/events/envelope.schema.json` com os campos obrigatórios do envelope e taxa como string
-- [ ] 2.2 Escrever os schemas de payload `marketdata-raw`, `marketdata-normalized`, `curve-build-requested` e `curve-published`
-- [ ] 2.3 Definir em `contracts/events/topics.yaml` o catálogo de tópicos, partições, retenção e chave de partição
-- [ ] 2.3.1 Definir retenção da dead-letter maior que a do tópico de origem, e uma dead-letter por grupo de consumo
-- [ ] 2.3.2 Definir os cabeçalhos obrigatórios da mensagem em dead-letter
-- [ ] 2.3.3 Definir no catálogo as três faixas de ingestão, com grupos de consumo próprios
-- [ ] 2.3.4 Acrescentar `loteId`, `sequencia` e `totalBlocos` ao envelope, com `loteId` determinístico pelo hash do conteúdo
-- [ ] 2.3.5 Documentar a invariante de avanço de offset e os limites de tempo de consumo como parte do contrato
+- [x] 2.1 Escrever `contracts/events/envelope.schema.json` com os campos obrigatórios do envelope e taxa como string
+- [x] 2.2 Escrever os schemas de payload `marketdata-raw`, `marketdata-normalized`, `curve-build-requested` e `curve-published`
+- [x] 2.3 Definir em `contracts/events/topics.yaml` o catálogo de tópicos, partições, retenção e chave de partição
+- [x] 2.3.1 Definir retenção da dead-letter maior que a do tópico de origem, e uma dead-letter por grupo de consumo
+- [x] 2.3.2 Definir os cabeçalhos obrigatórios da mensagem em dead-letter
+- [x] 2.3.3 Definir no catálogo as três faixas de ingestão, com grupos de consumo próprios
+- [x] 2.3.4 Acrescentar `loteId`, `sequencia` e `totalBlocos` ao envelope, com `loteId` determinístico pelo hash do conteúdo
+- [x] 2.3.5 Documentar a invariante de avanço de offset e os limites de tempo de consumo como parte do contrato
 - [ ] 2.4 Implementar a biblioteca Java compartilhada de envelope (record + validação de schema) em `services/common`
 - [ ] 2.5 Implementar o equivalente TypeScript do envelope para os feeders, gerado a partir do mesmo schema
 - [ ] 2.6 Escrever os testes de contrato que validam produtor e consumidor contra os schemas

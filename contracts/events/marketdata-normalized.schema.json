@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://poc-curves/contracts/events/marketdata-normalized.schema.json",
+  "title": "Payload de Dados de Mercado Normalizados (Marketdata Normalized)",
+  "description": "Emitido pelo curve-processor após o processamento e commit bem-sucedido de todos os blocos de um lote completo no banco de dados.",
+  "type": "object",
+  "properties": {
+    "loteId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador determinístico do lote processado e commitado."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["B3", "BLOOMBERG", "LSEG", "MANUAL"],
+      "description": "Fonte originadora dos dados normalizados."
+    },
+    "dataset": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identificador do conjunto de dados processado."
+    },
+    "referenceDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de referência do pregão no formato YYYY-MM-DD."
+    },
+    "pointsPersisted": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Quantidade total de pontos de dados de mercado persistidos para o lote."
+    },
+    "divergences": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Quantidade de pontos existentes que foram regravados com valor diferente (divergências detectadas na persistência)."
+    }
+  },
+  "required": [
+    "loteId",
+    "source",
+    "dataset",
+    "referenceDate",
+    "pointsPersisted",
+    "divergences"
+  ],
+  "additionalProperties": false
+}

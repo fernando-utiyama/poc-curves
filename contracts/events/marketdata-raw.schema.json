@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://poc-curves/contracts/events/marketdata-raw.schema.json",
+  "title": "Payload de Dados Brutos de Mercado (Marketdata Raw)",
+  "description": "Schema do payload dos eventos trafegados nas três faixas de ingestão bruta (rotina, prioritária e massa). Transporta blocos estruturais do arquivo adquirido sem interpretação semântica de regras de negócio pelo feeder.",
+  "type": "object",
+  "properties": {
+    "sourceUrl": {
+      "type": "string",
+      "description": "URL, endpoint ou caminho de origem de onde o arquivo bruto foi adquirido."
+    },
+    "encoding": {
+      "type": "string",
+      "description": "Encoding declarado do conteúdo original bruto coletado (ex.: 'ISO-8859-1', 'UTF-8', 'WINDOWS-1252')."
+    },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Hash criptográfico SHA-256 do arquivo/conteúdo original completo para validação de integridade ponta a ponta."
+    },
+    "sizeBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Tamanho total em bytes do conteúdo bruto original adquirido."
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object"
+      },
+      "description": "Array contendo os registros do bloco atual. O feeder realiza apenas corte estrutural (linhas/blocos), mantendo os registros como objetos livres para normalização posterior pelo curve-processor."
+    },
+    "curveId": {
+      "type": "string",
+      "description": "Identificador da curva na origem, presente opcionalmente quando payloadKind for 'READY_CURVE'."
+    }
+  },
+  "required": [
+    "sourceUrl",
+    "encoding",
+    "contentHash",
+    "sizeBytes",
+    "records"
+  ],
+  "additionalProperties": false
+}
