@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Este POM raiz é filho de spring-boot-starter-parent para que TODOS os módulos,
+  incluindo curve-kernel, herdem o gerenciamento de versão de dependências
+  (JUnit, AssertJ, Testcontainers, driver JDBC, Flyway) sem precisar redeclarar
+  versão em cada filho. curve-kernel não ganha nenhuma dependência Spring por
+  causa disso — herança de <dependencyManagement> não adiciona dependência
+  nenhuma sozinha, só disponibiliza a versão para quando o filho decidir declarar.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.4.13</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.poccurves</groupId>
+    <artifactId>poc-curves-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>poc-curves</name>
+    <description>POC executável da plataforma de curvas de Tesouraria/Risco — monorepo multi-módulo Maven.</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <modules>
+        <module>libs/curve-kernel</module>
+        <module>services/curve-processor</module>
+        <module>services/curve-engine</module>
+        <module>services/curve-api</module>
+        <module>services/curve-bff</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.6.3</version>
+                <executions>
+                    <execution>
+                        <id>ban-lombok</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>org.projectlombok:lombok</exclude>
+                                    </excludes>
+                                    <message>Lombok é proibido neste projeto — usar records e código explícito.</message>
+                                </bannedDependencies>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

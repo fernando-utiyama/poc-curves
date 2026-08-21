@@ -1,9 +1,9 @@
 ## 1. Estrutura do monorepo
 
 - [ ] 1.1 Criar a árvore `services/`, `web/`, `db/migration/`, `deploy/podman/`, `contracts/`, `docs/`, `scripts/`
-- [ ] 1.2 Criar o `pom.xml` agregador Java 21 / Spring Boot 3.4.x, sem Lombok, com módulos para `curve-processor`, `curve-engine`, `curve-api` e `curve-bff`
-- [ ] 1.3 Criar o módulo `libs/curve-kernel` como biblioteca pura (sem Spring, sem banco, sem rede) e declará-lo como dependência do módulo de motor
-- [ ] 1.4 Configurar formatação, `.editorconfig`, `.gitignore` e `git init` do repositório
+- [x] 1.2 Criar o `pom.xml` agregador Java 21 / Spring Boot 3.4.x, sem Lombok, com módulos para `curve-processor`, `curve-engine`, `curve-api` e `curve-bff`
+- [x] 1.3 Criar o módulo `libs/curve-kernel` como biblioteca pura (sem Spring, sem banco, sem rede) e declará-lo como dependência do módulo de motor
+- [x] 1.4 Configurar formatação, `.editorconfig`, `.gitignore` e `git init` do repositório
 - [ ] 1.5 Escrever o `README.md` raiz com a topologia, os pré-requisitos e o comando único de subida
 
 ## 2. Contratos de evento

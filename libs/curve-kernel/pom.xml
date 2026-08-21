@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.poccurves</groupId>
+        <artifactId>poc-curves-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>curve-kernel</artifactId>
+    <packaging>jar</packaging>
+
+    <name>curve-kernel</name>
+    <description>Biblioteca pura de matemática de curva, convenções B3/ANBIMA e reconciliação contra oráculo oficial. Sem Spring, sem banco, sem rede — subprojeto novo e independente deste repositório, sem dependência de nenhum repositório externo.</description>
+
+    <!--
+      IMPORTANTE: este módulo MUST NOT declarar nenhuma dependência de org.springframework:*,
+      org.springframework.boot:*, driver de banco de dados ou cliente de mensageria.
+      É biblioteca pura — ver regra técnica do projeto.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.14.4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.27.7</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

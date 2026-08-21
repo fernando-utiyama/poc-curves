@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.poccurves</groupId>
+        <artifactId>poc-curves-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>curve-bff</artifactId>
+    <packaging>jar</packaging>
+
+    <name>curve-bff</name>
+    <description>Única fronteira exposta ao navegador. Agrega as APIs de domínio em contratos de tela. NÃO acessa banco de dados nem Kafka — por desenho.</description>
+
+    <!--
+      Sem spring-boot-maven-plugin ainda: a classe @SpringBootApplication e o
+      restante do esqueleto do serviço entram na implementação da mudança curve-bff.
+    -->
+
+    <!--
+      Ausência deliberada de driver de banco e de cliente Kafka nesta lista: o curve-bff
+      MUST NOT acessar banco de dados nem mensageria — só fala HTTP com os outros serviços.
+      Ver regra de fronteira do projeto.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
