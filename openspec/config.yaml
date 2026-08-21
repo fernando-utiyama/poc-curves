@@ -1,0 +1,96 @@
+schema: spec-driven
+
+context: |
+  PROJETO: poc-curvas — POC executavel do desenho de solucao completo da Plataforma de Curvas
+  de Tesouraria/Risco. O alvo produtivo roda em Azure (Azure Functions + Kafka + Azure SQL +
+  pods AKS + front Angular em shell Liquid). Esta POC reproduz a MESMA topologia rodando
+  100% LOCAL em Podman, com uma unica fonte de dados: B3.
+
+  ESCOPO DA POC:
+  - Fonte de mercado: apenas B3 (arquivos PR, BVBG.086, BVBG.028, taxas de referencia).
+    Bloomberg e LSEG entram como feeders adicionais no desenho, mas NAO sao implementados.
+  - Curvas alvo da POC: PRE (DI/PRE) como caso principal; DPL/DOL/DOC/INP/CYI como extensao.
+  - Rodar tudo local: `podman compose up`. NAO ha dependencia de Azure, nem de Docker Desktop.
+
+  TOPOLOGIA (as-is do alvo produtivo, reproduzida na POC):
+  - feeders: workers Node.js/TypeScript (Azure Functions em prod, containers Node em local)
+    que baixam o dado bruto da fonte e publicam em topico Kafka.
+  - curve-orchestrator: agenda (schedules cadastrados) e dispara feeders sob demanda a partir
+    da tela; rastreia a execucao de ponta a ponta.
+  - curve-processor: consumidor Kafka que normaliza e persiste market data no SQL (idempotente).
+  - motor de calculo (curve-engine): pod Java que constroi a curva (bootstrap) e persiste os
+    vertices; tambem responde interpolacao ad-hoc sincrona (modelo HIBRIDO).
+  - APIs: cadastro de curva, consulta de curva/vertices, consulta de curva interpolada.
+  - BFF: Java 21 / Spring Boot 3.x, agrega as APIs para o front.
+  - front: Angular carregado como MICRO-FRONTEND no shell Liquid (Module Federation).
+
+  STACK:
+  - Backend/BFF/motor: Java 21 (LTS), Spring Boot 3.4.x, Maven. SEM Lombok — usar records.
+  - Feeders: Node.js 20 + TypeScript.
+  - Mensageria: Apache Kafka 4.x em modo KRaft (imagem apache/kafka, sem Zookeeper).
+  - Banco: SQL Server 2022 (mcr.microsoft.com/mssql/server) — espelha Azure SQL. Migracoes Flyway.
+  - Cache: Redis (curva pronta e interpolada).
+  - Front: Angular 18+, Module Federation, shell Liquid.
+  - Containers: Podman + podman-compose (rootless). Sem Docker.
+  - Testes: JUnit 5 + AssertJ (Java), Vitest (Node), Jasmine/Karma ou Vitest (Angular),
+    Testcontainers para Kafka/SQL quando viavel sob Podman.
+
+  KERNEL PROPRIO — SUBPROJETO INDEPENDENTE DESTE REPOSITORIO:
+  A matematica de curva, as convencoes B3/ANBIMA e a montagem das curvas vivem em
+  `libs/curve-kernel/`, um modulo Maven NOVO E INDEPENDENTE deste repositorio. Ele NAO e
+  dependencia de nenhum outro projeto e NAO e consumido de fora: e codigo desta POC.
+
+  O repositorio `D:\Workspace\curve-platform` serve como REFERENCIA DE IDEIA e de metodologia
+  ja validada — nao como dependencia, nao como origem de import, nao como artefato Maven. E
+  legitimo reimplementar aqui as mesmas ideias (estruturas, algoritmos, convencoes) e portar
+  fixtures e casos de teste, mas o codigo resultante e desta arvore e evolui de forma
+  independente. Nada em poc-curvas pode declarar dependencia de curve-platform.
+
+  ESCOPO DO curve-kernel (o que ele precisa conter):
+  - Matematica: YieldCurve, CurvePillar, CurveSampler, interpoladores (FlatForward, Linear,
+    LogLinear, LogCubic, NaturalCubicSpline, MonotonicConvex, FlatForwardLinear) e politicas de
+    extrapolacao (Strict, FlatRate, FlatForward, FlatForwardLinear).
+  - Bootstrap: CurveBootstrapper e os RateHelper por instrumento (CDI, DI1, inflacao implicita).
+  - Convencoes: calendario B3/ANBIMA com feriados moveis reais, DU/252, ACT/360, ACT/365,
+    arredondamento financeiro com truncamento como modo de primeira classe.
+  - Montagem de curvas B3: PRE como caso principal; DPL/DOL/DOC/INP/CYI como extensao.
+  - Reconciliador contra a taxa de referencia publicada pela B3, usado como oraculo de teste.
+
+  O kernel e uma biblioteca pura: sem Spring, sem acesso a banco, sem rede, sem Kafka. Quem
+  orquestra e o curve-engine.
+
+  REGRAS TECNICAS (nao violar sem decisao explicita):
+  - Precisao: BigDecimal com escala/arredondamento explicitos e o DEFAULT, e OBRIGATORIO para
+    qualquer valor com politica de arredondamento de mercado (preco, taxa, cotacao, VNA,
+    fatores de acumulacao e pro-rata). Esses valores nunca passam por double, nem como
+    intermediario. Para potencia fracionaria usar DecimalMath.pow, nunca Math.pow. double so e
+    permitido em numerica genuinamente iterativa sem arredondamento de mercado nos
+    intermediarios (root-finding, splines, Monte Carlo).
+  - Fixing ausente e ausencia de dado, nunca valor a estimar: rejeitar nomeando indice e data;
+    jamais interpolar, repetir o anterior ou usar default.
+  - Falha de fonte externa e explicita e nunca fabricada.
+  - CDI e SELIC sao ingeridos e persistidos ANUALIZADOS base 252; a derivacao para taxa diaria
+    acontece num unico ponto de leitura, nao na ingestao.
+
+  QUALIDADE DE DADO E RASTREABILIDADE:
+  - Toda curva publicada carrega proveniencia: quais insumos (fonte, arquivo, timestamp,
+    hash), qual definicao de curva (versao) e qual execucao a gerou.
+  - Ingestao e idempotente por (fonte, tipo, data de referencia, chave do instrumento).
+  - Reprocessamento de uma data NAO sobrescreve silenciosamente: gera nova versao da curva.
+
+  TESTES: fixture real, sempre. Quando existir oraculo publicado (taxa de referencia B3),
+  arredondar o valor do oraculo pela mesma RoundingPolicy de producao e comparar exato — nao
+  usar tolerancia de double para mascarar diferenca de convencao.
+
+  IDIOMA:
+  - Documentacao e artefatos de planejamento: portugues do Brasil.
+  - BANCO DE DADOS: nomes de TABELAS, COLUNAS, INDICES, CONSTRAINTS e MIGRACOES em PORTUGUES,
+    sem acento e em snake_case. Ex.: definicao_curva, versao_definicao_curva, modelo_curva,
+    ponto_dado_mercado, lote_ingestao, execucao_curva, versao_curva, vertice_curva,
+    procedencia_curva; colunas como data_referencia, chave_instrumento, correlacao_id,
+    momento_curva, numero_versao, taxa, fator_desconto, criado_em, criado_por.
+  - Valores de dominio persistidos em coluna de estado seguem os enums ja definidos em
+    MAIUSCULAS (BOOTSTRAPPED, IMPORTED, PUBLISHED, SUPERSEDED, BUILTIN, GROOVY, ...).
+  - Codigo Java/TypeScript, nomes de classe, pacote, metodo, campo de DTO, nomes de topico
+    Kafka e campos de envelope de evento permanecem em INGLES.
+  - A traducao acontece no mapeamento objeto-relacional, nao no dominio.

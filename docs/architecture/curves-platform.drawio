@@ -1,0 +1,588 @@
+<mxfile host="app.diagrams.net" agent="claude-code" version="24.7.17" type="device">
+  <diagram id="ctx" name="1 - Contexto">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1020" math="0" shadow="0">
+      <root>
+        <mxCell id="c0" />
+        <mxCell id="c1" parent="c0" />
+
+        <mxCell id="ctxTitle" value="Plataforma de Curvas — Visão de Contexto" style="text;html=1;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="c1">
+          <mxGeometry x="50" y="28" width="900" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxSubtitle" value="POC executável 100% local em Podman rootless · fonte única: B3 · duas curvas distintas para o mesmo mercado" style="text;html=1;fontSize=13;align=left;fontColor=#666666;" vertex="1" parent="c1">
+          <mxGeometry x="50" y="62" width="1100" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ctxWho" value="QUEM USA E PARA QUÊ" style="text;html=1;fontSize=11;fontStyle=1;align=left;fontColor=#888888;" vertex="1" parent="c1">
+          <mxGeometry x="50" y="105" width="260" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ctxU1" value="Trader / Tesouraria&#10;&quot;qual a taxa de 437 dias úteis hoje?&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="c1">
+          <mxGeometry x="50" y="135" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxU2" value="Risco / Auditoria&#10;&quot;por que este vértice tem este valor?&quot;&#10;&quot;o que o sistema devolveu ontem às 15h?&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="c1">
+          <mxGeometry x="50" y="210" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxU3" value="Operador de curva&#10;cadastra curva, dispara pela tela a ingestão&#10;do dia e acompanha as execuções" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="c1">
+          <mxGeometry x="50" y="295" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxU4" value="Quant / metodologia&#10;importa modelo Groovy, aponta a curva&#10;para ele e compara contra o modelo padrão" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="c1">
+          <mxGeometry x="50" y="380" width="280" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ctxSys" value="PLATAFORMA DE CURVAS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;fontStyle=1;verticalAlign=top;spacingTop=12;" vertex="1" parent="c1">
+          <mxGeometry x="420" y="125" width="620" height="490" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ctxCap1" value="1 · Ingerir&#10;baixa da B3 o dado do dia e persiste,&#10;de forma idempotente e rastreável" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="c1">
+          <mxGeometry x="450" y="175" width="270" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxCap2" value="2 · Construir&#10;monta a curva por bootstrap a partir&#10;dos contratos individuais (DI1)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="c1">
+          <mxGeometry x="740" y="175" width="270" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxCap3" value="3 · Importar&#10;recebe a curva já pronta divulgada&#10;pela B3 e a transcreve fielmente" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="c1">
+          <mxGeometry x="450" y="260" width="270" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxCap4" value="4 · Publicar&#10;vértices versionados, com procedência&#10;e histórico — nunca sobrescreve" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="c1">
+          <mxGeometry x="740" y="260" width="270" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxCap5" value="5 · Interpolar&#10;responde prazo arbitrário sobre a curva&#10;publicada, de forma síncrona" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="c1">
+          <mxGeometry x="450" y="345" width="270" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxCap6" value="6 · Governar&#10;cadastro, agendamento, disparo manual,&#10;monitoramento e escolha de modelo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="c1">
+          <mxGeometry x="740" y="345" width="270" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ctxOut" value="O QUE SAI — duas curvas distintas, lado a lado, comparáveis entre si" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f0f6ff;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;align=left;spacingLeft=10;verticalAlign=top;spacingTop=6;" vertex="1" parent="c1">
+          <mxGeometry x="450" y="435" width="560" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxOut1" value="Curva CONSTRUÍDA&#10;o que a metodologia da casa produz&#10;a partir do mercado observado&#10;modo BOOTSTRAPPED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="c1">
+          <mxGeometry x="470" y="470" width="255" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxOut2" value="Curva IMPORTADA&#10;o que a B3 divulgou oficialmente,&#10;transcrito vértice a vértice&#10;modo IMPORTED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="c1">
+          <mxGeometry x="740" y="470" width="255" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ctxWhat" value="COM QUEM CONVERSA" style="text;html=1;fontSize=11;fontStyle=1;align=left;fontColor=#888888;" vertex="1" parent="c1">
+          <mxGeometry x="1140" y="105" width="250" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ctxB3a" value="B3 — dado individual&#10;arquivo PR · BVBG.086 · BVBG.028&#10;contratos DI1 e demais instrumentos" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="c1">
+          <mxGeometry x="1140" y="135" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxB3b" value="B3 — curva pronta&#10;endpoint de Taxas de Referência&#10;curva oficial, vértice a vértice" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="c1">
+          <mxGeometry x="1140" y="220" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxBbg" value="Bloomberg · LSEG&#10;mesmo contrato de feeder&#10;desenhado, fora do escopo da POC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;dashed=1;fontColor=#666666;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="c1">
+          <mxGeometry x="1140" y="305" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxShell" value="Shell Liquid&#10;host de micro-frontends — ALVO&#10;embarque adiado; na POC o front roda puro" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="c1">
+          <mxGeometry x="1140" y="390" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxIdp" value="Provedor OIDC&#10;Keycloak local na POC,&#10;IdP corporativo em produção" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="c1">
+          <mxGeometry x="1140" y="475" width="300" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ctxE1" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.15;entryDx=0;entryDy=0;" edge="1" parent="c1" source="ctxU1" target="ctxSys"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ctxE2" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.35;entryDx=0;entryDy=0;" edge="1" parent="c1" source="ctxU2" target="ctxSys"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ctxE3" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.55;entryDx=0;entryDy=0;" edge="1" parent="c1" source="ctxU3" target="ctxSys"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ctxE4" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="c1" source="ctxU4" target="ctxSys"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="ctxE5" value="baixa contratos" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;exitX=1;exitY=0.12;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="c1" source="ctxSys" target="ctxB3a"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ctxE6" value="baixa curva pronta" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="c1" source="ctxSys" target="ctxB3b"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ctxE7" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#999999;exitX=1;exitY=0.47;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="c1" source="ctxSys" target="ctxBbg"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ctxE8" value="embarque futuro" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;exitX=1;exitY=0.64;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="c1" source="ctxSys" target="ctxShell"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ctxE9" value="autentica" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;exitX=1;exitY=0.82;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="c1" source="ctxSys" target="ctxIdp"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="ctxPrinc" value="TRÊS REGRAS QUE ATRAVESSAM TODO O DESENHO&#10;──────────────────────────────────────────&#10;1 · Insumo ausente é ausência de dado, nunca valor a estimar — a construção falha nomeando índice e data, e nada é publicado.&#10;2 · Publicação nunca sobrescreve — reprocessar cria versão nova; a anterior vira SUPERSEDED com os vértices intactos.&#10;3 · Todo número tem procedência — cada curva publicada aponta para a execução, os insumos, a versão da definição e o modelo que a produziu." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff8f5;strokeColor=#b85450;align=left;spacingLeft=12;verticalAlign=top;spacingTop=8;fontSize=11;" vertex="1" parent="c1">
+          <mxGeometry x="50" y="645" width="1390" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ctxScope" value="ESCOPO E LIMITES DA POC&#10;──────────────────────────────────────────&#10;Dentro: fluxo ponta a ponta rodando local em Podman rootless · fonte B3 apenas · curva PRE de DI1 como caso principal&#10;· kernel numérico próprio em libs/curve-kernel (subprojeto independente deste repositório)&#10;· modelo de construção padrão embutido, com Groovy importado como alternativa escolhida na tela&#10;· BFF em Java/Spring Boot e front Angular PURO, autônomo · banco com tabelas e colunas em português&#10;&#10;Fora: deploy em Azure (AKS, Functions, Event Hubs, Azure SQL) · Bloomberg e LSEG implementados&#10;· embarque do front no shell Liquid como micro-frontend (alvo, não POC) · alta disponibilidade, DR e multi-região&#10;· tuning de performance em escala de produção" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;align=left;spacingLeft=12;verticalAlign=top;spacingTop=8;fontSize=11;" vertex="1" parent="c1">
+          <mxGeometry x="50" y="800" width="1390" height="180" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="comp" name="2 - Componentes">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="k0" />
+        <mxCell id="k1" parent="k0" />
+
+        <mxCell id="tTitle" value="Arquitetura de Componentes — poc-curvas" style="text;html=1;fontSize=20;fontStyle=1;align=left;" vertex="1" parent="k1">
+          <mxGeometry x="40" y="20" width="900" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tSub" value="Setas numeradas = fluxo A (curva construída, azul) · setas com letra = fluxo B (curva importada, verde) · tracejado = fora do escopo da POC" style="text;html=1;fontSize=12;align=left;fontColor=#666666;" vertex="1" parent="k1">
+          <mxGeometry x="40" y="48" width="1100" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="orch" value="curve-orchestrator — Java / Spring Boot&#10;agendamentos cadastrados · disparo manual pela tela (BVBG e curva pronta) · backfill de janela de datas · estado e retry do run" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=11;" vertex="1" parent="k1">
+          <mxGeometry x="290" y="90" width="620" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="srcBox" value="Fontes de mercado" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;verticalAlign=top;fontStyle=1;fontColor=#666666;" vertex="1" parent="k1">
+          <mxGeometry x="40" y="200" width="210" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="srcB3a" value="B3 — dado individual&#10;PR · BVBG.086 · BVBG.028" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="k1">
+          <mxGeometry x="60" y="240" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="srcB3b" value="B3 — curva pronta&#10;Taxas de Referência" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="k1">
+          <mxGeometry x="60" y="315" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="srcOther" value="Bloomberg · LSEG" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;dashed=1;fontColor=#666666;fontSize=11;" vertex="1" parent="k1">
+          <mxGeometry x="60" y="390" width="170" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="feedBox" value="Feeders — Node 20 / TypeScript&#10;(Azure Function em prod · container local)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#82b366;dashed=1;verticalAlign=top;fontStyle=1;fontColor=#4a7a3a;fontSize=11;" vertex="1" parent="k1">
+          <mxGeometry x="290" y="200" width="240" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="feedB3" value="feeder-b3-marketdata&#10;três resultados: PUBLICADO · SEM_DADO · FALHOU&#10;quebra o arquivo em BLOCOS (loteId, sequencia, totalBlocos)&#10;corte estrutural, sem semântica financeira&#10;publica na faixa recebida · declara payloadKind" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=10;" vertex="1" parent="k1">
+          <mxGeometry x="310" y="245" width="200" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="feedOther" value="feeder-bloomberg&#10;feeder-lseg&#10;(mesmo contrato de feeder)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;dashed=1;fontColor=#666666;fontSize=10;" vertex="1" parent="k1">
+          <mxGeometry x="310" y="375" width="200" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="kafkaBox" value="Apache Kafka 4.x (KRaft)&#10;chave: fonte|dataset|data · at-least-once&#10;todo erro avança o offset" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff9f0;strokeColor=#d79b00;verticalAlign=top;fontStyle=1;fontSize=10;" vertex="1" parent="k1">
+          <mxGeometry x="590" y="190" width="240" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="tRaw" value="marketdata.rotina.v1&#10;marketdata.prioritaria.v1&#10;marketdata.massa.v1&#10;(3 faixas isoladas)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="k1">
+          <mxGeometry x="610" y="238" width="200" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="tNorm" value="marketdata.normalized.v1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="k1">
+          <mxGeometry x="610" y="304" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tBuild" value="curve.build.requested.v1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="k1">
+          <mxGeometry x="610" y="342" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tPub" value="curve.published.v1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="k1">
+          <mxGeometry x="610" y="380" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tDlq" value="*.dlq (uma por grupo)&#10;retenção &gt; origem&#10;→ vira pendência com alerta" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="k1">
+          <mxGeometry x="610" y="418" width="200" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="proc" value="curve-processor — Java / Spring Boot&#10;──────────────&#10;um listener por FAIXA (thread isolada)&#10;valida envelope → roteia por payloadKind&#10;&#10;INDIVIDUAL_QUOTES → parser por dataset&#10;→ transação por BLOCO · lote fecha por contagem&#10;→ lote incompleto NÃO gera construção&#10;&#10;READY_CURVE → publica curva IMPORTED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="k1">
+          <mxGeometry x="890" y="200" width="270" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="engine" value="curve-engine (motor de cálculo) — Java / Spring Boot&#10;──────────────&#10;construção assíncrona (BOOTSTRAPPED)&#10;   resolve definição + versão + modelo&#10;   resolve insumos → gate de faltante&#10;   executa modelo → grava EM_VALIDACAO&#10;&#10;interpolação síncrona (as duas origens)&#10;   sobre vértices publicados · cache Redis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="k1">
+          <mxGeometry x="890" y="420" width="270" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="valid" value="curve-validator — GATE de publicação&#10;──────────────&#10;reprecificação dos instrumentos de calibração&#10;fatores de desconto decrescentes · forwards nos limites&#10;faixa de taxas · suavidade · cobertura&#10;variação contra o dia anterior (aviso)&#10;&#10;BLOQUEANTE reprova → não publica&#10;AVISO → publica sinalizado&#10;EM_VALIDACAO → PUBLICADA | REPROVADA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;fontStyle=1;" vertex="1" parent="k1">
+          <mxGeometry x="1200" y="630" width="290" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="eValid" value="grava EM_VALIDACAO" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;strokeColor=#b85450;strokeWidth=2;" edge="1" parent="k1" source="engine" target="valid"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="models" value="Modelos de construção&#10;──────────────&#10;BUILTIN (Java, padrão) — ex.: PRE DI1 B3&#10;GROOVY (importado, opcional)&#10;em contenção: sem I/O, limite de tempo/memória&#10;&#10;a definição da curva aponta para um deles;&#10;troca é feita na tela, sem build nem deploy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0cee2;strokeColor=#56517e;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;fontStyle=1;" vertex="1" parent="k1">
+          <mxGeometry x="890" y="630" width="270" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="kernel" value="libs/curve-kernel — biblioteca pura (Java 21)&#10;──────────────&#10;YieldCurve · CurvePillar · CurveSampler&#10;7 interpoladores · 4 políticas de extrapolação&#10;CurveBootstrapper · RateHelper&#10;calendário B3/ANBIMA · DU252 · ACT/360 · ACT/365&#10;arredondamento com truncamento de 1ª classe&#10;reconciliador contra taxa de referência oficial&#10;&#10;sem Spring · sem banco · sem rede&#10;subprojeto novo e independente deste repositório" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;fontStyle=1;" vertex="1" parent="k1">
+          <mxGeometry x="1200" y="850" width="290" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dataBox" value="Persistência" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9673a6;dashed=1;verticalAlign=top;fontStyle=1;fontColor=#6b4c80;" vertex="1" parent="k1">
+          <mxGeometry x="1200" y="190" width="300" height="410" as="geometry" />
+        </mxCell>
+        <mxCell id="sql" value="SQL Server 2022 local / Azure SQL prod&#10;──────────────&#10;definicao_curva (BOOTSTRAPPED | IMPORTED)&#10;versao_definicao_curva → modelo_curva&#10;modelo_curva (BUILTIN | GROOVY)&#10;ponto_dado_mercado · lote_ingestao&#10;execucao_curva · versao_curva · vertice_curva&#10;procedencia_curva&#10;&#10;DECIMAL(28,12) · migrações Flyway" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;html=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=top;fontSize=10;align=left;spacingLeft=14;spacingTop=6;" vertex="1" parent="k1">
+          <mxGeometry x="1225" y="230" width="255" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="redis" value="Redis — cache de curva e de interpolação&#10;chave inclui versionId → invalidação por construção" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="k1">
+          <mxGeometry x="1225" y="490" width="255" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="api" value="curve-api — Java / Spring Boot&#10;cadastro de curva e da sua versão · consulta de curva e vértices&#10;curva interpolada · histórico de versões · proveniência · comparação de curvas&#10;somente leitura, exceto cadastro" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=10;" vertex="1" parent="k1">
+          <mxGeometry x="890" y="830" width="270" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bff" value="curve-bff — Java 21 / Spring Boot 3.4&#10;agregação por tela · OIDC · perfis&#10;VIEWER / OPERATOR / ADMIN&#10;única fronteira exposta ao navegador" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=10;" vertex="1" parent="k1">
+          <mxGeometry x="560" y="830" width="260" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="shellBox" value="Shell Liquid (Module Federation) — ALVO, fora do escopo da POC" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;verticalAlign=top;fontStyle=1;fontColor=#888888;fontSize=10;" vertex="1" parent="k1">
+          <mxGeometry x="180" y="800" width="320" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="ui" value="curve-web-ui — Angular 18, app autônomo&#10;──────────────&#10;catálogo e cadastro de curva&#10;viewer de curva + vértices&#10;consulta interpolada&#10;disparo manual: BVBG e curva pronta&#10;monitor de execuções (correlationId)&#10;escolha do modelo de construção" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="k1">
+          <mxGeometry x="200" y="835" width="280" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="idp" value="Keycloak — OIDC local" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="k1">
+          <mxGeometry x="560" y="985" width="260" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="podman" value="Podman rootless — deploy/podman/up.sh : Kafka · SQL Server · Redis · Keycloak · bootstrap de tópicos · migração Flyway · seed B3 · smoke test ponta a ponta" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=2;fontColor=#444444;fontSize=11;" vertex="1" parent="k1">
+          <mxGeometry x="40" y="1035" width="1450" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" value="1 · A. dispara" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="orch" target="feedB3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" value="baixa" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="feedB3" target="srcB3a"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2b" value="baixa" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;dashed=1;" edge="1" parent="k1" source="feedB3" target="srcB3b"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" value="2 · B. publica bruto" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="feedB3" target="tRaw"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" value="3 · C. consome" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="tRaw" target="proc"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" value="4. upsert ponto_dado_mercado" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;strokeColor=#6c8ebf;" edge="1" parent="k1" source="proc" target="sql"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5b" value="D. publica curva IMPORTED&#10;(version + vertex + provenance)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="k1" source="proc" target="sql"><mxGeometry relative="1" as="geometry"><mxPoint as="offset" x="0" y="30" /></mxGeometry></mxCell>
+        <mxCell id="e6" value="5. normalizado" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="proc" target="tNorm"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" value="6. pede construção" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="orch" target="tBuild"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" value="7. consome" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="tBuild" target="engine"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" value="8. lê insumos · publica curva BOOTSTRAPPED" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="k1" source="engine" target="sql"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e10" value="9 · E. curva publicada" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="engine" target="tPub"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e11" value="cache" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;dashed=1;" edge="1" parent="k1" source="engine" target="redis"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e11b" value="executa" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="engine" target="models"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e11c" value="usa" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="models" target="kernel"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e12" value="leitura" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="api" target="sql"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e13" value="10. consulta curva / vértices / comparação" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="bff" target="api"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e14" value="11. interpolação síncrona · modelos" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="bff" target="engine"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e15" value="12. disparo manual (BVBG · curva pronta) · status do run" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;strokeColor=#b85450;strokeWidth=2;" edge="1" parent="k1" source="bff" target="orch"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e16" value="13. HTTPS — única fronteira exposta" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;fontStyle=1;" edge="1" parent="k1" source="ui" target="bff"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e17" value="valida token" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="k1" source="bff" target="idp"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e19" value="estado do run" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;dashed=1;" edge="1" parent="k1" source="orch" target="sql"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="legend" value="Legenda&#10;azul = serviço Java/Spring · verde = Node/TS · laranja = Kafka/OIDC · roxo = dados · lilás = modelos · rosa = kernel · amarelo = front&#10;tracejado = fora do escopo da POC · correlationId atravessa todas as setas do fluxo&#10;&#10;Fronteiras: feeder não toca banco · processor só publica curva IMPORTED · engine só publica curva BOOTSTRAPPED · front só fala com o BFF" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;align=left;spacingLeft=10;fontSize=10;verticalAlign=top;" vertex="1" parent="k1">
+          <mxGeometry x="40" y="500" width="490" height="120" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="flowA" name="3 - Fluxo A: curva construída (DI1)">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="950" math="0" shadow="0">
+      <root>
+        <mxCell id="a0" />
+        <mxCell id="a1" parent="a0" />
+
+        <mxCell id="aTitle" value="Fluxo A — curva CONSTRUÍDA: contratos DI1 → bootstrap → vértices publicados" style="text;html=1;fontSize=18;fontStyle=1;align=left;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="30" width="1100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="aSub" value="Um único correlationId atravessa todas as etapas. Modo de origem da definição: BOOTSTRAPPED." style="text;html=1;fontSize=12;align=left;fontColor=#666666;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="58" width="1100" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a01" value="1 · curve-orchestrator&#10;──────────────&#10;schedule cadastrado dispara,&#10;ou operador clica na tela.&#10;Cria execucao_curva em PENDING,&#10;gera o correlationId,&#10;registra triggeredBy." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="110" width="230" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="a02" value="2 · feeder-b3-marketdata&#10;──────────────&#10;baixa PR / BVBG.086 / BVBG.028.&#10;payloadKind = INDIVIDUAL_QUOTES.&#10;Calendário decide dia de pregão.&#10;NO_DATA ≠ FAILED.&#10;Verifica integridade antes de publicar." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
+          <mxGeometry x="320" y="110" width="240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="a03" value="3 · marketdata.raw.v1&#10;──────────────&#10;envelope comum + payload bruto,&#10;encoding e hash declarados.&#10;eventId determinístico por conteúdo.&#10;Retenção 7 dias → replay possível." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
+          <mxGeometry x="610" y="110" width="240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="a04" value="4 · curve-processor&#10;──────────────&#10;valida envelope → roteia por&#10;payloadKind → parser do dataset.&#10;Converte texto → BigDecimal.&#10;Upsert idempotente, transação por lote.&#10;Registra lote_ingestao e divergências." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
+          <mxGeometry x="900" y="110" width="250" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="a05" value="5 · ponto_dado_mercado&#10;──────────────&#10;um ponto por instrumento:&#10;(source, dataset, refDate, instrumentKey)&#10;value DECIMAL(28,12)&#10;UQ garante ausência de duplicata." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
+          <mxGeometry x="1200" y="110" width="250" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a06" value="6 · curve.build.requested.v1 — orchestrator marca o run como BUILDING" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="a1">
+          <mxGeometry x="900" y="310" width="550" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a07" value="7 · curve-engine — resolução&#10;──────────────&#10;resolve a definição, a versão de definição vigente na data e o MODELO que ela aponta&#10;(BUILTIN padrão da curva PRE DI1 B3, ou GROOVY importado).&#10;Carrega de ponto_dado_mercado o conjunto de insumos exigido pela definição." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
+          <mxGeometry x="740" y="400" width="710" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a08" value="8 · GATE de insumo faltante&#10;──────────────&#10;falta fixing ou contrato exigido?&#10;→ falha nomeando índice e data&#10;→ run = FAILED&#10;→ NADA é publicado&#10;&#10;jamais interpolar, repetir ou defaultar" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;fontStyle=1;" vertex="1" parent="a1">
+          <mxGeometry x="1180" y="560" width="270" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a09" value="9 · Execução do modelo (em contenção)&#10;──────────────&#10;o modelo recebe os insumos JÁ RESOLVIDOS (somente leitura)&#10;e o contexto (data, momento, parâmetros da definição).&#10;Usa os blocos do curve-kernel: RateHelper + CurveBootstrapper&#10;+ convenções B3/ANBIMA + arredondamento.&#10;Devolve a lista de vértices. Não acessa banco, arquivo nem rede." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0cee2;strokeColor=#56517e;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
+          <mxGeometry x="740" y="560" width="410" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a10" value="10 · Publicação atômica&#10;──────────────&#10;versao_curva (nova, PUBLISHED, nº incremental)&#10;+ vertice_curva (DECIMAL 28,12)&#10;+ procedencia_curva (run, versão da definição,&#10;   insumos, hash, MODELO usado)&#10;&#10;versão anterior da mesma data → SUPERSEDED,&#10;com seus vértices intactos" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
+          <mxGeometry x="380" y="560" width="320" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a11" value="11 · curve.published.v1&#10;──────────────&#10;notifica assinantes.&#10;Cache invalida por construção:&#10;a chave contém o versionId." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="560" width="290" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a12" value="12 · Aceite — reconciliação contra a B3&#10;──────────────&#10;a curva construída é comparada vértice a vértice contra a curva pronta que a B3 divulgou para a mesma data (Fluxo B),&#10;arredondando o oráculo pela MESMA política de arredondamento de produção e comparando EXATO — sem tolerância numérica." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;fontStyle=1;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="790" width="1410" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ae1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="a1" source="a01" target="a02"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ae2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="a1" source="a02" target="a03"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ae3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="a1" source="a03" target="a04"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ae4" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="a1" source="a04" target="a05"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ae5" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="a1" source="a05" target="a06"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ae6" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="a1" source="a06" target="a07"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ae7" value="insumo completo?" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="a1" source="a07" target="a08"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ae8" value="sim" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="a1" source="a08" target="a09"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ae9" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="a1" source="a09" target="a10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ae10" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="a1" source="a10" target="a11"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="flowB" name="4 - Fluxo B: curva importada (pronta)">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="b0" />
+        <mxCell id="b1" parent="b0" />
+
+        <mxCell id="bTitle" value="Fluxo B — curva IMPORTADA: curva pronta da B3 → transcrição fiel → vértices publicados" style="text;html=1;fontSize=18;fontStyle=1;align=left;" vertex="1" parent="b1">
+          <mxGeometry x="40" y="30" width="1200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="bSub" value="Não há bootstrap. O motor não participa da publicação — quem publica é o processor. Modo de origem da definição: IMPORTED." style="text;html=1;fontSize=12;align=left;fontColor=#666666;" vertex="1" parent="b1">
+          <mxGeometry x="40" y="58" width="1200" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b01" value="A · curve-orchestrator&#10;──────────────&#10;mesmo agendamento ou&#10;disparo manual pela tela,&#10;mas para o dataset de&#10;curva pronta.&#10;Cria run e correlationId." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
+          <mxGeometry x="40" y="110" width="230" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="b02" value="B · feeder-b3-marketdata&#10;──────────────&#10;chama o endpoint de Taxas&#10;de Referência com data e&#10;identificador da curva.&#10;payloadKind = READY_CURVE.&#10;Publica a resposta sem&#10;converter encoding nem decimal." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
+          <mxGeometry x="320" y="110" width="240" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="b03" value="C · marketdata.raw.v1&#10;──────────────&#10;mesmo tópico e mesmo envelope&#10;do Fluxo A — o que separa os&#10;dois caminhos é o payloadKind,&#10;declarado pelo feeder,&#10;nunca inferido do conteúdo." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
+          <mxGeometry x="610" y="110" width="240" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="b04" value="D · curve-processor — caminho de curva pronta&#10;──────────────&#10;1. valida envelope&#10;2. payloadKind = READY_CURVE → parser de vértices&#10;3. resolve a definição pelo identificador de curva na origem&#10;   → não mapeada = dead-letter UNMAPPED_CURVE&#10;4. confere coerência: definição precisa ser IMPORTED&#10;   → incoerente = falha nomeando definição e modo&#10;5. transcreve os vértices SEM recalcular, reinterpolar,&#10;   reordenar, filtrar ou arredondar&#10;   → curva vazia = dead-letter EMPTY_CURVE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
+          <mxGeometry x="900" y="110" width="450" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b05" value="E · Publicação atômica (mesmas regras do Fluxo A)&#10;──────────────&#10;versao_curva nova em PUBLISHED, nº incremental&#10;+ vertice_curva com os valores exatos recebidos&#10;+ procedencia_curva: lote de ingestão, eventId, arquivo de origem,&#10;   hash do conteúdo, fonte — campo de MODELO fica vazio,&#10;   porque não houve cálculo&#10;&#10;versão anterior da mesma data → SUPERSEDED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
+          <mxGeometry x="900" y="370" width="450" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b06" value="F · curve.published.v1&#10;──────────────&#10;mesmo contrato de evento do Fluxo A.&#10;Um assinante não distingue,&#10;pelo formato do evento,&#10;se a curva foi construída ou importada." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
+          <mxGeometry x="560" y="390" width="290" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b07" value="G · Paridade de tratamento&#10;──────────────&#10;depois de publicada, a curva importada&#10;é tratada exatamente como a construída:&#10;mesmas APIs de consulta,&#10;mesma interpolação síncrona pelo motor,&#10;mesmo versionamento,&#10;mesma exigência de proveniência." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
+          <mxGeometry x="230" y="390" width="290" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bCmp" value="Por que duas curvas distintas, e não uma&#10;──────────────&#10;A construída é o que a metodologia da casa produz a partir do mercado observado. A importada é o que a B3 divulgou.&#10;Não são a mesma coisa, e colapsá-las esconderia justamente a diferença que interessa.&#10;Mantidas separadas, a comparação diária entre elas vira controle contínuo — em vez de conferência manual de planilha." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
+          <mxGeometry x="40" y="600" width="1310" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="b1" source="b01" target="b02"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="be2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="b1" source="b02" target="b03"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="be3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="b1" source="b03" target="b04"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="be4" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="b1" source="b04" target="b05"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="be5" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="b1" source="b05" target="b06"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="be6" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="b1" source="b06" target="b07"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="engine" name="5 - Motor de cálculo por dentro">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="950" math="0" shadow="0">
+      <root>
+        <mxCell id="m0" />
+        <mxCell id="m1" parent="m0" />
+
+        <mxCell id="mTitle" value="curve-engine por dentro — kernel próprio, modelos selecionáveis, modo híbrido" style="text;html=1;fontSize=18;fontStyle=1;align=left;" vertex="1" parent="m1">
+          <mxGeometry x="40" y="30" width="1100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mAsync" value="CONSTRUÇÃO — assíncrona, disparada por evento, resultado persistido" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#6c8ebf;dashed=1;verticalAlign=top;fontStyle=1;fontColor=#3b5a7f;fontSize=12;" vertex="1" parent="m1">
+          <mxGeometry x="40" y="90" width="740" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="mIn" value="consome curve.build.requested.v1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="m1">
+          <mxGeometry x="70" y="130" width="300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mResolve" value="Resolvedor&#10;definição → versão vigente na data → modelo apontado" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="m1">
+          <mxGeometry x="70" y="195" width="300" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mInputs" value="Resolvedor de insumos&#10;lê ponto_dado_mercado conforme a definição;&#10;o modelo nunca consulta banco" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="m1">
+          <mxGeometry x="70" y="280" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="mGate" value="GATE de insumo faltante&#10;falha nomeando índice e data · run = FAILED&#10;nada publicado · nunca preencher lacuna" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;" vertex="1" parent="m1">
+          <mxGeometry x="70" y="375" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="mPublish" value="Publicador&#10;transação única: versao_curva + vertice_curva&#10;+ procedencia_curva (inclui o modelo usado)&#10;anterior → SUPERSEDED · emite curve.published.v1&#10;recusa publicar para definição IMPORTED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="m1">
+          <mxGeometry x="70" y="470" width="300" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mSandbox" value="Contenção de execução de modelo&#10;──────────────&#10;classloader isolado por modelo&#10;lista de permissão de pacotes&#10;sem arquivo · sem rede · sem processo&#10;limite de tempo · limite de memória&#10;violação → aborta e falha o run nomeando a violação" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2f0;strokeColor=#b85450;verticalAlign=top;align=left;spacingLeft=10;fontSize=11;fontStyle=1;" vertex="1" parent="m1">
+          <mxGeometry x="420" y="195" width="330" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="mBuiltin" value="Modelo BUILTIN (Java) — PADRÃO&#10;ex.: PRE DI1 B3&#10;versionado junto com o motor&#10;registrado na inicialização&#10;funciona sem ninguém importar nada" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0cee2;strokeColor=#56517e;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="m1">
+          <mxGeometry x="420" y="355" width="330" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="mGroovy" value="Modelo GROOVY — importado&#10;validado na importação (compila + produz vértices)&#10;checksum e autor registrados&#10;escolhido por definição de curva, na tela&#10;troca sem build e sem deploy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0cee2;strokeColor=#56517e;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;dashed=1;" vertex="1" parent="m1">
+          <mxGeometry x="420" y="475" width="330" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mKernel" value="libs/curve-kernel — biblioteca pura, subprojeto independente&#10;──────────────&#10;YieldCurve · CurvePillar · CurveSampler&#10;FlatForward · Linear · LogLinear · LogCubic · NaturalCubicSpline · MonotonicConvex · FlatForwardLinear&#10;extrapolação: Strict · FlatRate · FlatForward · FlatForwardLinear&#10;CurveBootstrapper · RateHelper (CDI · DI1 · inflação implícita)&#10;calendário B3/ANBIMA com feriados móveis · DU/252 · ACT/360 · ACT/365&#10;arredondamento com truncamento de primeira classe · potência decimal&#10;reconciliador contra a taxa de referência oficial da B3&#10;&#10;sem Spring · sem banco · sem rede · double só em numérica iterativa interna" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;fontStyle=0;" vertex="1" parent="m1">
+          <mxGeometry x="820" y="195" width="640" height="230" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mSync" value="INTERPOLAÇÃO — síncrona, sobre vértices já publicados, para as DUAS origens de curva" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#82b366;dashed=1;verticalAlign=top;fontStyle=1;fontColor=#4a7a3a;fontSize=12;" vertex="1" parent="m1">
+          <mxGeometry x="820" y="470" width="640" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="mSyncIn" value="GET curva interpolada (curva, data, prazo[, versão])" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="m1">
+          <mxGeometry x="850" y="510" width="580" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mCache" value="Cache Redis&#10;chave: curva | data | versionId | prazo | interpolador&#10;publicar versão nova invalida por construção — sem TTL adivinhado" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="m1">
+          <mxGeometry x="850" y="570" width="580" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="mInterp" value="Interpolação sobre a versao_curva publicada&#10;interpolador e política de extrapolação vêm da DEFINIÇÃO da curva&#10;fora do intervalo dos vértices: segue a política declarada;&#10;se for estrita, devolve erro nomeando prazo pedido e intervalo disponível&#10;NÃO reconstrói a curva" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="m1">
+          <mxGeometry x="850" y="655" width="580" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mCompare" value="Comparação de modelos — constrói a mesma curva e data com dois modelos e reporta a diferença prazo a prazo, SEM publicar.&#10;É o que torna trocar de metodologia uma medição em vez de uma aposta." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="m1">
+          <mxGeometry x="40" y="620" width="740" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mNote" value="Distinção que sustenta o desenho: interpolar ENTRE VÉRTICES de uma curva publicada é o produto.&#10;Interpolar PARA TAPAR BURACO DE INSUMO é fabricar dado — e é proibido." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=12;align=left;spacingLeft=10;verticalAlign=middle;fontStyle=1;" vertex="1" parent="m1">
+          <mxGeometry x="40" y="730" width="740" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="me1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="m1" source="mIn" target="mResolve"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="me2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="m1" source="mResolve" target="mInputs"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="me3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="m1" source="mInputs" target="mGate"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="me4" value="insumo ok → executa modelo" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="m1" source="mGate" target="mSandbox"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="me5" value="vértices" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="m1" source="mSandbox" target="mPublish"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="me6" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="m1" source="mResolve" target="mBuiltin"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="me7" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;dashed=1;" edge="1" parent="m1" source="mResolve" target="mGroovy"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="me8" value="usa" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="m1" source="mBuiltin" target="mKernel"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="me9" value="usa" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;dashed=1;" edge="1" parent="m1" source="mGroovy" target="mKernel"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="me10" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="m1" source="mSyncIn" target="mCache"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="me11" value="miss" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="m1" source="mCache" target="mInterp"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="me12" value="usa" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="m1" source="mInterp" target="mKernel"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="ui" name="6 - Telas, BFF e disparo manual">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="u0" />
+        <mxCell id="u1" parent="u0" />
+
+        <mxCell id="uTitle" value="Telas, BFF e disparo manual — front Angular puro na POC; o BFF é a única fronteira exposta" style="text;html=1;fontSize=18;fontStyle=1;align=left;" vertex="1" parent="u1">
+          <mxGeometry x="40" y="30" width="1200" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uShell" value="POC: aplicação Angular AUTÔNOMA, servida estaticamente, com OIDC próprio contra o Keycloak local&#10;──────────────&#10;Preparada para embarcar no shell Liquid depois, sem reescrita: rota base configurável · tema por tokens substituíveis&#10;· nenhuma suposição sobre a rota raiz · contexto de usuário atrás de uma fonte única e trocável" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#d6b656;dashed=1;verticalAlign=top;fontStyle=1;fontColor=#8a6d1f;fontSize=10;" vertex="1" parent="u1">
+          <mxGeometry x="40" y="90" width="700" height="480" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uT1" value="Catálogo de curvas&#10;lista as definições, com modo de origem&#10;(construída · importada) e modelo apontado" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="u1">
+          <mxGeometry x="70" y="160" width="310" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="uT2" value="Cadastro / edição de curva&#10;convenções, day count, interpolador,&#10;extrapolação, fontes, dependências&#10;e ESCOLHA DO MODELO de construção" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="u1">
+          <mxGeometry x="400" y="160" width="310" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="uT3" value="Viewer de curva&#10;gráfico + tabela de vértices,&#10;seletor de data e de versão,&#10;proveniência ao lado do número" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="u1">
+          <mxGeometry x="70" y="260" width="310" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="uT4" value="Consulta interpolada&#10;prazo arbitrário sobre a versão publicada;&#10;fora do intervalo segue a política declarada" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="u1">
+          <mxGeometry x="400" y="260" width="310" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="uT5" value="DISPARO MANUAL DE INGESTÃO&#10;escolhe data e o que consumir:&#10;· BVBG / arquivo de preços (dado individual)&#10;· endpoint de curva pronta&#10;e acompanha o run pelo correlationId" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;fontStyle=1;" vertex="1" parent="u1">
+          <mxGeometry x="70" y="360" width="310" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="uT6" value="Monitor de execuções&#10;runs com estado, etapa, duração,&#10;correlationId, motivo da falha,&#10;NO_DATA visível como tal&#10;e reenvio a partir da dead-letter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="u1">
+          <mxGeometry x="400" y="360" width="310" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="uT7" value="Modelos e comparação — importa Groovy, troca o modelo da curva e compara construída × importada, ou modelo × modelo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0cee2;strokeColor=#56517e;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="u1">
+          <mxGeometry x="70" y="490" width="640" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uBff" value="curve-bff — Java 21 / Spring Boot 3.4&#10;──────────────&#10;valida token OIDC e resolve o perfil&#10;agrega em contratos orientados a tela&#10;pagina, filtra e ordena&#10;chama as APIs internas com credencial de serviço&#10;nunca acessa banco nem Kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;fontStyle=1;" vertex="1" parent="u1">
+          <mxGeometry x="820" y="160" width="330" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uRoles" value="Perfis&#10;CURVE_VIEWER — consulta curva, vértices, interpolação, histórico&#10;CURVE_OPERATOR — o acima + disparo manual e backfill&#10;CURVE_ADMIN — o acima + cadastro de curva, importação de modelo&#10;e troca do modelo de uma curva" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="u1">
+          <mxGeometry x="820" y="350" width="330" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uApi" value="curve-api&#10;catálogo · consulta · vértices&#10;histórico · proveniência · comparação" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="u1">
+          <mxGeometry x="1230" y="140" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="uEngine" value="curve-engine&#10;interpolação síncrona&#10;catálogo de modelos e importação de Groovy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="u1">
+          <mxGeometry x="1230" y="250" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="uOrch" value="curve-orchestrator&#10;disparo manual · backfill · agendamentos&#10;estado dos runs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="u1">
+          <mxGeometry x="1230" y="360" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="uIdp" value="Keycloak / IdP corporativo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="u1">
+          <mxGeometry x="1230" y="470" width="300" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uNote" value="Regra de fronteira: o navegador só alcança o curve-bff. curve-api, curve-engine e curve-orchestrator não são expostos.&#10;Taxas trafegam como string no JSON — o double de JavaScript perderia dígito significativo; o Angular converte na borda." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="u1">
+          <mxGeometry x="40" y="600" width="1490" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ue1" value="HTTPS + token OIDC" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;fontStyle=1;" edge="1" parent="u1" source="uT5" target="uBff"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ue2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="u1" source="uT3" target="uBff"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ue3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="u1" source="uT7" target="uBff"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ue4" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="u1" source="uBff" target="uApi"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ue5" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="u1" source="uBff" target="uEngine"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ue6" value="dispara ingestão" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;strokeColor=#d79b00;strokeWidth=2;" edge="1" parent="u1" source="uBff" target="uOrch"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ue7" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" parent="u1" source="uBff" target="uIdp"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="er" name="7 - Modelo de dados">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="d0" />
+        <mxCell id="d1" parent="d0" />
+
+        <mxCell id="dTitle" value="Modelo de dados — SQL Server 2022 local / Azure SQL em produção (Flyway)" style="text;html=1;fontSize=20;fontStyle=1;align=left;" vertex="1" parent="d1">
+          <mxGeometry x="40" y="26" width="1100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dSub" value="Tabelas, colunas, índices e constraints em português, sem acento, em snake_case. Valores de enum permanecem em maiúsculas." style="text;html=1;fontSize=12;align=left;fontColor=#666666;" vertex="1" parent="d1">
+          <mxGeometry x="40" y="56" width="1200" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dDef" value="definicao_curva&#10;──────────────&#10;id (PK)&#10;codigo (UQ)   ex.: PRE_DI1_B3 · PRE_B3_OFICIAL&#10;nome&#10;moeda&#10;modo_origem   BOOTSTRAPPED | IMPORTED&#10;horario_limite_publicacao&#10;estado        RASCUNHO | ATIVA | APOSENTADA&#10;criado_em / criado_por" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+          <mxGeometry x="40" y="100" width="310" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="dDefV" value="versao_definicao_curva&#10;──────────────&#10;id (PK)&#10;definicao_curva_id (FK)&#10;numero_versao&#10;contagem_dias · calendario&#10;interpolador · politica_extrapolacao&#10;politica_arredondamento&#10;modelo_curva_id (FK)   ← modelo apontado&#10;vinculos_fonte (conjuntos de dados exigidos)&#10;depende_de (curvas insumo)&#10;vigencia_inicio / vigencia_fim" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+          <mxGeometry x="40" y="295" width="310" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="dModel" value="modelo_curva&#10;──────────────&#10;id (PK)&#10;codigo (UQ) · nome&#10;tipo       BUILTIN | GROOVY&#10;estado     ATIVO | DESABILITADO&#10;codigo_fonte (só GROOVY)&#10;checksum&#10;importado_por / importado_em" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d0cee2;strokeColor=#56517e;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+          <mxGeometry x="40" y="555" width="310" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dBatch" value="lote_ingestao&#10;──────────────&#10;id (PK)&#10;execucao_curva_id (FK)&#10;fonte · conjunto_dados · tipo_payload&#10;data_referencia&#10;id_evento · hash_payload&#10;pontos_recebidos / pontos_gravados&#10;divergencias (json)&#10;recebido_em" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+          <mxGeometry x="430" y="100" width="320" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="dMd" value="ponto_dado_mercado&#10;──────────────&#10;id (PK)&#10;fonte · conjunto_dados · data_referencia&#10;chave_instrumento&#10;   UQ (fonte, conjunto_dados,&#10;         data_referencia, chave_instrumento)&#10;valor            DECIMAL(28,12)&#10;tipo_cotacao · data_vencimento&#10;lote_ingestao_id (FK)&#10;atualizado_em&#10;&#10;usado só pelo fluxo BOOTSTRAPPED" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+          <mxGeometry x="430" y="320" width="320" height="235" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dRun" value="execucao_curva&#10;──────────────&#10;id (PK)&#10;correlacao_id (IX)&#10;definicao_curva_id (FK, nulo permitido)&#10;data_referencia · momento_curva&#10;disparo        AGENDADO | MANUAL | BACKFILL&#10;disparado_por&#10;faixa          ROTINA | PRIORITARIA | MASSA&#10;estado         PENDENTE | EXECUTANDO | CONSTRUINDO&#10;               | EM_RISCO | ATRASADA | CONCLUIDA&#10;               | FALHOU | SEM_DADO&#10;horario_limite · margem · duracao_por_etapa&#10;codigo_erro · mensagem_erro&#10;iniciado_em / finalizado_em" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+          <mxGeometry x="830" y="100" width="320" height="240" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dVer" value="versao_curva&#10;──────────────&#10;id (PK)&#10;definicao_curva_id (FK)&#10;versao_definicao_curva_id (FK)&#10;data_referencia&#10;momento_curva  ABERTURA | INTRADIA | FECHAMENTO&#10;numero_versao&#10;estado         EM_VALIDACAO | PUBLICADA&#10;               | REPROVADA | SUBSTITUIDA&#10;execucao_curva_id (FK)&#10;publicado_em&#10;IX (definicao_curva_id, data_referencia,&#10;      momento_curva, estado)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+          <mxGeometry x="830" y="385" width="320" height="240" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dVtx" value="vertice_curva&#10;──────────────&#10;id (PK)&#10;versao_curva_id (FK)&#10;prazo_dias_uteis&#10;prazo_dias_corridos&#10;data_vencimento&#10;taxa             DECIMAL(28,12)&#10;fator_desconto   DECIMAL(28,12)&#10;IX (versao_curva_id, prazo_dias_uteis)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+          <mxGeometry x="1230" y="385" width="300" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dProv" value="procedencia_curva&#10;──────────────&#10;id (PK)&#10;versao_curva_id (FK, UQ)&#10;execucao_curva_id (FK)&#10;numero_versao_definicao&#10;modelo_curva_id (FK, nulo permitido)&#10;checksum_modelo&#10;referencias_insumo (json: fonte, conjunto,&#10;    arquivo, carimbo de tempo)&#10;hash_conjunto_insumos&#10;lote_ingestao_id (FK, nulo permitido)&#10;versao_motor · criado_em" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+          <mxGeometry x="1230" y="100" width="300" height="240" as="geometry" />
+        </mxCell>
+
+        <mxCell id="de1" value="1 : N" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="d1" source="dDef" target="dDefV"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de1b" value="N : 1" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="d1" source="dDefV" target="dModel"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de2" value="1 : N" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="d1" source="dBatch" target="dMd"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de3" value="1 : N" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="d1" source="dRun" target="dBatch"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de4" value="1 : N" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="d1" source="dRun" target="dVer"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de5" value="1 : N" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="d1" source="dVer" target="dVtx"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de6" value="1 : 1" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="d1" source="dVer" target="dProv"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de7" value="aplica" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;dashed=1;" edge="1" parent="d1" source="dDefV" target="dVer"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de8" value="insumos (BOOTSTRAPPED)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;dashed=1;" edge="1" parent="d1" source="dMd" target="dVer"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="de9" value="origem (IMPORTED)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;dashed=1;" edge="1" parent="d1" source="dBatch" target="dProv"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="dNote" value="Regras que o modelo impõe&#10;──────────────────────────────────────────&#10;• Todo valor de mercado é DECIMAL(28,12) — nunca FLOAT.&#10;• ponto_dado_mercado é upsert idempotente pela chave única; reprocessar não duplica, e divergência de valor fica registrada no lote.&#10;• Nova publicação da mesma (curva, data, momento) cria versão nova e marca a anterior como SUBSTITUIDA — nunca UPDATE em vértice.&#10;• versao_curva só chega a PUBLICADA com procedencia_curva gravada na MESMA transação.&#10;• Curva BOOTSTRAPPED exige modelo_curva_id na procedência; curva IMPORTED exige lote_ingestao_id e deixa o modelo nulo.&#10;• Consulta sem versão devolve a PUBLICADA corrente; com asOf devolve a que vigorava naquele instante.&#10;&#10;Quem escreve o quê&#10;• curve-processor → ponto_dado_mercado, lote_ingestao e a curva IMPORTED&#10;• curve-engine → a curva BOOTSTRAPPED e modelo_curva&#10;• curve-api → definicao_curva e versao_definicao_curva&#10;• curve-orchestrator → execucao_curva" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;align=left;spacingLeft=12;verticalAlign=top;spacingTop=8;fontSize=11;" vertex="1" parent="d1">
+          <mxGeometry x="430" y="600" width="1100" height="290" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+</mxfile>
