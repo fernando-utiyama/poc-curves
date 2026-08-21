@@ -52,14 +52,17 @@
           <mxGeometry x="740" y="345" width="270" height="70" as="geometry" />
         </mxCell>
 
-        <mxCell id="ctxOut" value="O QUE SAI — duas curvas distintas, lado a lado, comparáveis entre si" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f0f6ff;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;align=left;spacingLeft=10;verticalAlign=top;spacingTop=6;" vertex="1" parent="c1">
+        <mxCell id="ctxOut" value="O QUE SAI — origens distintas, lado a lado, comparáveis e sempre identificáveis" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f0f6ff;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;align=left;spacingLeft=10;verticalAlign=top;spacingTop=6;" vertex="1" parent="c1">
           <mxGeometry x="450" y="435" width="560" height="160" as="geometry" />
         </mxCell>
-        <mxCell id="ctxOut1" value="Curva CONSTRUÍDA&#10;o que a metodologia da casa produz&#10;a partir do mercado observado&#10;modo BOOTSTRAPPED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="c1">
-          <mxGeometry x="470" y="470" width="255" height="100" as="geometry" />
+        <mxCell id="ctxOut1" value="Curva CONSTRUÍDA&#10;o que a metodologia da casa produz&#10;a partir do mercado observado&#10;origem CALCULADA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="c1">
+          <mxGeometry x="470" y="470" width="255" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="ctxOut2" value="Curva IMPORTADA&#10;o que a B3 divulgou oficialmente,&#10;transcrito vértice a vértice&#10;modo IMPORTED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="c1">
-          <mxGeometry x="740" y="470" width="255" height="100" as="geometry" />
+        <mxCell id="ctxOut2" value="Curva IMPORTADA&#10;o que a B3 divulgou oficialmente,&#10;transcrito vértice a vértice&#10;origem IMPORTADA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="c1">
+          <mxGeometry x="740" y="470" width="255" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ctxOut3" value="Curva CARREGADA — contingência&#10;CSV ou planilha subida pela tela quando a curva não sai antes do corte · exige justificativa · passa pelo mesmo gate de validação" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="c1">
+          <mxGeometry x="470" y="548" width="525" height="42" as="geometry" />
         </mxCell>
 
         <mxCell id="ctxWhat" value="COM QUEM CONVERSA" style="text;html=1;fontSize=11;fontStyle=1;align=left;fontColor=#888888;" vertex="1" parent="c1">
@@ -163,7 +166,7 @@
           <mxGeometry x="610" y="418" width="200" height="52" as="geometry" />
         </mxCell>
 
-        <mxCell id="proc" value="curve-processor — Java / Spring Boot&#10;──────────────&#10;um listener por FAIXA (thread isolada)&#10;valida envelope → roteia por payloadKind&#10;&#10;INDIVIDUAL_QUOTES → parser por dataset&#10;→ transação por BLOCO · lote fecha por contagem&#10;→ lote incompleto NÃO gera construção&#10;&#10;READY_CURVE → publica curva IMPORTED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="k1">
+        <mxCell id="proc" value="curve-processor — Java / Spring Boot&#10;──────────────&#10;um listener por FAIXA (thread isolada)&#10;valida envelope → roteia por payloadKind&#10;&#10;INDIVIDUAL_QUOTES → parser por dataset&#10;→ transação por BLOCO · lote fecha por contagem&#10;→ lote incompleto NÃO gera construção&#10;&#10;READY_CURVE → publica curva IMPORTADA&#10;MANUAL (CSV/planilha) → publica curva CARREGADA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="k1">
           <mxGeometry x="890" y="200" width="270" height="180" as="geometry" />
         </mxCell>
 
@@ -204,8 +207,8 @@
         <mxCell id="shellBox" value="Shell Liquid (Module Federation) — ALVO, fora do escopo da POC" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;verticalAlign=top;fontStyle=1;fontColor=#888888;fontSize=10;" vertex="1" parent="k1">
           <mxGeometry x="180" y="800" width="320" height="180" as="geometry" />
         </mxCell>
-        <mxCell id="ui" value="curve-web-ui — Angular 18, app autônomo&#10;──────────────&#10;catálogo e cadastro de curva&#10;viewer de curva + vértices&#10;consulta interpolada&#10;disparo manual: BVBG e curva pronta&#10;monitor de execuções (correlationId)&#10;escolha do modelo de construção" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="k1">
-          <mxGeometry x="200" y="835" width="280" height="130" as="geometry" />
+        <mxCell id="ui" value="curve-web-ui — Angular 18, app autônomo&#10;──────────────&#10;catálogo e cadastro de curva&#10;viewer de curva + vértices&#10;consulta interpolada&#10;painel do dia: saiu? quanto falta para o corte?&#10;disparo manual: BVBG e curva pronta&#10;carga manual de curva + modelo p/ download&#10;monitor de execuções · alerta de pendência DLQ&#10;escolha do modelo de construção" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="k1">
+          <mxGeometry x="200" y="828" width="280" height="145" as="geometry" />
         </mxCell>
 
         <mxCell id="idp" value="Keycloak — OIDC local" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="k1">
@@ -355,7 +358,7 @@
           <mxGeometry x="230" y="390" width="290" height="160" as="geometry" />
         </mxCell>
 
-        <mxCell id="bCmp" value="Por que duas curvas distintas, e não uma&#10;──────────────&#10;A construída é o que a metodologia da casa produz a partir do mercado observado. A importada é o que a B3 divulgou.&#10;Não são a mesma coisa, e colapsá-las esconderia justamente a diferença que interessa.&#10;Mantidas separadas, a comparação diária entre elas vira controle contínuo — em vez de conferência manual de planilha." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
+        <mxCell id="bCmp" value="Por que curvas distintas, e não uma&#10;──────────────&#10;A construída é o que a metodologia da casa produz a partir do mercado observado. A importada é o que a B3 divulgou. A carregada é o que alguém digitou em contingência.&#10;Não são a mesma coisa, e colapsá-las esconderia justamente a diferença que interessa. Mantidas separadas e sempre identificáveis, a comparação diária vira controle contínuo.&#10;&#10;Quem publica decorre da ORIGEM DA VERSÃO, não do modo da definição: o motor publica o que calculou; o processor publica o que chegou pronto — da B3 ou de um arquivo." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
           <mxGeometry x="40" y="600" width="1310" height="120" as="geometry" />
         </mxCell>
 
@@ -460,7 +463,7 @@
         </mxCell>
 
         <mxCell id="uShell" value="POC: aplicação Angular AUTÔNOMA, servida estaticamente, com OIDC próprio contra o Keycloak local&#10;──────────────&#10;Preparada para embarcar no shell Liquid depois, sem reescrita: rota base configurável · tema por tokens substituíveis&#10;· nenhuma suposição sobre a rota raiz · contexto de usuário atrás de uma fonte única e trocável" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#d6b656;dashed=1;verticalAlign=top;fontStyle=1;fontColor=#8a6d1f;fontSize=10;" vertex="1" parent="u1">
-          <mxGeometry x="40" y="90" width="700" height="480" as="geometry" />
+          <mxGeometry x="40" y="90" width="700" height="600" as="geometry" />
         </mxCell>
 
         <mxCell id="uT1" value="Catálogo de curvas&#10;lista as definições, com modo de origem&#10;(construída · importada) e modelo apontado" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="u1">
@@ -481,8 +484,15 @@
         <mxCell id="uT6" value="Monitor de execuções&#10;runs com estado, etapa, duração,&#10;correlationId, motivo da falha,&#10;NO_DATA visível como tal&#10;e reenvio a partir da dead-letter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;" vertex="1" parent="u1">
           <mxGeometry x="400" y="360" width="310" height="110" as="geometry" />
         </mxCell>
+        <mxCell id="uT8" value="CARGA MANUAL DE CURVA — contingência&#10;baixa o MODELO (CSV/planilha) já com o cabeçalho&#10;e os prazos daquela curva · anexa o preenchido&#10;justificativa obrigatória · erros voltam por linha&#10;passa pelo MESMO gate de validação&#10;versão nasce marcada como CARREGADA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;fontStyle=1;" vertex="1" parent="u1">
+          <mxGeometry x="70" y="560" width="310" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="uT9" value="PAINEL DO DIA — tela inicial&#10;uma linha por curva: publicada · em andamento&#10;· em risco · atrasada · reprovada · não iniciada&#10;horário limite e margem para o corte&#10;redisparo direto da linha (faixa prioritária)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=10;verticalAlign=top;fontStyle=1;" vertex="1" parent="u1">
+          <mxGeometry x="400" y="560" width="310" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ueCarga" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="u1" source="uT8" target="uBff"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="uT7" value="Modelos e comparação — importa Groovy, troca o modelo da curva e compara construída × importada, ou modelo × modelo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0cee2;strokeColor=#56517e;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="u1">
-          <mxGeometry x="70" y="490" width="640" height="60" as="geometry" />
+          <mxGeometry x="70" y="490" width="640" height="55" as="geometry" />
         </mxCell>
 
         <mxCell id="uBff" value="curve-bff — Java 21 / Spring Boot 3.4&#10;──────────────&#10;valida token OIDC e resolve o perfil&#10;agrega em contratos orientados a tela&#10;pagina, filtra e ordena&#10;chama as APIs internas com credencial de serviço&#10;nunca acessa banco nem Kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=10;verticalAlign=top;fontStyle=1;" vertex="1" parent="u1">
@@ -537,7 +547,7 @@
         <mxCell id="dDef" value="definicao_curva&#10;──────────────&#10;id (PK)&#10;codigo (UQ)   ex.: PRE_DI1_B3 · PRE_B3_OFICIAL&#10;nome&#10;moeda&#10;modo_origem   BOOTSTRAPPED | IMPORTED&#10;horario_limite_publicacao&#10;estado        RASCUNHO | ATIVA | APOSENTADA&#10;criado_em / criado_por" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
           <mxGeometry x="40" y="100" width="310" height="160" as="geometry" />
         </mxCell>
-        <mxCell id="dDefV" value="versao_definicao_curva&#10;──────────────&#10;id (PK)&#10;definicao_curva_id (FK)&#10;numero_versao&#10;contagem_dias · calendario&#10;interpolador · politica_extrapolacao&#10;politica_arredondamento&#10;modelo_curva_id (FK)   ← modelo apontado&#10;vinculos_fonte (conjuntos de dados exigidos)&#10;depende_de (curvas insumo)&#10;vigencia_inicio / vigencia_fim" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+        <mxCell id="dDefV" value="versao_definicao_curva&#10;──────────────&#10;id (PK)&#10;definicao_curva_id (FK)&#10;numero_versao&#10;contagem_dias · calendario&#10;interpolador · politica_extrapolacao&#10;politica_arredondamento&#10;orcamento_por_etapa · janela_bloqueio&#10;limites_validacao + classificacao por teste&#10;modelo_curva_id (FK)   ← modelo apontado&#10;vinculos_fonte (conjuntos de dados exigidos)&#10;depende_de (curvas insumo)&#10;vigencia_inicio / vigencia_fim" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
           <mxGeometry x="40" y="295" width="310" height="220" as="geometry" />
         </mxCell>
         <mxCell id="dModel" value="modelo_curva&#10;──────────────&#10;id (PK)&#10;codigo (UQ) · nome&#10;tipo       BUILTIN | GROOVY&#10;estado     ATIVO | DESABILITADO&#10;codigo_fonte (só GROOVY)&#10;checksum&#10;importado_por / importado_em" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d0cee2;strokeColor=#56517e;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
@@ -555,7 +565,7 @@
           <mxGeometry x="830" y="100" width="320" height="240" as="geometry" />
         </mxCell>
 
-        <mxCell id="dVer" value="versao_curva&#10;──────────────&#10;id (PK)&#10;definicao_curva_id (FK)&#10;versao_definicao_curva_id (FK)&#10;data_referencia&#10;momento_curva  ABERTURA | INTRADIA | FECHAMENTO&#10;numero_versao&#10;estado         EM_VALIDACAO | PUBLICADA&#10;               | REPROVADA | SUBSTITUIDA&#10;execucao_curva_id (FK)&#10;publicado_em&#10;IX (definicao_curva_id, data_referencia,&#10;      momento_curva, estado)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+        <mxCell id="dVer" value="versao_curva&#10;──────────────&#10;id (PK)&#10;definicao_curva_id (FK)&#10;versao_definicao_curva_id (FK)&#10;data_referencia&#10;momento_curva  ABERTURA | INTRADIA | FECHAMENTO&#10;numero_versao&#10;origem_versao  CALCULADA | IMPORTADA | CARREGADA&#10;estado         EM_VALIDACAO | PUBLICADA&#10;               | REPROVADA | SUBSTITUIDA&#10;execucao_curva_id (FK)&#10;publicado_em&#10;IX (definicao_curva_id, data_referencia,&#10;      momento_curva, estado)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
           <mxGeometry x="830" y="385" width="320" height="240" as="geometry" />
         </mxCell>
 
@@ -563,7 +573,7 @@
           <mxGeometry x="1230" y="385" width="300" height="200" as="geometry" />
         </mxCell>
 
-        <mxCell id="dProv" value="procedencia_curva&#10;──────────────&#10;id (PK)&#10;versao_curva_id (FK, UQ)&#10;execucao_curva_id (FK)&#10;numero_versao_definicao&#10;modelo_curva_id (FK, nulo permitido)&#10;checksum_modelo&#10;referencias_insumo (json: fonte, conjunto,&#10;    arquivo, carimbo de tempo)&#10;hash_conjunto_insumos&#10;lote_ingestao_id (FK, nulo permitido)&#10;versao_motor · criado_em" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+        <mxCell id="dProv" value="procedencia_curva&#10;──────────────&#10;id (PK)&#10;versao_curva_id (FK, UQ)&#10;execucao_curva_id (FK)&#10;numero_versao_definicao&#10;modelo_curva_id (FK, nulo permitido)&#10;checksum_modelo&#10;referencias_insumo (json: fonte, conjunto,&#10;    arquivo, carimbo de tempo)&#10;hash_conjunto_insumos&#10;lote_ingestao_id (FK, nulo permitido)&#10;arquivo_carga · hash_arquivo (só CARREGADA)&#10;carregado_por · justificativa (só CARREGADA)&#10;versao_motor · criado_em" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
           <mxGeometry x="1230" y="100" width="300" height="240" as="geometry" />
         </mxCell>
 
@@ -578,7 +588,11 @@
         <mxCell id="de8" value="insumos (BOOTSTRAPPED)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;dashed=1;" edge="1" parent="d1" source="dMd" target="dVer"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="de9" value="origem (IMPORTED)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;dashed=1;" edge="1" parent="d1" source="dBatch" target="dProv"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <mxCell id="dNote" value="Regras que o modelo impõe&#10;──────────────────────────────────────────&#10;• Todo valor de mercado é DECIMAL(28,12) — nunca FLOAT.&#10;• ponto_dado_mercado é upsert idempotente pela chave única; reprocessar não duplica, e divergência de valor fica registrada no lote.&#10;• Nova publicação da mesma (curva, data, momento) cria versão nova e marca a anterior como SUBSTITUIDA — nunca UPDATE em vértice.&#10;• versao_curva só chega a PUBLICADA com procedencia_curva gravada na MESMA transação.&#10;• Curva BOOTSTRAPPED exige modelo_curva_id na procedência; curva IMPORTED exige lote_ingestao_id e deixa o modelo nulo.&#10;• Consulta sem versão devolve a PUBLICADA corrente; com asOf devolve a que vigorava naquele instante.&#10;&#10;Quem escreve o quê&#10;• curve-processor → ponto_dado_mercado, lote_ingestao e a curva IMPORTED&#10;• curve-engine → a curva BOOTSTRAPPED e modelo_curva&#10;• curve-api → definicao_curva e versao_definicao_curva&#10;• curve-orchestrator → execucao_curva" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;align=left;spacingLeft=12;verticalAlign=top;spacingTop=8;fontSize=11;" vertex="1" parent="d1">
+        <mxCell id="dValid" value="validacao_curva&#10;──────────────&#10;id (PK)&#10;versao_curva_id (FK)&#10;teste&#10;classificacao  BLOQUEANTE | AVISO&#10;resultado      APROVADO | REPROVADO&#10;               | NAO_APLICAVEL&#10;medida_observada · limite_aplicado&#10;executado_em" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="d1">
+          <mxGeometry x="1180" y="620" width="290" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="deValid" value="1 : N" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="d1" source="dVer" target="dValid"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dNote" value="Regras que o modelo impõe&#10;──────────────────────────────────────────&#10;• Todo valor de mercado é DECIMAL(28,12) — nunca FLOAT.&#10;• ponto_dado_mercado é upsert idempotente pela chave única; reprocessar não duplica, e divergência de valor fica registrada no lote.&#10;• Nova publicação da mesma (curva, data, momento) cria versão nova e marca a anterior como SUBSTITUIDA — nunca UPDATE em vértice.&#10;• versao_curva só chega a PUBLICADA com procedencia_curva gravada na MESMA transação.&#10;• Versão CALCULADA exige modelo_curva_id na procedência; IMPORTADA exige lote_ingestao_id; CARREGADA exige arquivo, hash, autor e justificativa.&#10;• Consulta sem versão devolve a PUBLICADA corrente; com asOf devolve a que vigorava naquele instante.&#10;&#10;Quem escreve o quê&#10;• curve-processor → ponto_dado_mercado, lote_ingestao e as versões que chegaram prontas (IMPORTADA e CARREGADA)&#10;• curve-engine → as versões que ele calculou (CALCULADA) e modelo_curva&#10;• curve-api → definicao_curva e versao_definicao_curva&#10;• curve-orchestrator → execucao_curva" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;align=left;spacingLeft=12;verticalAlign=top;spacingTop=8;fontSize=11;" vertex="1" parent="d1">
           <mxGeometry x="430" y="600" width="1100" height="290" as="geometry" />
         </mxCell>
       </root>
