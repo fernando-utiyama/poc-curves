@@ -23,13 +23,13 @@
 
 ## 3. Modelo de dados e migrações
 
-- [ ] 3.1 Migração `V1__definicao_curva.sql`: `definicao_curva` (modo de origem restrito por constraint e `horario_limite_publicacao` obrigatório) e `versao_definicao_curva` com orçamento por etapa e janela de bloqueio
-- [ ] 3.2 Migração `V2__dado_mercado.sql`: `ponto_dado_mercado` com unicidade `(fonte, conjunto_dados, data_referencia, chave_instrumento)` e `lote_ingestao`
-- [ ] 3.3 Migração `V3__execucao_curva.sql`: `execucao_curva` com estado, `correlacao_id`, `disparado_por`, faixa de ingestão, horário limite aplicável, margem e duração por etapa
-- [ ] 3.4 Migração `V4__versao_curva.sql`: `versao_curva` (com os estados incluindo `EM_VALIDACAO` e `REPROVADA`), `vertice_curva` (`DECIMAL(28,12)`), `procedencia_curva` e `validacao_curva`
-- [ ] 3.5 Migração `V5__modelo_curva.sql`: `modelo_curva` (tipo `BUILTIN` / `GROOVY`, estado, checksum), referência ao modelo em `versao_definicao_curva` e coluna de modelo em `procedencia_curva`
-- [ ] 3.6 Migração `V6__pendencia_dlq.sql`: `pendencia_dlq` com unicidade de `id_evento` e índice de agrupamento para o alerta
-- [ ] 3.7 Migração `V7__indices.sql`: índices do caminho de consulta declarados na spec
+- [x] 3.1 Migração `V1__definicao_curva.sql`: `definicao_curva` (modo de origem restrito por constraint e `horario_limite_publicacao` obrigatório) e `versao_definicao_curva` com orçamento por etapa e janela de bloqueio
+- [x] 3.2 Migração `V2__dado_mercado.sql`: `ponto_dado_mercado` com unicidade `(fonte, conjunto_dados, data_referencia, chave_instrumento)` e `lote_ingestao`
+- [x] 3.3 Migração `V3__execucao_curva.sql`: `execucao_curva` com estado, `correlacao_id`, `disparado_por`, faixa de ingestão, horário limite aplicável, margem e duração por etapa
+- [x] 3.4 Migração `V4__versao_curva.sql`: `versao_curva` (com os estados incluindo `EM_VALIDACAO` e `REPROVADA`), `vertice_curva` (`DECIMAL(28,12)`), `procedencia_curva` e `validacao_curva`
+- [x] 3.5 Migração `V5__modelo_curva.sql`: `modelo_curva` (tipo `BUILTIN` / `GROOVY`, estado, checksum), referência ao modelo em `versao_definicao_curva` e coluna de modelo em `procedencia_curva`
+- [x] 3.6 Migração `V6__pendencia_dlq.sql`: `pendencia_dlq` com unicidade de `id_evento` e índice de agrupamento para o alerta
+- [x] 3.7 Migração `V7__indices.sql`: índices do caminho de consulta declarados na spec
 - [ ] 3.8 Escrever o teste de conformidade de esquema que rejeita coluna de valor de mercado em ponto flutuante
 - [ ] 3.9 Escrever o teste de ida e volta de precisão em `DECIMAL(28,12)`
 
