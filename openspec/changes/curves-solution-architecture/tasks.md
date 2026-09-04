@@ -1,10 +1,10 @@
 ## 1. Estrutura do monorepo
 
-- [ ] 1.1 Criar a árvore `services/`, `web/`, `db/migration/`, `deploy/podman/`, `contracts/`, `docs/`, `scripts/`
+- [x] 1.1 Criar a árvore `services/`, `web/`, `db/migration/`, `deploy/podman/`, `contracts/`, `docs/`, `scripts/` (todos presentes; `web/curve-web-ui` foi a última peça, criada pela mudança `curve-api`/`curve-bff`/web UI)
 - [x] 1.2 Criar o `pom.xml` agregador Java 21 / Spring Boot 3.4.x, sem Lombok, com módulos para `curve-processor`, `curve-engine`, `curve-api` e `curve-bff`
 - [x] 1.3 Criar o módulo `libs/curve-kernel` como biblioteca pura (sem Spring, sem banco, sem rede) e declará-lo como dependência do módulo de motor
 - [x] 1.4 Configurar formatação, `.editorconfig`, `.gitignore` e `git init` do repositório
-- [ ] 1.5 Escrever o `README.md` raiz com a topologia, os pré-requisitos e o comando único de subida
+- [x] 1.5 Escrever o `README.md` raiz com a topologia, os pré-requisitos e o comando único de subida
 
 ## 2. Contratos de evento
 
@@ -16,10 +16,10 @@
 - [x] 2.3.3 Definir no catálogo as três faixas de ingestão, com grupos de consumo próprios
 - [x] 2.3.4 Acrescentar `loteId`, `sequencia` e `totalBlocos` ao envelope, com `loteId` determinístico pelo hash do conteúdo
 - [x] 2.3.5 Documentar a invariante de avanço de offset e os limites de tempo de consumo como parte do contrato
-- [ ] 2.4 Implementar a biblioteca Java compartilhada de envelope (record + validação de schema) em `services/common`
-- [ ] 2.5 Implementar o equivalente TypeScript do envelope para os feeders, gerado a partir do mesmo schema
-- [ ] 2.6 Escrever os testes de contrato que validam produtor e consumidor contra os schemas
-- [ ] 2.7 Escrever o teste de compatibilidade que falha quando um campo obrigatório é removido ou muda de tipo
+- [x] 2.4 Implementar a biblioteca Java compartilhada de envelope (record + validação de schema) em `services/common`
+- [x] 2.5 Implementar o equivalente TypeScript do envelope para os feeders, gerado a partir do mesmo schema (`services/feeder-marketdata/src/envelope.ts` — union discriminada por `source`, espelha `EventEnvelope.java`/`EventSource.java`, agora com `'ANBIMA'` acrescentado nos três lugares. `sync-contracts.mjs` copia o schema JSON real para o feeder; `criarEnvelope` espelha exatamente as mesmas regras de validação do construtor compacto Java)
+- [x] 2.6 Escrever os testes de contrato que validam produtor e consumidor contra os schemas (`contracts/events/fixtures/*.json` — dois exemplos reais de envelope, fonte única compartilhada; `EnvelopeContratoCruzadoTest.java` valida o lado consumidor — schema validator networknt E deserialização real para `EventEnvelope`, mesmo caminho de `IngestaoListener` — e `envelope-contrato-cruzado.test.ts` valida o lado produtor — ajv, mesmo caminho de `kafka-publisher.ts`. Os dois lados validam exatamente as mesmas fixtures)
+- [x] 2.7 Escrever o teste de compatibilidade que falha quando um campo obrigatório é removido ou muda de tipo (`EnvelopeSchemaCompatibilidadeTest.java` — fixa o conjunto de campos obrigatórios e o tipo/formato declarado de cada um, lendo o schema real do classpath. Verificado que pega uma regressão de verdade: removi `loteId` do array `required` do schema real, rodei o teste, vi as duas asserções falharem com o diagnóstico exato, e reverti a mudança antes de continuar)
 
 ## 3. Modelo de dados e migrações
 
@@ -30,19 +30,19 @@
 - [x] 3.5 Migração `V5__modelo_curva.sql`: `modelo_curva` (tipo `BUILTIN` / `GROOVY`, estado, checksum), referência ao modelo em `versao_definicao_curva` e coluna de modelo em `procedencia_curva`
 - [x] 3.6 Migração `V6__pendencia_dlq.sql`: `pendencia_dlq` com unicidade de `id_evento` e índice de agrupamento para o alerta
 - [x] 3.7 Migração `V7__indices.sql`: índices do caminho de consulta declarados na spec
-- [ ] 3.8 Escrever o teste de conformidade de esquema que rejeita coluna de valor de mercado em ponto flutuante
-- [ ] 3.9 Escrever o teste de ida e volta de precisão em `DECIMAL(28,12)`
+- [x] 3.8 Escrever o teste de conformidade de esquema que rejeita coluna de valor de mercado em ponto flutuante (`EsquemaPrecisaoDecimalIT.java`, `services/curve-processor` — consulta `INFORMATION_SCHEMA.COLUMNS` das 5 colunas reais de valor de mercado, exige `DATA_TYPE = decimal`, precisão 28, escala 12; delegado ao agy, auditado, rodado de verdade contra o SQL Server real: 6/6 verde)
+- [x] 3.9 Escrever o teste de ida e volta de precisão em `DECIMAL(28,12)` (mesmo arquivo — grava e relê um valor de 12 casas decimais em `ponto_dado_mercado.valor`, compara via `BigDecimal.compareTo` e confere `scale() == 12`)
 
 ## 4. Ambiente local em Podman
 
-- [ ] 4.1 Escrever `deploy/podman/compose.yaml` com Kafka KRaft, SQL Server 2022, Redis e Keycloak, com healthcheck e volume nomeado em cada serviço
-- [ ] 4.2 Adicionar o perfil reduzido (`compose.lite.yaml`) sem serviços opcionais
-- [ ] 4.3 Escrever o container de bootstrap que cria os tópicos do catálogo com broker sem criação automática
-- [ ] 4.4 Escrever o container de migração Flyway que roda contra o SQL Server e termina com código zero
-- [ ] 4.5 Escrever `deploy/podman/up.sh` e `up.ps1` com espera ativa por prontidão real de cada serviço, independentemente de `depends_on`
-- [ ] 4.6 Escrever `down.sh` / `down.ps1`, com e sem remoção de volumes
-- [ ] 4.7 Escrever `scripts/doctor.sh` que verifica versão do Podman, memória disponível, portas livres e socket para Testcontainers
-- [ ] 4.8 Documentar em `docs/ambiente-local.md` os pré-requisitos, as portas e a configuração de `DOCKER_HOST` para Testcontainers sob Podman
+- [x] 4.1 Escrever `deploy/podman/compose.yaml` com Kafka KRaft, SQL Server 2022, Redis e Keycloak, com healthcheck e volume nomeado em cada serviço
+- [x] 4.2 Adicionar o perfil reduzido (`compose.lite.yaml`) sem serviços opcionais
+- [x] 4.3 Escrever o container de bootstrap que cria os tópicos do catálogo com broker sem criação automática
+- [x] 4.4 Escrever o container de migração Flyway que roda contra o SQL Server e termina com código zero
+- [x] 4.5 Escrever `deploy/podman/up.sh` e `up.ps1` com espera ativa por prontidão real de cada serviço, independentemente de `depends_on`
+- [x] 4.6 Escrever `down.sh` / `down.ps1`, com e sem remoção de volumes
+- [x] 4.7 Escrever `scripts/doctor.sh` que verifica versão do Podman, memória disponível, portas livres e socket para Testcontainers
+- [x] 4.8 Documentar em `docs/ambiente-local.md` os pré-requisitos, as portas e a configuração de `DOCKER_HOST` para Testcontainers sob Podman
 
 ## 5. Seed de dados B3
 

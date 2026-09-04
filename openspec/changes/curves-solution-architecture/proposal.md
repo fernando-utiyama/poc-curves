@@ -2,7 +2,7 @@
 
 A plataforma de curvas existe hoje como peças que funcionam isoladamente — feeders em Azure Functions, Kafka, `curve-processor`, motor de cálculo, `curve-orchestrator` e um SQL na Azure — mas **não existe um desenho único que amarre as peças, defina os contratos entre elas e feche o ciclo até a tela do usuário**. Cada projeto hoje presume um contrato que nunca foi escrito, e não há como rodar o fluxo ponta a ponta fora da Azure para demonstrar ou depurar.
 
-Esta é a mudança **guarda-chuva**: ela fixa a topologia, os contratos de evento, o modelo de dados canônico e o runtime local em Podman. As outras sete mudanças (`feeder-b3-marketdata`, `curve-processor`, `curve-engine`, `curve-orchestrator`, `curve-api`, `curve-bff`, `curve-web-ui`) implementam contra os contratos definidos aqui.
+Esta é a mudança **guarda-chuva**: ela fixa a topologia, os contratos de evento, o modelo de dados canônico e o runtime local em Podman. As outras sete mudanças (`feeder-marketdata`, `curve-processor`, `curve-engine`, `curve-orchestrator`, `curve-api`, `curve-bff`, `curve-web-ui`) implementam contra os contratos definidos aqui.
 
 ## What Changes
 

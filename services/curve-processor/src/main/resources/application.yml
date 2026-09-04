@@ -1,0 +1,45 @@
+server:
+  port: 8081
+
+logging:
+  structured:
+    format:
+      # Suporte nativo do Spring Boot 3.4 (sem dependência extra) — inclui o
+      # MDC automaticamente, propagando correlationId/dataset/payloadKind/
+      # referenceDate (tarefas 7.1/7.2) em todo log emitido durante o
+      # processamento de uma mensagem.
+      console: logstash
+
+spring:
+  application:
+    name: curve-processor
+  datasource:
+    # Credencial restrita (1.6 do backlog): só SELECT/INSERT/UPDATE nas tabelas
+    # da fronteira do serviço — ver db/migration/V8__curve_processor_ampliacoes.sql.
+    # Senha fixa documentada, só para o ambiente POC local (mesmo tratamento do SA).
+    url: jdbc:sqlserver://sqlserver:1433;databaseName=curvasdb;trustServerCertificate=true;encrypt=true
+    username: curve_processor_app
+    password: ${CURVE_PROCESSOR_DB_PASSWORD:CurveProcessorP0c!Local}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  kafka:
+    # Faltava por completo (gap pré-existente, não introduzido agora) — sem
+    # isto, KafkaConsumerConfig.bootstrapServers (@Value obrigatório, sem
+    # default) falha a subida do contexto Spring. Mesmo endereço de rede
+    # interna do compose usado por sqlserver acima.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    readinessstate:
+      enabled: true
+    livenessstate:
+      enabled: true

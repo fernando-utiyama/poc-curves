@@ -1,0 +1,41 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: curve-engine
+  datasource:
+    # Credencial restrita (5.3 do backlog): SELECT/INSERT/UPDATE só em
+    # versao_curva, vertice_curva, procedencia_curva, validacao_curva e
+    # modelo_curva; SELECT em definicao_curva, versao_definicao_curva e
+    # ponto_dado_mercado — ver db/migration/V18__curve_engine_credencial_restrita.sql.
+    url: jdbc:sqlserver://sqlserver:1433;databaseName=curvasdb;trustServerCertificate=true;encrypt=true
+    username: curve_engine_app
+    password: ${CURVE_ENGINE_DB_PASSWORD:CurveEngineP0c!Local}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  data:
+    redis:
+      host: redis
+      port: 6379
+  kafka:
+    # Faltava por completo — mesmo gap já encontrado e corrigido em curve-orchestrator/
+    # curve-processor nesta sessão. Sem isto, KafkaConsumerConfig/KafkaProducerConfig
+    # (@Value obrigatório, sem default) falham a subida do contexto Spring.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+  security:
+    # Mesmo emissor/realm Keycloak de curve-api/curve-bff (defesa em profundidade — a
+    # importação de modelo GROOVY, restrita a CURVE_ADMIN, precisa de verificação real
+    # aqui, não só confiar que o curve-bff barrou antes).
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI:http://localhost:8180/realms/curvas/protocol/openid-connect/certs}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always

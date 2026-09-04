@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1
+#
+# Contexto de build DEVE ser a raiz do monorepo (o serviço depende do reactor
+# Maven inteiro): podman build -f services/curve-orchestrator/Containerfile -t curve-orchestrator .
+
+FROM docker.io/library/maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /workspace
+COPY . .
+RUN mvn -q -pl services/curve-orchestrator -am package -DskipTests
+
+FROM docker.io/library/eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=build /workspace/services/curve-orchestrator/target/curve-orchestrator-*.jar app.jar
+
+EXPOSE 8084
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+  CMD wget -qO- http://localhost:8084/actuator/health | grep -q '"status":"UP"' || exit 1
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Este POM raiz é filho de spring-boot-starter-parent para que TODOS os módulos,
-  incluindo curve-kernel, herdem o gerenciamento de versão de dependências
-  (JUnit, AssertJ, Testcontainers, driver JDBC, Flyway) sem precisar redeclarar
-  versão em cada filho. curve-kernel não ganha nenhuma dependência Spring por
-  causa disso — herança de <dependencyManagement> não adiciona dependência
-  nenhuma sozinha, só disponibiliza a versão para quando o filho decidir declarar.
+  Este POM raiz é filho de spring-boot-starter-parent para que TODOS os módulos
+  herdem o gerenciamento de versão de dependências (JUnit, AssertJ, Testcontainers,
+  driver JDBC, Flyway) sem precisar redeclarar versão em cada filho — herança de
+  <dependencyManagement> não adiciona dependência nenhuma sozinha, só disponibiliza
+  a versão para quando o filho decidir declarar.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -15,7 +14,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.13</version>
+        <version>4.0.8</version>
         <relativePath/>
     </parent>
 
@@ -30,14 +29,16 @@
     <properties>
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <archunit.version>1.5.0</archunit.version>
     </properties>
 
     <modules>
-        <module>libs/curve-kernel</module>
+        <module>services/common</module>
         <module>services/curve-processor</module>
         <module>services/curve-engine</module>
         <module>services/curve-api</module>
         <module>services/curve-bff</module>
+        <module>services/curve-orchestrator</module>
     </modules>
 
     <build>

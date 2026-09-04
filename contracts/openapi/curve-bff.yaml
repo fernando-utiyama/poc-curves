@@ -1,0 +1,1413 @@
+openapi: 3.0.3
+info:
+  title: Curve BFF API
+  version: 1.0.0
+  description: >-
+    Backend-for-Frontend (BFF) da Plataforma de Curvas de Tesouraria/Risco.
+    Única superfície exposta ao navegador (curve-web-ui).
+    Todos os valores de mercado trafegam como texto numérico (string) para preservação de precisão.
+servers:
+  - url: /api/v1
+    description: URL base relativa do BFF
+
+paths:
+  /painel-do-dia:
+    get:
+      summary: Painel do dia
+      description: Retorna o status de todas as curvas ativas para a data de referência.
+      operationId: getPainelDoDia
+      parameters:
+        - name: dataReferencia
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Data no formato YYYY-MM-DD (default é hoje)
+      responses:
+        '200':
+          description: Lista de status das curvas no painel do dia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PainelDoDiaResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /alertas/sumario:
+    get:
+      summary: Alerta leve global
+      description: Retorna sumário leve de pendências DLQ e execuções em risco para exibição no header global.
+      operationId: getAlertasSumario
+      responses:
+        '200':
+          description: Sumário de alertas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertasSumarioResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /catalogo:
+    get:
+      summary: Catálogo de curvas
+      description: Lista as definições de curvas cadastradas com paginação e filtros.
+      operationId: getCatalogo
+      parameters:
+        - name: codigo
+          in: query
+          schema:
+            type: string
+        - name: modoOrigem
+          in: query
+          schema:
+            type: string
+            enum: [BOOTSTRAPPED, IMPORTED]
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [RASCUNHO, ATIVA, APOSENTADA]
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: tamanho
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Lista paginada de definições de curva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /curvas/{codigo}/definicao:
+    get:
+      summary: Consulta a definição de uma curva
+      operationId: getDefinicaoCurva
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Definição da curva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefinicaoCurvaDTO'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Cadastra nova definição de curva (Admin)
+      operationId: criarDefinicaoCurva
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarOuAtualizarDefinicaoCurvaRequest'
+      responses:
+        '201':
+          description: Curva criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefinicaoCurvaDTO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      summary: Atualiza definição de curva gerando nova versão (Admin)
+      operationId: atualizarDefinicaoCurva
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarOuAtualizarDefinicaoCurvaRequest'
+      responses:
+        '200':
+          description: Versão de definição atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefinicaoCurvaDTO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /curvas/{codigo}/modelo-carga:
+    get:
+      summary: Download do template de carga manual
+      operationId: downloadModeloCarga
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: formato
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [CSV, XLSX]
+      responses:
+        '200':
+          description: Arquivo template
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+  /curvas/{codigo}/viewer:
+    get:
+      summary: Tela de viewer de curva (agregada)
+      description: Retorna a versão publicada, vértices, procedência, modelo, última execução e validação.
+      operationId: getCurvaViewer
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dataReferencia
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: momento
+          in: query
+          schema:
+            type: string
+            enum: [ABERTURA, INTRADIARIO, FECHAMENTO]
+            default: FECHAMENTO
+        - name: versao
+          in: query
+          schema:
+            type: integer
+        - name: asOf
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Dados agregados da curva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurvaViewerResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /curvas/{codigo}/interpolacao:
+    post:
+      summary: Consulta de interpolação em lote
+      operationId: interpolarCurva
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InterpolacaoRequest'
+      responses:
+        '200':
+          description: Resultados da interpolação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterpolacaoResponse'
+
+  /curvas/{codigo}/carga-manual:
+    post:
+      summary: Carga manual de contingência (Operador/Admin)
+      operationId: submeterCargaManual
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CargaManualRequest'
+      responses:
+        '200':
+          description: Carga processada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CargaManualResponse'
+        '400':
+          description: Erros de leitura no arquivo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CargaManualErrosResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /comparacao:
+    post:
+      summary: Comparação de curvas (construída x importada ou modelo x modelo)
+      operationId: compararCurvas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComparacaoRequest'
+      responses:
+        '200':
+          description: Tabela de comparação ponto a ponto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComparacaoResponse'
+
+  /ingestao/disparo:
+    post:
+      summary: Disparo manual de ingestão (Operador/Admin)
+      operationId: dispararIngestao
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisparoIngestaoRequest'
+      responses:
+        '202':
+          description: Disparo aceito
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisparoIngestaoResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /ingestao/backfill:
+    post:
+      summary: Iniciar backfill histórico (Operador/Admin)
+      operationId: iniciarBackfill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackfillRequest'
+      responses:
+        '202':
+          description: Backfill iniciado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackfillStatusResponse'
+    get:
+      summary: Status do backfill ativo
+      operationId: getBackfillStatus
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackfillStatusResponse'
+
+  /ingestao/backfill/{id}/interromper:
+    post:
+      summary: Interromper backfill (Operador/Admin)
+      operationId: interromperBackfill
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackfillStatusResponse'
+
+  /execucoes:
+    get:
+      summary: Monitor de execuções
+      operationId: getExecucoes
+      parameters:
+        - name: curva
+          in: query
+          schema:
+            type: string
+        - name: dataReferencia
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [PENDENTE, EXECUTANDO, CONSTRUINDO, CONCLUIDA, SEM_DADO, FALHOU, EM_RISCO, ATRASADA]
+        - name: correlationId
+          in: query
+          schema:
+            type: string
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: tamanho
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Lista de execuções
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecucoesResponse'
+
+  /execucoes/{id}/redisparar:
+    post:
+      summary: Redisparo prioritário de execução (Operador/Admin)
+      operationId: redispararExecucao
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Redisparo aceito na faixa prioritária
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisparoIngestaoResponse'
+
+  /pendencias-dlq:
+    get:
+      summary: Listagem de grupos de pendências de Dead-Letter (DLQ)
+      operationId: getPendenciasDlqGrupos
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendenciasDlqGruposResponse'
+
+  /pendencias-dlq/grupos/{grupoId}:
+    get:
+      summary: Detalhe das pendências de um grupo DLQ
+      operationId: getPendenciasDlqDetalhes
+      parameters:
+        - name: grupoId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendenciasDlqDetalheResponse'
+
+  /pendencias-dlq/reprocessar:
+    post:
+      summary: Reprocessar pendência ou grupo DLQ (Operador/Admin)
+      operationId: reprocessarPendenciasDlq
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReprocessarDlqRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcaoDlqResponse'
+
+  /pendencias-dlq/descartar:
+    post:
+      summary: Descartar pendência ou grupo DLQ com justificativa obrigatória (Operador/Admin)
+      operationId: descartarPendenciasDlq
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DescartarDlqRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcaoDlqResponse'
+
+  /modelos:
+    get:
+      summary: Lista catálogo de modelos de cálculo (Builtin / Groovy)
+      operationId: getModelos
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelosResponse'
+    post:
+      summary: Importar modelo Groovy (Admin)
+      operationId: importarModeloGroovy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportarModeloGroovyRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModeloDTO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /curvas/{codigo}/trocar-modelo:
+    post:
+      summary: Apontar curva para outro modelo de cálculo (Admin)
+      operationId: trocarModeloCurva
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrocarModeloCurvaRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefinicaoCurvaDTO'
+
+components:
+  schemas:
+    PainelDoDiaResponse:
+      type: object
+      required: [dataReferencia, itens]
+      properties:
+        dataReferencia:
+          type: string
+          format: date
+        itens:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemPainelDoDiaDTO'
+
+    ItemPainelDoDiaDTO:
+      type: object
+      required: [codigoCurva, nomeCurva, modoOrigem, estado, horarioLimite]
+      properties:
+        codigoCurva:
+          type: string
+        nomeCurva:
+          type: string
+        modoOrigem:
+          type: string
+          enum: [BOOTSTRAPPED, IMPORTED]
+        origemPublicacao:
+          type: string
+          enum: [CALCULADA, IMPORTADA, CARREGADA]
+        estado:
+          type: string
+          enum: [NAO_INICIADA, EM_ANDAMENTO, EM_RISCO, ATRASADA, PUBLICADA, PUBLICADA_COM_AVISO, REPROVADA]
+        horarioLimite:
+          type: string
+        tempoRestanteOuMargem:
+          type: string
+        etapaAtual:
+          type: string
+        horarioPrevisto:
+          type: string
+        versaoVigente:
+          type: integer
+        avisosValidacao:
+          type: array
+          items:
+            type: string
+        testesReprovados:
+          type: array
+          items:
+            type: string
+
+    AlertasSumarioResponse:
+      type: object
+      required: [gruposPendentesDlq, totalMensagensDlq, idadeMaisAntigaMinutos, curvasEmRisco, curvasAtrasadas]
+      properties:
+        gruposPendentesDlq:
+          type: integer
+        totalMensagensDlq:
+          type: integer
+        idadeMaisAntigaMinutos:
+          type: integer
+        severidadeDlq:
+          type: string
+          enum: [NORMAL, ALERTA, CRITICA]
+        curvasEmRisco:
+          type: integer
+        curvasAtrasadas:
+          type: integer
+
+    CatalogoResponse:
+      type: object
+      required: [itens, totalItens, pagina, tamanho]
+      properties:
+        itens:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemCatalogoDTO'
+        totalItens:
+          type: integer
+        pagina:
+          type: integer
+        tamanho:
+          type: integer
+
+    ItemCatalogoDTO:
+      type: object
+      required: [codigo, nome, moeda, modoOrigem, estado, versaoVigente, modeloApontado]
+      properties:
+        codigo:
+          type: string
+        nome:
+          type: string
+        moeda:
+          type: string
+        modoOrigem:
+          type: string
+          enum: [BOOTSTRAPPED, IMPORTED]
+        estado:
+          type: string
+          enum: [RASCUNHO, ATIVA, APOSENTADA]
+        versaoVigente:
+          type: integer
+        modeloApontado:
+          type: string
+
+    DefinicaoCurvaDTO:
+      type: object
+      required: [codigo, nome, moeda, modoOrigem, estado, versaoNumero, contagemDias, calendario, interpolador, politicaExtrapolacao, politicaArredondamento, horarioLimitePublicacao]
+      properties:
+        codigo:
+          type: string
+        nome:
+          type: string
+        moeda:
+          type: string
+        modoOrigem:
+          type: string
+          enum: [BOOTSTRAPPED, IMPORTED]
+        estado:
+          type: string
+          enum: [RASCUNHO, ATIVA, APOSENTADA]
+        versaoNumero:
+          type: integer
+        contagemDias:
+          type: string
+          enum: [DU_252, ACT_360, ACT_365]
+        calendario:
+          type: string
+          enum: [B3_ANBIMA, CORRIDO]
+        interpolador:
+          type: string
+          enum: [FLAT_FORWARD, LINEAR, LOG_LINEAR, LOG_CUBIC, NATURAL_CUBIC_SPLINE, MONOTONIC_CONVEX, FLAT_FORWARD_LINEAR]
+        politicaExtrapolacao:
+          type: string
+          enum: [STRICT, FLAT_RATE, FLAT_FORWARD, FLAT_FORWARD_LINEAR]
+        politicaArredondamento:
+          type: string
+          enum: [TRUNCATE_8, TRUNCATE_12, HALF_UP_8, HALF_UP_12]
+        modeloApontado:
+          type: string
+        horarioLimitePublicacao:
+          type: string
+        orcamentoPorEtapaMinutos:
+          type: object
+          additionalProperties:
+            type: integer
+        janelaBloqueioMinutos:
+          type: integer
+        limitesValidacao:
+          type: array
+          items:
+            $ref: '#/components/schemas/LimiteValidacaoDTO'
+        vinculosFonte:
+          type: array
+          items:
+            type: string
+        dependencias:
+          type: array
+          items:
+            type: string
+
+    LimiteValidacaoDTO:
+      type: object
+      required: [testeId, classificacao, habilitado]
+      properties:
+        testeId:
+          type: string
+        classificacao:
+          type: string
+          enum: [BLOQUEANTE, AVISO]
+        habilitado:
+          type: boolean
+        limiteMinimo:
+          type: string
+        limiteMaximo:
+          type: string
+
+    CriarOuAtualizarDefinicaoCurvaRequest:
+      type: object
+      required: [nome, moeda, modoOrigem, contagemDias, calendario, interpolador, politicaExtrapolacao, politicaArredondamento, horarioLimitePublicacao]
+      properties:
+        nome:
+          type: string
+        moeda:
+          type: string
+        modoOrigem:
+          type: string
+          enum: [BOOTSTRAPPED, IMPORTED]
+        contagemDias:
+          type: string
+          enum: [DU_252, ACT_360, ACT_365]
+        calendario:
+          type: string
+          enum: [B3_ANBIMA, CORRIDO]
+        interpolador:
+          type: string
+          enum: [FLAT_FORWARD, LINEAR, LOG_LINEAR, LOG_CUBIC, NATURAL_CUBIC_SPLINE, MONOTONIC_CONVEX, FLAT_FORWARD_LINEAR]
+        politicaExtrapolacao:
+          type: string
+          enum: [STRICT, FLAT_RATE, FLAT_FORWARD, FLAT_FORWARD_LINEAR]
+        politicaArredondamento:
+          type: string
+          enum: [TRUNCATE_8, TRUNCATE_12, HALF_UP_8, HALF_UP_12]
+        modeloApontado:
+          type: string
+        horarioLimitePublicacao:
+          type: string
+        orcamentoPorEtapaMinutos:
+          type: object
+          additionalProperties:
+            type: integer
+        janelaBloqueioMinutos:
+          type: integer
+        limitesValidacao:
+          type: array
+          items:
+            $ref: '#/components/schemas/LimiteValidacaoDTO'
+        vinculosFonte:
+          type: array
+          items:
+            type: string
+        dependencias:
+          type: array
+          items:
+            type: string
+
+    CurvaViewerResponse:
+      type: object
+      required: [codigoCurva, nomeCurva, dataReferencia, momento, versao, estadoVersao, vertices, secaoDegradada]
+      properties:
+        codigoCurva:
+          type: string
+        nomeCurva:
+          type: string
+        dataReferencia:
+          type: string
+          format: date
+        momento:
+          type: string
+          enum: [ABERTURA, INTRADIARIO, FECHAMENTO]
+        versao:
+          type: integer
+        isVersaoCorrente:
+          type: boolean
+        estadoVersao:
+          type: string
+          enum: [EM_VALIDACAO, PUBLICADA, PUBLICADA_COM_AVISO, SUBSTITUIDA, REPROVADA]
+        origemPublicacao:
+          type: string
+          enum: [CALCULADA, IMPORTADA, CARREGADA]
+        vertices:
+          type: array
+          items:
+            $ref: '#/components/schemas/VerticeCurvaDTO'
+        procedencia:
+          $ref: '#/components/schemas/ProcedenciaCurvaDTO'
+        ultimaExecucao:
+          $ref: '#/components/schemas/ExecucaoResumoDTO'
+        validacao:
+          $ref: '#/components/schemas/ResultadoValidacaoCurvaDTO'
+        secaoDegradada:
+          type: object
+          additionalProperties:
+            type: string
+
+    VerticeCurvaDTO:
+      type: object
+      required: [prazoDiasUteis, taxa]
+      properties:
+        prazoDiasUteis:
+          type: integer
+        prazoDiasCorridos:
+          type: integer
+        dataVencimento:
+          type: string
+          format: date
+        taxa:
+          type: string
+          description: Taxa anualizada em texto decimal de alta precisão
+        fatorDesconto:
+          type: string
+          description: Fator de desconto em texto decimal de alta precisão
+
+    ProcedenciaCurvaDTO:
+      type: object
+      required: [publicadoEm]
+      properties:
+        publicadoEm:
+          type: string
+          format: date-time
+        execucaoId:
+          type: string
+        correlationId:
+          type: string
+        modeloNome:
+          type: string
+        modeloChecksum:
+          type: string
+        arquivoOrigem:
+          type: string
+        loteIngestaoId:
+          type: string
+        carregadoPor:
+          type: string
+        justificativa:
+          type: string
+
+    ExecucaoResumoDTO:
+      type: object
+      required: [id, estado, tipoDisparo]
+      properties:
+        id:
+          type: string
+        correlationId:
+          type: string
+        estado:
+          type: string
+        tipoDisparo:
+          type: string
+        disparadoPor:
+          type: string
+        duracaoSegundos:
+          type: integer
+
+    ResultadoValidacaoCurvaDTO:
+      type: object
+      required: [statusGeral, itens]
+      properties:
+        statusGeral:
+          type: string
+          enum: [APROVADA, APROVADA_COM_AVISOS, REPROVADA]
+        itens:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemValidacaoDTO'
+
+    ItemValidacaoDTO:
+      type: object
+      required: [testeId, nomeTeste, classificacao, resultado]
+      properties:
+        testeId:
+          type: string
+        nomeTeste:
+          type: string
+        classificacao:
+          type: string
+          enum: [BLOQUEANTE, AVISO]
+        resultado:
+          type: string
+          enum: [APROVADO, REPROVADO, NAO_APLICAVEL]
+        medidaObservada:
+          type: string
+        limiteAplicado:
+          type: string
+        mensagem:
+          type: string
+
+    InterpolacaoRequest:
+      type: object
+      required: [dataReferencia, prazosDiasUteis]
+      properties:
+        dataReferencia:
+          type: string
+          format: date
+        versao:
+          type: integer
+        momento:
+          type: string
+          enum: [ABERTURA, INTRADIARIO, FECHAMENTO]
+        prazosDiasUteis:
+          type: array
+          items:
+            type: integer
+        interpoladorAlternativo:
+          type: string
+
+    InterpolacaoResponse:
+      type: object
+      required: [codigoCurva, versaoUtilizada, resultados]
+      properties:
+        codigoCurva:
+          type: string
+        versaoUtilizada:
+          type: integer
+        interpoladorUtilizado:
+          type: string
+        resultados:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemInterpolacaoDTO'
+
+    ItemInterpolacaoDTO:
+      type: object
+      required: [prazoDiasUteis, status]
+      properties:
+        prazoDiasUteis:
+          type: integer
+        taxa:
+          type: string
+        fatorDesconto:
+          type: string
+        status:
+          type: string
+          enum: [VERTICE_EXATO, INTERPOLADO, EXTRAPOLADO, ERRO_FORA_INTERVALO]
+        erroMensagem:
+          type: string
+
+    CargaManualRequest:
+      type: object
+      required: [arquivo, dataReferencia, momento, justificativa]
+      properties:
+        arquivo:
+          type: string
+          format: binary
+        dataReferencia:
+          type: string
+          format: date
+        momento:
+          type: string
+          enum: [ABERTURA, INTRADIARIO, FECHAMENTO]
+        justificativa:
+          type: string
+
+    CargaManualResponse:
+      type: object
+      required: [correlationId, versaoCurvaId, numeroVersao, estadoPublicacao]
+      properties:
+        correlationId:
+          type: string
+        versaoCurvaId:
+          type: string
+        numeroVersao:
+          type: integer
+        estadoPublicacao:
+          type: string
+          enum: [PUBLICADA, REPROVADA]
+        testesReprovados:
+          type: array
+          items:
+            type: string
+
+    CargaManualErrosResponse:
+      type: object
+      required: [codigoErro, mensagem, errosLinha]
+      properties:
+        codigoErro:
+          type: string
+        mensagem:
+          type: string
+        errosLinha:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErroLinhaCargaDTO'
+
+    ErroLinhaCargaDTO:
+      type: object
+      required: [linha, coluna, mensagem]
+      properties:
+        linha:
+          type: integer
+        coluna:
+          type: string
+        valorEncontrado:
+          type: string
+        mensagem:
+          type: string
+
+    ComparacaoRequest:
+      type: object
+      required: [dataReferencia, curvaA]
+      properties:
+        dataReferencia:
+          type: string
+          format: date
+        curvaA:
+          $ref: '#/components/schemas/CurvaAlvoComparacaoDTO'
+        curvaB:
+          $ref: '#/components/schemas/CurvaAlvoComparacaoDTO'
+        modeloAlternativo:
+          type: string
+
+    CurvaAlvoComparacaoDTO:
+      type: object
+      required: [codigo]
+      properties:
+        codigo:
+          type: string
+        versao:
+          type: integer
+        momento:
+          type: string
+          enum: [ABERTURA, INTRADIARIO, FECHAMENTO]
+
+    ComparacaoResponse:
+      type: object
+      required: [dataReferencia, diferencas]
+      properties:
+        dataReferencia:
+          type: string
+          format: date
+        rotuloCurvaA:
+          type: string
+        rotuloCurvaB:
+          type: string
+        diferencas:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemDiferencaComparacaoDTO'
+
+    ItemDiferencaComparacaoDTO:
+      type: object
+      required: [prazoDiasUteis, status]
+      properties:
+        prazoDiasUteis:
+          type: integer
+        taxaA:
+          type: string
+        taxaB:
+          type: string
+        diferencaTaxaBps:
+          type: string
+        fatorDescontoA:
+          type: string
+        fatorDescontoB:
+          type: string
+        status:
+          type: string
+          enum: [COINCIDENTE, PRESENTE_APENAS_EM_A, PRESENTE_APENAS_EM_B]
+
+    DisparoIngestaoRequest:
+      type: object
+      required: [dataReferencia, datasets]
+      properties:
+        dataReferencia:
+          type: string
+          format: date
+        datasets:
+          type: array
+          items:
+            type: string
+            enum: [PR_DI1, BVBG_086, BVBG_028, TAXAS_REFERENCIA]
+
+    DisparoIngestaoResponse:
+      type: object
+      required: [correlationId, status, dataReferencia]
+      properties:
+        correlationId:
+          type: string
+        status:
+          type: string
+          enum: [INICIADO, JA_EM_ANDAMENTO, NAO_EH_PREGAO]
+        mensagem:
+          type: string
+        dataReferencia:
+          type: string
+          format: date
+        execucaoId:
+          type: string
+
+    BackfillRequest:
+      type: object
+      required: [dataInicio, dataFim, datasets]
+      properties:
+        dataInicio:
+          type: string
+          format: date
+        dataFim:
+          type: string
+          format: date
+        datasets:
+          type: array
+          items:
+            type: string
+            enum: [PR_DI1, BVBG_086, BVBG_028, TAXAS_REFERENCIA]
+        limiteConcorrencia:
+          type: integer
+          default: 3
+
+    BackfillStatusResponse:
+      type: object
+      required: [id, totalDias, concluidos, semDado, falhas, pendentes, status]
+      properties:
+        id:
+          type: string
+        totalDias:
+          type: integer
+        concluidos:
+          type: integer
+        semDado:
+          type: integer
+        falhas:
+          type: integer
+        pendentes:
+          type: integer
+        status:
+          type: string
+          enum: [EM_ANDAMENTO, CONCLUIDO, INTERROMPIDO]
+
+    ExecucoesResponse:
+      type: object
+      required: [itens, totalItens, pagina, tamanho]
+      properties:
+        itens:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemExecucaoDTO'
+        totalItens:
+          type: integer
+        pagina:
+          type: integer
+        tamanho:
+          type: integer
+
+    ItemExecucaoDTO:
+      type: object
+      required: [id, correlationId, alvo, dataReferencia, tipoDisparo, estado, disparadoEm]
+      properties:
+        id:
+          type: string
+        correlationId:
+          type: string
+        alvo:
+          type: string
+        dataReferencia:
+          type: string
+          format: date
+        momento:
+          type: string
+        tipoDisparo:
+          type: string
+        faixa:
+          type: string
+        disparadoPor:
+          type: string
+        estado:
+          type: string
+          enum: [PENDENTE, EXECUTANDO, CONSTRUINDO, CONCLUIDA, SEM_DADO, FALHOU, EM_RISCO, ATRASADA]
+        etapaAtual:
+          type: string
+        duracaoSegundos:
+          type: integer
+        tentativa:
+          type: integer
+        causaFalha:
+          type: string
+        disparadoEm:
+          type: string
+          format: date-time
+
+    PendenciasDlqGruposResponse:
+      type: object
+      required: [grupos]
+      properties:
+        grupos:
+          type: array
+          items:
+            $ref: '#/components/schemas/GrupoPendenciaDlqDTO'
+
+    GrupoPendenciaDlqDTO:
+      type: object
+      required: [grupoId, motivo, fonte, conjuntoDados, dataReferencia, totalMensagens, primeiraFalhaEm, ultimaFalhaEm, estado]
+      properties:
+        grupoId:
+          type: string
+        motivo:
+          type: string
+        fonte:
+          type: string
+        conjuntoDados:
+          type: string
+        dataReferencia:
+          type: string
+          format: date
+        totalMensagens:
+          type: integer
+        primeiraFalhaEm:
+          type: string
+          format: date-time
+        ultimaFalhaEm:
+          type: string
+          format: date-time
+        detalheRepresentativo:
+          type: string
+        estado:
+          type: string
+          enum: [ABERTO, EM_REPROCESSAMENTO, RESOLVIDO, DESCARTADO, OBSOLETO]
+
+    PendenciasDlqDetalheResponse:
+      type: object
+      required: [grupoId, itens]
+      properties:
+        grupoId:
+          type: string
+        itens:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemPendenciaDlqDTO'
+
+    ItemPendenciaDlqDTO:
+      type: object
+      required: [id, idEvento, correlationId, topicoOrigem, particao, offset, falhouEm, motivo]
+      properties:
+        id:
+          type: string
+        idEvento:
+          type: string
+        correlationId:
+          type: string
+        topicoOrigem:
+          type: string
+        particao:
+          type: integer
+        offset:
+          type: integer
+        falhouEm:
+          type: string
+          format: date-time
+        motivo:
+          type: string
+        detalhe:
+          type: string
+        tentativas:
+          type: integer
+
+    ReprocessarDlqRequest:
+      type: object
+      properties:
+        grupoId:
+          type: string
+        pendenciaId:
+          type: string
+
+    DescartarDlqRequest:
+      type: object
+      required: [justificativa]
+      properties:
+        grupoId:
+          type: string
+        pendenciaId:
+          type: string
+        justificativa:
+          type: string
+
+    AcaoDlqResponse:
+      type: object
+      required: [sucesso, totalAfetadas, mensagem]
+      properties:
+        sucesso:
+          type: boolean
+        totalAfetadas:
+          type: integer
+        mensagem:
+          type: string
+
+    ModelosResponse:
+      type: object
+      required: [modelos]
+      properties:
+        modelos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModeloDTO'
+
+    ModeloDTO:
+      type: object
+      required: [id, nome, tipo, estado, checksum]
+      properties:
+        id:
+          type: string
+        nome:
+          type: string
+        tipo:
+          type: string
+          enum: [BUILTIN, GROOVY]
+        estado:
+          type: string
+          enum: [ATIVO, DESABILITADO]
+        checksum:
+          type: string
+        descricao:
+          type: string
+        autor:
+          type: string
+        criadoEm:
+          type: string
+          format: date-time
+
+    ImportarModeloGroovyRequest:
+      type: object
+      required: [nome, scriptConteudo, descricao]
+      properties:
+        nome:
+          type: string
+        scriptConteudo:
+          type: string
+        descricao:
+          type: string
+
+    TrocarModeloCurvaRequest:
+      type: object
+      required: [modeloId]
+      properties:
+        modeloId:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Token ausente, expirado ou inválido
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [codigoErro, mensagem]
+            properties:
+              codigoErro:
+                type: string
+                example: UNAUTHORIZED
+              mensagem:
+                type: string
+                example: Sessão inválida ou expirada.
+
+    Forbidden:
+      description: Usuário não tem permissão para executar esta operação
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [codigoErro, mensagem, perfilNecessario]
+            properties:
+              codigoErro:
+                type: string
+                example: FORBIDDEN
+              mensagem:
+                type: string
+                example: Operação restrita a perfis superiores.
+              perfilNecessario:
+                type: string
+
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [codigoErro, mensagem]
+            properties:
+              codigoErro:
+                type: string
+              mensagem:
+                type: string
+
+    BadRequest:
+      description: Requisição inválida ou incoerente
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [codigoErro, mensagem]
+            properties:
+              codigoErro:
+                type: string
+              mensagem:
+                type: string

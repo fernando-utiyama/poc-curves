@@ -140,7 +140,7 @@
         <mxCell id="feedBox" value="Feeders — Node 20 / TypeScript&#10;(Azure Function em prod · container local)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#82b366;dashed=1;verticalAlign=top;fontStyle=1;fontColor=#4a7a3a;fontSize=11;" vertex="1" parent="k1">
           <mxGeometry x="290" y="200" width="240" height="270" as="geometry" />
         </mxCell>
-        <mxCell id="feedB3" value="feeder-b3-marketdata&#10;três resultados: PUBLICADO · SEM_DADO · FALHOU&#10;quebra o arquivo em BLOCOS (loteId, sequencia, totalBlocos)&#10;corte estrutural, sem semântica financeira&#10;publica na faixa recebida · declara payloadKind" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=10;" vertex="1" parent="k1">
+        <mxCell id="feedB3" value="feeder-marketdata&#10;três resultados: PUBLICADO · SEM_DADO · FALHOU&#10;quebra o arquivo em BLOCOS (loteId, sequencia, totalBlocos)&#10;corte estrutural, sem semântica financeira&#10;publica na faixa recebida · declara payloadKind" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=10;" vertex="1" parent="k1">
           <mxGeometry x="310" y="245" width="200" height="110" as="geometry" />
         </mxCell>
         <mxCell id="feedOther" value="feeder-bloomberg&#10;feeder-lseg&#10;(mesmo contrato de feeder)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;dashed=1;fontColor=#666666;fontSize=10;" vertex="1" parent="k1">
@@ -265,7 +265,7 @@
         <mxCell id="a01" value="1 · curve-orchestrator&#10;──────────────&#10;schedule cadastrado dispara,&#10;ou operador clica na tela.&#10;Cria execucao_curva em PENDING,&#10;gera o correlationId,&#10;registra triggeredBy." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
           <mxGeometry x="40" y="110" width="230" height="150" as="geometry" />
         </mxCell>
-        <mxCell id="a02" value="2 · feeder-b3-marketdata&#10;──────────────&#10;baixa PR / BVBG.086 / BVBG.028.&#10;payloadKind = INDIVIDUAL_QUOTES.&#10;Calendário decide dia de pregão.&#10;NO_DATA ≠ FAILED.&#10;Verifica integridade antes de publicar." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
+        <mxCell id="a02" value="2 · feeder-marketdata&#10;──────────────&#10;baixa PR / BVBG.086 / BVBG.028.&#10;payloadKind = INDIVIDUAL_QUOTES.&#10;Calendário decide dia de pregão.&#10;NO_DATA ≠ FAILED.&#10;Verifica integridade antes de publicar." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
           <mxGeometry x="320" y="110" width="240" height="150" as="geometry" />
         </mxCell>
         <mxCell id="a03" value="3 · marketdata.raw.v1&#10;──────────────&#10;envelope comum + payload bruto,&#10;encoding e hash declarados.&#10;eventId determinístico por conteúdo.&#10;Retenção 7 dias → replay possível." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="a1">
@@ -336,7 +336,7 @@
         <mxCell id="b01" value="A · curve-orchestrator&#10;──────────────&#10;mesmo agendamento ou&#10;disparo manual pela tela,&#10;mas para o dataset de&#10;curva pronta.&#10;Cria run e correlationId." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
           <mxGeometry x="40" y="110" width="230" height="150" as="geometry" />
         </mxCell>
-        <mxCell id="b02" value="B · feeder-b3-marketdata&#10;──────────────&#10;chama o endpoint de Taxas&#10;de Referência com data e&#10;identificador da curva.&#10;payloadKind = READY_CURVE.&#10;Publica a resposta sem&#10;converter encoding nem decimal." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
+        <mxCell id="b02" value="B · feeder-marketdata&#10;──────────────&#10;chama o endpoint de Taxas&#10;de Referência com data e&#10;identificador da curva.&#10;payloadKind = READY_CURVE.&#10;Publica a resposta sem&#10;converter encoding nem decimal." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">
           <mxGeometry x="320" y="110" width="240" height="170" as="geometry" />
         </mxCell>
         <mxCell id="b03" value="C · marketdata.raw.v1&#10;──────────────&#10;mesmo tópico e mesmo envelope&#10;do Fluxo A — o que separa os&#10;dois caminhos é o payloadKind,&#10;declarado pelo feeder,&#10;nunca inferido do conteúdo." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=10;verticalAlign=top;fontSize=11;" vertex="1" parent="b1">

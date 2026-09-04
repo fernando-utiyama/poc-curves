@@ -41,7 +41,7 @@ Esta mudança especifica o orquestrador como o dono do ciclo de vida da execuç�
 ## Impact
 
 - **Novo serviço**: `services/curve-orchestrator/` em Java 21 / Spring Boot 3.4.x, sem Lombok.
-- **Depende de** `curves-solution-architecture` (modelo de dados, contratos de evento) e conversa com `feeder-b3-marketdata` para disparar e receber o reporte de resultado.
+- **Depende de** `curves-solution-architecture` (modelo de dados, contratos de evento) e conversa com `feeder-marketdata` para disparar e receber o reporte de resultado.
 - **Escreve** em `execucao_curva`, em `pendencia_dlq` e na tabela de agendamentos. Lê `definicao_curva` para saber quais curvas dependem de qual conjunto de dados.
 - **Produz** `curve.build.requested.v1` e republica mensagens nos tópicos de origem durante o reprocessamento de pendência.
 - **Consome** todos os tópicos de dead-letter do catálogo, para materializar as pendências.

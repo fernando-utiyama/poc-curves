@@ -1,0 +1,30 @@
+# Build stage
+FROM docker.io/node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+# Corrigido na auditoria desta sessão: a versão anterior tinha `|| true`
+# aqui, então este passo nunca podia falhar o build da imagem — e o script
+# "build" de então era só `tsc --noEmit` (checagem de tipo, não gera nenhum
+# artefato). O resultado real era uma imagem sem nenhum bundle Angular
+# dentro, servindo só `public/` (sem index.html). Agora roda o build real
+# (`ng build`, via `@angular/cli`/`@angular-devkit/build-angular`,
+# adicionados nesta sessão) e falha a imagem de verdade se ele falhar.
+RUN npm run build
+
+# Production stage
+FROM docker.io/nginx:alpine
+
+# O builder moderno do Angular (@angular-devkit/build-angular:application)
+# gera em dist/<projeto>/browser/, não dist/<projeto>/ diretamente —
+# verificado de verdade rodando o build nesta sessão.
+COPY --from=builder /app/dist/curve-web-ui/browser /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

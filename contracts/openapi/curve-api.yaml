@@ -1,0 +1,1119 @@
+openapi: 3.0.3
+info:
+  title: Curve API (Serviço de Domínio)
+  version: 0.1.0
+  description: >
+    API interna de domínio da Plataforma de Curvas de Mercado.
+    Responsável pelo cadastro versionado de definições de curva e pela consulta de
+    curvas publicadas, histórico de versões, procedência, vértices e comparação.
+    Todos os valores de mercado (taxas, fatores de desconto, spreads) trafegam como
+    texto numérico (string) para preservar a precisão decimal de 12 casas.
+
+paths:
+  /curvas/definicoes:
+    get:
+      summary: Listar catálogo de definições de curva
+      description: Retorna definições cadastradas com filtros, paginação e ordenação.
+      parameters:
+        - name: codigo
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: nome
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: moeda
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: modoOrigem
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [BOOTSTRAPPED, IMPORTED]
+        - name: estado
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [RASCUNHO, ATIVA, APOSENTADA]
+        - name: pagina
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: tamanhoPagina
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Lista paginada de definições de curva.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogoDefinicoesResponse'
+
+    post:
+      summary: Cadastrar nova definição de curva
+      description: Cadastra uma nova definição de curva (código imutável) e cria a versão inicial 1.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarDefinicaoRequest'
+      responses:
+        '201':
+          description: Definição criada com sucesso junto à sua versão inicial v1.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefinicaoCurvaResponse'
+        '400':
+          description: Erro de validação de coerência ou campos obrigatórios ausentes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+        '409':
+          description: Conflito de código duplicado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+
+  /curvas/definicoes/{codigo}:
+    get:
+      summary: Obter definição de curva
+      description: Retorna a definição da curva com sua versão vigente ou versão solicitada.
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: numeroVersao
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalhes da definição e versão.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefinicaoCurvaResponse'
+        '404':
+          description: Definição de curva não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+
+    put:
+      summary: Atualizar definição de curva (cria nova versão imutável)
+      description: Toda edição cria uma nova versão com número incremental, preservando a versão anterior.
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizarDefinicaoRequest'
+      responses:
+        '200':
+          description: Nova versão de definição criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefinicaoCurvaResponse'
+        '400':
+          description: Erro de validação de coerência ou dependências com ciclo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+        '404':
+          description: Definição de curva não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+
+  /curvas/definicoes/{codigo}/versoes:
+    get:
+      summary: Listar histórico de versões de uma definição
+      description: Retorna todas as versões criadas para a definição, com intervalos de vigência.
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de versões da definição de curva.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoricoVersoesDefinicaoResponse'
+        '404':
+          description: Definição não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+
+  /curvas/definicoes/{codigo}/modelo-carga:
+    get:
+      summary: Baixar modelo de arquivo para carga manual
+      description: Gera arquivo CSV ou XLSX dinamicamente com base nas convenções e prazos esperados da curva.
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: formato
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [CSV, XLSX]
+            default: CSV
+      responses:
+        '200':
+          description: Arquivo de template gerado.
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Definição não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+
+  /curvas/{codigo}:
+    get:
+      summary: Consultar curva publicada
+      description: >
+        Consulta a curva publicada por data de referência e momento. Suporta seleção por versão corrente
+        (default), versão explícita (query param `versao`), ou instante histórico (query param `asOf`).
+        Retorna 404 explícito caso não haja curva publicada na data.
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dataReferencia
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-08-21"
+        - name: momento
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ABERTURA, INTRADIA, FECHAMENTO]
+            default: FECHAMENTO
+        - name: versao
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: asOf
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Curva publicada com vértices, validação e procedência.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurvaPublicadaResponse'
+        '404':
+          description: Nenhuma curva publicada encontrada para a data informada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+
+  /curvas/{codigo}/vertices:
+    get:
+      summary: Listar vértices de uma versão de curva (paginado e estável)
+      description: Retorna os vértices associados a uma versão fixa de curva, ordenados por prazo crescente.
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versaoCurvaId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: pagina
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: tamanhoPagina
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Lista paginada de vértices.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerticesPaginadosResponse'
+
+  /curvas/{codigo}/versoes:
+    get:
+      summary: Listar histórico de versões de uma curva em uma data
+      description: Retorna todas as versões publicadas/reprovadas/substituídas para uma data e momento.
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dataReferencia
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: momento
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ABERTURA, INTRADIA, FECHAMENTO]
+            default: FECHAMENTO
+      responses:
+        '200':
+          description: Histórico de versões da curva.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoricoVersoesCurvaResponse'
+
+  /curvas/{codigo}/versoes/{versaoId}/procedencia:
+    get:
+      summary: Obter procedência e auditoria de uma versão de curva
+      description: Retorna insumos, hash do conjunto, modelo de cálculo, lote de ingestão e justificativas.
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versaoId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dados de procedência e auditoria.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcedenciaCurvaResponse'
+        '404':
+          description: Procedência ou versão não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+
+  /curvas/{codigo}/interpolacao:
+    post:
+      summary: Consultar curva interpolada em lote de prazos (delegada ao motor)
+      description: Delega o cálculo de interpolação síncrona ao curve-engine para prazos arbitrários em DU.
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InterpolacaoRequest'
+      responses:
+        '200':
+          description: Resultado da interpolação para os prazos solicitados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterpolacaoResponse'
+        '404':
+          description: Curva não encontrada para a data informada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+        '503':
+          description: Serviço de cálculo (curve-engine) indisponível.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+
+  /curvas/comparacao:
+    post:
+      summary: Comparar duas curvas da mesma data
+      description: Compara ponto a ponto a curva construída contra a importada ou entre dois modelos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComparacaoCurvasRequest'
+      responses:
+        '200':
+          description: Resultado da comparação com spreads em bps e pontos exclusivos sinalizados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComparacaoCurvasResponse'
+        '404':
+          description: Uma ou ambas as curvas não possuem publicação na data informada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResposta'
+
+components:
+  schemas:
+    CatalogoDefinicoesResponse:
+      type: object
+      required: [itens, totalElementos, pagina, totalPaginas]
+      properties:
+        itens:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemCatalogoDefinicao'
+        totalElementos:
+          type: integer
+        pagina:
+          type: integer
+        totalPaginas:
+          type: integer
+
+    ItemCatalogoDefinicao:
+      type: object
+      required: [id, codigo, nome, moeda, modoOrigem, estado, versaoVigenteNumero]
+      properties:
+        id:
+          type: string
+          format: uuid
+        codigo:
+          type: string
+          example: "PRE"
+        nome:
+          type: string
+          example: "Curva Pré Fixada DI1"
+        moeda:
+          type: string
+          example: "BRL"
+        modoOrigem:
+          type: string
+          enum: [BOOTSTRAPPED, IMPORTED]
+        estado:
+          type: string
+          enum: [RASCUNHO, ATIVA, APOSENTADA]
+        versaoVigenteNumero:
+          type: integer
+          example: 1
+        modeloApontadoNome:
+          type: string
+          nullable: true
+          example: "BUILTIN_PRE_DI1"
+
+    CriarDefinicaoRequest:
+      type: object
+      required: [codigo, nome, moeda, modoOrigem, estado, horarioLimitePublicacao, contagemDias, calendario, interpolador, politicaExtrapolacao, politicaArredondamento]
+      properties:
+        codigo:
+          type: string
+          example: "PRE"
+        nome:
+          type: string
+          example: "Curva Pré Fixada DI1"
+        moeda:
+          type: string
+          example: "BRL"
+        modoOrigem:
+          type: string
+          enum: [BOOTSTRAPPED, IMPORTED]
+        estado:
+          type: string
+          enum: [RASCUNHO, ATIVA, APOSENTADA]
+          default: ATIVA
+        horarioLimitePublicacao:
+          type: string
+          example: "19:00:00"
+        contagemDias:
+          type: string
+          enum: [DU_252, ACT_360, ACT_365]
+        calendario:
+          type: string
+          enum: [B3_ANBIMA, CORRIDO]
+        interpolador:
+          type: string
+          enum: [LINEAR, FLAT_FORWARD, LOG_LINEAR, LOG_CUBIC, NATURAL_CUBIC_SPLINE, MONOTONIC_CONVEX, FLAT_FORWARD_LINEAR]
+        politicaExtrapolacao:
+          type: string
+          enum: [STRICT, FLAT_RATE, FLAT_FORWARD, FLAT_FORWARD_LINEAR]
+        politicaArredondamento:
+          type: string
+          enum: [TRUNCATE_8, TRUNCATE_12, HALF_UP_8, HALF_UP_12]
+        modeloApontadoId:
+          type: string
+          format: uuid
+          nullable: true
+        modeloApontadoCodigo:
+          type: string
+          nullable: true
+          example: "BUILTIN_PRE_DI1"
+        orcamentoIngestaoSegundos:
+          type: integer
+          nullable: true
+        orcamentoConstrucaoSegundos:
+          type: integer
+          nullable: true
+        orcamentoValidacaoSegundos:
+          type: integer
+          nullable: true
+        orcamentoPublicacaoSegundos:
+          type: integer
+          nullable: true
+        janelaBloqueioMinutos:
+          type: integer
+          nullable: true
+          default: 30
+        vinculosFonte:
+          type: array
+          items:
+            type: string
+          example: ["BVBG_086", "BVBG_028"]
+        dependeDe:
+          type: array
+          items:
+            type: string
+          example: []
+        limitesValidacao:
+          type: array
+          items:
+            $ref: '#/components/schemas/LimiteValidacaoDTO'
+        vigenciaInicio:
+          type: string
+          format: date
+          example: "2026-01-01"
+
+    AtualizarDefinicaoRequest:
+      type: object
+      required: [nome, moeda, modoOrigem, estado, horarioLimitePublicacao, contagemDias, calendario, interpolador, politicaExtrapolacao, politicaArredondamento]
+      properties:
+        nome:
+          type: string
+        moeda:
+          type: string
+        modoOrigem:
+          type: string
+          enum: [BOOTSTRAPPED, IMPORTED]
+        estado:
+          type: string
+          enum: [RASCUNHO, ATIVA, APOSENTADA]
+        horarioLimitePublicacao:
+          type: string
+        contagemDias:
+          type: string
+          enum: [DU_252, ACT_360, ACT_365]
+        calendario:
+          type: string
+          enum: [B3_ANBIMA, CORRIDO]
+        interpolador:
+          type: string
+          enum: [LINEAR, FLAT_FORWARD, LOG_LINEAR, LOG_CUBIC, NATURAL_CUBIC_SPLINE, MONOTONIC_CONVEX, FLAT_FORWARD_LINEAR]
+        politicaExtrapolacao:
+          type: string
+          enum: [STRICT, FLAT_RATE, FLAT_FORWARD, FLAT_FORWARD_LINEAR]
+        politicaArredondamento:
+          type: string
+          enum: [TRUNCATE_8, TRUNCATE_12, HALF_UP_8, HALF_UP_12]
+        modeloApontadoId:
+          type: string
+          format: uuid
+          nullable: true
+        modeloApontadoCodigo:
+          type: string
+          nullable: true
+        orcamentoIngestaoSegundos:
+          type: integer
+          nullable: true
+        orcamentoConstrucaoSegundos:
+          type: integer
+          nullable: true
+        orcamentoValidacaoSegundos:
+          type: integer
+          nullable: true
+        orcamentoPublicacaoSegundos:
+          type: integer
+          nullable: true
+        janelaBloqueioMinutos:
+          type: integer
+          nullable: true
+        vinculosFonte:
+          type: array
+          items:
+            type: string
+        dependeDe:
+          type: array
+          items:
+            type: string
+        limitesValidacao:
+          type: array
+          items:
+            $ref: '#/components/schemas/LimiteValidacaoDTO'
+        vigenciaInicio:
+          type: string
+          format: date
+
+    LimiteValidacaoDTO:
+      type: object
+      required: [teste, classificacao, limite]
+      properties:
+        teste:
+          type: string
+          example: "ERRO_MAXIMO_REPRECIFICACAO"
+        classificacao:
+          type: string
+          enum: [BLOQUEANTE, AVISO]
+        limite:
+          type: string
+          example: "0.0001"
+
+    DefinicaoCurvaResponse:
+      type: object
+      required: [id, codigo, nome, moeda, modoOrigem, estado, horarioLimitePublicacao, versaoDefinicaoId, versaoNumero, contagemDias, calendario, interpolador, politicaExtrapolacao, politicaArredondamento, vigenciaInicio]
+      properties:
+        id:
+          type: string
+          format: uuid
+        codigo:
+          type: string
+        nome:
+          type: string
+        moeda:
+          type: string
+        modoOrigem:
+          type: string
+          enum: [BOOTSTRAPPED, IMPORTED]
+        estado:
+          type: string
+          enum: [RASCUNHO, ATIVA, APOSENTADA]
+        horarioLimitePublicacao:
+          type: string
+        versaoDefinicaoId:
+          type: string
+          format: uuid
+        versaoNumero:
+          type: integer
+        versaoOrigemNumero:
+          type: integer
+          nullable: true
+        contagemDias:
+          type: string
+        calendario:
+          type: string
+        interpolador:
+          type: string
+        politicaExtrapolacao:
+          type: string
+        politicaArredondamento:
+          type: string
+        modeloApontadoCodigo:
+          type: string
+          nullable: true
+        orcamentoIngestaoSegundos:
+          type: integer
+          nullable: true
+        orcamentoConstrucaoSegundos:
+          type: integer
+          nullable: true
+        orcamentoValidacaoSegundos:
+          type: integer
+          nullable: true
+        orcamentoPublicacaoSegundos:
+          type: integer
+          nullable: true
+        janelaBloqueioMinutos:
+          type: integer
+          nullable: true
+        vinculosFonte:
+          type: array
+          items:
+            type: string
+        dependeDe:
+          type: array
+          items:
+            type: string
+        limitesValidacao:
+          type: array
+          items:
+            $ref: '#/components/schemas/LimiteValidacaoDTO'
+        vigenciaInicio:
+          type: string
+          format: date
+        vigenciaFim:
+          type: string
+          format: date
+          nullable: true
+
+    HistoricoVersoesDefinicaoResponse:
+      type: object
+      required: [codigo, versoes]
+      properties:
+        codigo:
+          type: string
+        versoes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemHistoricoVersaoDefinicao'
+
+    ItemHistoricoVersaoDefinicao:
+      type: object
+      required: [versaoDefinicaoId, numeroVersao, interpolador, modeloApontadoCodigo, vigenciaInicio]
+      properties:
+        versaoDefinicaoId:
+          type: string
+          format: uuid
+        numeroVersao:
+          type: integer
+        interpolador:
+          type: string
+        modeloApontadoCodigo:
+          type: string
+          nullable: true
+        vigenciaInicio:
+          type: string
+          format: date
+        vigenciaFim:
+          type: string
+          format: date
+          nullable: true
+
+    CurvaPublicadaResponse:
+      type: object
+      required: [versaoCurvaId, codigoCurva, nomeCurva, modoOrigem, dataReferencia, momento, numeroVersao, estadoVersao, origemVersao, isVersaoCorrente, razaoSelecaoVersao, vertices]
+      properties:
+        versaoCurvaId:
+          type: string
+          format: uuid
+        codigoCurva:
+          type: string
+        nomeCurva:
+          type: string
+        modoOrigem:
+          type: string
+          enum: [BOOTSTRAPPED, IMPORTED]
+        dataReferencia:
+          type: string
+          format: date
+        momento:
+          type: string
+          enum: [ABERTURA, INTRADIA, FECHAMENTO]
+        numeroVersao:
+          type: integer
+        estadoVersao:
+          type: string
+          enum: [PUBLICADA, REPROVADA, SUBSTITUIDA, EM_VALIDACAO]
+        origemVersao:
+          type: string
+          enum: [CALCULADA, IMPORTADA, CARREGADA]
+        isVersaoCorrente:
+          type: boolean
+        razaoSelecaoVersao:
+          type: string
+          enum: [VERSAO_CORRENTE, VERSAO_EXPLICITA, SELECAO_AS_OF]
+        publicadoEm:
+          type: string
+          format: date-time
+          nullable: true
+        procedencia:
+          $ref: '#/components/schemas/ProcedenciaCurvaDTO'
+        validacao:
+          $ref: '#/components/schemas/ValidacaoCurvaDTO'
+        vertices:
+          type: array
+          items:
+            $ref: '#/components/schemas/VerticeCurvaDTO'
+
+    VerticeCurvaDTO:
+      type: object
+      required: [prazoDiasUteis, taxa]
+      properties:
+        prazoDiasUteis:
+          type: integer
+          example: 21
+        prazoDiasCorridos:
+          type: integer
+          nullable: true
+          example: 31
+        dataVencimento:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-09-21"
+        taxa:
+          type: string
+          description: Taxa anualizada (% a.a.) serializada como string com precisão de 12 casas.
+          example: "14.129384756123"
+        fatorDesconto:
+          type: string
+          nullable: true
+          description: Fator de desconto financeiro como string com precisão de 12 casas.
+          example: "0.988123456789"
+
+    VerticesPaginadosResponse:
+      type: object
+      required: [versaoCurvaId, codigoCurva, dataReferencia, vertices, totalVertices, pagina, totalPaginas]
+      properties:
+        versaoCurvaId:
+          type: string
+          format: uuid
+        codigoCurva:
+          type: string
+        dataReferencia:
+          type: string
+          format: date
+        vertices:
+          type: array
+          items:
+            $ref: '#/components/schemas/VerticeCurvaDTO'
+        totalVertices:
+          type: integer
+        pagina:
+          type: integer
+        totalPaginas:
+          type: integer
+
+    ProcedenciaCurvaDTO:
+      type: object
+      required: [execucaoCurvaId, numeroVersaoDefinicao]
+      properties:
+        execucaoCurvaId:
+          type: string
+          format: uuid
+        correlationId:
+          type: string
+          nullable: true
+        numeroVersaoDefinicao:
+          type: integer
+        modeloCodigo:
+          type: string
+          nullable: true
+        checksumModelo:
+          type: string
+          nullable: true
+        referenciasInsumo:
+          type: string
+          nullable: true
+        hashConjuntoInsumos:
+          type: string
+          nullable: true
+        loteIngestaoId:
+          type: integer
+          nullable: true
+        arquivoCarga:
+          type: string
+          nullable: true
+        hashArquivo:
+          type: string
+          nullable: true
+        carregadoPor:
+          type: string
+          nullable: true
+        justificativa:
+          type: string
+          nullable: true
+        versaoMotor:
+          type: string
+          nullable: true
+
+    ValidacaoCurvaDTO:
+      type: object
+      required: [statusGeral, itens]
+      properties:
+        statusGeral:
+          type: string
+          enum: [APROVADA, APROVADA_COM_AVISOS, REPROVADA]
+        itens:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemValidacaoDTO'
+
+    ItemValidacaoDTO:
+      type: object
+      required: [teste, classificacao, resultado]
+      properties:
+        teste:
+          type: string
+        classificacao:
+          type: string
+          enum: [BLOQUEANTE, AVISO]
+        resultado:
+          type: string
+          enum: [APROVADO, REPROVADO, NAO_APLICAVEL]
+        medidaObservada:
+          type: string
+          nullable: true
+        limiteAplicado:
+          type: string
+          nullable: true
+        detalhe:
+          type: string
+          nullable: true
+
+    HistoricoVersoesCurvaResponse:
+      type: object
+      required: [codigoCurva, dataReferencia, momento, versoes]
+      properties:
+        codigoCurva:
+          type: string
+        dataReferencia:
+          type: string
+          format: date
+        momento:
+          type: string
+        versoes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemHistoricoVersaoCurva'
+
+    ItemHistoricoVersaoCurva:
+      type: object
+      required: [versaoCurvaId, numeroVersao, estado, origemVersao, execucaoCurvaId]
+      properties:
+        versaoCurvaId:
+          type: string
+          format: uuid
+        numeroVersao:
+          type: integer
+        estado:
+          type: string
+          enum: [PUBLICADA, REPROVADA, SUBSTITUIDA, EM_VALIDACAO]
+        origemVersao:
+          type: string
+          enum: [CALCULADA, IMPORTADA, CARREGADA]
+        execucaoCurvaId:
+          type: string
+          format: uuid
+        modeloCodigo:
+          type: string
+          nullable: true
+        publicadoEm:
+          type: string
+          format: date-time
+          nullable: true
+
+    ProcedenciaCurvaResponse:
+      type: object
+      required: [versaoCurvaId, codigoCurva, procedencia]
+      properties:
+        versaoCurvaId:
+          type: string
+          format: uuid
+        codigoCurva:
+          type: string
+        procedencia:
+          $ref: '#/components/schemas/ProcedenciaCurvaDTO'
+
+    InterpolacaoRequest:
+      type: object
+      required: [dataReferencia, prazosDiasUteis]
+      properties:
+        dataReferencia:
+          type: string
+          format: date
+        momento:
+          type: string
+          enum: [ABERTURA, INTRADIA, FECHAMENTO]
+          default: FECHAMENTO
+        versao:
+          type: integer
+          nullable: true
+        prazosDiasUteis:
+          type: array
+          items:
+            type: integer
+          example: [21, 42, 63, 126, 252, 504]
+
+    InterpolacaoResponse:
+      type: object
+      required: [codigoCurva, versaoUtilizada, interpoladorUtilizado, resultados]
+      properties:
+        codigoCurva:
+          type: string
+        versaoUtilizada:
+          type: integer
+        interpoladorUtilizado:
+          type: string
+        resultados:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemInterpolacaoResultadoDTO'
+
+    ItemInterpolacaoResultadoDTO:
+      type: object
+      required: [prazoDiasUteis, status]
+      properties:
+        prazoDiasUteis:
+          type: integer
+        taxa:
+          type: string
+          nullable: true
+          description: Taxa anualizada (% a.a.) calculada como string com 12 casas.
+        fatorDesconto:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [VERTICE_EXATO, INTERPOLADO, EXTRAPOLADO, ERRO_FORA_INTERVALO]
+        erroMensagem:
+          type: string
+          nullable: true
+
+    ComparacaoCurvasRequest:
+      type: object
+      required: [dataReferencia, curvaA, curvaB]
+      properties:
+        dataReferencia:
+          type: string
+          format: date
+        momento:
+          type: string
+          enum: [ABERTURA, INTRADIA, FECHAMENTO]
+          default: FECHAMENTO
+        curvaA:
+          type: object
+          required: [codigo]
+          properties:
+            codigo:
+              type: string
+              example: "PRE"
+            versao:
+              type: integer
+              nullable: true
+        curvaB:
+          type: object
+          required: [codigo]
+          properties:
+            codigo:
+              type: string
+              example: "PRE_B3"
+            versao:
+              type: integer
+              nullable: true
+
+    ComparacaoCurvasResponse:
+      type: object
+      required: [dataReferencia, rotuloCurvaA, rotuloCurvaB, diferencas]
+      properties:
+        dataReferencia:
+          type: string
+          format: date
+        rotuloCurvaA:
+          type: string
+        rotuloCurvaB:
+          type: string
+        diferencas:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemDiferencaComparacao'
+
+    ItemDiferencaComparacao:
+      type: object
+      required: [prazoDiasUteis, status]
+      properties:
+        prazoDiasUteis:
+          type: integer
+        taxaA:
+          type: string
+          nullable: true
+        taxaB:
+          type: string
+          nullable: true
+        diferencaTaxaBps:
+          type: string
+          nullable: true
+          description: Diferença de taxa (taxaA - taxaB) em pontos-base (bps) formatada como string.
+        fatorDescontoA:
+          type: string
+          nullable: true
+        fatorDescontoB:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [COINCIDENTE, PRESENTE_APENAS_EM_A, PRESENTE_APENAS_EM_B]
+
+    ErroResposta:
+      type: object
+      required: [codigo, mensagem]
+      properties:
+        codigo:
+          type: string
+          example: "CODIGO_DUPLICADO"
+        mensagem:
+          type: string
+          example: "Já existe uma definição de curva cadastrada com o código 'PRE'."
+        detalhes:
+          type: array
+          items:
+            type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time

@@ -4,7 +4,24 @@ POC executável do desenho de solução completo de uma **Plataforma de Curvas**
 
 O alvo produtivo roda em Azure (Azure Functions, Kafka, Azure SQL, pods em AKS, front Angular). Esta POC reproduz a mesma topologia **100% local em Podman rootless**, com uma única fonte de dados: **B3**.
 
-Neste momento o repositório contém **o desenho** — especificações e diagramas. A implementação ainda não começou.
+Neste momento o repositório contém o desenho completo e o ambiente local executável (Kafka, SQL Server, Redis, Keycloak, migrações e catálogo de tópicos). A implementação dos serviços Java/Node/Angular ainda não começou.
+
+## Como subir
+
+Pré-requisito: [Podman](https://podman.io/) rootless (Windows/macOS: `podman machine init && podman machine start`). Rode o diagnóstico antes da primeira subida:
+
+```bash
+scripts/doctor.sh
+```
+
+Comando único de subida (perfil completo — Kafka, SQL Server, Redis, Keycloak):
+
+```bash
+deploy/podman/up.sh          # Windows: deploy/podman/up.ps1
+deploy/podman/down.sh -v     # derruba e remove volumes — ambiente descartável
+```
+
+Máquina com pouca memória: `deploy/podman/up.sh --lite` sobe só Kafka e SQL Server — o essencial para ingestão, construção e consulta de curva. Detalhes de portas, variáveis de ambiente e configuração de `DOCKER_HOST` para Testcontainers em [`docs/ambiente-local.md`](docs/ambiente-local.md).
 
 ## O que a plataforma faz
 
@@ -26,14 +43,13 @@ O desenho está em [`docs/architecture/curves-platform.drawio`](docs/architectur
 
 Componentes:
 
-- **`feeder-b3-marketdata`** (Node/TS) — adquire da B3 e publica em blocos no Kafka
+- **`feeder-marketdata`** (Node/TS) — adquire da B3 e publica em blocos no Kafka
 - **`curve-processor`** (Java) — normaliza e persiste; publica curvas importadas e carregadas
 - **`curve-engine`** (Java) — constrói por bootstrap, valida e publica; interpola sob demanda
 - **`curve-orchestrator`** (Java) — agenda, dispara, faz backfill e acompanha execuções
 - **`curve-api`** (Java) — cadastro de curva e consulta de tudo o que foi publicado
 - **`curve-bff`** (Java) — única fronteira exposta ao navegador
 - **`curve-web-ui`** (Angular) — painel do dia, viewer, disparo manual, carga e comparação
-- **`libs/curve-kernel`** (Java) — matemática de curva, convenções B3/ANBIMA, reconciliador
 
 ## Três regras que atravessam o desenho
 
@@ -48,7 +64,7 @@ O planejamento usa [OpenSpec](https://github.com/Fission-AI/OpenSpec). Oito muda
 ```
 openspec/changes/
 ├── curves-solution-architecture   # guarda-chuva: contratos, modelo de dados, runtime local
-├── feeder-b3-marketdata
+├── feeder-marketdata
 ├── curve-processor
 ├── curve-engine
 ├── curve-orchestrator
@@ -65,7 +81,8 @@ openspec validate curves-solution-architecture
 
 ## Convenções
 
-- **Java 21 / Spring Boot 3.4.x**, sem Lombok. Node 20 + TypeScript nos feeders. Angular 18+ no front.
+- **Java 21 / Spring Boot 4.0.x**, sem Lombok. Node 20 + TypeScript nos feeders. Angular 18+ no front.
 - **Precisão**: todo valor com política de arredondamento de mercado é `BigDecimal` e `DECIMAL(28,12)`. `double` é proibido fora de numérica iterativa interna, e o JSON serializa esses valores como texto.
 - **Banco**: tabelas, colunas e índices em **português**, sem acento, em snake_case. Código, tópicos Kafka e campos de evento em inglês. A tradução acontece no mapeamento objeto-relacional.
 - **Containers**: Podman rootless. Sem Docker.
+- **Arquitetura hexagonal (ports & adapters)**: os 6 módulos Java (`common`, `curve-api`, `curve-bff`, `curve-engine`, `curve-orchestrator`, `curve-processor`) seguem `domain/` (entidades e regras puras, sem import de framework) → `application/` (casos de uso + interfaces de porta, `@Transactional` e o pacote `dto/` do próprio módulo como únicas exceções deliberadas) → `adapter/in/{web,messaging,bootstrap}` e `adapter/out/{persistence,messaging,http,...}` (implementações concretas ligadas por Spring). Um `ArchitectureTest` (ArchUnit) por módulo reprova o build se `domain`/`application` importar tipo de infraestrutura — rode com `mvn -pl services/<módulo> test -Dtest=ArchitectureTest`. Ver `services/<módulo>/README.md` de cada módulo para o mapa de pacotes específico.

@@ -1,0 +1,32 @@
+## 1. Modelo de dado e transporte
+
+- [x] 1.1 Definir o tipo `RegistroInstrumentoBruto` (classeAtivo, tipoInstrumento, ticker, campo, valor, dataReferencia — todos texto livre, ver D-4 do design.md) e verificar com um teste unitário que a serialização preserva `valor` como texto sem conversão numérica (`src/feeders/bloomberg/tipos.ts` + `parser.test.ts` caso a: `typeof registros[0].valor === 'string'`)
+- [x] 1.2 Implementar o cliente de submissão de pedido (fase 1 do fluxo assíncrono) contra uma fixture simulada, com timeout/retentativa reaproveitando `src/http-client.ts` já existente, e verificar com teste que uma submissão bem-sucedida devolve um identificador de pedido (`src/feeders/bloomberg/cliente-data-license.ts::submeterPedido` — tentativa única sem retentativa automática, decisão deliberada: retentar um POST de submissão arriscaria criar pedido duplicado na Bloomberg real; `fetchComRetentativa` só faz GET, por isso não reusada aqui. `cliente-data-license.test.ts` casos a-c)
+- [x] 1.3 Implementar o polling de prontidão (fase 2) com backoff e tempo máximo configurável via variável de ambiente (`BLOOMBERG_MAX_WAIT_MS`), e verificar com teste que excede o tempo máximo retorna falha nomeando o identificador do pedido e o tempo excedido (`aguardarArquivoPronto`, casos d-g — o teste de timeout usa `vi.spyOn(Date, 'now')` com relógio simulado avançado pelo próprio `esperarImpl` fake, nunca espera real)
+- [x] 1.4 Implementar a busca do arquivo pronto (fase 3) reaproveitando a verificação de integridade já existente (`src/integridade.ts`), e verificar com teste que um arquivo vazio ou corrompido retorna falha nomeada (`buscarArquivo`, casos h-j)
+
+## 2. Parsing estrutural e publicação
+
+- [x] 2.1 Implementar o parser que corta o arquivo de saída Bloomberg (fixture simulada) em `RegistroInstrumentoBruto[]` por fronteira estrutural, sem interpretar o conteúdo de cada registro, e verificar com teste que o número de registros extraídos bate com o número de linhas/elementos da fixture (`parser.ts` + `parser.test.ts`, 3 casos: parsing multi-classe, linha malformada nomeando o número da linha, linhas em branco ignoradas)
+- [x] 2.2 Implementar `FeederBloomberg implements Feeder` orquestrando submissão → polling → busca → corte em blocos (`dividirEmBlocos`) → publicação (`kafka-publisher.ts`, `payloadKind: INDIVIDUAL_QUOTES`, `source: BLOOMBERG`), e verificar com teste de integração (produtor Kafka injetável, sem broker real) que o número de blocos publicados bate com o número de registros da fixture (`feeder-bloomberg.ts` + `feeder-bloomberg.test.ts` caso a — confirma `payload.records` no formato `{raw: string}` com `raw` sendo JSON válido de `RegistroInstrumentoBruto`)
+- [x] 2.3 Verificar com teste que o cenário "fonte responde sem dado para o pedido" retorna `NO_DATA` nomeando instrumentos e data, sem chamar o publicador Kafka (`feeder-bloomberg.test.ts` caso d)
+- [x] 2.4 Verificar com teste que falha de submissão e falha de busca do arquivo retornam `FAILED` nomeando a etapa e o motivo real, sem publicar conteúdo parcial (`feeder-bloomberg.test.ts` casos b, c, e, f — cobre falha de submissão, timeout, falha de busca e arquivo malformado, todos sem `enviar` chamado)
+
+## 3. Restrição ao caminho agendado
+
+- [x] 3.1 Criar `registrarFeedersBloomberg(registro, enviar)` (mesmo padrão de `registrarFeedersB3`) e registrar SOMENTE dentro de `main.ts`, depois de `montarRegistroCompleto()` (ver D-5 do design.md) — verificado lendo o diff real: `main-http.ts`/`azure-function-handler.ts` não foram tocados (`find -newermt` confirmou escopo exato), `main.ts` recebeu só as 3 mudanças cirúrgicas previstas (import, `origemPorDataset` com o novo branch `BLOOMBERG`, chamada de registro)
+- [x] 3.2 Verificar com teste que uma tentativa de disparo do dataset Bloomberg contra o registro usado por `main-http.ts` (sem o registro Bloomberg) resulta no `DatasetNaoSuportadoError` já existente, não numa espera bloqueada (**escrito por mim diretamente, não pela delegação** — a entrega original provava a restrição só estruturalmente, sem teste dedicado; `src/registro-feeders-completo.test.ts`, novo, confirma que `montarRegistroCompleto(enviar).resolver('BLOOMBERG_JUROS_CAMBIO')` lança `DatasetNaoSuportadoError` e que o dataset não aparece em `datasetsRegistrados()`)
+
+## 4. Honestidade sobre verificação real
+
+- [x] 4.1 Documentar no `README.md` de `feeder-marketdata` que o feeder Bloomberg foi construído e testado contra fixture, mas NÃO verificado contra um ambiente Bloomberg real (linha nova na tabela de datasets, seção "Datasets do Catálogo" — escrito por mim diretamente)
+- [x] 4.2 Atualizar `docs/extensao-feeders.md`: marcar a pergunta "modo de entrega" como respondida para Bloomberg (arquivo, assíncrono — ver D-1), mantendo LSEG em aberto (escrito por mim diretamente)
+
+## 5. Rodar a suíte e confirmar que nada quebrou
+
+- [x] 5.1 Rodar a suíte de testes completa de `feeder-marketdata` (Vitest) e confirmar 100% verde, incluindo os feeders B3/ANBIMA/BCB já existentes (`npm test` real — 34 arquivos de teste, 189/189 verde, nenhuma regressão nos feeders existentes)
+- [x] 5.2 Rodar `npm run build`/typecheck do serviço e confirmar que compila sem erro (`npm run build` real — `tsc --noEmit` limpo, exit 0)
+
+---
+
+Delegado ao agy numa única rodada (10 arquivos: tipos, cliente de transporte + teste, parser + teste, feeder + teste, registro restrito, edição cirúrgica de `main.ts`, fixture) — descoberta e design inteiramente meus antes de delegar (todas as assinaturas reais de `http-client.ts`/`integridade.ts`/`blocos.ts`/`kafka-publisher.ts`/`envelope.ts`/`lote-id.ts`/`registro-feeders.ts` verificadas lendo o código real, e o feeder B3 existente usado como padrão real a espelhar — nada deixado para o agy descobrir). Auditado: escopo limpo (`find -newermt` confirmou exatamente os 10 arquivos autorizados, `main-http.ts`/`azure-function-handler.ts` intocados), conteúdo de cada arquivo lido e conferido linha a linha contra a especificação, `Feeder`/`AcquisitionParams`/`AcquisitionResult`/`RegistroFeeders` confirmados sem nenhuma mudança de contrato. Único gap real da entrega: a tarefa 3.2 pedia um teste dedicado provando a restrição ao caminho agendado, e a entrega original só garantia isso estruturalmente (por omissão) — escrito por mim depois da auditoria, não repassado de volta ao agy (gap pequeno, mais rápido resolver direto). `npm test`/`npm run build` reais (não autorrelato do agy) — 189/189 verde, typecheck limpo.

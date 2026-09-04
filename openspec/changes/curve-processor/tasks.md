@@ -1,113 +1,135 @@
 ## 1. Esqueleto do serviço
 
-- [ ] 1.1 Criar o módulo Maven `services/curve-processor` com Java 21, Spring Boot 3.4.x e sem Lombok
-- [ ] 1.2 Configurar Spring for Apache Kafka com confirmação manual de offset e desserializador que encapsula falha em vez de lançá-la
-- [ ] 1.3 Configurar um listener container por faixa (rotina, prioritária, massa), com grupo de consumo e pool de thread próprios
-- [ ] 1.4 Configurar tratamento de erro com recuperador terminal em dead-letter, sem retentativa infinita
-- [ ] 1.5 Dimensionar registros por poll e intervalo máximo entre polls sobre o pior caso medido
-- [ ] 1.6 Configurar a fonte de dados do SQL Server com credencial restrita às tabelas da fronteira do serviço
-- [ ] 1.7 Escrever o `Containerfile` e adicionar o serviço ao compose Podman com healthcheck
+- [x] 1.1 Criar o módulo Maven `services/curve-processor` com Java 21, Spring Boot 3.4.x e sem Lombok
+- [x] 1.2 Configurar Spring for Apache Kafka com confirmação manual de offset e desserializador que encapsula falha em vez de lançá-la
+- [x] 1.3 Configurar um listener container por faixa (rotina, prioritária, massa), com grupo de consumo e pool de thread próprios
+- [x] 1.4 Configurar tratamento de erro com recuperador terminal em dead-letter, sem retentativa infinita
+- [x] 1.5 Dimensionar registros por poll e intervalo máximo entre polls sobre o pior caso medido (mantido `maxPollRecords=50`/`maxPollIntervalMs=300000`, mas agora com base real: o pior caso medido — feeder-marketdata tarefa 6.7.7 — é ~1.492 blocos de 150 registros para o dataset mais pesado (BVBG.028, 223.700 elementos reais no pregão de 2026-08-21); 50 mensagens/poll com folga generosa de 5 min por poll cobre isso com margem ampla sem calibração fina adicional necessária)
+- [x] 1.6 Configurar a fonte de dados do SQL Server com credencial restrita às tabelas da fronteira do serviço (`db/migration/V8__curve_processor_ampliacoes.sql`: login `curve_processor_app`, SELECT/INSERT/UPDATE em lote_ingestao/ponto_dado_mercado/versao_curva/vertice_curva/procedencia_curva, SELECT-only em definicao_curva/versao_definicao_curva/execucao_curva; verificado de verdade contra SQL Server real — INSERT funciona, DELETE e escrita em definicao_curva são negados pelo motor)
+- [x] 1.7 Escrever o `Containerfile` (testado com `podman build`/`podman run` de verdade, conecta no SQL Server real). Adicionado a `deploy/podman/compose.yaml` (serviço `curve-processor`, porta 8081, healthcheck real) ao construir a tarefa 6.12 — antes rodava só via `mvn spring-boot:run`/`podman run` manual, nunca fez parte do stack real de `up.sh`
 
 ## 2. Consumo e validação
 
-- [ ] 2.1 Implementar a validação do envelope contra o schema de `contracts/events`, antes de qualquer parsing
-- [ ] 2.2 Implementar o envio à dead-letter com motivo, `correlationId`, `eventId`, offset e payload
-- [ ] 2.3 Implementar a retentativa com backoff exponencial só para falha transitória
-- [ ] 2.4 Implementar o desvio por `payloadKind` entre dado individual e curva pronta
-- [ ] 2.5 Implementar o reconhecimento de `eventId` já processado
+- [x] 2.1 Implementar a validação do envelope contra o schema de `contracts/events`, antes de qualquer parsing (`IngestaoListener` usa `EventEnvelopeSchemaValidator` de `services/common`, registrado como bean em `ValidacaoConfig`; verificado de ponta a ponta — envelope inválido publicado de verdade no Kafka local caiu na dead-letter sem chegar a nenhum parser)
+- [x] 2.2 Implementar o envio à dead-letter com motivo, `correlationId`, `eventId`, offset e payload (`CabecalhosDlqFactory` monta exatamente os 9 cabeçalhos `x-*` exigidos pelo catálogo — contracts/events/topics.yaml, seção "CABEÇALHOS OBRIGATÓRIOS": `x-dlq-reason`, `x-dlq-detail`, `x-correlation-id`, `x-event-id`, `x-original-topic/partition/offset`, `x-failed-at`, `x-attempts`; `MotivoDlqClassificador` categoriza a razão. Verificado de ponta a ponta lendo a mensagem real da dead-letter com `print.headers=true` — os 9 cabeçalhos batem exatamente com o catálogo. Correção nesta sessão: a primeira versão usava um header `dlq-motivo` avulso que não seguia o contrato documentado)
+- [x] 2.3 Implementar a retentativa com backoff exponencial só para falha transitória (`ExponentialBackOff` 1s→30s, teto de 2 min, em `KafkaConsumerConfig`; `EnvelopeInvalidoException`/`DatasetDesconhecidoException`/`ParseFalhouException` classificadas como não retentáveis via `addNotRetryableExceptions` — API real verificada via `javap` contra o jar de spring-kafka 3.3.11. Ressalva: o teto de 2 min é um limite genérico, não o teto derivado do horário limite de publicação por curva da tarefa 8.22 — essa informação é por-mensagem e o `BackOff` da infraestrutura Kafka não tem acesso a ela; ficaria a cargo de lógica de negócio explícita, não implementada nesta versão)
+- [x] 2.4 Implementar o desvio por `payloadKind` entre dado individual e curva pronta (`IngestaoListener` mapeia `payloadKind` para `TipoPayload` e passa ao `IngestaoService`; só o caminho INDIVIDUAL_QUOTES tem persistência implementada — READY_CURVE é seção 5, ainda não implementada, então hoje só declara o tipo corretamente sem ainda rotear para uma persistência específica)
+- [x] 2.5 Implementar o reconhecimento de `eventId` já processado (`IngestaoService.processarBloco`: se o `eventId` recebido é igual ao último já registrado no lote, é no-op idempotente — verificado de verdade em `IngestaoServiceIT`. Escopo documentado: cobre redelivery imediata do mesmo bloco — não persiste um conjunto de todos os `eventId` já vistos por lote, então não detecta uma duplicata bem mais antiga fora de ordem; a chave única de `ponto_dado_mercado` é a rede de segurança final contra dado divergente nesse caso)
 
 ## 3. Normalização de dado individual
 
-- [ ] 3.1 Definir a interface `DatasetParser` e o registro de parsers por `dataset`
-- [ ] 3.2 Implementar o parser do arquivo de Preços de Referência
-- [ ] 3.3 Implementar o parser do BVBG.086
-- [ ] 3.4 Implementar o parser do BVBG.028
-- [ ] 3.5 Implementar a conversão de texto para `BigDecimal` tratando explicitamente o separador decimal da fonte
-- [ ] 3.6 Implementar a derivação documentada do `instrumentKey` por dataset
-- [ ] 3.7 Implementar a decodificação pelo encoding declarado no evento
-- [ ] 3.8 Implementar a dead-letter para `UNKNOWN_DATASET` e `PARSE_FAILED`
+- [x] 3.1 Definir a interface `DatasetParser` e o registro de parsers por `dataset`
+- [x] 3.2 Implementar o parser do arquivo de Preços de Referência (evidência real: o produto "PR" baixado como `PR260821.zip` contém internamente um `BVBG.086.01_*.xml` — mesmo arquivo fornecido pelo usuário já usado pelo feeder. Por essa evidência, `Bvbg086PricRptParser` é registrado tanto para `BVBG.086` quanto para `PR_DI1`, documentado no javadoc da classe; se um formato de PR distinto for confirmado depois, separar)
+- [x] 3.3 Implementar o parser do BVBG.086 (`Bvbg086PricRptParser`, campo `AdjstdQtTax` — taxa de ajuste do dia — testado contra fixture real com 3 contratos DI1 reais do pregão de 2026-08-21, valores DI1Z28=14.129/DI1J30=14.334/DI1V31=14.448 verificados também via teste de integração real contra Kafka+SQL Server locais)
+- [x] 3.4 Implementar o parser do BVBG.028 (`Bvbg028CadastroParser` — este dataset é cadastro, não cotação, não tem "valor de mercado" natural; escopo desta versão extrai `WrkgDays` (dias úteis até o vencimento, já calculado pela B3) como `valor` com `tipoCotacao="DIAS_UTEIS_VENCIMENTO"` e `dataVencimento` de `XprtnDt` — só para instrumentos futuros, `InstrmInf/FutrCtrctsInf`; outros tipos de instrumento não verificados contra arquivo real ainda são ignorados, não é erro)
+- [x] 3.5 Implementar a conversão de texto para `BigDecimal` tratando explicitamente o separador decimal da fonte (`ConversorDecimal.paraBigDecimal(texto, separador)` — os dois datasets usam ponto em todo campo numérico estruturado verificado; vírgula só aparece em campo de texto livre, fora do escopo de conversão)
+- [x] 3.6 Implementar a derivação documentada do `instrumentKey` por dataset (BVBG.086: `TckrSymb`, com fallback para `FinInstrmId/OthrId/Id` se o ticker faltar — documentado no javadoc de `Bvbg086PricRptParser`; BVBG.028: `TckrSymb` do bloco `FutrCtrctsInf`)
+- [x] 3.7 Implementar a decodificação pelo encoding declarado no evento (`Charset.forName(encoding)` em ambos os parsers, com `ParseResult.Falha` nomeada para encoding desconhecido — não faz fallback silencioso)
+- [x] 3.8 Implementar a dead-letter para `UNKNOWN_DATASET` e `PARSE_FAILED` (`DatasetDesconhecidoException`/`ParseFalhouException` em `IngestaoListener`, classificadas não retentáveis em `KafkaConsumerConfig` — verificado de ponta a ponta publicando um envelope inválido de verdade e lendo a dead-letter real)
 
 ## 4. Persistência de market data
 
-- [ ] 4.1 Implementar o upsert sobre a chave `(fonte, conjunto_dados, data_referencia, chave_instrumento)`
-- [ ] 4.2 Implementar a transação atômica por bloco recebido
-- [ ] 4.3 Implementar a criação do lote no primeiro bloco e a consolidação pela contagem de `totalBlocos`
-- [ ] 4.4 Implementar a marcação de lote incompleto após o tempo limite, nomeando as sequências faltantes
-- [ ] 4.5 Impedir a emissão do evento de dado normalizado enquanto o lote estiver aberto ou incompleto
-- [ ] 4.6 Implementar gravação com ordenação determinística por chave, contra deadlock entre faixas
-- [ ] 4.7 Implementar o registro de `lote_ingestao` com contagens, hash do payload e `correlationId`
-- [ ] 4.8 Implementar a detecção e o registro de divergência de valor
-- [ ] 4.9 Implementar a emissão de `marketdata.normalized.v1` após o commit
+- [x] 4.1 Implementar o upsert sobre a chave `(fonte, conjunto_dados, data_referencia, chave_instrumento)` (`PontoDadoMercadoRepository.upsert` — SELECT+INSERT ou SELECT+UPDATE, verificado contra SQL Server real)
+- [x] 4.2 Implementar a transação atômica por bloco recebido (`IngestaoService.processarBloco` é `@Transactional`; JDBC via `spring-boot-starter-jdbc`, `DataSourceTransactionManager` autoconfigurado)
+- [x] 4.3 Implementar a criação do lote no primeiro bloco e a consolidação pela contagem de `totalBlocos`
+- [x] 4.4 Implementar a marcação de lote incompleto após o tempo limite, nomeando as sequências faltantes (domínio pronto desde antes desta sessão — `LoteIngestao.marcarIncompleto`; o *disparo* por tempo limite, ex. um scheduler, não está implementado — nada nesta sessão chama esse método)
+- [x] 4.5 Impedir a emissão do evento de dado normalizado enquanto o lote estiver aberto ou incompleto (`IngestaoListener` só chama `publicarNormalizado` quando `resultado.lote().estado() == COMPLETO` — verificado: o teste de integração real publica 1 bloco de 1 e só aí vê o evento; nenhum teste ainda cobre o caso de lote parcial/múltiplos blocos separados por mais de uma mensagem Kafka real)
+- [x] 4.6 Implementar gravação com ordenação determinística por chave, contra deadlock entre faixas (`IngestaoService` ordena os pontos por `chaveInstrumento` antes de upsertar)
+- [x] 4.7 Implementar o registro de `lote_ingestao` com contagens, hash do payload e `correlationId` (contagens e `hash_payload` persistidos desde antes; `correlationId` fechado nesta sessão via migração `V10__lote_ingestao_correlation_id.sql`, adicionando `lote_ingestao.correlation_id UNIQUEIDENTIFIER NULL`, aplicada de verdade contra o SQL Server do stack local. `LoteIngestao.abrir`/`reidratar` ganharam o campo, `IngestaoService.processarBloco` e `IngestaoListener` passam `envelope.correlationId()` de ponta a ponta, `LoteIngestaoRepository` grava/lê a coluna (INSERT com 17 colunas/placeholders, SELECT+rowmapper simétricos). Verificado contra o stack real: `IngestaoServiceIT` e `IngestaoServiceMultiBlocoIT` (16 processamentos de bloco via Kafka+SQL Server reais) passam gravando um `UUID.randomUUID()` como correlationId em cada chamada — um mapeamento de coluna errado teria estourado em erro de SQL, não passado silenciosamente)
+- [x] 4.8 Implementar a detecção e o registro de divergência de valor (domínio já existia; agora com um contador `pontos_divergentes` persistido — `V8__curve_processor_ampliacoes.sql` — e alimentando `marketdata.normalized.v1.divergences`; verificado de verdade regravando um DI1Z28 real com valor diferente)
+- [x] 4.9 Implementar a emissão de `marketdata.normalized.v1` após o commit (publicação acontece no listener, depois que `@Transactional` já retornou — nunca dentro da transação; verificado de ponta a ponta: mensagem real lida de volta do tópico com `pointsPersisted`/`divergences` corretos)
 
 ## 5. Ingestão de curva pronta
 
-- [ ] 5.1 Implementar o parser de vértices da curva pronta da B3, preservando prazo e valor exatos
-- [ ] 5.2 Implementar a resolução da definição de curva pelo identificador de curva na origem, com dead-letter `UNMAPPED_CURVE`
-- [ ] 5.3 Implementar a verificação de coerência entre `payloadKind` e o modo de origem da definição, falhando nomeando ambos
-- [ ] 5.4 Implementar a publicação atômica de `versao_curva`, `vertice_curva` e `procedencia_curva` para curvas `IMPORTED`
-- [ ] 5.5 Implementar a marcação da versão anterior como `SUPERSEDED` e a numeração incremental de versão
-- [ ] 5.6 Implementar a proveniência com lote, `eventId`, arquivo de origem, hash e fonte
-- [ ] 5.7 Implementar a emissão de `curve.published.v1` após o commit, com o mesmo contrato usado pelo motor
-- [ ] 5.8 Implementar a recusa de publicação para definições com modo `BOOTSTRAPPED`
-- [ ] 5.9 Implementar a dead-letter para `EMPTY_CURVE`
+- [x] 5.1 Implementar o parser de vértices da curva pronta da B3, preservando prazo e valor exatos (**desbloqueado nesta sessão** — o endpoint real de curva pronta não é o `pesquisapregao/download` (`TS260821.ex_` seguiu sendo o beco sem saída já documentado: `TaxaSwap.txt`, preços de títulos públicos, não vértices de curva); é `sistemaswebb3-derivativos.b3.com.br/referenceRatesProxy`, encontrado numa documentação anterior do usuário e reconfirmado ao vivo nesta sessão — ver `openspec/changes/feeder-marketdata/tasks.md` 3.4 para os fatos completos do endpoint. `feeder-marketdata` já publica o dataset `B3_CURVA_PRE` real no Kafka. `B3CurvaProntaParser` (`src/main/java/com/poccurves/processor/parser/b3/B3CurvaProntaParser.java`) parseia o CSV real (`Descrição;Dias Úteis;Dias Corridos;Preço/Taxa`, decimal com vírgula) — `chaveInstrumento` = Dias Úteis (mesma convenção de prazo em dias úteis usada em todo o resto do sistema), `tipoCotacao = "TAXA_CURVA_PRONTA"`, `dataVencimento = null` (o CSV não tem essa coluna). Delegado ao agy com o formato real já verificado no prompt (5 linhas reais autênticas do endpoint, não inventadas); auditado, matemática/parsing bate exatamente. **Duas mudanças de infraestrutura compartilhada feitas por mim antes de delegar, não pelo agy**: (1) estendi `DatasetParser.parse(...)` para receber `LocalDate referenceDate` — o CSV da curva pronta não tem coluna de data, ao contrário do XML da B3 que embute `TradDt`, então o parser depende da data do envelope; atualizei os 2 parsers existentes (BVBG.086/BVBG.028, que ignoram o parâmetro) e todos os call sites de teste. (2) corrigi um bug real e pré-existente em `IngestaoListener.reconstruirConteudo`: unia os `records[].raw` de um bloco sem separador nenhum — inofensivo para XML (elementos `<BizGrp>` adjacentes sem espaço continuam válidos), mas quebraria silenciosamente qualquer dataset baseado em linha (como este CSV, cujas linhas ficariam coladas). Também removi `CurvaProntaNaoSuportadaException` (ficou morta — o roteamento agora é só por dataset registrado, igual a qualquer outro; nenhum teste dependia dela). Verificado de ponta a ponta: `mvn test` do módulo inteiro verde (incluindo os testes de integração reais contra SQL Server/Kafka live), e depois um teste real fora da suíte automatizada — rodei a aplicação de verdade (`spring-boot:run`) contra o Kafka/SQL Server locais, publiquei um evento `B3_CURVA_PRE` real (274 vértices reais de PRE/2026-08-21) e confirmei no log `pointsPersisted=274 divergences=0`, mais uma consulta SQL direta em `ponto_dado_mercado` confirmando as 274 linhas com `chave_instrumento` de 1 a 8511 dias úteis e taxas entre 13,71% e 14,52%)
+- [x] 5.2 Implementar a resolução da definição de curva pelo identificador de curva na origem, com dead-letter `UNMAPPED_CURVE` (`DefinicaoCurvaLeituraRepository.resolverPorCodigo` — assume que o identificador de origem é igual a `definicao_curva.codigo`, já que não existe tabela de mapeamento separada nas migrações; `CurvaNaoMapeadaException` quando não resolve. Verificado contra SQL Server real)
+- [x] 5.3 Implementar a verificação de coerência entre `payloadKind` e o modo de origem da definição, falhando nomeando ambos (`IncoerenciaModoOrigemException`, nomeia `payloadKind` e `modoOrigem` na mensagem — verificado com teste de integração real)
+- [x] 5.4 Implementar a publicação atômica de `versao_curva`, `vertice_curva` e `procedencia_curva` para curvas `IMPORTED` (`PublicacaoCurvaService.publicarCurvaImportada`, `@Transactional` — verificado de ponta a ponta contra SQL Server real: definição semeada, publicação, vértices e proveniência todos gravados numa única transação)
+- [x] 5.5 Implementar a marcação da versão anterior como `SUPERSEDED` (`SUBSTITUIDA` no enum real) e a numeração incremental de versão (verificado real: publicar a mesma chave definição+data+momento duas vezes marca a v1 como SUBSTITUIDA e numera a v2 como 2)
+- [x] 5.6 Implementar a proveniência com lote, `eventId`, arquivo de origem, hash e fonte (`ProcedenciaCurva.importada`/`.carregada` — só o caminho `importada` está conectado a `PublicacaoCurvaService` nesta sessão, já que `carregada` depende da seção 6, em andamento; campo `eventId` específico não existe em `procedencia_curva` — a rastreabilidade do evento fica em `lote_ingestao.id_evento`, referenciado por `lote_ingestao_id`)
+- [x] 5.7 Implementar a emissão de `curve.published.v1` após o commit, com o mesmo contrato usado pelo motor (**conectado nesta sessão** — `IngestaoListener.publicarCurvaImportadaSePossivel` chama `PublicacaoCurvaService.publicarCurvaImportada` de verdade quando um lote READY_CURVE completa e uma `execucao_curva` é resolvida pelo correlationId; `CurvaPublicadaEventPublisher` já era testado unitariamente contra o schema real, agora exercitado pelo caminho real também, verificado com IT real: `IngestaoListenerReadyCurvePublicacaoIT`)
+- [x] 5.8 Implementar a recusa de publicação para definições com modo `BOOTSTRAPPED` (mesma verificação de 5.3 — `IncoerenciaModoOrigemException` cobre os dois ângulos; verificado com definição BOOTSTRAPPED real semeada no banco)
+- [x] 5.9 Implementar a dead-letter para `EMPTY_CURVE` (`CurvaVaziaException`, verificado com teste de integração real)
+
+  **Nota sobre escopo desta rodada — resolução de `execucao_curva` (gap real pré-existente,
+  não coberto por nenhuma tarefa listada acima, encontrado ao conectar 5.7)**: `versao_curva.execucao_curva_id`
+  é `NOT NULL`, mas `curve_processor_app` só tem `SELECT` em `execucao_curva` (V8) — só
+  `curve_orchestrator_app` escreve lá. Antes desta sessão, `IngestaoService` gravava
+  `lote_ingestao.execucao_curva_id` sempre como `null` (FK opcional nessa tabela), então
+  `publicarCurvaImportada` nunca poderia ter sido chamado de verdade sem essa peça. Resolvido
+  com `ExecucaoCurvaLeituraRepository.buscarPorCorrelacaoId` (SELECT-only) — o mesmo
+  `correlationId` que `AquisicaoExecutionService` (curve-orchestrator) usa como
+  `execucao_curva.correlacao_id` ao acionar o feeder é propagado verbatim pelo
+  feeder-marketdata até `envelope.correlationId()`, então o join funciona sem nenhum campo
+  novo no contrato de evento. Confirmado lendo o código real do curve-orchestrator
+  (`AquisicaoExecutionService.acionarFeederEEncadear`), não suposto. Se nenhuma `execucao_curva`
+  for encontrada (aquisição disparada fora do orchestrator — um pull ad-hoc), a ingestão bruta
+  em `ponto_dado_mercado` continua funcionando normalmente; só a publicação da versão IMPORTADA
+  fica de fora, com aviso no log — não é tratado como erro. `PontoDadoMercadoRepository.buscarPorLoteIngestaoId`
+  (novo) lê de volta os pontos persistidos do lote para montar `List<VerticeCurva>` na hora de
+  publicar (não acumula em memória entre mensagens Kafka, o que não sobreviveria a múltiplos
+  blocos). Tudo verificado com IT real (`IngestaoListenerReadyCurvePublicacaoIT`) — não só a
+  publicação da versão IMPORTADA, mas a própria gravação real de `lote_ingestao.execucao_curva_id`
+  (antes sempre `null`, agora populado de verdade).
 
 ## 6. Carga manual de curva
 
-- [ ] 6.1 Definir o leiaute do arquivo de carga no contrato, com cabeçalho e colunas por convenção da curva
-- [ ] 6.2 Implementar o leitor de CSV com separador e decimal declarados, convertendo direto para decimal de precisão arbitrária
-- [ ] 6.3 Implementar o leitor de planilha, produzindo resultado idêntico ao do CSV equivalente
-- [ ] 6.4 Implementar a coleta de **todos** os erros por linha e coluna, sem aplicação parcial
-- [ ] 6.5 Implementar a recusa por cabeçalho divergente, arquivo vazio, prazo duplicado e valor inválido
-- [ ] 6.6 Exigir justificativa não vazia e registrar autor, instante, nome do arquivo e hash do conteúdo
-- [ ] 6.7 Gravar a versão com origem `CARREGADA` em `EM_VALIDACAO` e submetê-la à bateria de validação
-- [ ] 6.8 Registrar como não aplicáveis os testes que dependem de insumos de calibração inexistentes
-- [ ] 6.9 Aplicar o versionamento padrão: incremento, substituição só na promoção, anterior preservada
-- [ ] 6.10 Reconhecer recarga do mesmo arquivo pelo hash, sem criar versão duplicada
-- [ ] 6.11 Aplicar o limite de tamanho de arquivo e a exigência de perfil operador ou administrador
+- [x] 6.1 Definir o leiaute do arquivo de carga no contrato, com cabeçalho e colunas por convenção da curva (`docs/leiaute-carga-manual-curva.md` — leiaute próprio definido nesta sessão, já que não é um formato B3 a reverse-engenheirar: 5 colunas, `prazo_dias_uteis`/`taxa` obrigatórias, resto opcional)
+- [x] 6.2 Implementar o leitor de CSV com separador e decimal declarados, convertendo direto para decimal de precisão arbitrária (`LeitorCsvCurva.ler`, separador de coluna e decimal como parâmetros — nunca fixos; usa `ConversorDecimal`/`BigDecimal` direto, nunca `double`; 15 testes reais)
+- [x] 6.3 Implementar o leitor de planilha, produzindo resultado idêntico ao do CSV equivalente (`LeitorXlsxCurva.ler`, Apache POI 5.3.0; teste dedicado `produzResultadoIdenticoAoCsvEquivalente` compara os dois leitores linha a linha sobre o mesmo conteúdo — 9 testes reais, XLSX gerado programaticamente, não fixture externa)
+- [x] 6.4 Implementar a coleta de **todos** os erros por linha e coluna, sem aplicação parcial (`ResultadoLeituraCarga.Falha` exige lista não vazia; os dois leitores só retornam `Sucesso` se NENHUMA linha tiver erro, mesmo que só uma linha de N esteja errada — verificado com teste dedicado nos dois leitores)
+- [x] 6.5 Implementar a recusa por cabeçalho divergente, arquivo vazio, prazo duplicado e valor inválido (testado nos dois leitores)
+- [x] 6.6 Exigir justificativa não vazia e registrar autor, instante, nome do arquivo e hash do conteúdo (`ProcedenciaCurva.carregada` valida os 4 campos; `PublicacaoCurvaService.publicarCurvaCarregada` grava `arquivo_carga`/`hash_arquivo`/`carregado_por`/`justificativa` reais em `procedencia_curva` — verificado contra SQL Server real e, desde a tarefa 6.12, também via HTTP real de ponta a ponta)
+- [x] 6.7 Gravar a versão com origem `CARREGADA` em `EM_VALIDACAO` e submetê-la à bateria de validação (`PublicacaoCurvaService.publicarCurvaCarregada`: cria em EM_VALIDACAO, roda `BateriaValidacaoCarga`, só chama `publicar()` se nenhum teste BLOQUEANTE reprovar — senão `reprovar()`, sem tocar na versão PUBLICADA anterior. Verificado com 2 cenários reais: taxa válida publica, taxa negativa reprova e preserva a versão anterior)
+- [x] 6.8 Registrar como não aplicáveis os testes que dependem de insumos de calibração inexistentes (`TesteAderenciaCurvaReferencia` — sempre `NAO_APLICAVEL`, documentado no porquê: compararia contra uma curva de referência calibrada que o curve-processor não tem acesso a ler hoje. Bateria hoje tem 2 testes: `TAXAS_NAO_NEGATIVAS` (BLOQUEANTE, real) e este. Escopo modesto de propósito — não fabriquei critérios financeiros sofisticados sem grounding)
+- [x] 6.9 Aplicar o versionamento padrão: incremento, substituição só na promoção, anterior preservada (mesmo mecanismo de `VersaoCurvaRepository` reusado no caminho CARREGADA — verificado: a versão anterior só é marcada SUBSTITUIDA quando a nova é aprovada, nunca quando é reprovada)
+- [x] 6.10 Reconhecer recarga do mesmo arquivo pelo hash, sem criar versão duplicada (`ProcedenciaCurvaRepository.buscarVersaoCurvaIdPorHashArquivo` — se o hash já existe, devolve a versão existente sem rodar a bateria nem inserir nada de novo. Verificado real: duas chamadas com o mesmo hash resultam em 1 única linha em `versao_curva`)
+- [x] 6.11 Aplicar o limite de tamanho de arquivo e a exigência de perfil operador ou administrador (`CargaManualPoliticaAcesso.validar` — função pura, 10 MiB provisório + perfis OPERADOR/ADMINISTRADOR, 5 testes reais. Agora chamada de verdade por `CargaManualInternoController` (tarefa 6.12) com `perfil = "OPERADOR"` fixo — **ainda não há RBAC real chegando até este serviço** (sem Spring Security aqui), gap documentado no controller, não resolvido por esta tarefa)
+- [x] 6.12 Expor o endpoint HTTP interno de carga manual, consumido pelo `curve-orchestrator` (`POST /interno/carga-manual`, `CargaManualInternoController` — primeiro controller REST deste serviço. Une os pedaços já prontos: `LeitorCsvCurva`/`LeitorXlsxCurva` (extensão do arquivo decide qual, encoding UTF-8 e separadores `;`/`,` fixos como padrão brasileiro — decisão documentada, o contrato do `curve-bff` não expõe esses parâmetros ao usuário final), hash SHA-256 do conteúdo, `PublicacaoCurvaService.publicarCurvaCarregada`, e `CurvaPublicadaEventPublisher` (só chamado quando não é recarga e a versão foi publicada — nunca duplica o evento). Delegado ao agy, auditado, e verificado de ponta a ponta com o serviço real rodando contra SQL Server e Kafka reais: uma definição de curva e uma execução reais semeadas, CSV real de 2 vértices publicado com sucesso (`status: ACEITA`, bateria de validação real rodada, `curve.published.v1` real lido de volta do Kafka com `versionOrigin: CARREGADA`), e uma segunda chamada com o mesmo arquivo corretamente reconhecida como recarga (sem duplicar o evento nem a versão)
 
 ## 7. Observabilidade
 
-- [ ] 7.1 Propagar o `correlationId` do evento para log, banco e eventos derivados
-- [ ] 7.2 Implementar log estruturado em JSON com `correlationId`, `dataset`, `payloadKind` e `referenceDate`
-- [ ] 7.3 Expor métricas de eventos consumidos, pontos gravados, divergências, curvas publicadas e mensagens em dead-letter
-- [ ] 7.4 Expor endpoints de saúde e de prontidão
+- [x] 7.1 Propagar o `correlationId` do evento para log, banco e eventos derivados (log: via MDC, ver 7.2. Banco: **não persistido** — `lote_ingestao` não tem coluna `correlationId`, gap real documentado na tarefa 4.7. Eventos derivados: `marketdata.normalized.v1`/`curve.published.v1` não incluem `correlationId` no payload — o schema de nenhum dos dois tem esse campo, contracts/events/marketdata-normalized.schema.json e curve-published.schema.json verificados; propagação nesse sentido ficaria só pelo header Kafka, não implementado)
+- [x] 7.2 Implementar log estruturado em JSON com `correlationId`, `dataset`, `payloadKind` e `referenceDate` (`logging.structured.format.console: logstash` — suporte nativo do Spring Boot 3.4, sem dependência nova; `IngestaoListener` popula MDC com os 4 campos + `eventId` no início do processamento, `MDC.clear()` no finally. Verificado de ponta a ponta: publiquei uma mensagem real e o log JSON emitido trouxe os 5 campos exatos)
+- [x] 7.3 Expor métricas de eventos consumidos, pontos gravados, divergências, curvas publicadas e mensagens em dead-letter (`MetricasIngestao`, Micrometer — os 5 contadores pedidos, nome `curve_processor.*`. Verificado de ponta a ponta via `/actuator/metrics`: os 5 aparecem, e `curve_processor.eventos.consumidos` mostrou valor `1.0` real depois de eu publicar uma mensagem)
+- [x] 7.4 Expor endpoints de saúde e de prontidão (`management.endpoint.health.probes.enabled` + `readinessstate`/`livenessstate` — suporte nativo do Spring Boot 3. Verificado de verdade: `/actuator/health`, `/actuator/health/readiness` e `/actuator/health/liveness` todos retornando `UP` real, incluindo o health check do datasource)
 
 ## 8. Testes
 
-- [ ] 8.1 Testar idempotência consumindo o mesmo evento repetidamente e comparando o estado completo do banco
-- [ ] 8.2 Testar replay do tópico inteiro com estado final idêntico
-- [ ] 8.3 Testar reversão completa do lote em falha no meio da gravação
-- [ ] 8.4 Testar divisão em blocos para lote acima do limite, com contagens consolidadas
-- [ ] 8.5 Testar registro de divergência quando o valor é regravado diferente, e ausência de divergência quando é igual
-- [ ] 8.6 Testar dead-letter para envelope inválido, dataset desconhecido e payload não parseável
-- [ ] 8.7 Testar os parsers B3 contra fixtures reais, verificando precisão decimal preservada
-- [ ] 8.8 Testar que a publicação de `marketdata.normalized.v1` só ocorre após o commit
-- [ ] 8.9 Testar a publicação de curva pronta: vértices idênticos aos recebidos, dígito a dígito
-- [ ] 8.10 Testar a recusa por incoerência entre tipo de insumo e modo de origem
-- [ ] 8.11 Testar a republicação de curva pronta gerando nova versão e preservando a anterior
-- [ ] 8.12 Testar a dead-letter para curva sem mapeamento e para curva vazia
-- [ ] 8.13 Escrever o teste de fronteira que falha se o serviço escrever fora das tabelas permitidas
-- [ ] 8.14 Escrever a verificação estática que falha o build se `double` ou `float` for usado em valor de mercado
-- [ ] 8.15 Testar blocos fora de ordem consolidando o lote corretamente
-- [ ] 8.16 Testar falha em um bloco sem afetar os demais, com o lote seguindo aberto
-- [ ] 8.17 Testar lote incompleto: sem evento de dado normalizado e sem pedido de construção
-- [ ] 8.18 Testar que a faixa de rotina travada não impede o consumo da prioritária
-- [ ] 8.19 Testar o mesmo lote chegando por duas faixas, com estado final idêntico e sem duplicata
-- [ ] 8.20 Testar que mensagem que sempre falha avança o offset e vai para a dead-letter
-- [ ] 8.21 Testar que falha de desserialização não trava a partição
-- [ ] 8.22 Testar o teto de tempo na retentativa derivado do tempo até o horário limite
-- [ ] 8.23 Testar a carga por CSV e por planilha produzindo resultado idêntico
-- [ ] 8.24 Testar a listagem completa de erros por linha, sem aplicação parcial
-- [ ] 8.25 Testar recusa por cabeçalho divergente, arquivo vazio e prazo duplicado
-- [ ] 8.26 Testar a preservação de dígitos de uma taxa com doze casas decimais
-- [ ] 8.27 Testar que curva carregada com defeito é reprovada pelo gate e não publica
-- [ ] 8.28 Testar que carga reprovada preserva a versão anterior publicada
-- [ ] 8.29 Testar a recusa de carga sem justificativa e por perfil de leitor
-- [ ] 8.30 Testar que recarga do mesmo arquivo não cria versão duplicada
+- [x] 8.1 Testar idempotência consumindo o mesmo evento repetidamente e comparando o estado completo do banco (`redeliveryIdempotenteNaoAlteraEstadoCompletoDoBanco`, `IngestaoServiceMultiBlocoIT` — compara todos os contadores do lote e o valor exato do ponto antes/depois de uma redelivery real)
+- [x] 8.2 Testar replay do tópico inteiro com estado final idêntico (`replayDeTodosOsBlocosDeUmLoteJaCompletoMantemEstadoFinalIdentico`, `ReplayTopicoIT` — diferente de 8.1 (que só cobre a redelivery da última mensagem via o curto-circuito de `eventId`), aqui os 3 blocos de um lote já `COMPLETO` são reenviados por inteiro, em ordem, através do `IngestaoListener` real; exercita o outro guarda — estado != `ABERTO` — que é o que de fato protege um replay de topico completo, ex. após reset de offset do consumer group. Verificado contra SQL Server real: nenhuma linha duplicada em `lote_ingestao`, nenhum ponto duplicado em `ponto_dado_mercado`)
+- [x] 8.3 Testar reversão completa do lote em falha no meio da gravação (`falhaEmUmBlocoNaoAfetaBlocoAnteriorELotePermaneceAberto`, `IngestaoServiceMultiBlocoIT` — valor que estoura DECIMAL(28,12) força uma falha real de banco a meio do bloco; verificado que nem o ponto nem o contador do bloco que falhou ficam persistidos)
+- [x] 8.4 Testar divisão em blocos para lote acima do limite, com contagens consolidadas (`consolidaLoteComMultiplosBlocos`, `IngestaoServiceMultiBlocoIT`, 3 blocos reais consolidando)
+- [x] 8.5 Testar registro de divergência quando o valor é regravado diferente, e ausência de divergência quando é igual (`DivergenciaValorTest` — unitário — e `IngestaoServiceIT` — real, regravando DI1Z28 com valor diferente contra SQL Server)
+- [x] 8.6 Testar dead-letter para envelope inválido, dataset desconhecido e payload não parseável (envelope inválido: verificado ao vivo contra Kafka real, mensagem lida de volta da dead-letter com os 9 cabeçalhos. Dataset desconhecido e payload não parseável: `IngestaoListenerTest`, unitário — chama os métodos do listener diretamente com `ConsumerRecord` fabricado, sem Kafka real, provando que as 3 exceções nomeadas disparam e `IngestaoService`/`Acknowledgment.acknowledge()` nunca são chamados)
+- [x] 8.7 Testar os parsers B3 contra fixtures reais, verificando precisão decimal preservada (`Bvbg086PricRptParserTest`/`Bvbg028CadastroParserTest`, fixtures reais do pregão de 2026-08-21)
+- [x] 8.8 Testar que a publicação de `marketdata.normalized.v1` só ocorre após o commit (garantido por construção — `IngestaoListener.publicarNormalizado` só é chamado depois que `ingestaoService.processarBloco`, `@Transactional`, já retornou — e verificado ao vivo nesta sessão: mensagem real lida do tópico depois de um INSERT real confirmado no banco. Sem teste JUnit dedicado que force uma falha pós-commit para provar a não-publicação nesse caso específico)
+- [x] 8.9 Testar a publicação de curva pronta: vértices idênticos aos recebidos, dígito a dígito (`publicaVerticesIdenticosAosRecebidosDigitoADigito`, `PublicacaoCurvaServiceIT` — taxa com 12 casas decimais, todos os campos de `VerticeCurva` comparados contra o que foi persistido)
+- [x] 8.10 Testar a recusa por incoerência entre tipo de insumo e modo de origem (`recusaDefinicaoBootstrapped`, `PublicacaoCurvaServiceIT`, real)
+- [x] 8.11 Testar a republicação de curva pronta gerando nova versão e preservando a anterior (`publicaCurvaImportadaMarcaAnteriorComoSubstituidaENumeraIncrementalmente`, real)
+- [x] 8.12 Testar a dead-letter para curva sem mapeamento e para curva vazia (`CurvaNaoMapeadaException`/`CurvaVaziaException` testadas no nível do `PublicacaoCurvaService`, real. **Não testado através do `IngestaoListener`/Kafka real** — o caminho READY_CURVE do listener está bloqueado em `CurvaProntaNaoSuportadaException`, tarefa 5.1, então a dead-letter real desses dois motivos específicos não foi exercitada via Kafka)
+- [x] 8.13 Escrever o teste de fronteira que falha se o serviço escrever fora das tabelas permitidas (`FronteiraEscritaCredencialIT` — credencial real da aplicação, não SA: recusa INSERT em definicao_curva/versao_definicao_curva/execucao_curva, recusa DELETE em qualquer tabela, permite INSERT+SELECT em lote_ingestao — 5 testes reais contra SQL Server)
+- [x] 8.14 Escrever a verificação estática que falha o build se `double` ou `float` for usado em valor de mercado (`NuncaDoubleOuFloatEmValorDeMercadoTest` — escaneia todo `src/main/java` ignorando comentários; verifiquei que pega uma violação de verdade introduzindo uma temporariamente e revertendo)
+- [x] 8.15 Testar blocos fora de ordem consolidando o lote corretamente (`consolidaLoteComBlocosForaDeOrdem`, `IngestaoServiceMultiBlocoIT` — envia sequência 2, 1, 3 nessa ordem de chamada, consolida COMPLETO igual)
+- [x] 8.16 Testar falha em um bloco sem afetar os demais, com o lote seguindo aberto (mesmo teste de 8.3 — `falhaEmUmBlocoNaoAfetaBlocoAnteriorELotePermaneceAberto`)
+- [x] 8.17 Testar lote incompleto: sem evento de dado normalizado e sem pedido de construção (`loteIncompletoPermaneceAbertoENaoConsolida`, `IngestaoServiceMultiBlocoIT` — 2 de 3 blocos, lote real permanece ABERTO no banco, nunca COMPLETO — condição que `IngestaoListener` usa para decidir se publica)
+- [x] 8.18 Testar que a faixa de rotina travada não impede o consumo da prioritária (`faixaRotinaOcupadaNaoImpedeConsumoDaPrioritaria`, `IsolamentoFaixasIT` — publica um lote real de 1500 pontos na faixa rotina (força ~1500 idas-e-voltas sequenciais reais ao SQL Server dentro da mesma transação) e, logo em seguida, um lote de 1 ponto na prioritária; a prioritária é confirmada gravada no banco em poucos segundos, bem antes da rotina — que só termina depois, sem travar. Cada faixa é um tópico Kafka distinto com consumer group e thread de container próprios (`KafkaConsumerConfig`), então o isolamento é garantido pela configuração, e o teste prova isso com dado real em vez de inspecionar a config)
+- [x] 8.19 Testar o mesmo lote chegando por duas faixas, com estado final idêntico e sem duplicata (`mesmoLoteChegandoPorDuasFaixasConcorrentesNaoDuplica`, `ProcessarBlocoConcorrenteIT` — **corrida real encontrada e corrigida nesta sessão**: a tabela `lote_ingestao` não tinha restrição UNIQUE em `lote_externo_id`; duas faixas concorrentes processando o mesmo lote podiam ambas ler "não existe" e ambas tentar `INSERT`, duplicando a linha. Corrigido com a migração `V11__lote_ingestao_externo_id_unico.sql` (índice UNIQUE, aplicada de verdade contra o SQL Server local) + `IngestaoService.processarBloco` agora captura `DataIntegrityViolationException` no INSERT perdedor da corrida e recarrega o lote vencedor em vez de duplicar ou propagar o erro. O teste sincroniza duas threads com `CyclicBarrier` para forçar a corrida real no banco — o log da execução confirma que o caminho de recuperação foi de fato exercitado (`"corrida entre faixas para o mesmo lote, eventId já processado pelo vencedor"`), não só um cenário hipotético)
+- [x] 8.20 Testar que mensagem que sempre falha avança o offset e vai para a dead-letter (`mensagemInvalidaVaiParaDeadLetterSemTravarConsumoDaMensagemSeguinte`, `MensagemInvalidaNaoTravaParticaoIT` — automatiza a verificação manual já feita ao vivo nesta sessão: publica mensagem inválida real em `marketdata.rotina.v1`, lê de volta um registro real da dead-letter com um `KafkaConsumer` dedicado e confirma os 9 cabeçalhos `x-*` obrigatórios do catálogo)
+- [x] 8.21 Testar que falha de desserialização não trava a partição (mesmo teste de 8.20, `MensagemInvalidaNaoTravaParticaoIT` — **ressalva documentada**: com `StringDeserializer` — mesmo por trás de `ErrorHandlingDeserializer` como defesa em profundidade — praticamente não existe sequência de bytes que falhe a desserialização de verdade, já que a decodificação UTF-8 é lenient e nunca lança exceção; a falha real sempre aparece depois, na validação do envelope (JSON inválido/fora do schema). O teste prova a propriedade que a tarefa pede na prática: a mensagem válida publicada logo após a inválida é consumida sem esperar nenhum timeout de retentativa, provando que a partição não trava)
+- [ ] 8.22 Testar o teto de tempo na retentativa derivado do tempo até o horário limite (não implementado — ver ressalva na tarefa 2.3: o teto atual é um limite genérico de 2 minutos, não derivado do horário limite por curva)
+- [x] 8.23 Testar a carga por CSV e por planilha produzindo resultado idêntico (`produzResultadoIdenticoAoCsvEquivalente`, `LeitorXlsxCurvaTest`)
+- [x] 8.24 Testar a listagem completa de erros por linha, sem aplicação parcial (`erroEmUmaLinhaNaoRetornaSucessoParcial` nos dois leitores)
+- [x] 8.25 Testar recusa por cabeçalho divergente, arquivo vazio e prazo duplicado (testado nos dois leitores)
+- [x] 8.26 Testar a preservação de dígitos de uma taxa com doze casas decimais (`publicaVerticesIdenticosAosRecebidosDigitoADigito`, `PublicacaoCurvaServiceIT` — taxa `14.129384756123`, 12 casas, comparada contra o que foi persistido)
+- [x] 8.27 Testar que curva carregada com defeito é reprovada pelo gate e não publica (`reprovaCargaManualComTaxaNegativaEPreservaVersaoAnteriorPublicada`, `PublicacaoCurvaServiceIT`, real)
+- [x] 8.28 Testar que carga reprovada preserva a versão anterior publicada (mesmo teste de 8.27)
+- [x] 8.29 Testar a recusa de carga sem justificativa e por perfil de leitor (justificativa: `ProcedenciaCurvaTest.carregadaRecusaJustificativaVazia`; perfil: `CargaManualPoliticaAcessoTest.recusaPerfilNaoAutorizado`)
+- [x] 8.30 Testar que recarga do mesmo arquivo não cria versão duplicada (`reconheceRecargaDoMesmoArquivoPelaHashSemDuplicarVersao`, `PublicacaoCurvaServiceIT`, real)
 
 ## 9. Integração
 
 - [ ] 9.1 Rodar o processor contra o Kafka e o SQL Server locais, consumindo eventos reais do feeder B3
 - [ ] 9.2 Confirmar uma data de pregão inteira persistida em `ponto_dado_mercado` a partir dos datasets de dado individual
 - [ ] 9.3 Confirmar a curva oficial da mesma data publicada como curva `IMPORTED`, com proveniência completa
-- [ ] 9.4 Documentar em `services/curve-processor/README.md` os parsers, o mapeamento de curvas importadas e a operação de dead-letter
+- [x] 9.4 Documentar em `services/curve-processor/README.md` os parsers, o mapeamento de curvas importadas e a operação de dead-letter

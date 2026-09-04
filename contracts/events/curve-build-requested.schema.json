@@ -23,7 +23,12 @@
     "runId": {
       "type": "string",
       "format": "uuid",
-      "description": "Identificador único da execução (run) da orquestração que originou o pedido de cálculo."
+      "description": "Identificador de correlação (correlacao_id) do lote de disparo que originou o pedido — pode ser compartilhado por várias linhas de execucao_curva do mesmo lote (ex.: múltiplos conjuntos de insumo num mesmo disparo manual, ou mãe e filhas de um backfill). Use para correlacionar logs entre serviços, não para referenciar uma execução específica — para isso, use executionId."
+    },
+    "executionId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identificador único (execucao_curva.id) da linha de execução específica que originou este pedido de construção — distinto de runId, que é o correlacao_id compartilhado do lote. O curve-engine usa este campo, não runId, para popular versao_curva.execucao_curva_id (FK obrigatória e não-nula)."
     },
     "publishDeadline": {
       "type": "string",
@@ -36,6 +41,7 @@
     "referenceDate",
     "curveMoment",
     "runId",
+    "executionId",
     "publishDeadline"
   ],
   "additionalProperties": false

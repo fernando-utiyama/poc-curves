@@ -1,0 +1,131 @@
+# ==============================================================================
+# NÚCLEO DO AMBIENTE LOCAL — serviços essenciais ao fluxo de ingestão,
+# construção e consulta de curva: Kafka (KRaft) e SQL Server 2022, mais os
+# containers de inicialização (bootstrap de tópicos e migração Flyway).
+#
+# Este arquivo é incluído por `compose.yaml` (perfil completo) e por
+# `compose.lite.yaml` (perfil reduzido) via `include:` — é a única fonte de
+# verdade para os serviços que nenhum dos dois perfis pode omitir.
+# ==============================================================================
+
+networks:
+  curvas-net:
+    name: curvas-net
+
+volumes:
+  kafka-data:
+  sqlserver-data:
+
+services:
+  kafka:
+    image: docker.io/apache/kafka:3.8.0
+    container_name: curvas-kafka
+    hostname: kafka
+    restart: unless-stopped
+    networks: [curvas-net]
+    ports:
+      # Listener externo para acesso da máquina host (Testcontainers, CLI local).
+      # O listener interno (9092) é usado pelos demais containers via DNS de serviço.
+      - "19092:19092"
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:19092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:19092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # ID de cluster fixo e determinístico — evita gerar um novo a cada rebuild
+      # de imagem sem volume, o que quebraria o metadata log do KRaft.
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      # Requisito de contrato (D2/D3): tópicos só existem se declarados no
+      # catálogo (contracts/events/topics.yaml) e criados pelo bootstrap.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: curvas-sqlserver
+    hostname: sqlserver
+    restart: unless-stopped
+    networks: [curvas-net]
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-CurvasP0c!Local}
+      MSSQL_PID: Developer
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -N -Q 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
+
+  # Container de inicialização: cria os tópicos do catálogo (contracts/events/topics.yaml)
+  # contra um broker sem criação automática. Roda até o fim e sai com código zero;
+  # não é subido por `up -d` sem argumentos — é disparado explicitamente por up.sh/up.ps1
+  # via `podman compose run --rm kafka-topics-bootstrap`.
+  kafka-topics-bootstrap:
+    image: docker.io/apache/kafka:3.8.0
+    container_name: curvas-kafka-topics-bootstrap
+    restart: "no"
+    networks: [curvas-net]
+    entrypoint: ["/bin/bash", "/bootstrap/create-topics.sh"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+    volumes:
+      - ./scripts/create-topics.sh:/bootstrap/create-topics.sh:ro
+
+  # Container de inicialização: cria o banco `curvasdb` se ainda não existir.
+  # O SQL Server não cria banco a partir de `databaseName` na connection string —
+  # sem este passo, o flyway-migrate falharia no login. Roda antes dele, sempre.
+  sqlserver-init-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: curvas-sqlserver-init-db
+    restart: "no"
+    networks: [curvas-net]
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >
+        /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -P "$$MSSQL_SA_PASSWORD" -C -N
+        -Q "IF DB_ID('curvasdb') IS NULL CREATE DATABASE curvasdb"
+    environment:
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-CurvasP0c!Local}
+
+  # Container de inicialização: aplica as migrações Flyway contra o SQL Server.
+  # Roda até o fim e sai com código zero; disparado explicitamente por up.sh/up.ps1
+  # via `podman compose run --rm flyway-migrate`, depois que o SQL Server está saudável
+  # e o banco `curvasdb` foi criado por sqlserver-init-db.
+  flyway-migrate:
+    image: docker.io/flyway/flyway:10-alpine
+    container_name: curvas-flyway-migrate
+    restart: "no"
+    networks: [curvas-net]
+    # Lista, não string: uma connection string com ';' em um `command:` string
+    # plano é tokenizada pelo parser de compose, que corta no primeiro ';' e
+    # descarta o resto — Flyway roda sem argumento nenhum e só imprime o help,
+    # saindo com código zero. Cada item de lista vira um argv separado, sem
+    # nenhuma tokenização por cima.
+    command:
+      - -url=jdbc:sqlserver://sqlserver:1433;databaseName=curvasdb;trustServerCertificate=true;encrypt=true
+      - -user=sa
+      - -password=${MSSQL_SA_PASSWORD:-CurvasP0c!Local}
+      - -connectRetries=10
+      - -createSchemas=true
+      - migrate
+    volumes:
+      - ../../db/migration:/flyway/sql:ro

@@ -1,0 +1,267 @@
+# ==============================================================================
+# PERFIL COMPLETO — núcleo (Kafka + SQL Server, via compose.core.yaml) mais os
+# serviços opcionais: Redis (cache de interpolação) e Keycloak (provedor OIDC
+# local para o BFF). Use compose.lite.yaml em máquinas com pouca memória.
+#
+# Subir:    deploy/podman/up.sh          (ou up.ps1 no Windows)
+# Derrubar: deploy/podman/down.sh [-v]    (ou down.ps1 no Windows)
+# ==============================================================================
+
+include:
+  - compose.core.yaml
+
+volumes:
+  redis-data:
+  keycloak-data:
+
+services:
+  redis:
+    image: docker.io/redis:7-alpine
+    container_name: curvas-redis
+    hostname: redis
+    restart: unless-stopped
+    networks: [curvas-net]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: curvas-keycloak
+    hostname: keycloak
+    restart: unless-stopped
+    networks: [curvas-net]
+    ports:
+      - "8180:8080"
+      - "9000:9000"
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_ENABLED: "true"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      # Realm "curvas" real (3 papéis, 1 client público para o web-ui, 3
+      # usuários de teste) — antes desta sessão o realm nunca existia, então
+      # nenhum token real de nenhum perfil podia ser emitido (auditoria
+      # encontrou isso como o motivo de nenhuma integração de auth ter sido
+      # verificada de ponta a ponta). Ver deploy/podman/keycloak-import/README.md.
+      - ./keycloak-import:/opt/keycloak/data/import:ro
+    command: ["start-dev", "--import-realm"]
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q 'UP' <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  curve-web-ui:
+    build:
+      context: ../../web/curve-web-ui
+      dockerfile: Containerfile
+    image: localhost/curve-web-ui:latest
+    container_name: curvas-web-ui
+    hostname: web-ui
+    restart: unless-stopped
+    networks: [curvas-net]
+    ports:
+      - "4200:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:80/index.html >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+  curve-processor:
+    build:
+      context: ../..
+      dockerfile: services/curve-processor/Containerfile
+    image: localhost/curve-processor:latest
+    container_name: curvas-processor
+    hostname: curve-processor
+    restart: unless-stopped
+    networks: [curvas-net]
+    ports:
+      - "8081:8081"
+    environment:
+      CURVE_PROCESSOR_DB_PASSWORD: ${CURVE_PROCESSOR_DB_PASSWORD:-CurveProcessorP0c!Local}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+  curve-engine:
+    build:
+      context: ../..
+      dockerfile: services/curve-engine/Containerfile
+    image: localhost/curve-engine:latest
+    container_name: curvas-engine
+    hostname: curve-engine
+    restart: unless-stopped
+    networks: [curvas-net]
+    ports:
+      - "8083:8083"
+    environment:
+      # Credencial restrita curve_engine_app (V18) — nunca sa.
+      CURVE_ENGINE_DB_PASSWORD: ${CURVE_ENGINE_DB_PASSWORD:-CurveEngineP0c!Local}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+  curve-api:
+    build:
+      context: ../..
+      dockerfile: services/curve-api/Containerfile
+    image: localhost/curve-api:latest
+    container_name: curvas-api
+    hostname: curve-api
+    restart: unless-stopped
+    networks: [curvas-net]
+    ports:
+      - "8082:8082"
+    environment:
+      # Credencial restrita curve_api_app (V12) — nunca sa, corrigido na
+      # auditoria desta sessão (o override aqui forçava sa mesmo com
+      # application.yml já configurado com a credencial restrita).
+      CURVE_API_DB_PASSWORD: ${CURVE_API_DB_PASSWORD:-CurveApiP0c!Local}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/curvas/protocol/openid-connect/certs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+  curve-bff:
+    build:
+      context: ../..
+      dockerfile: services/curve-bff/Containerfile
+    image: localhost/curve-bff:latest
+    container_name: curvas-bff
+    hostname: curve-bff
+    restart: unless-stopped
+    networks: [curvas-net]
+    ports:
+      - "8080:8080"
+    environment:
+      CURVE_API_URL: http://curve-api:8082
+      # Corrigido ao adicionar o bloco próprio de curve-engine ao compose: a porta real
+      # (Containerfile EXPOSE 8083, server.port em application.yml) é 8083, não 8080 —
+      # mesmo tipo de placeholder nunca verificado já corrigido para curve-orchestrator.
+      CURVE_ENGINE_URL: http://curve-engine:8083
+      # Corrigido ao adicionar o serviço curve-orchestrator ao compose: a
+      # porta real do serviço (Containerfile/application.yml, server.port)
+      # é 8084, não 8080 — o valor anterior era um placeholder nunca
+      # verificado porque o serviço ainda não tinha bloco próprio aqui.
+      CURVE_ORCHESTRATOR_URL: http://curve-orchestrator:8084
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/curvas/protocol/openid-connect/certs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+  curve-orchestrator:
+    build:
+      context: ../..
+      dockerfile: services/curve-orchestrator/Containerfile
+    image: localhost/curve-orchestrator:latest
+    container_name: curvas-orchestrator
+    hostname: curve-orchestrator
+    restart: unless-stopped
+    networks: [curvas-net]
+    ports:
+      - "8084:8084"
+    environment:
+      CURVE_ORCHESTRATOR_DB_PASSWORD: ${CURVE_ORCHESTRATOR_DB_PASSWORD:-CurveOrchestratorP0c!Local}
+      FEEDER_MARKETDATA_URL: http://feeder-marketdata-http:8091
+      CURVE_PROCESSOR_URL: http://curve-processor:8081
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+  # feeder-marketdata roda uma aquisição por execução e termina ("pull
+  # agendado" — ver docs/extensao-feeders.md, "Modo de entrega": quem decide
+  # QUANDO rodar fica fora deste adaptador). Não é um servidor de pé como os
+  # serviços acima, então NÃO sobe com `up.sh`/`up.ps1` — profile dedicado,
+  # disparo manual para teste local ou por scheduler externo em produção:
+  #   podman compose --profile feeder-on-demand run --rm feeder-marketdata
+  feeder-marketdata:
+    profiles: ["feeder-on-demand"]
+    build:
+      context: ../..
+      dockerfile: services/feeder-marketdata/Containerfile
+    image: localhost/feeder-marketdata:latest
+    container_name: curvas-feeder-marketdata
+    hostname: feeder-marketdata
+    networks: [curvas-net]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ACQUISITION_DATASET: ${ACQUISITION_DATASET:-BVBG.086}
+      # Sem valor padrão real de propósito (main.ts falha cedo e nomeado se
+      # vier vazio) — mas NÃO usa a sintaxe ":?" do Compose para exigir a
+      # variável, porque isso quebraria QUALQUER comando `podman compose`
+      # rodado contra este arquivo (Compose interpola todo o arquivo, não só
+      # o serviço-alvo) — reproduzido de verdade: `flyway-migrate` (usado
+      # pelo `up.sh` no perfil completo) passou a falhar por causa desta
+      # variável, mesmo sem nenhuma relação com o feeder.
+      ACQUISITION_REFERENCE_DATE: "${ACQUISITION_REFERENCE_DATE:-}"
+      ACQUISITION_FAIXA: ${ACQUISITION_FAIXA:-ROTINA}
+      HEALTH_PORT: "8090"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/health | grep -q '\"status\":\"UP\"'"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # Mesma imagem do feeder-marketdata acima, CMD sobrescrito para o adaptador
+  # HTTP always-up (main-http.ts) — dá ao curve-orchestrator um alvo estável
+  # para "acionar o feeder" (tarefa 4.6 do backlog curve-orchestrator), com o
+  # MESMO contrato POST /acquire do handler de Azure Function real
+  # (azure-function-handler.ts): trocar a URL base por uma Function implantada
+  # não muda o contrato, só o host. Sobe normalmente com up.sh/up.ps1 (sem
+  # profile), diferente do feeder-marketdata acima (que é on-demand).
+  feeder-marketdata-http:
+    build:
+      context: ../..
+      dockerfile: services/feeder-marketdata/Containerfile
+    image: localhost/feeder-marketdata:latest
+    command: ["dist/main-http.js"]
+    container_name: curvas-feeder-marketdata-http
+    hostname: feeder-marketdata-http
+    restart: unless-stopped
+    networks: [curvas-net]
+    ports:
+      - "8091:8091"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      PORT: "8091"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8091/health | grep -q '\"status\":\"UP\"'"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+

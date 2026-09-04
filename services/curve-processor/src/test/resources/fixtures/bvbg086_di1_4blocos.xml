@@ -1,0 +1,331 @@
+<BizGrp>
+        <AppHdr xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:iso:std:iso:20022:tech:xsd:head.001.001.01">
+          <BizMsgIdr>BV000328202608210328000001840097071</BizMsgIdr>
+          <MsgDefIdr>BVMF.217.01</MsgDefIdr>
+          <CreDt>2026-08-21T21:40:09Z</CreDt>
+          <Fr>
+            <OrgId>
+              <Id>
+                <OrgId>
+                  <Othr>
+                    <Id>BVMF</Id>
+                    <SchmeNm>
+                      <Prtry>39</Prtry>
+                    </SchmeNm>
+                    <Issr>40</Issr>
+                  </Othr>
+                </OrgId>
+              </Id>
+            </OrgId>
+          </Fr>
+          <To>
+            <OrgId>
+              <Id>
+                <OrgId>
+                  <Othr>
+                    <Id>PUBLIC</Id>
+                    <SchmeNm>
+                      <Prtry>39</Prtry>
+                    </SchmeNm>
+                    <Issr>40</Issr>
+                  </Othr>
+                </OrgId>
+              </Id>
+            </OrgId>
+          </To>
+        </AppHdr>
+        <Document xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:bvmf.217.01.xsd">
+          <PricRpt>
+            <TradDt>
+              <Dt>2026-08-21</Dt>
+            </TradDt>
+            <SctyId>
+              <TckrSymb>DI1Z28</TckrSymb>
+            </SctyId>
+            <FinInstrmId>
+              <OthrId>
+                <Id>100000250782</Id>
+                <Tp>
+                  <Prtry>8</Prtry>
+                </Tp>
+              </OthrId>
+              <PlcOfListg>
+                <MktIdrCd>BVMF</MktIdrCd>
+              </PlcOfListg>
+            </FinInstrmId>
+            <TradDtls>
+              <TradQty>14</TradQty>
+            </TradDtls>
+            <FinInstrmAttrbts>
+              <MktDataStrmId>E</MktDataStrmId>
+              <NtlFinVol Ccy="BRL">6150904.6</NtlFinVol>
+              <IntlFinVol Ccy="USD">1191458.51</IntlFinVol>
+              <OpnIntrst>29585</OpnIntrst>
+              <FinInstrmQty>83</FinInstrmQty>
+              <BestAskPric Ccy="BRL">14.17</BestAskPric>
+              <FrstPric Ccy="BRL">14.215</FrstPric>
+              <MinPric Ccy="BRL">14.13</MinPric>
+              <MaxPric Ccy="BRL">14.22</MaxPric>
+              <TradAvrgPric Ccy="BRL">14.192</TradAvrgPric>
+              <LastPric Ccy="BRL">14.145</LastPric>
+              <RglrTxsQty>14</RglrTxsQty>
+              <RglrTraddCtrcts>83</RglrTraddCtrcts>
+              <NtlRglrVol Ccy="BRL">6150904.6</NtlRglrVol>
+              <IntlRglrVol Ccy="USD">1191458.51</IntlRglrVol>
+              <AdjstdQt Ccy="BRL">74199.92</AdjstdQt>
+              <AdjstdQtTax Ccy="BRL">14.129</AdjstdQtTax>
+              <AdjstdQtStin>F</AdjstdQtStin>
+              <PrvsAdjstdQt Ccy="BRL">74015.84</PrvsAdjstdQt>
+              <PrvsAdjstdQtTax Ccy="BRL">14.255</PrvsAdjstdQtTax>
+              <PrvsAdjstdQtStin>U</PrvsAdjstdQtStin>
+              <OscnPctg>-0.77</OscnPctg>
+              <VartnPts Ccy="BRL">184.08</VartnPts>
+              <AdjstdValCtrct Ccy="BRL">184.08</AdjstdValCtrct>
+              <MaxTradLmt Ccy="BRL">15.5</MaxTradLmt>
+              <MinTradLmt Ccy="BRL">13.325</MinTradLmt>
+            </FinInstrmAttrbts>
+          </PricRpt>
+        </Document>
+      </BizGrp>
+<BizGrp>
+        <AppHdr xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:iso:std:iso:20022:tech:xsd:head.001.001.01">
+          <BizMsgIdr>BV000328202608210328000001840099252</BizMsgIdr>
+          <MsgDefIdr>BVMF.217.01</MsgDefIdr>
+          <CreDt>2026-08-21T21:40:09Z</CreDt>
+          <Fr>
+            <OrgId>
+              <Id>
+                <OrgId>
+                  <Othr>
+                    <Id>BVMF</Id>
+                    <SchmeNm>
+                      <Prtry>39</Prtry>
+                    </SchmeNm>
+                    <Issr>40</Issr>
+                  </Othr>
+                </OrgId>
+              </Id>
+            </OrgId>
+          </Fr>
+          <To>
+            <OrgId>
+              <Id>
+                <OrgId>
+                  <Othr>
+                    <Id>PUBLIC</Id>
+                    <SchmeNm>
+                      <Prtry>39</Prtry>
+                    </SchmeNm>
+                    <Issr>40</Issr>
+                  </Othr>
+                </OrgId>
+              </Id>
+            </OrgId>
+          </To>
+        </AppHdr>
+        <Document xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:bvmf.217.01.xsd">
+          <PricRpt>
+            <TradDt>
+              <Dt>2026-08-21</Dt>
+            </TradDt>
+            <SctyId>
+              <TckrSymb>DI1J30</TckrSymb>
+            </SctyId>
+            <FinInstrmId>
+              <OthrId>
+                <Id>400000097259</Id>
+                <Tp>
+                  <Prtry>8</Prtry>
+                </Tp>
+              </OthrId>
+              <PlcOfListg>
+                <MktIdrCd>BVMF</MktIdrCd>
+              </PlcOfListg>
+            </FinInstrmId>
+            <TradDtls>
+              <TradQty>135</TradQty>
+            </TradDtls>
+            <FinInstrmAttrbts>
+              <MktDataStrmId>E</MktDataStrmId>
+              <NtlFinVol Ccy="BRL">27752050.36</NtlFinVol>
+              <IntlFinVol Ccy="USD">5375699.82</IntlFinVol>
+              <OpnIntrst>95605</OpnIntrst>
+              <FinInstrmQty>448</FinInstrmQty>
+              <BestBidPric Ccy="BRL">14.345</BestBidPric>
+              <BestAskPric Ccy="BRL">14.37</BestAskPric>
+              <FrstPric Ccy="BRL">14.485</FrstPric>
+              <MinPric Ccy="BRL">14.33</MinPric>
+              <MaxPric Ccy="BRL">14.485</MaxPric>
+              <TradAvrgPric Ccy="BRL">14.366</TradAvrgPric>
+              <LastPric Ccy="BRL">14.35</LastPric>
+              <RglrTxsQty>135</RglrTxsQty>
+              <RglrTraddCtrcts>448</RglrTraddCtrcts>
+              <NtlRglrVol Ccy="BRL">27752050.36</NtlRglrVol>
+              <IntlRglrVol Ccy="USD">5375699.82</IntlRglrVol>
+              <AdjstdQt Ccy="BRL">62009.98</AdjstdQt>
+              <AdjstdQtTax Ccy="BRL">14.334</AdjstdQtTax>
+              <AdjstdQtStin>F</AdjstdQtStin>
+              <PrvsAdjstdQt Ccy="BRL">61677.03</PrvsAdjstdQt>
+              <PrvsAdjstdQtTax Ccy="BRL">14.507</PrvsAdjstdQtTax>
+              <PrvsAdjstdQtStin>U</PrvsAdjstdQtStin>
+              <OscnPctg>-1.08</OscnPctg>
+              <VartnPts Ccy="BRL">332.95</VartnPts>
+              <AdjstdValCtrct Ccy="BRL">332.95</AdjstdValCtrct>
+              <MaxTradLmt Ccy="BRL">15.775</MaxTradLmt>
+              <MinTradLmt Ccy="BRL">13.55</MinTradLmt>
+            </FinInstrmAttrbts>
+          </PricRpt>
+        </Document>
+      </BizGrp>
+<BizGrp>
+        <AppHdr xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:iso:std:iso:20022:tech:xsd:head.001.001.01">
+          <BizMsgIdr>BV000328202608210328000001840099877</BizMsgIdr>
+          <MsgDefIdr>BVMF.217.01</MsgDefIdr>
+          <CreDt>2026-08-21T21:40:09Z</CreDt>
+          <Fr>
+            <OrgId>
+              <Id>
+                <OrgId>
+                  <Othr>
+                    <Id>BVMF</Id>
+                    <SchmeNm>
+                      <Prtry>39</Prtry>
+                    </SchmeNm>
+                    <Issr>40</Issr>
+                  </Othr>
+                </OrgId>
+              </Id>
+            </OrgId>
+          </Fr>
+          <To>
+            <OrgId>
+              <Id>
+                <OrgId>
+                  <Othr>
+                    <Id>PUBLIC</Id>
+                    <SchmeNm>
+                      <Prtry>39</Prtry>
+                    </SchmeNm>
+                    <Issr>40</Issr>
+                  </Othr>
+                </OrgId>
+              </Id>
+            </OrgId>
+          </To>
+        </AppHdr>
+        <Document xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:bvmf.217.01.xsd">
+          <PricRpt>
+            <TradDt>
+              <Dt>2026-08-21</Dt>
+            </TradDt>
+            <SctyId>
+              <TckrSymb>DI1V31</TckrSymb>
+            </SctyId>
+            <FinInstrmId>
+              <OthrId>
+                <Id>400000113862</Id>
+                <Tp>
+                  <Prtry>8</Prtry>
+                </Tp>
+              </OthrId>
+              <PlcOfListg>
+                <MktIdrCd>BVMF</MktIdrCd>
+              </PlcOfListg>
+            </FinInstrmId>
+            <TradDtls>
+              <TradQty>115</TradQty>
+            </TradDtls>
+            <FinInstrmAttrbts>
+              <MktDataStrmId>E</MktDataStrmId>
+              <NtlFinVol Ccy="BRL">24144447.09</NtlFinVol>
+              <IntlFinVol Ccy="USD">4676890.47</IntlFinVol>
+              <OpnIntrst>27533</OpnIntrst>
+              <FinInstrmQty>480</FinInstrmQty>
+              <BestBidPric Ccy="BRL">14.455</BestBidPric>
+              <BestAskPric Ccy="BRL">14.485</BestAskPric>
+              <FrstPric Ccy="BRL">14.575</FrstPric>
+              <MinPric Ccy="BRL">14.45</MinPric>
+              <MaxPric Ccy="BRL">14.58</MaxPric>
+              <TradAvrgPric Ccy="BRL">14.51</TradAvrgPric>
+              <LastPric Ccy="BRL">14.45</LastPric>
+              <RglrTxsQty>115</RglrTxsQty>
+              <RglrTraddCtrcts>480</RglrTraddCtrcts>
+              <NtlRglrVol Ccy="BRL">24144447.09</NtlRglrVol>
+              <IntlRglrVol Ccy="USD">4676890.47</IntlRglrVol>
+              <AdjstdQt Ccy="BRL">50439.72</AdjstdQt>
+              <AdjstdQtTax Ccy="BRL">14.448</AdjstdQtTax>
+              <AdjstdQtStin>F</AdjstdQtStin>
+              <PrvsAdjstdQt Ccy="BRL">50009.26</PrvsAdjstdQt>
+              <PrvsAdjstdQtTax Ccy="BRL">14.642</PrvsAdjstdQtTax>
+              <PrvsAdjstdQtStin>U</PrvsAdjstdQtStin>
+              <OscnPctg>-1.31</OscnPctg>
+              <VartnPts Ccy="BRL">430.46</VartnPts>
+              <AdjstdValCtrct Ccy="BRL">430.46</AdjstdValCtrct>
+              <MaxTradLmt Ccy="BRL">15.93</MaxTradLmt>
+              <MinTradLmt Ccy="BRL">13.665</MinTradLmt>
+            </FinInstrmAttrbts>
+          </PricRpt>
+        </Document>
+      </BizGrp>
+<BizGrp>
+        <AppHdr xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:iso:std:iso:20022:tech:xsd:head.001.001.01">
+          <BizMsgIdr>BV000328202608210328000001840095509</BizMsgIdr>
+          <MsgDefIdr>BVMF.217.01</MsgDefIdr>
+          <CreDt>2026-08-21T21:40:09Z</CreDt>
+          <Fr>
+            <OrgId>
+              <Id>
+                <OrgId>
+                  <Othr>
+                    <Id>BVMF</Id>
+                    <SchmeNm>
+                      <Prtry>39</Prtry>
+                    </SchmeNm>
+                    <Issr>40</Issr>
+                  </Othr>
+                </OrgId>
+              </Id>
+            </OrgId>
+          </Fr>
+          <To>
+            <OrgId>
+              <Id>
+                <OrgId>
+                  <Othr>
+                    <Id>PUBLIC</Id>
+                    <SchmeNm>
+                      <Prtry>39</Prtry>
+                    </SchmeNm>
+                    <Issr>40</Issr>
+                  </Othr>
+                </OrgId>
+              </Id>
+            </OrgId>
+          </To>
+        </AppHdr>
+        <Document xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:bvmf.217.01.xsd">
+          <PricRpt>
+            <TradDt>
+              <Dt>2026-08-21</Dt>
+            </TradDt>
+            <SctyId>
+              <TckrSymb>TTENT131</TckrSymb>
+            </SctyId>
+            <FinInstrmId>
+              <OthrId>
+                <Id>200002855631</Id>
+                <Tp>
+                  <Prtry>8</Prtry>
+                </Tp>
+              </OthrId>
+              <PlcOfListg>
+                <MktIdrCd>BVMF</MktIdrCd>
+              </PlcOfListg>
+            </FinInstrmId>
+            <TradDtls />
+            <FinInstrmAttrbts>
+              <OpnIntrst>30300</OpnIntrst>
+            </FinInstrmAttrbts>
+          </PricRpt>
+        </Document>
+      </BizGrp>

@@ -22,7 +22,7 @@ Restrições fixas desta POC: Podman rootless (não há Docker Desktop na máqui
 **Non-Goals:**
 
 - Deploy em Azure (AKS, Azure Functions, Event Hubs, Azure SQL) — a POC é local.
-- Feeders de Bloomberg e LSEG implementados; o contrato de feeder existe e é o ponto de extensão, mas só B3 roda.
+- ~~Feeders de Bloomberg e LSEG implementados; o contrato de feeder existe e é o ponto de extensão, mas só B3 roda.~~ **Revisto**: Bloomberg entra no escopo da POC como segunda fonte — ver mudança `feeder-bloomberg`. LSEG continua fora (nenhum pedido do usuário ainda); o contrato de feeder existente continua sendo o ponto de extensão para ele quando chegar a vez.
 - Alta disponibilidade, DR, multi-região, tuning de performance em escala de produção.
 - Implementar o runtime de modelos em si — ele é especificado e construído na mudança `curve-engine`; aqui entram apenas o modelo de dados que o sustenta e a regra de proveniência.
 
@@ -146,6 +146,8 @@ Taxa, preço, fator e cotação nunca transitam como `double`, nem como intermed
 
 *Trade-off aceito*: JSON com números como string é menos ergonômico no front; o Angular converte na borda. O oposto — perder dígito significativo no `double` de JavaScript — é inaceitável para taxa.
 
+*Exceção deliberada — potenciação com expoente fracionário*: `RoundingPolicy.power(BigDecimal, BigDecimal, MathContext)`, usada pelo fator de desconto (`(1+taxa)^(-diasUteis/base)`), calcula em `double` (`Math.pow`) e converte o resultado para `BigDecimal` antes de aplicar a política de arredondamento. É a única exceção fora de root-finding/spline explicitamente aberta pela regra acima: potência decimal exata exigiria reimplementar logaritmo/exponencial só com `BigDecimal` (ou uma biblioteca externa) só para este ponto, e `double` já é como toda biblioteca numérica de mercado faz esse cálculo especificamente — a regra protege o valor de mercado *armazenado e comparado*, não o cálculo interno de potência. Se a reconciliação exata contra a B3 (D13) expuser divergência de último dígito rastreável a este ponto, revisar aqui primeiro.
+
 ### D9 — BFF é a fronteira de segurança; front nunca fala com as APIs de domínio
 
 O front autentica via OIDC e só conhece o BFF. O BFF valida o token, resolve perfil (`CURVE_VIEWER`, `CURVE_OPERATOR`, `CURVE_ADMIN`) e chama as APIs internas com credencial de serviço. Na POC local, o provedor OIDC é um Keycloak em container; em produção, o IdP corporativo.
@@ -229,7 +231,7 @@ A POC não se declara pronta porque "rodou"; ela roda o reconciliador do `curve-
 ## Migration Plan
 
 1. **Fundação** — estrutura do monorepo, `contracts/` (schemas de evento e OpenAPI), migrações Flyway iniciais e compose Podman com Kafka, SQL Server e Redis subindo verdes.
-2. **Ingestão** — `feeder-b3-marketdata` quebra o arquivo em blocos e publica na faixa de rotina; `curve-processor` normaliza e persiste por bloco, consolidando o lote pela contagem. Critério: uma data de pregão B3 inteira no `ponto_dado_mercado`, com lote completo.
+2. **Ingestão** — `feeder-marketdata` quebra o arquivo em blocos e publica na faixa de rotina; `curve-processor` normaliza e persiste por bloco, consolidando o lote pela contagem. Critério: uma data de pregão B3 inteira no `ponto_dado_mercado`, com lote completo.
 3. **Domínio** — `curve-api` (cadastro) permite definir as duas curvas: a PRE construída a partir de DI1 e a PRE oficial importada da B3. O `curve-engine` constrói e publica a primeira; o `curve-processor` publica a segunda. A comparação entre as duas passa a ser possível pela própria API.
 4. **Automação** — `curve-orchestrator` agenda a ingestão diária, expõe disparo sob demanda na faixa prioritária com rastreio de execução, e passa a conhecer o prazo de publicação de cada curva.
 5. **Produto** — `curve-bff` e `curve-web-ui` fecham o ciclo até a tela, incluindo disparo manual e monitoramento.
@@ -243,7 +245,7 @@ A POC não se declara pronta porque "rodou"; ela roda o reconciliador do `curve-
 - Em produção, o transporte é Kafka gerenciado ou Azure Event Hubs com API Kafka? Muda configuração de segurança e cotas, não o código.
 - Curva intradiária entra no escopo da POC ou só abertura e fechamento? O desenho suporta os três `momento_curva`, mas só abertura e fechamento têm dado de teste.
 - Qual o horário de fechamento do banco que serve de corte para cada curva? Sem ele, o orçamento de tempo não tem âncora.
-- Qual o tamanho de bloco adequado para os arquivos reais da B3? Precisa ser medido, não estimado.
+- ~~Qual o tamanho de bloco adequado para os arquivos reais da B3? Precisa ser medido, não estimado.~~ Respondido: medido sobre 2 arquivos reais do pregão de 2026-08-21 (BVBG.086: 175.506.347 bytes / 76.015 elementos `<BizGrp>`; BVBG.028: 800.282.039 bytes / 223.700 elementos). Calibrado para 150 elementos/bloco — ver `services/feeder-marketdata/src/tamanho-bloco.ts` (tarefa 6.7.7 de `feeder-marketdata`).
 - O alerta preditivo de risco de atraso deve notificar por canal externo, ou basta o painel do dia?
 - Multi-tenant / segregação por mesa: há necessidade de escopo de visibilidade por curva, ou todo usuário autenticado vê todas as curvas?
-- Bloomberg e LSEG entregam por arquivo, API ou stream? Determina se o contrato de feeder atual (pull agendado) cobre os três ou se falta um modo push.
+- ~~Bloomberg e LSEG entregam por arquivo, API ou stream? Determina se o contrato de feeder atual (pull agendado) cobre os três ou se falta um modo push.~~ Respondido para Bloomberg: entrega por arquivo, mas em fluxo assíncrono (submeter pedido → aguardar geração em lote → buscar arquivo pronto), diferente do pull síncrono imediato que o contrato atual de `Feeder` assume para B3/ANBIMA/BCB — exige uma extensão do contrato, não só um novo feeder no molde existente. Ver decisão de design em `feeder-bloomberg`. LSEG continua em aberto.

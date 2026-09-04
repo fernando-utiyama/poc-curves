@@ -1,0 +1,17 @@
+# ==============================================================================
+# PERFIL REDUZIDO — apenas Kafka e SQL Server (via compose.core.yaml), sem
+# Redis nem Keycloak. Mantém o fluxo essencial: ingestão, construção e consulta
+# de curva. Para máquinas com pouca memória disponível (SQL Server já consome
+# ~2 GB sozinho).
+#
+# Sem cache Redis, a interpolação recalcula a cada consulta em vez de servir do
+# cache — mais lento, não incorreto. Sem Keycloak, o BFF e a tela não sobem
+# neste perfil: ele serve para validar ingestão → Kafka → persistência →
+# bootstrap → vértices → API de consulta.
+#
+# Subir:    deploy/podman/up.sh --lite    (ou up.ps1 -Lite no Windows)
+# Derrubar: deploy/podman/down.sh --lite [-v]
+# ==============================================================================
+
+include:
+  - compose.core.yaml

@@ -1,0 +1,53 @@
+{
+  "realm": "curvas",
+  "enabled": true,
+  "sslRequired": "none",
+  "roles": {
+    "realm": [
+      { "name": "CURVE_VIEWER", "description": "Consulta de curvas publicadas" },
+      { "name": "CURVE_OPERATOR", "description": "Disparo manual, backfill, carga manual, reprocessamento de DLQ" },
+      { "name": "CURVE_ADMIN", "description": "Cadastro/edição de definição de curva, importação de modelo" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "curve-web-ui",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost:4200/*"],
+      "webOrigins": ["http://localhost:4200"]
+    }
+  ],
+  "users": [
+    {
+      "username": "leitor",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "leitor@poc-curvas.local",
+      "credentials": [{ "type": "password", "value": "leitor123", "temporary": false }],
+      "requiredActions": [],
+      "realmRoles": ["CURVE_VIEWER"]
+    },
+    {
+      "username": "operador",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "operador@poc-curvas.local",
+      "credentials": [{ "type": "password", "value": "operador123", "temporary": false }],
+      "requiredActions": [],
+      "realmRoles": ["CURVE_OPERATOR"]
+    },
+    {
+      "username": "administrador",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "administrador@poc-curvas.local",
+      "credentials": [{ "type": "password", "value": "administrador123", "temporary": false }],
+      "requiredActions": [],
+      "realmRoles": ["CURVE_ADMIN"]
+    }
+  ]
+}

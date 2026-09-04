@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.poccurves</groupId>
+        <artifactId>poc-curves-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>common</artifactId>
+    <packaging>jar</packaging>
+
+    <name>common</name>
+    <description>Biblioteca Java compartilhada entre os serviços: record do envelope de evento e validação contra o schema do contrato (contracts/events/envelope.schema.json). Sem framework de aplicação — apenas Jackson e o validador de JSON Schema.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>3.0.7</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>${archunit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!--
+              Copia os schemas de contracts/events/ para o classpath em vez de
+              duplicá-los aqui: contracts/ é a fonte de verdade do contrato
+              (ver design.md da mudança curves-solution-architecture), e esta
+              cópia de build nunca pode divergir dela.
+            -->
+            <resource>
+                <directory>${project.basedir}/../../contracts/events</directory>
+                <targetPath>contracts/events</targetPath>
+                <includes>
+                    <include>*.schema.json</include>
+                    <!-- Fixtures reais de envelope usadas pelo teste de contrato cruzado
+                         (tarefa 2.6 da mudança curves-solution-architecture): o mesmo
+                         exemplo é validado tanto pelo validador Java (services/common)
+                         quanto pelo validador TypeScript (services/feeder-marketdata). -->
+                    <include>fixtures/*.json</include>
+                </includes>
+            </resource>
+        </resources>
+    </build>
+</project>

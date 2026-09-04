@@ -1,0 +1,32 @@
+# syntax=docker/dockerfile:1
+#
+# Contexto de build deve ser a raiz do monorepo, não este diretório — o
+# serviço lê contracts/events/envelope.schema.json em runtime (validação do
+# produtor, tarefa 4.2) e essa pasta só é alcançável se o contexto do build
+# incluir a raiz:
+#   podman build -f services/feeder-marketdata/Containerfile -t feeder-marketdata .
+#
+# CMD default é o adaptador de container (main.js — uma aquisição por
+# execução e termina, "pull agendado"). O serviço always-up usado pelo
+# curve-orchestrator (compose.yaml, feeder-marketdata-http) sobrescreve o
+# CMD para dist/main-http.js — mesma imagem, mesmo build, outro entrypoint.
+
+FROM docker.io/library/node:20-alpine AS build
+WORKDIR /app
+COPY services/feeder-marketdata/package.json services/feeder-marketdata/package-lock.json* ./
+RUN npm install
+COPY services/feeder-marketdata/tsconfig.json ./
+COPY services/feeder-marketdata/src ./src
+COPY contracts/events ./contracts/events
+RUN npx tsc -p tsconfig.json --outDir dist --noEmit false
+
+FROM docker.io/library/node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY services/feeder-marketdata/package.json services/feeder-marketdata/package-lock.json* ./
+RUN npm install --omit=dev
+COPY --from=build /app/dist ./dist
+COPY contracts/events ./contracts/events
+
+ENTRYPOINT ["node"]
+CMD ["dist/main.js"]

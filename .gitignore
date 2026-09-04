@@ -9,6 +9,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Cópia de build de contracts/events, sincronizada por sync-contracts.mjs — nunca editar à mão
+services/feeder-marketdata/contracts/
+
 # Angular
 .angular/
 

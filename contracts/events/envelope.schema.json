@@ -17,7 +17,7 @@
     },
     "source": {
       "type": "string",
-      "enum": ["B3", "BLOOMBERG", "LSEG", "MANUAL"],
+      "enum": ["B3", "ANBIMA", "BCB", "BLOOMBERG", "LSEG", "MANUAL"],
       "description": "Origem da coleta ou emissão do dado de mercado / comando."
     },
     "dataset": {

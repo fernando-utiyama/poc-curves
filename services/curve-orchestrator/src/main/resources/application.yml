@@ -1,0 +1,52 @@
+server:
+  port: 8084
+
+logging:
+  structured:
+    format:
+      # Suporte nativo do Spring Boot 3.4 (sem dependência extra), mesmo padrão já usado em
+      # curve-processor (tasks.md 7.2) — inclui o MDC automaticamente, propagando
+      # correlacaoId/alvo/dataReferencia (tarefa 9.5) em todo log emitido durante o
+      # processamento de uma execução.
+      console: logstash
+
+spring:
+  application:
+    name: curve-orchestrator
+  datasource:
+    # Credencial restrita (1.2 do backlog): só SELECT/INSERT/UPDATE em
+    # execucao_curva e pendencia_dlq, e SELECT em definicao_curva — ver
+    # db/migration/V13__curve_orchestrator_credencial_restrita.sql.
+    url: jdbc:sqlserver://sqlserver:1433;databaseName=curvasdb;trustServerCertificate=true;encrypt=true
+    username: curve_orchestrator_app
+    password: ${CURVE_ORCHESTRATOR_DB_PASSWORD:CurveOrchestratorP0c!Local}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  kafka:
+    # Faltava por completo (gap pré-existente, mesmo tipo já corrigido em
+    # curve-processor) — sem isto, KafkaProducerConfig.bootstrapServers
+    # (@Value obrigatório, sem default) falha a subida do contexto Spring.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+
+services:
+  feeder-marketdata:
+    url: ${FEEDER_MARKETDATA_URL:http://localhost:8091}
+    timeout-seconds: ${FEEDER_MARKETDATA_TIMEOUT_SECONDS:300}
+  curve-processor:
+    url: ${CURVE_PROCESSOR_URL:http://localhost:8081}
+    timeout-seconds: ${CURVE_PROCESSOR_TIMEOUT_SECONDS:30}
+
+backfill:
+  # Tamanho do pool dedicado ao despacho e execução de dias de backfill (tarefa 7.3 do backlog) —
+  # separado do pool de agendamentos (SchedulingConfig.agendamentoTaskScheduler).
+  dispatcher-threads: ${BACKFILL_DISPATCHER_THREADS:8}
+  # Limite de concorrência padrão quando o request de backfill não informa um valor.
+  concorrencia-maxima-padrao: ${BACKFILL_CONCORRENCIA_MAXIMA_PADRAO:5}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always

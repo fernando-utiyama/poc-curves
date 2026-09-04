@@ -1,0 +1,8 @@
+{
+  "bffBaseUrl": "/api/v1",
+  "authProviderUrl": "http://localhost:8180/realms/curvas",
+  "clientId": "curve-web-ui",
+  "baseHref": "/",
+  "alertaPollIntervalMs": 10000,
+  "deadLetterIdadeAlertaMinutos": 60
+}

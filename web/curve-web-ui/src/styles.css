@@ -1,0 +1,242 @@
+/* ==============================================================================
+   TOKENS DE TEMA SUBSTITUÍVEIS (Design Tokens)
+   Permitem integração futura com Shell Liquid sem reescrever componentes.
+   ============================================================================== */
+
+:root {
+  /* Cores de Fundo e Superfície */
+  --color-bg-page: #0f172a;
+  --color-bg-surface: #1e293b;
+  --color-bg-surface-hover: #334155;
+  --color-bg-surface-active: #475569;
+  --color-bg-input: #0f172a;
+
+  /* Cores de Texto */
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-text-inverse: #0f172a;
+
+  /* Cores de Borda e Divisores */
+  --color-border: #334155;
+  --color-border-subtle: #1e293b;
+  --color-border-focus: #38bdf8;
+
+  /* Destaque e Ações Primárias */
+  --color-primary: #0284c7;
+  --color-primary-hover: #0369a1;
+  --color-primary-text: #ffffff;
+
+  /* Estados de Domínio e Status */
+  --color-status-publicada: #10b981;
+  --color-status-publicada-bg: rgba(16, 185, 129, 0.15);
+  --color-status-aviso: #f59e0b;
+  --color-status-aviso-bg: rgba(245, 158, 11, 0.15);
+  --color-status-em-risco: #f97316;
+  --color-status-em-risco-bg: rgba(249, 115, 22, 0.2);
+  --color-status-atrasada: #ef4444;
+  --color-status-atrasada-bg: rgba(239, 68, 68, 0.2);
+  --color-status-reprovada: #dc2626;
+  --color-status-reprovada-bg: rgba(220, 38, 38, 0.2);
+  --color-status-sem-dado: #64748b;
+  --color-status-sem-dado-bg: rgba(100, 116, 139, 0.15);
+  --color-status-em-andamento: #3b82f6;
+  --color-status-em-andamento-bg: rgba(59, 130, 246, 0.15);
+  --color-status-degradada: #eab308;
+  --color-status-degradada-bg: rgba(234, 179, 8, 0.15);
+
+  /* Tipografia */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* Espaçamentos e Densidade (Mesa de Operações) */
+  --space-2xs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Sombras */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+/* Reset básico e tipografia */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tipografia Tabular para Valores Financeiros */
+.tabular-nums {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Tabelas Densas de Mesa */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  text-align: left;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.data-table th.th-num,
+.data-table td.td-num {
+  text-align: right;
+}
+
+.data-table td {
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.data-table tr:hover td {
+  background-color: var(--color-bg-surface-hover);
+}
+
+/* Badges de Status */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badge-publicada {
+  background-color: var(--color-status-publicada-bg);
+  color: var(--color-status-publicada);
+  border: 1px solid var(--color-status-publicada);
+}
+
+.badge-aviso {
+  background-color: var(--color-status-aviso-bg);
+  color: var(--color-status-aviso);
+  border: 1px solid var(--color-status-aviso);
+}
+
+.badge-em-risco {
+  background-color: var(--color-status-em-risco-bg);
+  color: var(--color-status-em-risco);
+  border: 1px solid var(--color-status-em-risco);
+  animation: pulse-border 2s infinite;
+}
+
+.badge-atrasada {
+  background-color: var(--color-status-atrasada-bg);
+  color: var(--color-status-atrasada);
+  border: 1px solid var(--color-status-atrasada);
+}
+
+.badge-reprovada {
+  background-color: var(--color-status-reprovada-bg);
+  color: var(--color-status-reprovada);
+  border: 1px solid var(--color-status-reprovada);
+}
+
+.badge-sem-dado {
+  background-color: var(--color-status-sem-dado-bg);
+  color: var(--color-status-sem-dado);
+  border: 1px solid var(--color-status-sem-dado);
+}
+
+.badge-em-andamento {
+  background-color: var(--color-status-em-andamento-bg);
+  color: var(--color-status-em-andamento);
+  border: 1px solid var(--color-status-em-andamento);
+}
+
+/* Botões */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.btn-secondary {
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-bg-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Inputs e Formulários */
+.form-input, .form-select, .form-textarea {
+  background-color: var(--color-bg-input);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--color-border-focus);
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: var(--color-status-em-risco); }
+  50% { border-color: transparent; }
+}

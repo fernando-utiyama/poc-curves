@@ -1,0 +1,28 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: curve-api
+  datasource:
+    # Credencial restrita curve_api_app (db/migration/V12__curve_api_credencial_restrita.sql,
+    # tarefa 1.2 do backlog): SELECT/INSERT/UPDATE só em definicao_curva e
+    # versao_definicao_curva, SELECT-only nas tabelas de outros serviços.
+    url: jdbc:sqlserver://sqlserver:1433;databaseName=curvasdb;trustServerCertificate=true;encrypt=true
+    username: curve_api_app
+    password: ${CURVE_API_DB_PASSWORD:CurveApiP0c!Local}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI:http://localhost:8180/realms/curvas/protocol/openid-connect/certs}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always

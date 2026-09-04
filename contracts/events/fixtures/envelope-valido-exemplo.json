@@ -1,0 +1,24 @@
+{
+  "eventId": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+  "correlationId": "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+  "source": "B3",
+  "dataset": "BVBG.086",
+  "referenceDate": "2026-08-21",
+  "producedAt": "2026-08-21T21:42:14Z",
+  "schemaVersion": "1.0",
+  "payloadKind": "INDIVIDUAL_QUOTES",
+  "loteId": "f69c4d5c-59bc-53d8-b7bd-5dbebc5a8ac6",
+  "sequencia": 1,
+  "totalBlocos": 511,
+  "payload": {
+    "sourceUrl": "https://www.b3.com.br/pesquisapregao/download?filelist=PR260821.zip",
+    "encoding": "utf-8",
+    "contentHash": "sha256:3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1",
+    "sizeBytes": 176697071,
+    "records": [
+      {
+        "raw": "<BizGrp><Document><PricRpt><SctyId><TckrSymb>DI1F27</TckrSymb></SctyId><FinInstrmId><OthrId><Id>DI1F27</Id></OthrId></FinInstrmId><TradDt><Dt>2026-08-21</Dt></TradDt><FinInstrmAttrbts><AdjstdQtTax>14.129</AdjstdQtTax></FinInstrmAttrbts></PricRpt></Document></BizGrp>"
+      }
+    ]
+  }
+}
