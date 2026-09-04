@@ -1,7 +1,7 @@
 package com.poccurves.engine.adapter.in.bootstrap;
-import com.poccurves.engine.domain.construcao.ModeloCurva;
+import com.poccurves.engine.application.model.ModeloCurva;
+import com.poccurves.engine.application.port.ModeloCurvaRepositoryPort;
 
-import com.poccurves.engine.application.ModeloCurvaRepositoryPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;

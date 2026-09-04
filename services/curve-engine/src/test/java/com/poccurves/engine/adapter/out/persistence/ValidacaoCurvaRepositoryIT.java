@@ -1,7 +1,7 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.domain.validacao.Classificacao;
-import com.poccurves.engine.domain.validacao.ResultadoTeste;
-import com.poccurves.engine.domain.validacao.ResultadoValidacao;
+import com.poccurves.engine.application.model.Classificacao;
+import com.poccurves.engine.application.model.ResultadoTeste;
+import com.poccurves.engine.application.model.ResultadoValidacao;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

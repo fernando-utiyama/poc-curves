@@ -1,6 +1,6 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.domain.construcao.EstadoModelo;
-import com.poccurves.engine.domain.construcao.ModeloCurva;
+import com.poccurves.engine.application.model.EstadoModelo;
+import com.poccurves.engine.application.model.ModeloCurva;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

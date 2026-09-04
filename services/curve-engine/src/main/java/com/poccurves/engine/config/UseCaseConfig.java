@@ -1,39 +1,39 @@
 package com.poccurves.engine.config;
-import com.poccurves.engine.domain.construcao.CurveBootstrapper;
-import com.poccurves.engine.domain.interpolacao.InterpoladorRegistry;
-import com.poccurves.engine.domain.interpolacao.PoliticaExtrapolacaoRegistry;
-import com.poccurves.engine.domain.validacao.TesteComparacaoCurvaImportada;
-import com.poccurves.engine.domain.validacao.TesteEstrutural;
-import com.poccurves.engine.domain.validacao.TesteFaixaPlausivelTaxa;
-import com.poccurves.engine.domain.validacao.TesteLimiteTaxaForward;
-import com.poccurves.engine.domain.validacao.TesteMonotonicidadeFatorDesconto;
-import com.poccurves.engine.domain.validacao.TesteReprecificacaoInstrumentosCalibracao;
-import com.poccurves.engine.domain.validacao.TesteSuavidadeEstruturaTermo;
-import com.poccurves.engine.domain.validacao.TesteValidacao;
-import com.poccurves.engine.domain.validacao.TesteVariacaoCurvaAnterior;
+import com.poccurves.engine.application.model.CurveBootstrapper;
+import com.poccurves.engine.application.model.InterpoladorRegistry;
+import com.poccurves.engine.application.model.PoliticaExtrapolacaoRegistry;
+import com.poccurves.engine.application.port.CacheInterpolacaoPort;
+import com.poccurves.engine.application.port.CurvaPublicadaEventPort;
+import com.poccurves.engine.application.port.DefinicaoCurvaResolutionRepositoryPort;
+import com.poccurves.engine.application.port.InsumoDI1RepositoryPort;
+import com.poccurves.engine.application.port.JsonPort;
+import com.poccurves.engine.application.port.ModeloConstrucaoPort;
+import com.poccurves.engine.application.port.ModeloCurvaRepositoryPort;
+import com.poccurves.engine.application.port.ProcedenciaCurvaRepositoryPort;
+import com.poccurves.engine.application.port.ValidacaoCurvaRepositoryPort;
+import com.poccurves.engine.application.port.VersaoCurvaRepositoryPort;
+import com.poccurves.engine.application.port.VerticeCurvaRepositoryPort;
+import com.poccurves.engine.application.service.BateriaValidacaoService;
+import com.poccurves.engine.application.service.ConstrucaoCurvaService;
+import com.poccurves.engine.application.service.ModeloConstrucaoResolver;
+import com.poccurves.engine.application.service.PromocaoVersaoCurvaService;
+import com.poccurves.engine.application.usecase.CompararModelosService;
+import com.poccurves.engine.application.usecase.ConsoleDesenvolvimentoModeloService;
+import com.poccurves.engine.application.usecase.ImportarModeloGroovyService;
+import com.poccurves.engine.application.usecase.InterpolacaoService;
+import com.poccurves.engine.application.usecase.ListarModelosService;
+import com.poccurves.engine.application.usecase.PublicacaoCurvaService;
+import com.poccurves.engine.application.validator.TesteComparacaoCurvaImportada;
+import com.poccurves.engine.application.validator.TesteEstrutural;
+import com.poccurves.engine.application.validator.TesteFaixaPlausivelTaxa;
+import com.poccurves.engine.application.validator.TesteLimiteTaxaForward;
+import com.poccurves.engine.application.validator.TesteMonotonicidadeFatorDesconto;
+import com.poccurves.engine.application.validator.TesteReprecificacaoInstrumentosCalibracao;
+import com.poccurves.engine.application.validator.TesteSuavidadeEstruturaTermo;
+import com.poccurves.engine.application.validator.TesteValidacao;
+import com.poccurves.engine.application.validator.TesteVariacaoCurvaAnterior;
 
-import com.poccurves.engine.application.BateriaValidacaoService;
-import com.poccurves.engine.application.CacheInterpolacaoPort;
-import com.poccurves.engine.application.CompararModelosService;
-import com.poccurves.engine.application.ConsoleDesenvolvimentoModeloService;
-import com.poccurves.engine.application.ConstrucaoCurvaService;
-import com.poccurves.engine.application.CurvaPublicadaEventPort;
-import com.poccurves.engine.application.DefinicaoCurvaResolutionRepositoryPort;
-import com.poccurves.engine.application.ImportarModeloGroovyService;
-import com.poccurves.engine.application.InsumoDI1RepositoryPort;
-import com.poccurves.engine.application.InterpolacaoService;
-import com.poccurves.engine.application.JsonPort;
-import com.poccurves.engine.application.ListarModelosService;
 import com.poccurves.engine.adapter.out.construcao.GroovyModeloConstrucao;
-import com.poccurves.engine.application.ModeloConstrucaoPort;
-import com.poccurves.engine.application.ModeloConstrucaoResolver;
-import com.poccurves.engine.application.ModeloCurvaRepositoryPort;
-import com.poccurves.engine.application.ProcedenciaCurvaRepositoryPort;
-import com.poccurves.engine.application.PromocaoVersaoCurvaService;
-import com.poccurves.engine.application.PublicacaoCurvaService;
-import com.poccurves.engine.application.ValidacaoCurvaRepositoryPort;
-import com.poccurves.engine.application.VersaoCurvaRepositoryPort;
-import com.poccurves.engine.application.VerticeCurvaRepositoryPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -63,8 +63,8 @@ public class UseCaseConfig {
      * nunca notado antes porque o serviço nunca tinha sido rodado com spring-boot:run).
      */
     @Bean
-    public com.poccurves.engine.domain.construcao.CurveBootstrapper curveBootstrapper() {
-        return new com.poccurves.engine.domain.construcao.CurveBootstrapper();
+    public com.poccurves.engine.application.model.CurveBootstrapper curveBootstrapper() {
+        return new com.poccurves.engine.application.model.CurveBootstrapper();
     }
 
     /** Spring injeta aqui a lista dos dois @Component que implementam a porta (BuiltinModeloConstrucao, GroovyModeloConstrucao). */

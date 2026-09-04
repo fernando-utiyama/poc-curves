@@ -1,5 +1,5 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.domain.versao.DefinicaoResolvida;
+import com.poccurves.engine.application.model.DefinicaoResolvida;
 
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;

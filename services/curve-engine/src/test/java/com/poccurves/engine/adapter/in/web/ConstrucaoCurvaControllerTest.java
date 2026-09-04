@@ -1,6 +1,6 @@
 package com.poccurves.engine.adapter.in.web;
+import com.poccurves.engine.application.usecase.PublicacaoCurvaService;
 
-import com.poccurves.engine.application.PublicacaoCurvaService;
 import com.poccurves.engine.dto.EngineDtos.ConstrucaoCurvaRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

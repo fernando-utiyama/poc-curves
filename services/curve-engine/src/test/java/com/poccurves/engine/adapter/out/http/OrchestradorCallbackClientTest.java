@@ -1,12 +1,12 @@
 package com.poccurves.engine.adapter.out.http;
+import com.poccurves.engine.application.model.Classificacao;
+import com.poccurves.engine.application.model.EstadoVersaoCurva;
+import com.poccurves.engine.application.model.MomentoCurva;
+import com.poccurves.engine.application.model.OrigemVersao;
+import com.poccurves.engine.application.model.ResultadoTeste;
+import com.poccurves.engine.application.model.ResultadoValidacao;
+import com.poccurves.engine.application.model.VersaoCurva;
 
-import com.poccurves.engine.domain.validacao.Classificacao;
-import com.poccurves.engine.domain.validacao.ResultadoTeste;
-import com.poccurves.engine.domain.validacao.ResultadoValidacao;
-import com.poccurves.engine.domain.versao.EstadoVersaoCurva;
-import com.poccurves.engine.domain.versao.MomentoCurva;
-import com.poccurves.engine.domain.versao.OrigemVersao;
-import com.poccurves.engine.domain.versao.VersaoCurva;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;

@@ -1,12 +1,12 @@
 package com.poccurves.engine.adapter.out.construcao;
-import com.poccurves.engine.domain.construcao.InsumoDI1;
-import com.poccurves.engine.domain.construcao.ModeloConstrucaoException;
-import com.poccurves.engine.domain.construcao.ModeloCurva;
-import com.poccurves.engine.domain.construcao.TipoModelo;
-import com.poccurves.engine.domain.curva.CurvaJuros;
-import com.poccurves.engine.domain.curva.Vertice;
+import com.poccurves.engine.application.exception.ModeloConstrucaoException;
+import com.poccurves.engine.application.model.CurvaJuros;
+import com.poccurves.engine.application.model.InsumoDI1;
+import com.poccurves.engine.application.model.ModeloCurva;
+import com.poccurves.engine.application.model.TipoModelo;
+import com.poccurves.engine.application.model.Vertice;
+import com.poccurves.engine.application.port.ModeloConstrucaoPort;
 
-import com.poccurves.engine.application.ModeloConstrucaoPort;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
 import org.codehaus.groovy.control.CompilationFailedException;

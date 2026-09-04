@@ -1,5 +1,5 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.domain.curva.Vertice;
+import com.poccurves.engine.application.model.Vertice;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

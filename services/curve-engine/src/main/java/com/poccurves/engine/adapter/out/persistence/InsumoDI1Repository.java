@@ -1,8 +1,8 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.domain.construcao.InsumoDI1;
-import com.poccurves.engine.domain.curva.CurvaJuros;
+import com.poccurves.engine.application.model.CurvaJuros;
+import com.poccurves.engine.application.model.InsumoDI1;
+import com.poccurves.engine.application.port.InsumoDI1RepositoryPort;
 
-import com.poccurves.engine.application.InsumoDI1RepositoryPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

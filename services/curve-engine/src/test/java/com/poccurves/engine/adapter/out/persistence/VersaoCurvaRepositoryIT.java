@@ -1,7 +1,7 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.domain.versao.MomentoCurva;
-import com.poccurves.engine.domain.versao.OrigemVersao;
-import com.poccurves.engine.domain.versao.VersaoCurva;
+import com.poccurves.engine.application.model.MomentoCurva;
+import com.poccurves.engine.application.model.OrigemVersao;
+import com.poccurves.engine.application.model.VersaoCurva;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

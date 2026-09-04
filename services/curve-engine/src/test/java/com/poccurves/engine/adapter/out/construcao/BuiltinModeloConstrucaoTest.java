@@ -1,9 +1,9 @@
 package com.poccurves.engine.adapter.out.construcao;
-import com.poccurves.engine.domain.construcao.CurveBootstrapper;
-import com.poccurves.engine.domain.construcao.InsumoDI1;
-import com.poccurves.engine.domain.construcao.ModeloCurva;
-import com.poccurves.engine.domain.curva.CurvaJuros;
-import com.poccurves.engine.domain.curva.Vertice;
+import com.poccurves.engine.application.model.CurvaJuros;
+import com.poccurves.engine.application.model.CurveBootstrapper;
+import com.poccurves.engine.application.model.InsumoDI1;
+import com.poccurves.engine.application.model.ModeloCurva;
+import com.poccurves.engine.application.model.Vertice;
 
 import org.junit.jupiter.api.Test;
 

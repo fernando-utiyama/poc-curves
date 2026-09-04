@@ -1,7 +1,7 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.domain.curva.Vertice;
+import com.poccurves.engine.application.model.Vertice;
+import com.poccurves.engine.application.port.VerticeCurvaRepositoryPort;
 
-import com.poccurves.engine.application.VerticeCurvaRepositoryPort;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;

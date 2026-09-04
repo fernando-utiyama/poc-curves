@@ -1,11 +1,11 @@
 package com.poccurves.engine.config;
+import com.poccurves.engine.application.usecase.CompararModelosService;
+import com.poccurves.engine.application.usecase.ImportarModeloGroovyService;
+import com.poccurves.engine.application.usecase.InterpolacaoService;
+import com.poccurves.engine.application.usecase.ListarModelosService;
 
 import com.poccurves.engine.adapter.in.web.InterpolacaoController;
 import com.poccurves.engine.adapter.in.web.ModelosController;
-import com.poccurves.engine.application.CompararModelosService;
-import com.poccurves.engine.application.ImportarModeloGroovyService;
-import com.poccurves.engine.application.InterpolacaoService;
-import com.poccurves.engine.application.ListarModelosService;
 import com.poccurves.engine.dto.EngineDtos.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

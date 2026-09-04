@@ -1,6 +1,6 @@
 package com.poccurves.engine.dto;
+import com.poccurves.engine.application.model.Vertice;
 
-import com.poccurves.engine.domain.curva.Vertice;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -11,8 +11,8 @@ import java.util.UUID;
 /**
  * Formas de request/response HTTP do curve-engine — mesmo padrão real já usado por
  * curve-api ({@code dto.ApiDtos}) e curve-bff ({@code dto.BffDtos}): um único arquivo,
- * registros aninhados, pacote {@code dto} separado de {@code domain} (que é regra de
- * negócio pura, não forma de adaptador HTTP).
+ * registros aninhados, pacote {@code dto} separado de {@code application} (regra de
+ * negócio, não forma de adaptador HTTP).
  */
 public class EngineDtos {
 

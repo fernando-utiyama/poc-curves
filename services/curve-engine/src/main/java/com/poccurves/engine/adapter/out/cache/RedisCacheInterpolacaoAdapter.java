@@ -1,6 +1,6 @@
 package com.poccurves.engine.adapter.out.cache;
+import com.poccurves.engine.application.port.CacheInterpolacaoPort;
 
-import com.poccurves.engine.application.CacheInterpolacaoPort;
 import com.poccurves.engine.dto.EngineDtos.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

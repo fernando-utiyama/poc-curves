@@ -1,11 +1,11 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.domain.versao.EstadoVersaoCurva;
-import com.poccurves.engine.domain.versao.MomentoCurva;
-import com.poccurves.engine.domain.versao.OrigemVersao;
-import com.poccurves.engine.domain.versao.VersaoCurva;
-import com.poccurves.engine.domain.versao.VersaoJaExisteException;
+import com.poccurves.engine.application.exception.VersaoJaExisteException;
+import com.poccurves.engine.application.model.EstadoVersaoCurva;
+import com.poccurves.engine.application.model.MomentoCurva;
+import com.poccurves.engine.application.model.OrigemVersao;
+import com.poccurves.engine.application.model.VersaoCurva;
+import com.poccurves.engine.application.port.VersaoCurvaRepositoryPort;
 
-import com.poccurves.engine.application.VersaoCurvaRepositoryPort;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;

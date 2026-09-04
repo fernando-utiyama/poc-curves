@@ -1,5 +1,5 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.domain.versao.ProcedenciaCurva;
+import com.poccurves.engine.application.model.ProcedenciaCurva;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

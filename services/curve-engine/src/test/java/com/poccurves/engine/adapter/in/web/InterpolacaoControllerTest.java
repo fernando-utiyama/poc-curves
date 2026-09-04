@@ -1,7 +1,7 @@
 package com.poccurves.engine.adapter.in.web;
+import com.poccurves.engine.application.usecase.InterpolacaoService;
 
 import tools.jackson.databind.ObjectMapper;
-import com.poccurves.engine.application.InterpolacaoService;
 import com.poccurves.engine.config.CurveEngineSecurityConfig;
 import com.poccurves.engine.dto.EngineDtos.*;
 import org.junit.jupiter.api.BeforeEach;

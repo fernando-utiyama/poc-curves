@@ -1,6 +1,6 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.domain.construcao.InsumoDI1;
-import com.poccurves.engine.domain.curva.CurvaJuros;
+import com.poccurves.engine.application.model.CurvaJuros;
+import com.poccurves.engine.application.model.InsumoDI1;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

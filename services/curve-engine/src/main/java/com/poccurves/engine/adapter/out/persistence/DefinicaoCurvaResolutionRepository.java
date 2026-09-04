@@ -1,14 +1,14 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.domain.interpolacao.ConfiguracaoInterpolacao;
-import com.poccurves.engine.domain.validacao.LimiteValidacao;
-import com.poccurves.engine.domain.versao.DefinicaoResolvida;
+import com.poccurves.engine.application.model.ConfiguracaoInterpolacao;
+import com.poccurves.engine.application.model.DefinicaoResolvida;
+import com.poccurves.engine.application.model.LimiteValidacao;
+import com.poccurves.engine.application.port.DefinicaoCurvaResolutionRepositoryPort;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import com.poccurves.engine.application.DefinicaoCurvaResolutionRepositoryPort;
 
 import java.sql.Date;
 import java.sql.Time;

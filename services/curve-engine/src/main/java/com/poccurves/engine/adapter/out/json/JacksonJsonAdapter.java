@@ -1,7 +1,7 @@
 package com.poccurves.engine.adapter.out.json;
+import com.poccurves.engine.application.port.JsonPort;
 
 import tools.jackson.databind.ObjectMapper;
-import com.poccurves.engine.application.JsonPort;
 import org.springframework.stereotype.Component;
 
 @Component

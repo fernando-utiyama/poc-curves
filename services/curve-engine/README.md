@@ -6,15 +6,18 @@ Constrói curva por bootstrap a partir dos contratos DI1 (ou por modelo Groovy i
 
 ```
 com.poccurves.engine
-├── domain/                  entidades e regras puras (VersaoCurva, ModeloCurva, ContextoValidacao, os 8 TesteValidacao,
-│                             VersaoJaExisteException, CurvaJuros/Vertice, interpoladores e políticas de extrapolação,
-│                             ModeloConstrucaoException...)
-├── application/              casos de uso (ConstrucaoCurvaService, PublicacaoCurvaService, PromocaoVersaoCurvaService,
-│                             BateriaValidacaoService, InterpolacaoService, ListarModelosService,
-│                             ImportarModeloGroovyService, CompararModelosService,
-│                             ConsoleDesenvolvimentoModeloService, ModeloConstrucaoResolver)
-│                             + portas (7 *RepositoryPort, CurvaPublicadaEventPort, JsonPort,
-│                             ModeloConstrucaoPort, CacheInterpolacaoPort)
+├── application/
+│   ├── model/                entidades e regras puras (VersaoCurva, ModeloCurva, ContextoValidacao, CurvaJuros/Vertice,
+│   │                         interpoladores e políticas de extrapolação, CurveBootstrapper, RateHelper,
+│   │                         ReconciliadorCurva...) — inclui algoritmo, não só dado
+│   ├── validator/            os 8 TesteValidacao (TesteEstrutural, TesteMonotonicidadeFatorDesconto...)
+│   ├── exception/            ModeloConstrucaoException, VersaoJaExisteException
+│   ├── port/                 7 *RepositoryPort, CurvaPublicadaEventPort, JsonPort, ModeloConstrucaoPort, CacheInterpolacaoPort
+│   ├── service/               orquestração interna, não chamada direto por controller (ConstrucaoCurvaService,
+│   │                         BateriaValidacaoService, PromocaoVersaoCurvaService, ModeloConstrucaoResolver)
+│   └── usecase/               ponto de entrada por operação de negócio, um por controller (PublicacaoCurvaService,
+│                             InterpolacaoService, CompararModelosService, ListarModelosService,
+│                             ImportarModeloGroovyService, ConsoleDesenvolvimentoModeloService)
 ├── adapter/in/web            InterpolacaoController, ModelosController, ConsoleDesenvolvimentoModeloController (@Profile("local")), ConstrucaoCurvaController
 ├── adapter/in/bootstrap      ModeloCurvaBootstrap
 ├── adapter/out/persistence   7 repositórios JDBC
@@ -24,6 +27,8 @@ com.poccurves.engine
 ├── adapter/out/cache         RedisCacheInterpolacaoAdapter
 └── config/                   wiring Spring (UseCaseConfig, InterpoladorConfig, RedisConfig, CurveEngineSecurityConfig)
 ```
+
+Layout espelha o padrão hex real usado em outro projeto (`adapter`/`application`/`util`, com `application` subdividido em `model`/`service`/`usecase`/`validator`/`port`/`exception`) — revisado nesta sessão a pedido do usuário, substituindo o `domain`/`application` separado que existia antes. `ArchitectureTest` continua banindo import de framework em qualquer subpacote de `application` (o padrão `..application..` já cobre todos os novos subpacotes).
 
 `@Transactional` em `application` é exceção deliberada (mesma razão de `curve-api`).
 
@@ -49,7 +54,7 @@ O script recebe só uma lista de mapas imutáveis com os insumos já resolvidos 
 
 ## Bateria de validação
 
-8 `TesteValidacao` (`domain/`): estrutural, monotonicidade de fator de desconto, limite de taxa forward, faixa plausível, suavidade da estrutura a termo, reprecificação de instrumentos de calibração, variação contra curva anterior, comparação contra curva importada da mesma data. Cada um recebe `ContextoValidacao` (curva construída + insumos + comparações opcionais) e um `limite` — a classificação (BLOQUEANTE/AVISO) é configuração por curva (`versao_definicao_curva.limites_validacao`), não constante de código.
+8 `TesteValidacao` (`application/validator/`): estrutural, monotonicidade de fator de desconto, limite de taxa forward, faixa plausível, suavidade da estrutura a termo, reprecificação de instrumentos de calibração, variação contra curva anterior, comparação contra curva importada da mesma data. Cada um recebe `ContextoValidacao` (curva construída + insumos + comparações opcionais) e um `limite` — a classificação (BLOQUEANTE/AVISO) é configuração por curva (`versao_definicao_curva.limites_validacao`), não constante de código.
 
 `BateriaValidacaoService` roda todos os testes habilitados dentro de um `try/catch` amplo por teste — falha na execução de um teste vira `REPROVADO`, nunca propaga nem é tratada como sucesso (`aprovadaSemBloqueioReprovado` só é `true` se nenhum BLOQUEANTE reprovou). `PublicacaoCurvaService.processarPedidoConstrucao` promove a versão quando o veredito aprova (mesmo com AVISO reprovado — a curva sobe com o aviso registrado no callback de conclusão, campo `warnings`) e reprova (preservando a versão anterior publicada) quando um BLOQUEANTE reprova, notificando o `curve-orchestrator` do resultado nos três casos (sucesso, reprovação, erro) via `OrchestradorCallbackClient` — ver D1d em `curves-solution-architecture/design.md`: o motor não usa Kafka, recebe pedido de construção em `POST /api/v1/construcoes` e responde em background com callback HTTP.
 

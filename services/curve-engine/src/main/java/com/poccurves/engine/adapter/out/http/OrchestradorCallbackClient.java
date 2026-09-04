@@ -1,8 +1,8 @@
 package com.poccurves.engine.adapter.out.http;
+import com.poccurves.engine.application.model.ResultadoTeste;
+import com.poccurves.engine.application.model.VersaoCurva;
+import com.poccurves.engine.application.port.CurvaPublicadaEventPort;
 
-import com.poccurves.engine.application.CurvaPublicadaEventPort;
-import com.poccurves.engine.domain.validacao.ResultadoTeste;
-import com.poccurves.engine.domain.versao.VersaoCurva;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
