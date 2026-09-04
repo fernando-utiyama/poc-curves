@@ -51,6 +51,13 @@ public class CurveEngineSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/metrics").permitAll()
 
+                        // Despacho de construção (D1d): chamada interna serviço-a-serviço do
+                        // curve-orchestrator, que não tem SecurityConfig nem emite JWT — mesmo
+                        // modelo de confiança de rede interna já usado no resto da plataforma
+                        // (orchestrator->function-marketdata, orchestrator->curve-processor, também
+                        // sem autenticação). Exigir JWT aqui quebraria a chamada em tempo real.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/construcoes").permitAll()
+
                         // Importar/validar script Groovy é a única ação restrita a administrador —
                         // executa código arbitrário e, se válido, persiste como modelo de precificação.
                         .requestMatchers(HttpMethod.POST, "/api/v1/modelos/validar-groovy").hasRole("CURVE_ADMIN")

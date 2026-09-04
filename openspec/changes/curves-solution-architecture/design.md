@@ -30,7 +30,7 @@ Restrições fixas desta POC: Podman rootless (não há Docker Desktop na máqui
 
 ### D1 — Kafka é a fronteira entre ingestão e domínio, não um barramento genérico
 
-Somente dois fluxos passam por Kafka: dado bruto do feeder (`marketdata.raw.v1`) e dado normalizado pronto para uso (`marketdata.normalized.v1`), mais os dois eventos de curva (`curve.build.requested.v1`, `curve.published.v1`). Consultas nunca passam por Kafka.
+~~Somente dois fluxos passam por Kafka: dado bruto do feeder (`marketdata.raw.v1`) e dado normalizado pronto para uso (`marketdata.normalized.v1`), mais os dois eventos de curva (`curve.build.requested.v1`, `curve.published.v1`). Consultas nunca passam por Kafka.~~ **Revisto — ver D1d**: o par de eventos de curva do `curve-engine` (`curve.build.requested.v1`, `curve.published.v1` quando produzido por ele) saiu de Kafka. Kafka permanece a fronteira entre ingestão e domínio: dado bruto do feeder, dado normalizado, e o `curve.published.v1` que o `curve-processor` continua publicando para curvas `IMPORTADA`/`CARREGADA`. Consultas nunca passam por Kafka.
 
 *Alternativa considerada*: o feeder gravar direto no SQL e Kafka só notificar. Rejeitada porque perde replay — um erro de parse exigiria rebaixar o arquivo da B3; com o conteúdo em tópico, reprocessa-se do offset.
 
@@ -66,6 +66,20 @@ A ingestão trafega em três tópicos distintos, cada um com grupo de consumo e 
 
 *Benefício adicional*: a faixa de massa é a que se pausa na janela crítica, sem tocar nas outras duas — é o mecanismo que faz "hoje ganhar do histórico".
 
+### D1d — curve-engine sai de Kafka: despacho por REST, conclusão por callback
+
+Kafka comprava desacoplamento para `curve.build.requested.v1`/`curve.published.v1` só na teoria: o `curve-engine` é o único consumidor do primeiro em toda a plataforma, e o segundo nunca teve consumidor de negócio nenhum — `curve-api` já lê `versao_curva`/`vertice_curva` direto do banco (regra de fronteira já existente), e o único listener era a dead-letter do próprio `curve-orchestrator`, que só materializa mensagem morta, não reage a sucesso. A auditoria que motivou esta revisão também revelou um bug real desse desenho: nada no caminho de sucesso chamava `ExecucaoCurva.concluir()` — toda execução disparada por evento ficava presa em `CONSTRUINDO` para sempre, percebida apenas indiretamente pelo alerta preditivo de D4b.
+
+Passa a ser: o `curve-orchestrator` despacha a construção via `POST /api/v1/construcoes` no `curve-engine`, que responde `202 Accepted` de imediato e processa o bootstrap em background; ao concluir — sucesso, reprovação na validação, ou erro — o `curve-engine` chama de volta `POST /api/v1/execucoes/{executionId}/concluida` no `curve-orchestrator`, que só então transiciona `CONSTRUINDO` → `CONCLUIDA`/`FALHOU`. `correlationId`/`runId`/`executionId` seguem no corpo tanto do despacho quanto do callback, preservando a propagação de correlation id já exigida pela plataforma.
+
+*Por que não REST síncrono*: o bootstrap pode levar segundos a minutos sobre dezenas de instrumentos — uma chamada bloqueante arrisca timeout de HTTP/gateway e prende a thread do orchestrator sem necessidade real.
+
+*Por que não polling*: o orchestrator teria que varrer o estado do engine periodicamente sem saber o momento certo, gastando requisição à toa e atrasando a detecção do resultado — e ler o banco do engine diretamente violaria a fronteira de componente (cada componente só acessa o outro pela API dele).
+
+*O que se perde*: replay de mensagem e a garantia de entrega at-least-once do broker (D1). Aceito porque o conteúdo que trafegava em `curve.build.requested.v1` sempre foi um ponteiro para reprocessar (`curveCode`+`referenceDate`+`runId`+`executionId`), nunca dado bruto de mercado — não há payload de negócio para reproduzir a partir de um offset perdido. A ausência de callback dentro do orçamento de tempo (D4b) já é, por si só, o sinal que a plataforma precisa: a execução fica `EM_RISCO`/`ATRASADA` pelo mesmo mecanismo que cobriria uma falha de Kafka, sem depender do transporte.
+
+*Escopo*: só o `curve-engine`. O `curve-processor` continua publicando `curve.published.v1` para curvas `IMPORTADA`/`CARREGADA` normalmente — esse fluxo não tem o mesmo problema, porque o `curve-processor` é ele mesmo o consumidor final da ingestão (não é um segundo salto sem consumidor como era o do `curve-engine`).
+
 ### D2 — Envelope de evento comum e obrigatório
 
 Todo evento carrega `eventId` (UUID), `correlationId` (herdado do run que originou), `source` (`B3` | `BLOOMBERG` | `LSEG`), `dataset`, `referenceDate`, `producedAt`, `schemaVersion` e `payload`. A chave de partição é `source|dataset|referenceDate`, o que garante ordenação por dataset e data e permite paralelismo entre datasets.
@@ -80,7 +94,7 @@ Campos novos só podem ser adicionados como opcionais. Mudança incompatível cr
 
 ### D4 — Motor híbrido: construção assíncrona, interpolação síncrona
 
-Construir a curva é caro (bootstrap sobre dezenas de instrumentos) e o resultado é o mesmo para todo mundo → assíncrono, disparado por evento, persistido como `versao_curva` + `vertice_curva`. Interpolar é barato, o prazo pedido é arbitrário e o usuário está esperando na tela → síncrono, via API do motor, sobre a curva já publicada, com cache Redis por `(curveId, referenceDate, versionId, tenor, interpolator)`.
+Construir a curva é caro (bootstrap sobre dezenas de instrumentos) e o resultado é o mesmo para todo mundo → assíncrono, disparado por REST com conclusão sinalizada por callback (ver D1d), persistido como `versao_curva` + `vertice_curva`. Interpolar é barato, o prazo pedido é arbitrário e o usuário está esperando na tela → síncrono, via API do motor, sobre a curva já publicada, com cache Redis por `(curveId, referenceDate, versionId, tenor, interpolator)`.
 
 *Alternativas consideradas*: (a) tudo síncrono — recalcularia a mesma curva a cada consulta e não deixaria rastro do que foi publicado; (b) tudo assíncrono — obrigaria pré-materializar todos os prazos possíveis, o que é infinito para prazo arbitrário.
 
@@ -231,7 +245,7 @@ A POC não se declara pronta porque "rodou"; ela roda o reconciliador do `curve-
 ## Migration Plan
 
 1. **Fundação** — estrutura do monorepo, `contracts/` (schemas de evento e OpenAPI), migrações Flyway iniciais e compose Podman com Kafka, SQL Server e Redis subindo verdes.
-2. **Ingestão** — `feeder-marketdata` quebra o arquivo em blocos e publica na faixa de rotina; `curve-processor` normaliza e persiste por bloco, consolidando o lote pela contagem. Critério: uma data de pregão B3 inteira no `ponto_dado_mercado`, com lote completo.
+2. **Ingestão** — `function-marketdata` quebra o arquivo em blocos e publica na faixa de rotina; `curve-processor` normaliza e persiste por bloco, consolidando o lote pela contagem. Critério: uma data de pregão B3 inteira no `ponto_dado_mercado`, com lote completo.
 3. **Domínio** — `curve-api` (cadastro) permite definir as duas curvas: a PRE construída a partir de DI1 e a PRE oficial importada da B3. O `curve-engine` constrói e publica a primeira; o `curve-processor` publica a segunda. A comparação entre as duas passa a ser possível pela própria API.
 4. **Automação** — `curve-orchestrator` agenda a ingestão diária, expõe disparo sob demanda na faixa prioritária com rastreio de execução, e passa a conhecer o prazo de publicação de cada curva.
 5. **Produto** — `curve-bff` e `curve-web-ui` fecham o ciclo até a tela, incluindo disparo manual e monitoramento.
@@ -245,7 +259,7 @@ A POC não se declara pronta porque "rodou"; ela roda o reconciliador do `curve-
 - Em produção, o transporte é Kafka gerenciado ou Azure Event Hubs com API Kafka? Muda configuração de segurança e cotas, não o código.
 - Curva intradiária entra no escopo da POC ou só abertura e fechamento? O desenho suporta os três `momento_curva`, mas só abertura e fechamento têm dado de teste.
 - Qual o horário de fechamento do banco que serve de corte para cada curva? Sem ele, o orçamento de tempo não tem âncora.
-- ~~Qual o tamanho de bloco adequado para os arquivos reais da B3? Precisa ser medido, não estimado.~~ Respondido: medido sobre 2 arquivos reais do pregão de 2026-08-21 (BVBG.086: 175.506.347 bytes / 76.015 elementos `<BizGrp>`; BVBG.028: 800.282.039 bytes / 223.700 elementos). Calibrado para 150 elementos/bloco — ver `services/feeder-marketdata/src/tamanho-bloco.ts` (tarefa 6.7.7 de `feeder-marketdata`).
+- ~~Qual o tamanho de bloco adequado para os arquivos reais da B3? Precisa ser medido, não estimado.~~ Respondido: medido sobre 2 arquivos reais do pregão de 2026-08-21 (BVBG.086: 175.506.347 bytes / 76.015 elementos `<BizGrp>`; BVBG.028: 800.282.039 bytes / 223.700 elementos). Calibrado para 150 elementos/bloco — ver `services/function-marketdata/src/tamanho-bloco.ts` (tarefa 6.7.7 de `function-marketdata`).
 - O alerta preditivo de risco de atraso deve notificar por canal externo, ou basta o painel do dia?
 - Multi-tenant / segregação por mesa: há necessidade de escopo de visibilidade por curva, ou todo usuário autenticado vê todas as curvas?
 - ~~Bloomberg e LSEG entregam por arquivo, API ou stream? Determina se o contrato de feeder atual (pull agendado) cobre os três ou se falta um modo push.~~ Respondido para Bloomberg: entrega por arquivo, mas em fluxo assíncrono (submeter pedido → aguardar geração em lote → buscar arquivo pronto), diferente do pull síncrono imediato que o contrato atual de `Feeder` assume para B3/ANBIMA/BCB — exige uma extensão do contrato, não só um novo feeder no molde existente. Ver decisão de design em `feeder-bloomberg`. LSEG continua em aberto.

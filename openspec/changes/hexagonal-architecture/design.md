@@ -27,7 +27,7 @@ mencionado no contexto padrão do projeto.
 - Nenhuma mudança de contrato HTTP, evento Kafka ou schema de banco (Flyway).
 - `libs/curve-kernel` fica fora — já é framework-free, não precisa de adaptador.
 - Sem exercício de modelagem DDD tática (agregados, bounded context) além de ports/adapters.
-- `feeder-marketdata` (Node/TS) e `curve-web-ui` (Angular) fora de escopo — só os 6 módulos Java.
+- `function-marketdata` (Node/TS) e `curve-web-ui` (Angular) fora de escopo — só os 6 módulos Java.
 - Sem split físico em módulos Maven separados por camada (domain/application em jar próprio) —
   fica registrado como questão em aberto abaixo, não decidido nesta rodada.
 

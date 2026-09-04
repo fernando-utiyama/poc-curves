@@ -1,7 +1,7 @@
 package com.poccurves.orchestrator.application;
 
 import com.poccurves.orchestrator.application.AquisicaoExecutionService.ExecutionResult;
-import com.poccurves.orchestrator.application.FeederAcquisitionPort.ResultadoAquisicao;
+import com.poccurves.orchestrator.application.FunctionMarketdataPort.ResultadoAquisicao;
 import com.poccurves.orchestrator.domain.Agendamento;
 import com.poccurves.orchestrator.domain.EstadoExecucao;
 import com.poccurves.orchestrator.domain.ExecucaoCurva;

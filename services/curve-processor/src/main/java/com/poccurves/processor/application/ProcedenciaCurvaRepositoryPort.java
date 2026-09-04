@@ -1,6 +1,6 @@
 package com.poccurves.processor.application;
+import com.poccurves.processor.domain.curva.ProcedenciaCurva;
 
-import com.poccurves.processor.domain.ProcedenciaCurva;
 
 import java.util.Optional;
 import java.util.UUID;

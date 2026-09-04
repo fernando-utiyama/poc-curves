@@ -17,11 +17,6 @@ spring:
     redis:
       host: redis
       port: 6379
-  kafka:
-    # Faltava por completo — mesmo gap já encontrado e corrigido em curve-orchestrator/
-    # curve-processor nesta sessão. Sem isto, KafkaConsumerConfig/KafkaProducerConfig
-    # (@Value obrigatório, sem default) falham a subida do contexto Spring.
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
   security:
     # Mesmo emissor/realm Keycloak de curve-api/curve-bff (defesa em profundidade — a
     # importação de modelo GROOVY, restrita a CURVE_ADMIN, precisa de verificação real
@@ -30,6 +25,11 @@ spring:
       resourceserver:
         jwt:
           jwk-set-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI:http://localhost:8180/realms/curvas/protocol/openid-connect/certs}
+
+services:
+  curve-orchestrator:
+    url: ${CURVE_ORCHESTRATOR_URL:http://localhost:8084}
+    timeout-seconds: 5
 
 management:
   endpoints:

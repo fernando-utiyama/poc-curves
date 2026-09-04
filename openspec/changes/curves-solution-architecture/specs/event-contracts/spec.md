@@ -31,7 +31,7 @@ A ingestão SHALL ser dividida em três faixas, cada uma com tópico e grupo de 
 | Prioritária | `marketdata.prioritaria.v1` | disparo manual pela tela |
 | Massa | `marketdata.massa.v1` | carga histórica |
 
-Além delas: `marketdata.normalized.v1`, `curve.build.requested.v1` e `curve.published.v1`.
+Além delas: `marketdata.normalized.v1` e `curve.published.v1` (publicado exclusivamente pelo `curve-processor`, para curvas `IMPORTADA`/`CARREGADA` — o `curve-engine` não usa Kafka; despacho de construção e conclusão trafegam por REST/callback, ver `platform-topology`).
 
 #### Scenario: Bootstrap do ambiente
 

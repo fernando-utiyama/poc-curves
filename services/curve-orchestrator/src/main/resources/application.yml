@@ -28,12 +28,15 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
 
 services:
-  feeder-marketdata:
-    url: ${FEEDER_MARKETDATA_URL:http://localhost:8091}
-    timeout-seconds: ${FEEDER_MARKETDATA_TIMEOUT_SECONDS:300}
+  function-marketdata:
+    url: ${FUNCTION_MARKETDATA_URL:http://localhost:8091}
+    timeout-seconds: ${FUNCTION_MARKETDATA_TIMEOUT_SECONDS:300}
   curve-processor:
     url: ${CURVE_PROCESSOR_URL:http://localhost:8081}
     timeout-seconds: ${CURVE_PROCESSOR_TIMEOUT_SECONDS:30}
+  curve-engine:
+    url: ${CURVE_ENGINE_URL:http://localhost:8083}
+    timeout-seconds: ${CURVE_ENGINE_TIMEOUT_SECONDS:5}
 
 backfill:
   # Tamanho do pool dedicado ao despacho e execução de dias de backfill (tarefa 7.3 do backlog) —

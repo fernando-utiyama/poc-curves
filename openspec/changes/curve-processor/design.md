@@ -1,6 +1,6 @@
 ## Context
 
-O `curve-processor` fica entre o Kafka e o banco. Recebe payload bruto publicado pelos feeders — que, por decisão de `feeder-marketdata`, não interpretam nada — e é o único lugar onde o conhecimento de formato da fonte se encontra com o modelo canônico da plataforma.
+O `curve-processor` fica entre o Kafka e o banco. Recebe payload bruto publicado pelos feeders — que, por decisão de `function-marketdata`, não interpretam nada — e é o único lugar onde o conhecimento de formato da fonte se encontra com o modelo canônico da plataforma.
 
 O que chega da B3 é heterogêneo: arquivo de Preços de Referência em texto posicional, BVBG.086 e BVBG.028 em XML padrão FIXML/BVBG, tudo em ISO-8859-1 com decimal por vírgula. O que sai é uniforme: linhas em `ponto_dado_mercado` com valor em `DECIMAL(28,12)`.
 

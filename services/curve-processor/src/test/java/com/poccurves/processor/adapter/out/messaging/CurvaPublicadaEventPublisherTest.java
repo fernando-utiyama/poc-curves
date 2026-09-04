@@ -1,9 +1,9 @@
 package com.poccurves.processor.adapter.out.messaging;
+import com.poccurves.processor.domain.curva.MomentoCurva;
+import com.poccurves.processor.domain.curva.OrigemVersao;
+import com.poccurves.processor.domain.curva.VersaoCurva;
 
 import com.poccurves.processor.application.MetricasIngestao;
-import com.poccurves.processor.domain.MomentoCurva;
-import com.poccurves.processor.domain.OrigemVersao;
-import com.poccurves.processor.domain.VersaoCurva;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.kafka.core.KafkaTemplate;

@@ -15,7 +15,7 @@ import com.poccurves.orchestrator.application.DisparoAgendadoExecutor;
 import com.poccurves.orchestrator.application.DisparoManualService;
 import com.poccurves.orchestrator.application.ExecucaoCurvaRepositoryPort;
 import com.poccurves.orchestrator.application.ExecucoesService;
-import com.poccurves.orchestrator.application.FeederAcquisitionPort;
+import com.poccurves.orchestrator.application.FunctionMarketdataPort;
 import com.poccurves.orchestrator.application.MaterializarPendenciaDlqUseCase;
 import com.poccurves.orchestrator.application.PendenciaDlqRepositoryPort;
 import com.poccurves.orchestrator.application.ReconciliacaoService;
@@ -37,11 +37,11 @@ public class UseCaseConfig {
 
     @Bean
     public AquisicaoExecutionService aquisicaoExecutionService(
-            FeederAcquisitionPort feederAcquisitionClient,
+            FunctionMarketdataPort functionMarketdataClient,
             DefinicaoCurvaConsultaRepositoryPort definicaoCurvaConsultaRepository,
             BuildRequestPort buildRequestPublisher,
             @Value("${resiliencia.retentativas-maximas:3}") int maxRetentativas) {
-        return new AquisicaoExecutionService(feederAcquisitionClient, definicaoCurvaConsultaRepository, buildRequestPublisher, maxRetentativas);
+        return new AquisicaoExecutionService(functionMarketdataClient, definicaoCurvaConsultaRepository, buildRequestPublisher, maxRetentativas);
     }
 
     @Bean

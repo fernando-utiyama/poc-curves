@@ -7,6 +7,7 @@ A plataforma SHALL ser composta pelos componentes `curve-orchestrator`, feeders 
 - Feeders MUST escrever apenas em Kafka; feeders MUST NOT acessar o banco de dados.
 - `curve-processor` MUST consumir Kafka e escrever nas tabelas de market data, de lote de ingestão e — exclusivamente para versões de curva que **chegaram prontas**, isto é, com `origem_versao` `IMPORTADA` ou `CARREGADA` — nas tabelas de curva publicada.
 - `curve-engine` MUST ser o único componente autorizado a escrever versões de curva **calculadas por ele**, com `origem_versao` igual a `CALCULADA`.
+- `curve-engine` MUST receber pedidos de construção via REST do `curve-orchestrator`, MUST NOT consumir nem produzir tópico Kafka, e MUST notificar a conclusão (sucesso, reprovação ou erro) por callback HTTP ao `curve-orchestrator`.
 - `curve-api` MUST acessar o banco somente para leitura, exceto pelo cadastro de definição de curva.
 - `curve-bff` MUST NOT acessar o banco de dados nem Kafka; só chama `curve-api`, `curve-engine` e `curve-orchestrator` por HTTP.
 - `curve-web-ui` MUST chamar exclusivamente o `curve-bff`.
@@ -23,7 +24,7 @@ A plataforma SHALL ser composta pelos componentes `curve-orchestrator`, feeders 
 
 ### Requirement: Fluxo ponta a ponta
 
-A plataforma SHALL executar o fluxo `curve-orchestrator` → feeder → `marketdata.raw` → `curve-processor` → `ponto_dado_mercado` → `curve.build.requested` → `curve-engine` → `vertice_curva` → `curve.published` → `curve-api` → `curve-bff` → tela, sem etapa manual entre o disparo e a curva disponível para consulta.
+A plataforma SHALL executar o fluxo `curve-orchestrator` → feeder → `marketdata.raw` → `curve-processor` → `ponto_dado_mercado` → REST (`POST /api/v1/construcoes`) → `curve-engine` → `vertice_curva`, sem etapa manual entre o disparo e a curva disponível para consulta. Em paralelo, o `curve-engine` SHALL notificar a conclusão por callback HTTP ao `curve-orchestrator`, e a curva publicada SHALL ficar disponível para `curve-api` → `curve-bff` → tela por leitura direta do banco, independentemente do callback.
 
 #### Scenario: Ingestão agendada resulta em curva consultável
 
@@ -34,6 +35,30 @@ A plataforma SHALL executar o fluxo `curve-orchestrator` → feeder → `marketd
 
 - **WHEN** um usuário com perfil operador dispara a ingestão de uma data pela tela
 - **THEN** o fluxo SHALL ser o mesmo do agendado, e o run resultante SHALL registrar `triggeredBy` = `MANUAL` com a identidade do usuário
+
+### Requirement: Despacho de construção via REST e callback
+
+O `curve-orchestrator` SHALL despachar a construção de curva via `POST` no `curve-engine`, que SHALL responder `202 Accepted` antes de processar o bootstrap, nunca bloqueando a chamada até a conclusão. O `curve-engine` SHALL processar a construção em background e, ao concluir — sucesso, reprovação de validação, ou erro — SHALL notificar o `curve-orchestrator` por callback HTTP carregando `executionId`, `runId` e o resultado. O `curve-orchestrator` SHALL transicionar a execução de `CONSTRUINDO` para o estado terminal apropriado somente ao receber o callback.
+
+#### Scenario: Despacho não bloqueia o orchestrator
+
+- **WHEN** o `curve-orchestrator` despacha uma construção
+- **THEN** a resposta `202 Accepted` SHALL retornar antes de o bootstrap ter concluído, e o `curve-orchestrator` SHALL permanecer livre para atender outras requisições
+
+#### Scenario: Callback de sucesso fecha a execução
+
+- **WHEN** o `curve-engine` conclui a construção com a curva publicada
+- **THEN** o callback SHALL transicionar a `ExecucaoCurva` correspondente para `CONCLUIDA`
+
+#### Scenario: Callback de falha ou reprovação também fecha a execução
+
+- **WHEN** o `curve-engine` conclui a construção com reprovação na validação ou erro
+- **THEN** o callback SHALL transicionar a `ExecucaoCurva` correspondente para `FALHOU`, nomeando a causa
+
+#### Scenario: Callback nunca chega
+
+- **WHEN** o `curve-engine` não notifica o `curve-orchestrator` dentro do orçamento de tempo da execução
+- **THEN** a execução SHALL ser sinalizada `EM_RISCO`/`ATRASADA` pelo mecanismo de prazo de publicação já existente (ver Requirement: Prazo de publicação e janela crítica), sem exigir mecanismo adicional de detecção
 
 ### Requirement: Origem da versão de curva
 

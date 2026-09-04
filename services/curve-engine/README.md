@@ -15,11 +15,10 @@ com.poccurves.engine
 │                             ConsoleDesenvolvimentoModeloService, ModeloConstrucaoResolver)
 │                             + portas (7 *RepositoryPort, CurvaPublicadaEventPort, JsonPort,
 │                             ModeloConstrucaoPort, CacheInterpolacaoPort)
-├── adapter/in/web            InterpolacaoController, ModelosController, ConsoleDesenvolvimentoModeloController (@Profile("local"))
-├── adapter/in/messaging      ConstrucaoRequestListener (tradutor fino)
+├── adapter/in/web            InterpolacaoController, ModelosController, ConsoleDesenvolvimentoModeloController (@Profile("local")), ConstrucaoCurvaController
 ├── adapter/in/bootstrap      ModeloCurvaBootstrap
 ├── adapter/out/persistence   7 repositórios JDBC
-├── adapter/out/messaging     CurvaPublicadaEventPublisher
+├── adapter/out/http          OrchestradorCallbackClient
 ├── adapter/out/json          JacksonJsonAdapter
 ├── adapter/out/construcao    BuiltinModeloConstrucao, GroovyModeloConstrucao (sandbox)
 ├── adapter/out/cache         RedisCacheInterpolacaoAdapter
@@ -52,7 +51,7 @@ O script recebe só uma lista de mapas imutáveis com os insumos já resolvidos 
 
 8 `TesteValidacao` (`domain/`): estrutural, monotonicidade de fator de desconto, limite de taxa forward, faixa plausível, suavidade da estrutura a termo, reprecificação de instrumentos de calibração, variação contra curva anterior, comparação contra curva importada da mesma data. Cada um recebe `ContextoValidacao` (curva construída + insumos + comparações opcionais) e um `limite` — a classificação (BLOQUEANTE/AVISO) é configuração por curva (`versao_definicao_curva.limites_validacao`), não constante de código.
 
-`BateriaValidacaoService` roda todos os testes habilitados dentro de um `try/catch` amplo por teste — falha na execução de um teste vira `REPROVADO`, nunca propaga nem é tratada como sucesso (`aprovadaSemBloqueioReprovado` só é `true` se nenhum BLOQUEANTE reprovou). `PublicacaoCurvaService.processarPedidoConstrucao` promove a versão quando o veredito aprova (mesmo com AVISO reprovado — a curva sobe com o aviso registrado no evento `curve.published.v1`, campo `warnings`) e reprova (preservando a versão anterior publicada) quando um BLOQUEANTE reprova.
+`BateriaValidacaoService` roda todos os testes habilitados dentro de um `try/catch` amplo por teste — falha na execução de um teste vira `REPROVADO`, nunca propaga nem é tratada como sucesso (`aprovadaSemBloqueioReprovado` só é `true` se nenhum BLOQUEANTE reprovou). `PublicacaoCurvaService.processarPedidoConstrucao` promove a versão quando o veredito aprova (mesmo com AVISO reprovado — a curva sobe com o aviso registrado no callback de conclusão, campo `warnings`) e reprova (preservando a versão anterior publicada) quando um BLOQUEANTE reprova, notificando o `curve-orchestrator` do resultado nos três casos (sucesso, reprovação, erro) via `OrchestradorCallbackClient` — ver D1d em `curves-solution-architecture/design.md`: o motor não usa Kafka, recebe pedido de construção em `POST /api/v1/construcoes` e responde em background com callback HTTP.
 
 ## API de interpolação
 

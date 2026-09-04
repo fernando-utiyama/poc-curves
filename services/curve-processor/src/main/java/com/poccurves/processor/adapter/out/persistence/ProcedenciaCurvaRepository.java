@@ -1,7 +1,7 @@
 package com.poccurves.processor.adapter.out.persistence;
+import com.poccurves.processor.domain.curva.ProcedenciaCurva;
 
 import com.poccurves.processor.application.ProcedenciaCurvaRepositoryPort;
-import com.poccurves.processor.domain.ProcedenciaCurva;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

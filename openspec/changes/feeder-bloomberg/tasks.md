@@ -19,12 +19,12 @@
 
 ## 4. Honestidade sobre verificação real
 
-- [x] 4.1 Documentar no `README.md` de `feeder-marketdata` que o feeder Bloomberg foi construído e testado contra fixture, mas NÃO verificado contra um ambiente Bloomberg real (linha nova na tabela de datasets, seção "Datasets do Catálogo" — escrito por mim diretamente)
+- [x] 4.1 Documentar no `README.md` de `function-marketdata` que o feeder Bloomberg foi construído e testado contra fixture, mas NÃO verificado contra um ambiente Bloomberg real (linha nova na tabela de datasets, seção "Datasets do Catálogo" — escrito por mim diretamente)
 - [x] 4.2 Atualizar `docs/extensao-feeders.md`: marcar a pergunta "modo de entrega" como respondida para Bloomberg (arquivo, assíncrono — ver D-1), mantendo LSEG em aberto (escrito por mim diretamente)
 
 ## 5. Rodar a suíte e confirmar que nada quebrou
 
-- [x] 5.1 Rodar a suíte de testes completa de `feeder-marketdata` (Vitest) e confirmar 100% verde, incluindo os feeders B3/ANBIMA/BCB já existentes (`npm test` real — 34 arquivos de teste, 189/189 verde, nenhuma regressão nos feeders existentes)
+- [x] 5.1 Rodar a suíte de testes completa de `function-marketdata` (Vitest) e confirmar 100% verde, incluindo os feeders B3/ANBIMA/BCB já existentes (`npm test` real — 34 arquivos de teste, 189/189 verde, nenhuma regressão nos feeders existentes)
 - [x] 5.2 Rodar `npm run build`/typecheck do serviço e confirmar que compila sem erro (`npm run build` real — `tsc --noEmit` limpo, exit 0)
 
 ---

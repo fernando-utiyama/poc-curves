@@ -1,7 +1,7 @@
 package com.poccurves.processor.adapter.out.messaging;
+import com.poccurves.processor.domain.ingestao.LoteIngestao;
 
 import com.poccurves.processor.application.NormalizedEventPort;
-import com.poccurves.processor.domain.LoteIngestao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;

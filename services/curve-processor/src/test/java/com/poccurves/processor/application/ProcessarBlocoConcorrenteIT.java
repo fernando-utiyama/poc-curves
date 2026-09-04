@@ -1,9 +1,9 @@
 package com.poccurves.processor.application;
+import com.poccurves.processor.domain.ingestao.PontoDadoMercado;
+import com.poccurves.processor.domain.ingestao.ResultadoProcessamentoBloco;
+import com.poccurves.processor.domain.parsing.TipoPayload;
 
 import com.poccurves.processor.CurveProcessorApplication;
-import com.poccurves.processor.domain.PontoDadoMercado;
-import com.poccurves.processor.domain.ResultadoProcessamentoBloco;
-import com.poccurves.processor.domain.TipoPayload;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

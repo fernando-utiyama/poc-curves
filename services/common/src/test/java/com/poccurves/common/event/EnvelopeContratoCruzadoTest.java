@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * Teste de contrato cruzado (tarefa 2.6 da mudança curves-solution-architecture):
  * carrega os MESMOS exemplos reais de envelope
  * (contracts/events/fixtures/*.json — fonte única, copiada para o classpath
- * de services/common via pom.xml, e para services/feeder-marketdata via
+ * de services/common via pom.xml, e para services/function-marketdata via
  * npm run sync-contracts) e prova que o lado produtor (validador TypeScript
  * em envelope-contrato-cruzado.test.ts, ajv) e o lado consumidor (este
  * teste — validador Java networknt E deserialização real para

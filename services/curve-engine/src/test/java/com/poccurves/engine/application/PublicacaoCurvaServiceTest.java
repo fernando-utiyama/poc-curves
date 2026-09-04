@@ -223,6 +223,23 @@ class PublicacaoCurvaServiceTest {
         verify(versaoCurvaRepository).atualizar(versaoMock);
         assertThat(versaoMock.estado()).isEqualTo(EstadoVersaoCurva.REPROVADA);
         verify(curvaPublicadaEventPublisher, never()).publicar(any(), any(), any(Integer.class), any());
+        // reprovação por bloqueante deve notificar o orchestrator via callback de falha,
+        // senão a execução fica presa em CONSTRUINDO para sempre (gap real fechado por D1d)
+        verify(curvaPublicadaEventPublisher).notificarFalha(eq(execucaoId), any(String.class));
+    }
+
+    @Test
+    void excecaoDuranteProcessamentoNotificaFalhaSemPropagarParaFora() {
+        when(construcaoCurvaService.construir("PRE_DI", dataRef, "FECHAMENTO", runId, execucaoId))
+                .thenReturn(Optional.of(versaoCurvaId));
+
+        when(definicaoCurvaResolutionRepository.resolverVigente("PRE_DI", dataRef))
+                .thenThrow(new IllegalStateException("definição não encontrada"));
+
+        service.processarPedidoConstrucao("PRE_DI", dataRef, "FECHAMENTO", runId, execucaoId);
+
+        verify(curvaPublicadaEventPublisher).notificarFalha(eq(execucaoId), any(String.class));
+        verify(curvaPublicadaEventPublisher, never()).publicar(any(), any(), any(Integer.class), any());
     }
 
     @Test
@@ -234,6 +251,7 @@ class PublicacaoCurvaServiceTest {
 
         verify(bateriaValidacaoService, never()).executar(any(), any(), any());
         verify(curvaPublicadaEventPublisher, never()).publicar(any(), any(), any(Integer.class), any());
+        verify(curvaPublicadaEventPublisher, never()).notificarFalha(any(), any());
     }
 
     @Test

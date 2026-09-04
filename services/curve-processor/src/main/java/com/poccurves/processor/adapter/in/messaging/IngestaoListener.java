@@ -1,9 +1,9 @@
 package com.poccurves.processor.adapter.in.messaging;
+import com.poccurves.processor.domain.parsing.EnvelopeInvalidoException;
 
 import com.poccurves.common.event.EventEnvelope;
 import com.poccurves.common.event.EventEnvelopeSchemaValidator;
 import com.poccurves.processor.application.ProcessarEnvelopeIngestaoUseCase;
-import com.poccurves.processor.domain.EnvelopeInvalidoException;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

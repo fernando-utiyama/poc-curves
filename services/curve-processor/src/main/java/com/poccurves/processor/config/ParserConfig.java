@@ -1,10 +1,10 @@
 package com.poccurves.processor.config;
+import com.poccurves.processor.domain.parsing.B3CurvaProntaParser;
+import com.poccurves.processor.domain.parsing.Bvbg028CadastroParser;
+import com.poccurves.processor.domain.parsing.Bvbg086PricRptParser;
+import com.poccurves.processor.domain.parsing.DatasetParser;
+import com.poccurves.processor.domain.parsing.DatasetParserRegistry;
 
-import com.poccurves.processor.domain.B3CurvaProntaParser;
-import com.poccurves.processor.domain.Bvbg028CadastroParser;
-import com.poccurves.processor.domain.Bvbg086PricRptParser;
-import com.poccurves.processor.domain.DatasetParser;
-import com.poccurves.processor.domain.DatasetParserRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

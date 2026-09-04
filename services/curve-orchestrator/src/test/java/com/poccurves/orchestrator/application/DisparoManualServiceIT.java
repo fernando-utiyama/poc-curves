@@ -1,8 +1,8 @@
 package com.poccurves.orchestrator.application;
 
 import tools.jackson.databind.ObjectMapper;
-import com.poccurves.orchestrator.adapter.out.http.FeederAcquisitionClient;
-import com.poccurves.orchestrator.adapter.out.messaging.BuildRequestPublisher;
+import com.poccurves.orchestrator.adapter.out.http.CurveEngineClient;
+import com.poccurves.orchestrator.adapter.out.http.FunctionMarketdataClient;
 import com.poccurves.orchestrator.adapter.out.persistence.DefinicaoCurvaConsultaRepository;
 import com.poccurves.orchestrator.adapter.out.persistence.ExecucaoCurvaRepository;
 import com.poccurves.orchestrator.domain.EstadoExecucao;
@@ -13,22 +13,16 @@ import com.poccurves.orchestrator.domain.TipoDisparo;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.DisparoManualRequest;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.DisparoManualResponse;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.ProgressoConjuntoDTO;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,8 +30,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Teste de integração real: exige o SQL Server local de pé (migrado até V13)
- * e o container `feeder-marketdata-http` de pé na porta 8091 (deploy/podman/compose.yaml).
+ * Teste de integração real: exige o SQL Server local de pé (migrado até V13),
+ * o container `function-marketdata-http` de pé na porta 8091, e o `curve-engine`
+ * de pé na porta 8083 (deploy/podman/compose.yaml) — despacho de construção via
+ * REST (D1d), não mais Kafka.
  * Verifica {@link DisparoManualService} de ponta a ponta — auditoria manual desta sessão.
  */
 class DisparoManualServiceIT {
@@ -57,21 +53,19 @@ class DisparoManualServiceIT {
         return RestClient.builder().baseUrl("http://localhost:8091").requestFactory(factory).build();
     }
 
-    private static KafkaTemplate<String, String> kafkaTemplate() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:19092");
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(props));
+    private static RestClient curveEngineRestClient() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(5));
+        return RestClient.builder().baseUrl("http://localhost:8083").requestFactory(factory).build();
     }
 
     private final ExecucaoCurvaRepository repository = new ExecucaoCurvaRepository(jdbcTemplateSa());
     private final DefinicaoCurvaConsultaRepository definicaoCurvaConsultaRepository =
             new DefinicaoCurvaConsultaRepository(jdbcTemplateSa(), new ObjectMapper());
-    private final BuildRequestPublisher buildRequestPublisher =
-            new BuildRequestPublisher(kafkaTemplate(), new ObjectMapper());
+    private final CurveEngineClient curveEngineClient = new CurveEngineClient(curveEngineRestClient());
     private final AquisicaoExecutionService aquisicaoExecutionService = new AquisicaoExecutionService(
-            new FeederAcquisitionClient(feederClient()), definicaoCurvaConsultaRepository, buildRequestPublisher, 3);
+            new FunctionMarketdataClient(feederClient()), definicaoCurvaConsultaRepository, curveEngineClient, 3);
     private final DisparoManualService service = new DisparoManualService(repository, aquisicaoExecutionService);
 
     @AfterEach
@@ -81,7 +75,7 @@ class DisparoManualServiceIT {
 
     @Test
     void disparoManualParaDataFuturaSemDadoPersisteExecucaoSemDado() {
-        // Precisa ser um dataset real reconhecido pelo RegistroFeeders (feeder-marketdata) —
+        // Precisa ser um dataset real reconhecido pelo RegistroFeeders (function-marketdata) —
         // um nome inventado faz o feeder devolver 400 (DatasetNaoSuportadoError), não NO_DATA.
         String conjunto = "BVBG.086";
         DisparoManualRequest request = new DisparoManualRequest(

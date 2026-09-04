@@ -1,0 +1,22 @@
+{
+  "eventId": "c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33",
+  "correlationId": "d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+  "source": "MANUAL",
+  "dataset": "PR_DI1",
+  "referenceDate": "2026-08-21",
+  "producedAt": "2026-08-21T21:42:14Z",
+  "schemaVersion": "1.0",
+  "payloadKind": "INDIVIDUAL_QUOTES",
+  "loteId": "lote-manual-exemplo-1",
+  "sequencia": 1,
+  "totalBlocos": 1,
+  "payload": {
+    "sourceUrl": "manual://operador.mesa",
+    "encoding": "utf-8",
+    "contentHash": "sha256:3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1",
+    "sizeBytes": 42,
+    "records": [{ "raw": "ajuste manual de exemplo" }]
+  },
+  "submittedBy": "operador.mesa",
+  "justification": "Ajuste manual de exemplo para o teste de contrato cruzado"
+}

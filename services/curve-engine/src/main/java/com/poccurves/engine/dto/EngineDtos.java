@@ -101,4 +101,13 @@ public class EngineDtos {
             String mensagem,
             List<Vertice> vertices
     ) {}
+
+    public record ConstrucaoCurvaRequest(
+            String curveCode,
+            LocalDate referenceDate,
+            String curveMoment,
+            UUID runId,
+            UUID executionId
+    ) {}
 }
+

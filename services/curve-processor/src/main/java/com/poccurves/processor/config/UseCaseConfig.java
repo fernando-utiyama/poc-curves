@@ -1,8 +1,8 @@
 package com.poccurves.processor.config;
+import com.poccurves.processor.domain.cargamanual.BateriaValidacaoCarga;
+import com.poccurves.processor.domain.parsing.DatasetParserRegistry;
 
 import com.poccurves.processor.application.*;
-import com.poccurves.processor.domain.BateriaValidacaoCarga;
-import com.poccurves.processor.domain.DatasetParserRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

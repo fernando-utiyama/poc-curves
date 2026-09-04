@@ -69,7 +69,7 @@
                     <!-- Fixtures reais de envelope usadas pelo teste de contrato cruzado
                          (tarefa 2.6 da mudança curves-solution-architecture): o mesmo
                          exemplo é validado tanto pelo validador Java (services/common)
-                         quanto pelo validador TypeScript (services/feeder-marketdata). -->
+                         quanto pelo validador TypeScript (services/function-marketdata). -->
                     <include>fixtures/*.json</include>
                 </includes>
             </resource>

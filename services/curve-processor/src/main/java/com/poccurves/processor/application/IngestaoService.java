@@ -1,12 +1,12 @@
 package com.poccurves.processor.application;
+import com.poccurves.processor.domain.cargamanual.DivergenciaValor;
+import com.poccurves.processor.domain.ingestao.EstadoLoteIngestao;
+import com.poccurves.processor.domain.ingestao.LoteIngestao;
+import com.poccurves.processor.domain.ingestao.LoteJaExisteException;
+import com.poccurves.processor.domain.ingestao.PontoDadoMercado;
+import com.poccurves.processor.domain.ingestao.ResultadoProcessamentoBloco;
+import com.poccurves.processor.domain.parsing.TipoPayload;
 
-import com.poccurves.processor.domain.DivergenciaValor;
-import com.poccurves.processor.domain.EstadoLoteIngestao;
-import com.poccurves.processor.domain.LoteIngestao;
-import com.poccurves.processor.domain.LoteJaExisteException;
-import com.poccurves.processor.domain.PontoDadoMercado;
-import com.poccurves.processor.domain.ResultadoProcessamentoBloco;
-import com.poccurves.processor.domain.TipoPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;

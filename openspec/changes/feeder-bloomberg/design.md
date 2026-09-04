@@ -37,7 +37,7 @@ Responde a pergunta em aberto de `docs/extensao-feeders.md`. O padrão real e do
 
 `AcquisitionResult` continua com três estados (`PUBLISHED`/`NO_DATA`/`FAILED`) — não ganha um quarto estado `PENDING`. O polling (submeter, esperar, checar de novo) acontece inteiramente dentro da implementação de `FeederBloomberg.acquire()`, que só resolve a `Promise` quando o resultado final é conhecido (publicado, sem dado, ou falhou).
 
-*Alternativa considerada*: expor `PENDING` no contrato e empurrar a responsabilidade de repetir a chamada para quem dispara (`curve-orchestrator`). Rejeitada — exigiria mudança em `curve-orchestrator` (`AquisicaoExecutionService`/`DisparoManualService` teriam que aprender a re-perguntar), quebrando a fronteira de escopo desta mudança (só `feeder-marketdata`) e complicando o rastreio de `execucao_curva` (que hoje assume só os três estados terminais). Manter a espera interna ao feeder é mais simples e não vaza a assincronia do Bloomberg para o resto da plataforma.
+*Alternativa considerada*: expor `PENDING` no contrato e empurrar a responsabilidade de repetir a chamada para quem dispara (`curve-orchestrator`). Rejeitada — exigiria mudança em `curve-orchestrator` (`AquisicaoExecutionService`/`DisparoManualService` teriam que aprender a re-perguntar), quebrando a fronteira de escopo desta mudança (só `function-marketdata`) e complicando o rastreio de `execucao_curva` (que hoje assume só os três estados terminais). Manter a espera interna ao feeder é mais simples e não vaza a assincronia do Bloomberg para o resto da plataforma.
 
 ### D-3 — Não verificado contra Bloomberg real; construído contra fixture
 
@@ -62,11 +62,11 @@ interface RegistroInstrumentoBruto {
 
 `classeAtivo`/`tipoInstrumento`/`campo` são `string` livre, não enums fechados — porque os valores reais dependem de quais campos Bloomberg o pedido real vai pedir, e isso não foi confirmado (D-3). Fixar um enum agora seria inventar um contrato que a API real pode não respeitar. `valor` fica como texto (nunca convertido para número aqui) — decisão consistente com a regra do projeto de nunca fazer parsing semântico no feeder (ver Context acima) e com a regra de precisão do projeto (conversão numérica com política de arredondamento explícita acontece no parser do curve-processor, não aqui).
 
-*Alternativa considerada*: reusar `PontoDadoMercado` diretamente. Rejeitada — esse tipo já tem forma de curva de juros (`dataVencimento` obrigatório, sem `classeAtivo`) e vive em `curve-processor`, não em `feeder-marketdata`; forçar o feeder a montar esse shape seria fazer parsing semântico cedo demais, misturando a fronteira que o resto do serviço já respeita (feeder = estrutural, processor = semântico).
+*Alternativa considerada*: reusar `PontoDadoMercado` diretamente. Rejeitada — esse tipo já tem forma de curva de juros (`dataVencimento` obrigatório, sem `classeAtivo`) e vive em `curve-processor`, não em `function-marketdata`; forçar o feeder a montar esse shape seria fazer parsing semântico cedo demais, misturando a fronteira que o resto do serviço já respeita (feeder = estrutural, processor = semântico).
 
 ### D-5 — Restrição a CLI/agendado: registro separado, não guarda em tempo de execução
 
-Para impedir que alguém dispare Bloomberg via `POST /acquire` síncrono (`feeder-marketdata-http`, usado por `curve-orchestrator`) e prenda a requisição por horas, `registrarFeedersBloomberg(registro, enviar)` **não** entra em `montarRegistroCompleto()` (a função compartilhada pelos três pontos de entrada). Em vez disso, só `main.ts` chama `registrarFeedersBloomberg` depois de montar o registro completo:
+Para impedir que alguém dispare Bloomberg via `POST /acquire` síncrono (`function-marketdata-http`, usado por `curve-orchestrator`) e prenda a requisição por horas, `registrarFeedersBloomberg(registro, enviar)` **não** entra em `montarRegistroCompleto()` (a função compartilhada pelos três pontos de entrada). Em vez disso, só `main.ts` chama `registrarFeedersBloomberg` depois de montar o registro completo:
 
 ```ts
 const registro = montarRegistroCompleto(produtor.enviar);

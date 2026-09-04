@@ -1,6 +1,6 @@
 # Ponto de extensão: novos feeders (ANBIMA, Bloomberg, LSEG)
 
-`services/feeder-marketdata` hoje tem feeders reais de B3 (`PR_DI1`,
+`services/function-marketdata` hoje tem feeders reais de B3 (`PR_DI1`,
 `BVBG.086`, `BVBG.028` — ver `src/feeders/b3-arquivo-pesquisa-pregao.ts`),
 mas o contrato foi desenhado desde o início para acomodar outras fontes sem
 mudar nada fora do próprio feeder novo. Este documento descreve o que um
@@ -9,7 +9,7 @@ precisa implementar.
 
 ## O contrato: interface `Feeder`
 
-Definida em `services/feeder-marketdata/src/feeder.ts`:
+Definida em `services/function-marketdata/src/feeder.ts`:
 
 ```ts
 export interface Feeder {

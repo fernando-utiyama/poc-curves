@@ -1,6 +1,7 @@
 package com.poccurves.orchestrator.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -130,6 +131,12 @@ public class OrchestratorDtos {
             int semDado,
             int falhas,
             int pendentes
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record ConclusaoConstrucaoRequest(
+            String status,   // "PUBLICADA" ou "ERRO"
+            String motivo     // detalhe da causa quando status="ERRO"; pode ser null quando status="PUBLICADA"
     ) {}
 }
 

@@ -1,7 +1,7 @@
 package com.poccurves.orchestrator.application;
 
 import com.poccurves.orchestrator.application.DefinicaoCurvaConsultaRepositoryPort;
-import com.poccurves.orchestrator.application.FeederAcquisitionPort.ResultadoAquisicao;
+import com.poccurves.orchestrator.application.FunctionMarketdataPort.ResultadoAquisicao;
 import com.poccurves.orchestrator.domain.DefinicaoConsumidora;
 import com.poccurves.orchestrator.domain.ExecucaoCurva;
 import com.poccurves.orchestrator.domain.Faixa;
@@ -19,18 +19,18 @@ public class AquisicaoExecutionService {
 
     private static final Logger log = LoggerFactory.getLogger(AquisicaoExecutionService.class);
 
-    private final FeederAcquisitionPort feederAcquisitionClient;
+    private final FunctionMarketdataPort functionMarketdataClient;
     private final DefinicaoCurvaConsultaRepositoryPort definicaoCurvaConsultaRepository;
     private final BuildRequestPort buildRequestPublisher;
     private final int maxRetentativas;
 
     public AquisicaoExecutionService(
-            FeederAcquisitionPort feederAcquisitionClient,
+            FunctionMarketdataPort functionMarketdataClient,
             DefinicaoCurvaConsultaRepositoryPort definicaoCurvaConsultaRepository,
             BuildRequestPort buildRequestPublisher,
             int maxRetentativas
     ) {
-        this.feederAcquisitionClient = feederAcquisitionClient;
+        this.functionMarketdataClient = functionMarketdataClient;
         this.definicaoCurvaConsultaRepository = definicaoCurvaConsultaRepository;
         this.buildRequestPublisher = buildRequestPublisher;
         this.maxRetentativas = maxRetentativas;
@@ -143,7 +143,7 @@ public class AquisicaoExecutionService {
 
         while (true) {
             try {
-                return feederAcquisitionClient.acionar(
+                return functionMarketdataClient.acionar(
                         conjuntoDados,
                         dataReferencia,
                         faixa.name(),

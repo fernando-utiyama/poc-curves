@@ -191,7 +191,7 @@ services:
       - "8084:8084"
     environment:
       CURVE_ORCHESTRATOR_DB_PASSWORD: ${CURVE_ORCHESTRATOR_DB_PASSWORD:-CurveOrchestratorP0c!Local}
-      FEEDER_MARKETDATA_URL: http://feeder-marketdata-http:8091
+      FUNCTION_MARKETDATA_URL: http://function-marketdata-http:8091
       CURVE_PROCESSOR_URL: http://curve-processor:8081
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     healthcheck:
@@ -201,20 +201,20 @@ services:
       retries: 10
       start_period: 25s
 
-  # feeder-marketdata roda uma aquisição por execução e termina ("pull
+  # function-marketdata roda uma aquisição por execução e termina ("pull
   # agendado" — ver docs/extensao-feeders.md, "Modo de entrega": quem decide
   # QUANDO rodar fica fora deste adaptador). Não é um servidor de pé como os
   # serviços acima, então NÃO sobe com `up.sh`/`up.ps1` — profile dedicado,
   # disparo manual para teste local ou por scheduler externo em produção:
-  #   podman compose --profile feeder-on-demand run --rm feeder-marketdata
-  feeder-marketdata:
+  #   podman compose --profile feeder-on-demand run --rm function-marketdata
+  function-marketdata:
     profiles: ["feeder-on-demand"]
     build:
       context: ../..
-      dockerfile: services/feeder-marketdata/Containerfile
-    image: localhost/feeder-marketdata:latest
-    container_name: curvas-feeder-marketdata
-    hostname: feeder-marketdata
+      dockerfile: services/function-marketdata/Containerfile
+    image: localhost/function-marketdata:latest
+    container_name: curvas-function-marketdata
+    hostname: function-marketdata
     networks: [curvas-net]
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -236,21 +236,21 @@ services:
       retries: 5
       start_period: 5s
 
-  # Mesma imagem do feeder-marketdata acima, CMD sobrescrito para o adaptador
+  # Mesma imagem do function-marketdata acima, CMD sobrescrito para o adaptador
   # HTTP always-up (main-http.ts) — dá ao curve-orchestrator um alvo estável
   # para "acionar o feeder" (tarefa 4.6 do backlog curve-orchestrator), com o
   # MESMO contrato POST /acquire do handler de Azure Function real
   # (azure-function-handler.ts): trocar a URL base por uma Function implantada
   # não muda o contrato, só o host. Sobe normalmente com up.sh/up.ps1 (sem
-  # profile), diferente do feeder-marketdata acima (que é on-demand).
-  feeder-marketdata-http:
+  # profile), diferente do function-marketdata acima (que é on-demand).
+  function-marketdata-http:
     build:
       context: ../..
-      dockerfile: services/feeder-marketdata/Containerfile
-    image: localhost/feeder-marketdata:latest
+      dockerfile: services/function-marketdata/Containerfile
+    image: localhost/function-marketdata:latest
     command: ["dist/main-http.js"]
-    container_name: curvas-feeder-marketdata-http
-    hostname: feeder-marketdata-http
+    container_name: curvas-function-marketdata-http
+    hostname: function-marketdata-http
     restart: unless-stopped
     networks: [curvas-net]
     ports:

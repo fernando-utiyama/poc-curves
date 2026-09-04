@@ -21,13 +21,11 @@ TOPICS=(
   "marketdata.prioritaria.v1:6:1:604800000"
   "marketdata.massa.v1:6:1:604800000"
   "marketdata.normalized.v1:6:1:604800000"
-  "curve.build.requested.v1:6:1:604800000"
   "curve.published.v1:6:1:2592000000"
   "marketdata.rotina.v1.curve-processor-rotina.dlq:6:1:2592000000"
   "marketdata.prioritaria.v1.curve-processor-prioritaria.dlq:6:1:2592000000"
   "marketdata.massa.v1.curve-processor-massa.dlq:6:1:2592000000"
   "marketdata.normalized.v1.curve-orchestrator-normalized.dlq:6:1:2592000000"
-  "curve.build.requested.v1.curve-engine-build.dlq:6:1:2592000000"
   "curve.published.v1.curve-orchestrator-published.dlq:6:1:2592000000"
 )
 

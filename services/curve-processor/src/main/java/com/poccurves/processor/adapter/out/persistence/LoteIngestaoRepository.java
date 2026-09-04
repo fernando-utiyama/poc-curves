@@ -1,10 +1,10 @@
 package com.poccurves.processor.adapter.out.persistence;
+import com.poccurves.processor.domain.ingestao.EstadoLoteIngestao;
+import com.poccurves.processor.domain.ingestao.LoteIngestao;
+import com.poccurves.processor.domain.ingestao.LoteJaExisteException;
+import com.poccurves.processor.domain.parsing.TipoPayload;
 
 import com.poccurves.processor.application.LoteIngestaoRepositoryPort;
-import com.poccurves.processor.domain.EstadoLoteIngestao;
-import com.poccurves.processor.domain.LoteIngestao;
-import com.poccurves.processor.domain.LoteJaExisteException;
-import com.poccurves.processor.domain.TipoPayload;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;

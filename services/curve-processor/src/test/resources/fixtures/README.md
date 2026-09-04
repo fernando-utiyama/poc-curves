@@ -3,7 +3,7 @@
 Recortes reais extraídos pelo Claude, em 2026-08-22, do arquivo de produção
 da B3 fornecido pelo usuário (`docs/pesquisa-pregao.zip`, pregão de
 2026-08-21, obtido em "Pesquisa por Pregão" — boletim diário). O mesmo
-arquivo-fonte já é usado pelas fixtures de `services/feeder-marketdata`.
+arquivo-fonte já é usado pelas fixtures de `services/function-marketdata`.
 
 Encoding original: UTF-8 com BOM. Separador decimal nos campos numéricos
 estruturados verificados: ponto (`.`) — não foi encontrado nenhum campo
@@ -15,7 +15,7 @@ só em campos de texto livre, ex. `<Desc>`, fora do escopo destas fixtures).
 4 elementos `<BizGrp>` reais, extraídos do arquivo completo
 `PR260821.zip > BVBG.086.01_BV000328...840237278.xml` (175.506.347 bytes,
 76.015 elementos `<BizGrp>` no arquivo original — ver
-`services/feeder-marketdata/fixtures/README.md` para a mesma medição).
+`services/function-marketdata/fixtures/README.md` para a mesma medição).
 
 - 3 contratos futuros de DI1 (`DI1Z28`, `DI1J30`, `DI1V31`), cada um com
   `AdjstdQtTax` (taxa de ajuste do dia) populado — é o campo usado pelo

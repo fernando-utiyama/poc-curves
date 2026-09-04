@@ -1,18 +1,19 @@
 package com.poccurves.processor.application;
+import com.poccurves.processor.domain.curva.VerticeCurva;
+import com.poccurves.processor.domain.ingestao.DatasetDesconhecidoException;
+import com.poccurves.processor.domain.ingestao.EstadoLoteIngestao;
+import com.poccurves.processor.domain.ingestao.LoteIngestao;
+import com.poccurves.processor.domain.ingestao.PontoDadoMercado;
+import com.poccurves.processor.domain.ingestao.ResultadoProcessamentoBloco;
+import com.poccurves.processor.domain.parsing.DatasetParser;
+import com.poccurves.processor.domain.parsing.DatasetParserRegistry;
+import com.poccurves.processor.domain.parsing.EnvelopeInvalidoException;
+import com.poccurves.processor.domain.parsing.ParseFalhouException;
+import com.poccurves.processor.domain.parsing.ParseResult;
+import com.poccurves.processor.domain.parsing.TipoPayload;
 
 import com.poccurves.common.event.EventEnvelope;
 import com.poccurves.common.event.PayloadKind;
-import com.poccurves.processor.domain.DatasetDesconhecidoException;
-import com.poccurves.processor.domain.DatasetParser;
-import com.poccurves.processor.domain.DatasetParserRegistry;
-import com.poccurves.processor.domain.EstadoLoteIngestao;
-import com.poccurves.processor.domain.LoteIngestao;
-import com.poccurves.processor.domain.ParseFalhouException;
-import com.poccurves.processor.domain.ParseResult;
-import com.poccurves.processor.domain.PontoDadoMercado;
-import com.poccurves.processor.domain.ResultadoProcessamentoBloco;
-import com.poccurves.processor.domain.TipoPayload;
-import com.poccurves.processor.domain.VerticeCurva;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
@@ -211,7 +212,7 @@ public class ProcessarEnvelopeIngestaoUseCase {
     private String textoObrigatorio(JsonNode payload, String campo) {
         JsonNode node = payload.get(campo);
         if (node == null || node.isNull()) {
-            throw new com.poccurves.processor.domain.EnvelopeInvalidoException("payload." + campo + " ausente");
+            throw new EnvelopeInvalidoException("payload." + campo + " ausente");
         }
         return node.asText();
     }

@@ -1,7 +1,7 @@
 package com.poccurves.processor.application;
+import com.poccurves.processor.domain.curva.MomentoCurva;
+import com.poccurves.processor.domain.curva.VersaoCurva;
 
-import com.poccurves.processor.domain.MomentoCurva;
-import com.poccurves.processor.domain.VersaoCurva;
 
 import java.time.LocalDate;
 import java.util.Optional;

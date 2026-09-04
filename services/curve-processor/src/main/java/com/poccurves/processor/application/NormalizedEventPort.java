@@ -1,6 +1,6 @@
 package com.poccurves.processor.application;
+import com.poccurves.processor.domain.ingestao.LoteIngestao;
 
-import com.poccurves.processor.domain.LoteIngestao;
 
 public interface NormalizedEventPort {
 

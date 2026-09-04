@@ -1,7 +1,7 @@
 package com.poccurves.processor.adapter.out.persistence;
+import com.poccurves.processor.domain.cargamanual.ResultadoTesteCarga;
 
 import com.poccurves.processor.application.ValidacaoCurvaRepositoryPort;
-import com.poccurves.processor.domain.ResultadoTesteCarga;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * do classpath — nunca uma cópia local). Se alguém remover um campo
  * obrigatório ou mudar o tipo declarado de um campo existente, este teste
  * falha — uma mudança assim quebra tanto {@link EventEnvelope} (Java)
- * quanto `envelope.ts` (TypeScript, services/feeder-marketdata) sem que
+ * quanto `envelope.ts` (TypeScript, services/function-marketdata) sem que
  * nenhum dos dois avise em tempo de compilação, porque os dois só espelham
  * o schema manualmente.
  * <p>

@@ -1,6 +1,6 @@
 package com.poccurves.processor.application;
+import com.poccurves.processor.domain.curva.VersaoCurva;
 
-import com.poccurves.processor.domain.VersaoCurva;
 
 public interface CurvaPublicadaEventPort {
 

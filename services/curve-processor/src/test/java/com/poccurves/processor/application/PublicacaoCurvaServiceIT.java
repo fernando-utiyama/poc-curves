@@ -1,15 +1,15 @@
 package com.poccurves.processor.application;
+import com.poccurves.processor.domain.cargamanual.ResultadoPublicacaoCarga;
+import com.poccurves.processor.domain.curva.CurvaNaoMapeadaException;
+import com.poccurves.processor.domain.curva.CurvaVaziaException;
+import com.poccurves.processor.domain.curva.EstadoVersaoCurva;
+import com.poccurves.processor.domain.curva.IncoerenciaModoOrigemException;
+import com.poccurves.processor.domain.curva.MomentoCurva;
+import com.poccurves.processor.domain.curva.OrigemVersao;
+import com.poccurves.processor.domain.curva.VersaoCurva;
+import com.poccurves.processor.domain.curva.VerticeCurva;
 
 import com.poccurves.processor.CurveProcessorApplication;
-import com.poccurves.processor.domain.CurvaNaoMapeadaException;
-import com.poccurves.processor.domain.CurvaVaziaException;
-import com.poccurves.processor.domain.EstadoVersaoCurva;
-import com.poccurves.processor.domain.IncoerenciaModoOrigemException;
-import com.poccurves.processor.domain.MomentoCurva;
-import com.poccurves.processor.domain.OrigemVersao;
-import com.poccurves.processor.domain.ResultadoPublicacaoCarga;
-import com.poccurves.processor.domain.VersaoCurva;
-import com.poccurves.processor.domain.VerticeCurva;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

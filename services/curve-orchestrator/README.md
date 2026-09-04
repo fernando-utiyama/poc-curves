@@ -18,7 +18,7 @@ com.poccurves.orchestrator
 ├── adapter/in/bootstrap   AgendamentoBootstrap, ReconciliacaoInicializacaoRunner
 ├── adapter/out/persistence  6 repositórios JDBC
 ├── adapter/out/messaging    BuildRequestPublisher
-├── adapter/out/http          FeederAcquisitionClient, CurveProcessorCargaManualClient
+├── adapter/out/http          FunctionMarketdataClient, CurveProcessorCargaManualClient
 ├── adapter/out/scheduling    AgendamentoSchedulerRegistry
 ├── adapter/out/metrics        ExecucaoMetricsBinder
 ├── config/                wiring Spring (UseCaseConfig) e configs de infraestrutura

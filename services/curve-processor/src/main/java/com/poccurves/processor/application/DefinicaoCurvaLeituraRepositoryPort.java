@@ -1,6 +1,6 @@
 package com.poccurves.processor.application;
+import com.poccurves.processor.domain.curva.DefinicaoCurvaResumo;
 
-import com.poccurves.processor.domain.DefinicaoCurvaResumo;
 
 import java.util.Optional;
 

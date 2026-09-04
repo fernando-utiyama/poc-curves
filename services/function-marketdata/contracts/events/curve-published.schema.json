@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://poc-curves/contracts/events/curve-published.schema.json",
+  "title": "Payload de Curva Publicada (Curve Published)",
+  "description": "Emitido pelo curve-engine (curva calculada) ou pelo curve-processor (curva importada ou carregada). O formato é idêntico nos dois casos; assinantes não distinguem a origem pelo formato do evento, apenas pelo campo versionOrigin.",
+  "type": "object",
+  "properties": {
+    "curveCode": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Código identificador da curva publicada (ex.: 'PRE_DI1_B3')."
+    },
+    "referenceDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de referência da curva no formato YYYY-MM-DD."
+    },
+    "curveMoment": {
+      "type": "string",
+      "enum": ["ABERTURA", "INTRADIA", "FECHAMENTO"],
+      "description": "Momento de apuração da curva no ciclo de mercado."
+    },
+    "versionId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identificador único da versão gerada e publicada."
+    },
+    "versionNumber": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Número sequencial da versão da curva para a mesma data de referência e momento."
+    },
+    "versionOrigin": {
+      "type": "string",
+      "enum": ["CALCULADA", "IMPORTADA", "CARREGADA"],
+      "description": "Origem da versão: CALCULADA (gerada pelo curve-engine), IMPORTADA (curva pronta obtida da fonte) ou CARREGADA (carga manual)."
+    },
+    "publishedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Instante UTC da publicação da versão da curva no formato ISO-8601."
+    },
+    "vertexCount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Quantidade total de vértices contidos na curva publicada."
+    },
+    "warnings": {
+      "type": "array",
+      "description": "Lista de avisos e alertas da validação de consistência que não bloquearam a publicação.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "testId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Identificador do teste ou regra de consistência executada."
+          },
+          "observed": {
+            "$ref": "envelope.schema.json#/$defs/DecimalString",
+            "description": "Valor observado durante o teste, formatado como DecimalString."
+          },
+          "threshold": {
+            "$ref": "envelope.schema.json#/$defs/DecimalString",
+            "description": "Valor limite/tolerância configurado para o teste, formatado como DecimalString."
+          }
+        },
+        "required": [
+          "testId",
+          "observed",
+          "threshold"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "curveCode",
+    "referenceDate",
+    "curveMoment",
+    "versionId",
+    "versionNumber",
+    "versionOrigin",
+    "publishedAt",
+    "vertexCount"
+  ],
+  "additionalProperties": false
+}

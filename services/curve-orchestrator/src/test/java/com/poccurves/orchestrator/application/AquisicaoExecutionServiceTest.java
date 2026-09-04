@@ -1,6 +1,6 @@
 package com.poccurves.orchestrator.application;
 
-import com.poccurves.orchestrator.application.FeederAcquisitionPort.ResultadoAquisicao;
+import com.poccurves.orchestrator.application.FunctionMarketdataPort.ResultadoAquisicao;
 import com.poccurves.orchestrator.domain.DefinicaoConsumidora;
 import com.poccurves.orchestrator.domain.EstadoExecucao;
 import com.poccurves.orchestrator.domain.ExecucaoCurva;
@@ -21,7 +21,7 @@ class AquisicaoExecutionServiceTest {
 
     @Test
     void acionarFeederEEncadearTrataNoData() {
-        FeederAcquisitionPort feeder = mock(FeederAcquisitionPort.class);
+        FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
         DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
         BuildRequestPort publisher = mock(BuildRequestPort.class);
 
@@ -47,7 +47,7 @@ class AquisicaoExecutionServiceTest {
 
     @Test
     void acionarFeederEEncadearTrataPublishedComConsumidoraEIniciaConstrucao() {
-        FeederAcquisitionPort feeder = mock(FeederAcquisitionPort.class);
+        FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
         DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
         BuildRequestPort publisher = mock(BuildRequestPort.class);
 
@@ -77,7 +77,7 @@ class AquisicaoExecutionServiceTest {
 
     @Test
     void acionarFeederEEncadearTrataFailed() {
-        FeederAcquisitionPort feeder = mock(FeederAcquisitionPort.class);
+        FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
         DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
         BuildRequestPort publisher = mock(BuildRequestPort.class);
 
@@ -102,7 +102,7 @@ class AquisicaoExecutionServiceTest {
 
     @Test
     void acionarFeederEEncadearTrataFalhaDeTransporte() {
-        FeederAcquisitionPort feeder = mock(FeederAcquisitionPort.class);
+        FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
         DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
         BuildRequestPort publisher = mock(BuildRequestPort.class);
 
@@ -127,7 +127,7 @@ class AquisicaoExecutionServiceTest {
 
     @Test
     void acionarFeederEEncadearRetentaComSucessoNaSegundaTentativa() {
-        FeederAcquisitionPort feeder = mock(FeederAcquisitionPort.class);
+        FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
         DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
         BuildRequestPort publisher = mock(BuildRequestPort.class);
 
@@ -156,7 +156,7 @@ class AquisicaoExecutionServiceTest {
 
     @Test
     void acionarFeederEEncadearEsgotaRetentativasEFalha() {
-        FeederAcquisitionPort feeder = mock(FeederAcquisitionPort.class);
+        FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
         DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
         BuildRequestPort publisher = mock(BuildRequestPort.class);
 

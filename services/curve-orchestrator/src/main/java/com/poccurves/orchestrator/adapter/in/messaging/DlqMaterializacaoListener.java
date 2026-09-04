@@ -42,7 +42,6 @@ public class DlqMaterializacaoListener {
                     "marketdata.prioritaria.v1.curve-processor-prioritaria.dlq",
                     "marketdata.massa.v1.curve-processor-massa.dlq",
                     "marketdata.normalized.v1.curve-orchestrator-normalized.dlq",
-                    "curve.build.requested.v1.curve-engine-build.dlq",
                     "curve.published.v1.curve-orchestrator-published.dlq"
             },
             containerFactory = "dlqListenerContainerFactory"

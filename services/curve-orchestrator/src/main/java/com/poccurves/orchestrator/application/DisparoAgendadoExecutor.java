@@ -53,7 +53,7 @@ public class DisparoAgendadoExecutor {
 
         if (agendamento.conjuntoDados() == null) {
             // Agendamento.criar aceita definicaoCurvaId como alvo alternativo (espelhando a dualidade de
-            // execucao_curva), mas a aquisição real (FeederAcquisitionPort, buscarExecucaoAtivaParaConjuntoDados)
+            // execucao_curva), mas a aquisição real (FunctionMarketdataPort, buscarExecucaoAtivaParaConjuntoDados)
             // é toda indexada por conjunto de dados — não existe hoje, em nenhum serviço do monorepo, um pipeline
             // de disparo agendado para curvas IMPORTED por definicaoCurvaId (o parser de curva pronta do
             // curve-processor também está bloqueado, ver tasks.md 5.1/8.5 desse mesmo backlog). Recusar

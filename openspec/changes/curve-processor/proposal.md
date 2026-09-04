@@ -44,7 +44,7 @@ Esta mudança especifica o processor como um consumidor **idempotente, rastreáv
 
 - **Novo serviço**: `services/curve-processor/` em Java 21 / Spring Boot 3.4.x, sem Lombok, consumidor Kafka com Spring for Apache Kafka.
 - **Depende de** `curves-solution-architecture`: envelope, catálogo de tópicos, modelo de dados e migrações Flyway.
-- **Consome** os eventos produzidos por `feeder-marketdata`.
+- **Consome** os eventos produzidos por `function-marketdata`.
 - **Escreve** em `ponto_dado_mercado` e `lote_ingestao` para todo insumo, e — exclusivamente para versões que chegaram prontas, de origem `IMPORTADA` ou `CARREGADA` — também em `versao_curva`, `vertice_curva`, `procedencia_curva` e `validacao_curva`.
 - **Fronteira**: não faz bootstrap, não monta curva a partir de instrumentos, não decide quando construir, não acessa fonte externa. Publicar curva pronta é transcrever vértices recebidos, não calculá-los.
 - **Precisão**: todo valor de mercado transita como `BigDecimal` e é gravado em `DECIMAL(28,12)`; `double` é proibido no caminho.

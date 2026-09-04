@@ -9,7 +9,7 @@
 ## 2. Contratos de evento
 
 - [x] 2.1 Escrever `contracts/events/envelope.schema.json` com os campos obrigatórios do envelope e taxa como string
-- [x] 2.2 Escrever os schemas de payload `marketdata-raw`, `marketdata-normalized`, `curve-build-requested` e `curve-published`
+- [x] 2.2 Escrever os schemas de payload `marketdata-raw`, `marketdata-normalized`, ~~`curve-build-requested`~~ e `curve-published` (`curve-build-requested.schema.json` removido por D1d — despacho de construção do `curve-engine` deixou de ser Kafka, ver `curve-orchestrator/tasks.md` 8.6-8.9)
 - [x] 2.3 Definir em `contracts/events/topics.yaml` o catálogo de tópicos, partições, retenção e chave de partição
 - [x] 2.3.1 Definir retenção da dead-letter maior que a do tópico de origem, e uma dead-letter por grupo de consumo
 - [x] 2.3.2 Definir os cabeçalhos obrigatórios da mensagem em dead-letter
@@ -17,7 +17,7 @@
 - [x] 2.3.4 Acrescentar `loteId`, `sequencia` e `totalBlocos` ao envelope, com `loteId` determinístico pelo hash do conteúdo
 - [x] 2.3.5 Documentar a invariante de avanço de offset e os limites de tempo de consumo como parte do contrato
 - [x] 2.4 Implementar a biblioteca Java compartilhada de envelope (record + validação de schema) em `services/common`
-- [x] 2.5 Implementar o equivalente TypeScript do envelope para os feeders, gerado a partir do mesmo schema (`services/feeder-marketdata/src/envelope.ts` — union discriminada por `source`, espelha `EventEnvelope.java`/`EventSource.java`, agora com `'ANBIMA'` acrescentado nos três lugares. `sync-contracts.mjs` copia o schema JSON real para o feeder; `criarEnvelope` espelha exatamente as mesmas regras de validação do construtor compacto Java)
+- [x] 2.5 Implementar o equivalente TypeScript do envelope para os feeders, gerado a partir do mesmo schema (`services/function-marketdata/src/envelope.ts` — union discriminada por `source`, espelha `EventEnvelope.java`/`EventSource.java`, agora com `'ANBIMA'` acrescentado nos três lugares. `sync-contracts.mjs` copia o schema JSON real para o feeder; `criarEnvelope` espelha exatamente as mesmas regras de validação do construtor compacto Java)
 - [x] 2.6 Escrever os testes de contrato que validam produtor e consumidor contra os schemas (`contracts/events/fixtures/*.json` — dois exemplos reais de envelope, fonte única compartilhada; `EnvelopeContratoCruzadoTest.java` valida o lado consumidor — schema validator networknt E deserialização real para `EventEnvelope`, mesmo caminho de `IngestaoListener` — e `envelope-contrato-cruzado.test.ts` valida o lado produtor — ajv, mesmo caminho de `kafka-publisher.ts`. Os dois lados validam exatamente as mesmas fixtures)
 - [x] 2.7 Escrever o teste de compatibilidade que falha quando um campo obrigatório é removido ou muda de tipo (`EnvelopeSchemaCompatibilidadeTest.java` — fixa o conjunto de campos obrigatórios e o tipo/formato declarado de cada um, lendo o schema real do classpath. Verificado que pega uma regressão de verdade: removi `loteId` do array `required` do schema real, rodei o teste, vi as duas asserções falharem com o diagnóstico exato, e reverti a mudança antes de continuar)
 

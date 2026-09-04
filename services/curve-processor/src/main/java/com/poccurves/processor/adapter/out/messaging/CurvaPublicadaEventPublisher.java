@@ -1,9 +1,9 @@
 package com.poccurves.processor.adapter.out.messaging;
+import com.poccurves.processor.domain.curva.EstadoVersaoCurva;
+import com.poccurves.processor.domain.curva.VersaoCurva;
 
 import com.poccurves.processor.application.CurvaPublicadaEventPort;
 import com.poccurves.processor.application.MetricasIngestao;
-import com.poccurves.processor.domain.EstadoVersaoCurva;
-import com.poccurves.processor.domain.VersaoCurva;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;

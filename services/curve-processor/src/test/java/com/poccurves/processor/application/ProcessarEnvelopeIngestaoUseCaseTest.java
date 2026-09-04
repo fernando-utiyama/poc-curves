@@ -1,13 +1,13 @@
 package com.poccurves.processor.application;
+import com.poccurves.processor.domain.ingestao.DatasetDesconhecidoException;
+import com.poccurves.processor.domain.parsing.DatasetParser;
+import com.poccurves.processor.domain.parsing.DatasetParserRegistry;
+import com.poccurves.processor.domain.parsing.ParseFalhouException;
+import com.poccurves.processor.domain.parsing.ParseResult;
 
 import com.poccurves.common.event.EventEnvelope;
 import com.poccurves.common.event.EventSource;
 import com.poccurves.common.event.PayloadKind;
-import com.poccurves.processor.domain.DatasetDesconhecidoException;
-import com.poccurves.processor.domain.DatasetParser;
-import com.poccurves.processor.domain.DatasetParserRegistry;
-import com.poccurves.processor.domain.ParseFalhouException;
-import com.poccurves.processor.domain.ParseResult;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;

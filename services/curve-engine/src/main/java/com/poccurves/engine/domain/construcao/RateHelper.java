@@ -35,7 +35,7 @@ public final class RateHelper {
     /**
      * Extrai e valida a taxa do CDI, já anualizada base 252 (mesma convenção de {@link #taxaDi1}).
      * <p>
-     * A fonte de dado existe desde a seção 9 de {@code openspec/changes/feeder-marketdata/tasks.md}
+     * A fonte de dado existe desde a seção 9 de {@code openspec/changes/function-marketdata/tasks.md}
      * (feeder BCB, série 4389 — "Taxa de juros - CDI anualizada base 252") — não é mais um
      * bloqueio de dado. O que ainda falta é a ingestão automática desses eventos {@code source: BCB}
      * em {@code ponto_dado_mercado} (parser análogo a {@code Bvbg086PricRptParser} do

@@ -43,7 +43,7 @@ O desenho está em [`docs/architecture/curves-platform.drawio`](docs/architectur
 
 Componentes:
 
-- **`feeder-marketdata`** (Node/TS) — adquire da B3 e publica em blocos no Kafka
+- **`function-marketdata`** (Node/TS) — adquire da B3 e publica em blocos no Kafka
 - **`curve-processor`** (Java) — normaliza e persiste; publica curvas importadas e carregadas
 - **`curve-engine`** (Java) — constrói por bootstrap, valida e publica; interpola sob demanda
 - **`curve-orchestrator`** (Java) — agenda, dispara, faz backfill e acompanha execuções
@@ -64,7 +64,7 @@ O planejamento usa [OpenSpec](https://github.com/Fission-AI/OpenSpec). Oito muda
 ```
 openspec/changes/
 ├── curves-solution-architecture   # guarda-chuva: contratos, modelo de dados, runtime local
-├── feeder-marketdata
+├── function-marketdata
 ├── curve-processor
 ├── curve-engine
 ├── curve-orchestrator

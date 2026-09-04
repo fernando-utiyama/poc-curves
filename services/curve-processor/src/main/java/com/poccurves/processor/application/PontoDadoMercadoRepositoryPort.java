@@ -1,7 +1,7 @@
 package com.poccurves.processor.application;
+import com.poccurves.processor.domain.cargamanual.DivergenciaValor;
+import com.poccurves.processor.domain.ingestao.PontoDadoMercado;
 
-import com.poccurves.processor.domain.DivergenciaValor;
-import com.poccurves.processor.domain.PontoDadoMercado;
 
 import java.util.List;
 import java.util.Optional;

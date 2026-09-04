@@ -1,7 +1,7 @@
 package com.poccurves.orchestrator.application;
 
 import com.poccurves.orchestrator.application.AquisicaoExecutionService.ExecutionResult;
-import com.poccurves.orchestrator.application.FeederAcquisitionPort.ResultadoAquisicao;
+import com.poccurves.orchestrator.application.FunctionMarketdataPort.ResultadoAquisicao;
 import com.poccurves.orchestrator.domain.ExecucaoCurva;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
