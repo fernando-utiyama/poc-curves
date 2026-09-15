@@ -1,13 +1,13 @@
 package com.poccurves.orchestrator.adapter.out.persistence;
+import com.poccurves.orchestrator.application.model.EstadoExecucao;
+import com.poccurves.orchestrator.application.model.ExecucaoCurva;
+import com.poccurves.orchestrator.application.model.Faixa;
+import com.poccurves.orchestrator.application.model.LinhaExecucaoResumo;
+import com.poccurves.orchestrator.application.model.MomentoCurva;
+import com.poccurves.orchestrator.application.model.PaginaExecucoes;
+import com.poccurves.orchestrator.application.model.TipoDisparo;
+import com.poccurves.orchestrator.application.port.ExecucaoCurvaRepositoryPort;
 
-import com.poccurves.orchestrator.application.ExecucaoCurvaRepositoryPort;
-import com.poccurves.orchestrator.domain.EstadoExecucao;
-import com.poccurves.orchestrator.domain.ExecucaoCurva;
-import com.poccurves.orchestrator.domain.Faixa;
-import com.poccurves.orchestrator.domain.LinhaExecucaoResumo;
-import com.poccurves.orchestrator.domain.MomentoCurva;
-import com.poccurves.orchestrator.domain.PaginaExecucoes;
-import com.poccurves.orchestrator.domain.TipoDisparo;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

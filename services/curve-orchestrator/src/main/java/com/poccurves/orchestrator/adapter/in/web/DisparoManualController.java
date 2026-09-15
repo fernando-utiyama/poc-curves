@@ -1,6 +1,6 @@
 package com.poccurves.orchestrator.adapter.in.web;
+import com.poccurves.orchestrator.application.usecase.DisparoManualService;
 
-import com.poccurves.orchestrator.application.DisparoManualService;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.DisparoManualRequest;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.DisparoManualResponse;
 import org.springframework.http.ResponseEntity;

@@ -1,6 +1,6 @@
 package com.poccurves.orchestrator.adapter.in.web;
+import com.poccurves.orchestrator.application.usecase.ExecucoesService;
 
-import com.poccurves.orchestrator.application.ExecucoesService;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.ExecucoesResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

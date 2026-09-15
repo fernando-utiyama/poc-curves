@@ -1,8 +1,8 @@
 package com.poccurves.orchestrator.adapter.in.messaging;
+import com.poccurves.orchestrator.application.usecase.MaterializarPendenciaDlqUseCase;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-import com.poccurves.orchestrator.application.MaterializarPendenciaDlqUseCase;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.slf4j.Logger;

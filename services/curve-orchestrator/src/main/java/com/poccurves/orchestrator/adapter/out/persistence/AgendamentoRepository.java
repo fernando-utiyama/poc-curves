@@ -1,10 +1,10 @@
 package com.poccurves.orchestrator.adapter.out.persistence;
+import com.poccurves.orchestrator.application.model.Agendamento;
+import com.poccurves.orchestrator.application.model.AgendamentoComUltimaExecucao;
+import com.poccurves.orchestrator.application.model.Faixa;
+import com.poccurves.orchestrator.application.model.MomentoCurva;
+import com.poccurves.orchestrator.application.port.AgendamentoRepositoryPort;
 
-import com.poccurves.orchestrator.application.AgendamentoRepositoryPort;
-import com.poccurves.orchestrator.domain.Agendamento;
-import com.poccurves.orchestrator.domain.AgendamentoComUltimaExecucao;
-import com.poccurves.orchestrator.domain.Faixa;
-import com.poccurves.orchestrator.domain.MomentoCurva;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;

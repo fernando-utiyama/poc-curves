@@ -1,11 +1,11 @@
 package com.poccurves.orchestrator.adapter.in.web;
+import com.poccurves.orchestrator.application.model.EstadoExecucao;
+import com.poccurves.orchestrator.application.model.ExecucaoCurva;
+import com.poccurves.orchestrator.application.model.Faixa;
+import com.poccurves.orchestrator.application.model.MomentoCurva;
+import com.poccurves.orchestrator.application.model.TipoDisparo;
+import com.poccurves.orchestrator.application.port.ExecucaoCurvaRepositoryPort;
 
-import com.poccurves.orchestrator.application.ExecucaoCurvaRepositoryPort;
-import com.poccurves.orchestrator.domain.EstadoExecucao;
-import com.poccurves.orchestrator.domain.ExecucaoCurva;
-import com.poccurves.orchestrator.domain.Faixa;
-import com.poccurves.orchestrator.domain.MomentoCurva;
-import com.poccurves.orchestrator.domain.TipoDisparo;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.ConclusaoConstrucaoRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

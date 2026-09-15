@@ -1,12 +1,12 @@
 package com.poccurves.orchestrator.adapter.out.persistence;
+import com.poccurves.orchestrator.application.model.DefinicaoConsumidora;
+import com.poccurves.orchestrator.application.port.DefinicaoCurvaConsultaRepositoryPort;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import com.poccurves.orchestrator.application.DefinicaoCurvaConsultaRepositoryPort;
-import com.poccurves.orchestrator.domain.DefinicaoConsumidora;
 
 import java.sql.Date;
 import java.sql.Time;

@@ -1,7 +1,7 @@
 package com.poccurves.orchestrator.adapter.in.web;
+import com.poccurves.orchestrator.application.model.ExecucaoCurva;
+import com.poccurves.orchestrator.application.port.ExecucaoCurvaRepositoryPort;
 
-import com.poccurves.orchestrator.application.ExecucaoCurvaRepositoryPort;
-import com.poccurves.orchestrator.domain.ExecucaoCurva;
 import com.poccurves.orchestrator.dto.OrchestratorDtos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

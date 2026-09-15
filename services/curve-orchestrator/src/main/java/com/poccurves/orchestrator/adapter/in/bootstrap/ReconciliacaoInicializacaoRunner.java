@@ -1,6 +1,6 @@
 package com.poccurves.orchestrator.adapter.in.bootstrap;
+import com.poccurves.orchestrator.application.usecase.ReconciliacaoService;
 
-import com.poccurves.orchestrator.application.ReconciliacaoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;

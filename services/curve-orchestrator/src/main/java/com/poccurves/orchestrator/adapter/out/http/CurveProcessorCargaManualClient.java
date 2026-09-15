@@ -1,7 +1,7 @@
 package com.poccurves.orchestrator.adapter.out.http;
+import com.poccurves.orchestrator.application.exception.IntegracaoIndisponivelException;
+import com.poccurves.orchestrator.application.port.CurveProcessorCargaManualPort;
 
-import com.poccurves.orchestrator.application.CurveProcessorCargaManualPort;
-import com.poccurves.orchestrator.domain.IntegracaoIndisponivelException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;

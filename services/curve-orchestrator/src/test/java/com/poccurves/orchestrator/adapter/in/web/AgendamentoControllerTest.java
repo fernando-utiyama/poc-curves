@@ -1,6 +1,6 @@
 package com.poccurves.orchestrator.adapter.in.web;
+import com.poccurves.orchestrator.application.usecase.AgendamentoService;
 
-import com.poccurves.orchestrator.application.AgendamentoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 

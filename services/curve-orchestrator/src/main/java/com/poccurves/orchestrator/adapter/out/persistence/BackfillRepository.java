@@ -1,7 +1,7 @@
 package com.poccurves.orchestrator.adapter.out.persistence;
+import com.poccurves.orchestrator.application.model.ProgressoBackfill;
+import com.poccurves.orchestrator.application.port.BackfillRepositoryPort;
 
-import com.poccurves.orchestrator.application.BackfillRepositoryPort;
-import com.poccurves.orchestrator.domain.ProgressoBackfill;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

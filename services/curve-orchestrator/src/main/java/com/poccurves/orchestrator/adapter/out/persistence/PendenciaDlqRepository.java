@@ -1,8 +1,8 @@
 package com.poccurves.orchestrator.adapter.out.persistence;
+import com.poccurves.orchestrator.application.model.EstadoPendenciaDlq;
+import com.poccurves.orchestrator.application.model.PendenciaDlq;
+import com.poccurves.orchestrator.application.port.PendenciaDlqRepositoryPort;
 
-import com.poccurves.orchestrator.application.PendenciaDlqRepositoryPort;
-import com.poccurves.orchestrator.domain.EstadoPendenciaDlq;
-import com.poccurves.orchestrator.domain.PendenciaDlq;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;

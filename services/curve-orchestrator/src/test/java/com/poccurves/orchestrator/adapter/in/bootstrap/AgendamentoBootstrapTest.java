@@ -1,10 +1,10 @@
 package com.poccurves.orchestrator.adapter.in.bootstrap;
+import com.poccurves.orchestrator.application.model.Agendamento;
+import com.poccurves.orchestrator.application.model.Faixa;
+import com.poccurves.orchestrator.application.model.MomentoCurva;
+import com.poccurves.orchestrator.application.port.AgendamentoRepositoryPort;
+import com.poccurves.orchestrator.application.port.AgendamentoSchedulerPort;
 
-import com.poccurves.orchestrator.application.AgendamentoRepositoryPort;
-import com.poccurves.orchestrator.application.AgendamentoSchedulerPort;
-import com.poccurves.orchestrator.domain.Agendamento;
-import com.poccurves.orchestrator.domain.Faixa;
-import com.poccurves.orchestrator.domain.MomentoCurva;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.ApplicationArguments;
 

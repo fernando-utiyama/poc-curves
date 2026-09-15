@@ -1,7 +1,7 @@
 package com.poccurves.orchestrator.adapter.out.persistence;
+import com.poccurves.orchestrator.application.model.EstadoExecucao;
+import com.poccurves.orchestrator.application.port.MetricasRepositoryPort;
 
-import com.poccurves.orchestrator.application.MetricasRepositoryPort;
-import com.poccurves.orchestrator.domain.EstadoExecucao;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

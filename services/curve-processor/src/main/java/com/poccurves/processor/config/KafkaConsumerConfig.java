@@ -1,14 +1,14 @@
 package com.poccurves.processor.config;
-import com.poccurves.processor.domain.curva.CurvaNaoMapeadaException;
-import com.poccurves.processor.domain.curva.CurvaVaziaException;
-import com.poccurves.processor.domain.curva.IncoerenciaModoOrigemException;
-import com.poccurves.processor.domain.ingestao.DatasetDesconhecidoException;
-import com.poccurves.processor.domain.parsing.EnvelopeInvalidoException;
-import com.poccurves.processor.domain.parsing.ParseFalhouException;
+import com.poccurves.processor.application.exception.CurvaNaoMapeadaException;
+import com.poccurves.processor.application.exception.CurvaVaziaException;
+import com.poccurves.processor.application.exception.DatasetDesconhecidoException;
+import com.poccurves.processor.application.exception.EnvelopeInvalidoException;
+import com.poccurves.processor.application.exception.IncoerenciaModoOrigemException;
+import com.poccurves.processor.application.exception.ParseFalhouException;
+import com.poccurves.processor.application.util.MetricasIngestao;
 
 import tools.jackson.databind.ObjectMapper;
 import com.poccurves.processor.adapter.in.messaging.dlq.CabecalhosDlqFactory;
-import com.poccurves.processor.application.MetricasIngestao;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;

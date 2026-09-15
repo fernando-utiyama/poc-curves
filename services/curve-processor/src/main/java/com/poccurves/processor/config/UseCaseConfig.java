@@ -1,14 +1,26 @@
 package com.poccurves.processor.config;
-import com.poccurves.processor.domain.cargamanual.BateriaValidacaoCarga;
-import com.poccurves.processor.domain.parsing.DatasetParserRegistry;
+import com.poccurves.processor.application.model.DatasetParserRegistry;
+import com.poccurves.processor.application.port.DefinicaoCurvaLeituraRepositoryPort;
+import com.poccurves.processor.application.port.ExecucaoCurvaLeituraRepositoryPort;
+import com.poccurves.processor.application.port.LoteIngestaoRepositoryPort;
+import com.poccurves.processor.application.port.NormalizedEventPort;
+import com.poccurves.processor.application.port.PontoDadoMercadoRepositoryPort;
+import com.poccurves.processor.application.port.ProcedenciaCurvaRepositoryPort;
+import com.poccurves.processor.application.port.ValidacaoCurvaRepositoryPort;
+import com.poccurves.processor.application.port.VersaoCurvaRepositoryPort;
+import com.poccurves.processor.application.port.VerticeCurvaRepositoryPort;
+import com.poccurves.processor.application.service.BateriaValidacaoCarga;
+import com.poccurves.processor.application.usecase.IngestaoService;
+import com.poccurves.processor.application.usecase.ProcessarEnvelopeIngestaoUseCase;
+import com.poccurves.processor.application.usecase.PublicacaoCurvaService;
+import com.poccurves.processor.application.util.MetricasIngestao;
 
-import com.poccurves.processor.application.*;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Único ponto de wiring dos casos de uso e classes puras em `domain`/`application` que precisam
+ * Único ponto de wiring dos casos de uso e classes puras em `application` que precisam
  * virar bean — nenhuma delas tem anotação Spring (guarda de arquitetura hexagonal, ver
  * openspec/changes/hexagonal-architecture).
  */

@@ -1,8 +1,8 @@
 package com.poccurves.orchestrator.adapter.in.web;
+import com.poccurves.orchestrator.application.model.ExecucaoCurva;
+import com.poccurves.orchestrator.application.model.ProgressoBackfill;
+import com.poccurves.orchestrator.application.usecase.BackfillService;
 
-import com.poccurves.orchestrator.application.BackfillService;
-import com.poccurves.orchestrator.domain.ExecucaoCurva;
-import com.poccurves.orchestrator.domain.ProgressoBackfill;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.IniciarBackfillRequest;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.IniciarBackfillResponse;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.ProgressoBackfillDTO;

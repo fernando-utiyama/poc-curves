@@ -1,7 +1,7 @@
 package com.poccurves.orchestrator.adapter.out.persistence;
+import com.poccurves.orchestrator.application.model.EstadoPendenciaDlq;
+import com.poccurves.orchestrator.application.model.PendenciaDlq;
 
-import com.poccurves.orchestrator.domain.EstadoPendenciaDlq;
-import com.poccurves.orchestrator.domain.PendenciaDlq;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;

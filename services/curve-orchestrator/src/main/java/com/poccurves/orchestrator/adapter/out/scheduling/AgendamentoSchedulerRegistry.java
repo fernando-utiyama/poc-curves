@@ -1,8 +1,8 @@
 package com.poccurves.orchestrator.adapter.out.scheduling;
+import com.poccurves.orchestrator.application.model.Agendamento;
+import com.poccurves.orchestrator.application.port.AgendamentoSchedulerPort;
+import com.poccurves.orchestrator.application.usecase.DisparoAgendadoExecutor;
 
-import com.poccurves.orchestrator.application.AgendamentoSchedulerPort;
-import com.poccurves.orchestrator.application.DisparoAgendadoExecutor;
-import com.poccurves.orchestrator.domain.Agendamento;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;

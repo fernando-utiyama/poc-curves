@@ -1,6 +1,6 @@
 package com.poccurves.orchestrator.adapter.in.web;
+import com.poccurves.orchestrator.application.usecase.CargaManualService;
 
-import com.poccurves.orchestrator.application.CargaManualService;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.CargaManualResponse;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;

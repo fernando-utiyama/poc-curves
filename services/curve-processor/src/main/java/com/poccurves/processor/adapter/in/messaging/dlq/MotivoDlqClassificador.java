@@ -1,10 +1,10 @@
 package com.poccurves.processor.adapter.in.messaging.dlq;
-import com.poccurves.processor.domain.curva.CurvaNaoMapeadaException;
-import com.poccurves.processor.domain.curva.CurvaVaziaException;
-import com.poccurves.processor.domain.curva.IncoerenciaModoOrigemException;
-import com.poccurves.processor.domain.ingestao.DatasetDesconhecidoException;
-import com.poccurves.processor.domain.parsing.EnvelopeInvalidoException;
-import com.poccurves.processor.domain.parsing.ParseFalhouException;
+import com.poccurves.processor.application.exception.CurvaNaoMapeadaException;
+import com.poccurves.processor.application.exception.CurvaVaziaException;
+import com.poccurves.processor.application.exception.DatasetDesconhecidoException;
+import com.poccurves.processor.application.exception.EnvelopeInvalidoException;
+import com.poccurves.processor.application.exception.IncoerenciaModoOrigemException;
+import com.poccurves.processor.application.exception.ParseFalhouException;
 
 import org.springframework.kafka.support.serializer.DeserializationException;
 

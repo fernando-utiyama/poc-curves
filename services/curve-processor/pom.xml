@@ -44,6 +44,11 @@
             <artifactId>mssql-jdbc</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <!-- Leitor de planilha da carga manual de curva (tarefa 6.3) -->
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>

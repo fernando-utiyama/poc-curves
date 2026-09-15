@@ -1,7 +1,7 @@
 package com.poccurves.orchestrator.adapter.out.metrics;
+import com.poccurves.orchestrator.application.model.EstadoExecucao;
+import com.poccurves.orchestrator.application.port.MetricasRepositoryPort;
 
-import com.poccurves.orchestrator.application.MetricasRepositoryPort;
-import com.poccurves.orchestrator.domain.EstadoExecucao;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;

@@ -1,10 +1,10 @@
 package com.poccurves.orchestrator.adapter.in.messaging;
+import com.poccurves.orchestrator.application.model.EstadoPendenciaDlq;
+import com.poccurves.orchestrator.application.model.PendenciaDlq;
+import com.poccurves.orchestrator.application.usecase.MaterializarPendenciaDlqUseCase;
 
 import tools.jackson.databind.ObjectMapper;
 import com.poccurves.orchestrator.adapter.out.persistence.PendenciaDlqRepository;
-import com.poccurves.orchestrator.application.MaterializarPendenciaDlqUseCase;
-import com.poccurves.orchestrator.domain.EstadoPendenciaDlq;
-import com.poccurves.orchestrator.domain.PendenciaDlq;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;

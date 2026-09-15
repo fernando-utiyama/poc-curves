@@ -9,7 +9,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
  * Guarda de fronteira ports & adapters (ver openspec/changes/hexagonal-architecture): reprova o
- * build se uma classe em domain/application importar tipo de framework de infraestrutura.
+ * build se uma classe em application/ (e seus subpacotes — model/service/usecase/validator/port/
+ * exception, layout espelhando o padrão hex real usado em outro projeto) importar tipo de
+ * framework de infraestrutura.
  * `org.springframework.transaction..` e `org.springframework.scheduling.support.CronExpression`
  * (usada só para validar sintaxe de expressão cron em {@code Agendamento}, sem wiring de
  * infraestrutura por trás) são exceções deliberadas — ver design.md - Decisions. Jackson é banido
@@ -19,8 +21,8 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 class ArchitectureTest {
 
     @ArchTest
-    static final ArchRule domainAndApplicationMustNotDependOnFrameworks =
-            noClasses().that().resideInAnyPackage("..domain..", "..application..")
+    static final ArchRule applicationMustNotDependOnFrameworks =
+            noClasses().that().resideInAnyPackage("..application..")
                     .should().dependOnClassesThat().resideInAnyPackage(
                             "org.springframework.stereotype..",
                             "org.springframework.web..",
@@ -36,8 +38,8 @@ class ArchitectureTest {
                     .allowEmptyShould(true);
 
     @ArchTest
-    static final ArchRule domainAndApplicationMustNotDependOnJacksonServiceClasses =
-            noClasses().that().resideInAnyPackage("..domain..", "..application..")
+    static final ArchRule applicationMustNotDependOnJacksonServiceClasses =
+            noClasses().that().resideInAnyPackage("..application..")
                     .should().dependOnClassesThat().haveNameMatching(".*\\.ObjectMapper|.*\\.JsonMapper|.*\\.TypeReference")
                     .allowEmptyShould(true);
 }

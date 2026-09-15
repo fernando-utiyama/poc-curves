@@ -1,7 +1,7 @@
 package com.poccurves.orchestrator.adapter.out.http;
+import com.poccurves.orchestrator.application.exception.IntegracaoIndisponivelException;
+import com.poccurves.orchestrator.application.port.FunctionMarketdataPort;
 
-import com.poccurves.orchestrator.application.FunctionMarketdataPort;
-import com.poccurves.orchestrator.domain.IntegracaoIndisponivelException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;

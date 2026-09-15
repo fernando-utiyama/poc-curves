@@ -1,8 +1,8 @@
 package com.poccurves.processor.adapter.out.persistence;
-import com.poccurves.processor.domain.cargamanual.DivergenciaValor;
-import com.poccurves.processor.domain.ingestao.PontoDadoMercado;
+import com.poccurves.processor.application.model.DivergenciaValor;
+import com.poccurves.processor.application.model.PontoDadoMercado;
+import com.poccurves.processor.application.port.PontoDadoMercadoRepositoryPort;
 
-import com.poccurves.processor.application.PontoDadoMercadoRepositoryPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

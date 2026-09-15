@@ -1,7 +1,7 @@
 package com.poccurves.orchestrator.adapter.out.persistence;
+import com.poccurves.orchestrator.application.model.DefinicaoConsumidora;
 
 import tools.jackson.databind.ObjectMapper;
-import com.poccurves.orchestrator.domain.DefinicaoConsumidora;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;

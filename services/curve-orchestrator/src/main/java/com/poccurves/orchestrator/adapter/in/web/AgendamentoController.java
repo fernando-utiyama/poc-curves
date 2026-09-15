@@ -1,9 +1,9 @@
 package com.poccurves.orchestrator.adapter.in.web;
+import com.poccurves.orchestrator.application.model.Agendamento;
+import com.poccurves.orchestrator.application.model.Faixa;
+import com.poccurves.orchestrator.application.model.MomentoCurva;
+import com.poccurves.orchestrator.application.usecase.AgendamentoService;
 
-import com.poccurves.orchestrator.application.AgendamentoService;
-import com.poccurves.orchestrator.domain.Agendamento;
-import com.poccurves.orchestrator.domain.Faixa;
-import com.poccurves.orchestrator.domain.MomentoCurva;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.AgendamentoComUltimaExecucaoDTO;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.AgendamentoRequest;
 import com.poccurves.orchestrator.dto.OrchestratorDtos.AgendamentoResponse;

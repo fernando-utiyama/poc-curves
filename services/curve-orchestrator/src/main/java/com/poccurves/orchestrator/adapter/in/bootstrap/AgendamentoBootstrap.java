@@ -1,8 +1,8 @@
 package com.poccurves.orchestrator.adapter.in.bootstrap;
+import com.poccurves.orchestrator.application.model.Agendamento;
+import com.poccurves.orchestrator.application.port.AgendamentoRepositoryPort;
+import com.poccurves.orchestrator.application.port.AgendamentoSchedulerPort;
 
-import com.poccurves.orchestrator.application.AgendamentoRepositoryPort;
-import com.poccurves.orchestrator.application.AgendamentoSchedulerPort;
-import com.poccurves.orchestrator.domain.Agendamento;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;

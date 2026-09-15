@@ -1,9 +1,9 @@
 package com.poccurves.orchestrator.adapter.out.scheduling;
+import com.poccurves.orchestrator.application.model.Agendamento;
+import com.poccurves.orchestrator.application.model.Faixa;
+import com.poccurves.orchestrator.application.model.MomentoCurva;
+import com.poccurves.orchestrator.application.usecase.DisparoAgendadoExecutor;
 
-import com.poccurves.orchestrator.application.DisparoAgendadoExecutor;
-import com.poccurves.orchestrator.domain.Agendamento;
-import com.poccurves.orchestrator.domain.Faixa;
-import com.poccurves.orchestrator.domain.MomentoCurva;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

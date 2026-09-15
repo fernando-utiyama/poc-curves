@@ -1,10 +1,10 @@
 package com.poccurves.processor.adapter.out.persistence;
-import com.poccurves.processor.domain.curva.EstadoVersaoCurva;
-import com.poccurves.processor.domain.curva.MomentoCurva;
-import com.poccurves.processor.domain.curva.OrigemVersao;
-import com.poccurves.processor.domain.curva.VersaoCurva;
+import com.poccurves.processor.application.model.EstadoVersaoCurva;
+import com.poccurves.processor.application.model.MomentoCurva;
+import com.poccurves.processor.application.model.OrigemVersao;
+import com.poccurves.processor.application.model.VersaoCurva;
+import com.poccurves.processor.application.port.VersaoCurvaRepositoryPort;
 
-import com.poccurves.processor.application.VersaoCurvaRepositoryPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
