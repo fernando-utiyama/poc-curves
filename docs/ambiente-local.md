@@ -23,14 +23,22 @@ modo KRaft, SQL Server 2022, e, no perfil completo, Redis e Keycloak.
 |---|---|---|
 | SQL Server | `1433` | conexão JDBC / `sqlcmd` |
 | Kafka (listener externo) | `19092` | acesso da máquina host e de testes de integração |
+| Kafka nativo (porta padrão) | `9092` | acesso local direto sem containers |
 | Redis (perfil completo) | `6379` | cache de interpolação |
 | Keycloak (perfil completo) | `8180` | console/admin e endpoints OIDC (mapeia a porta 8080 do container) |
 | Keycloak — management (perfil completo) | `9000` | `/health/ready`, `/health/live` |
+| `curve-bff` | `8080` | API Gateway / BFF |
+| `curve-processor` | `8081` | Normalizador e ingestão |
+| `curve-api` | `8082` | Catálogo e definições |
+| `curve-engine` | `8083` | Motor de cálculo e interpolação |
+| `curve-orchestrator` | `8084` | Agendador e orquestração |
+| `function-marketdata` | `8091` | Feeder HTTP de cotações B3/Anbima |
+| `curve-web-ui` | `4200` | Frontend Angular |
 
 Nenhuma porta é privilegiada (todas acima de 1024) — requisito do modo
 rootless, sem `sudo` e sem `--rootful`.
 
-## Subir e derrubar
+## Subir e derrubar (via Podman)
 
 ```bash
 # Perfil completo: Kafka + SQL Server + Redis + Keycloak
@@ -55,13 +63,56 @@ inicialização (criação do banco, migração Flyway, bootstrap de tópicos) f
 a subida para com erro — nenhum serviço de aplicação deve iniciar contra um
 banco ou um catálogo de tópicos em estado inconsistente.
 
+## Execução nativa das aplicações e Kafka (sem Podman / Docker)
+
+Caso precise rodar o ecossistema diretamente no host (por restrição de licença de containers ou preferência de desenvolvimento local):
+
+### 1. Iniciar Kafka KRaft local (nativo via Java)
+
+O Apache Kafka roda 100% sobre a JVM em modo KRaft (dispensa ZooKeeper e containers). O script baixa os binários oficiais em `.kafka/` (git-ignorado) na primeira vez, formata o cluster e já cria todos os tópicos do catálogo:
+
+```powershell
+.\scripts\start-kafka-local.ps1
+# Para encerrar o Kafka:
+.\scripts\stop-kafka-local.ps1
+```
+
+### 2. Migrações de banco (SQL Server local via `sqlcmd`)
+
+```powershell
+.\scripts\migrate-local.ps1
+# Ou autenticado com usuário específico:
+.\scripts\migrate-local.ps1 -Server "localhost,1433" -Database "curvasdb" -User "sa" -Password "CurvasP0c!Local"
+```
+
+### 3. Iniciar tudo junto (Kafka + Aplicações)
+
+```powershell
+# Sobe Kafka KRaft nativo + 5 microsserviços + Feeder Node + Frontend Angular:
+.\scripts\start-all-local.ps1 -WithKafka
+
+# Se precisar compilar e migrar o banco antes de subir:
+.\scripts\start-all-local.ps1 -WithKafka -MigrateDb -Build
+
+# Se quiser abrir cada serviço em uma janela de terminal própria (para ver logs ao vivo):
+.\scripts\start-all-local.ps1 -WithKafka -Mode NewWindows
+```
+
+### 4. Parar todas as aplicações e infraestrutura local
+
+```powershell
+.\scripts\stop-all-local.ps1
+```
+
+Em ambientes Bash/Linux/WSL, utilize `scripts/start-all-local.sh` e `scripts/stop-all-local.sh`.
+
 ## O que cada subida faz, em ordem
 
 1. Sobe `kafka` e `sqlserver` (e `redis`/`keycloak` no perfil completo) em
    background.
 2. Espera cada um responder de verdade — não apenas "container rodando".
 3. Cria o banco `curvasdb` se ainda não existir (`sqlserver-init-db`).
-4. Aplica as migrações Flyway (`db/migration/V1..V7`) contra `curvasdb`.
+4. Aplica as migrações Flyway (`db/migration/V1..V20`) contra `curvasdb`.
 5. Cria os tópicos do catálogo (`contracts/events/topics.yaml`) no Kafka —
    o broker sobe com `auto.create.topics.enable=false`, então nenhum tópico
    existe até este passo rodar.
