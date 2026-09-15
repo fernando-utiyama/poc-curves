@@ -1,5 +1,5 @@
 package com.poccurves.engine.dto;
-import com.poccurves.engine.application.model.Vertice;
+import com.poccurves.engine.application.construcao.Vertice;
 
 
 import java.math.BigDecimal;

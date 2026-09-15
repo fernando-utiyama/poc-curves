@@ -1,9 +1,9 @@
 package com.poccurves.engine.application.usecase;
-import com.poccurves.engine.application.model.CurvaJuros;
+import com.poccurves.engine.application.construcao.CurvaJuros;
 import com.poccurves.engine.application.model.DefinicaoResolvida;
 import com.poccurves.engine.application.model.InsumoDI1;
 import com.poccurves.engine.application.model.ModeloCurva;
-import com.poccurves.engine.application.model.Vertice;
+import com.poccurves.engine.application.construcao.Vertice;
 import com.poccurves.engine.application.port.DefinicaoCurvaResolutionRepositoryPort;
 import com.poccurves.engine.application.port.InsumoDI1RepositoryPort;
 import com.poccurves.engine.application.port.ModeloCurvaRepositoryPort;

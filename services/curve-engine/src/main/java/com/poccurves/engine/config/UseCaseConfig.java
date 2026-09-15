@@ -1,7 +1,7 @@
 package com.poccurves.engine.config;
-import com.poccurves.engine.application.model.CurveBootstrapper;
-import com.poccurves.engine.application.model.InterpoladorRegistry;
-import com.poccurves.engine.application.model.PoliticaExtrapolacaoRegistry;
+import com.poccurves.engine.application.construcao.CurveBootstrapper;
+import com.poccurves.engine.application.construcao.InterpoladorRegistry;
+import com.poccurves.engine.application.construcao.PoliticaExtrapolacaoRegistry;
 import com.poccurves.engine.application.port.CacheInterpolacaoPort;
 import com.poccurves.engine.application.port.CurvaPublicadaEventPort;
 import com.poccurves.engine.application.port.DefinicaoCurvaResolutionRepositoryPort;
@@ -63,8 +63,8 @@ public class UseCaseConfig {
      * nunca notado antes porque o serviço nunca tinha sido rodado com spring-boot:run).
      */
     @Bean
-    public com.poccurves.engine.application.model.CurveBootstrapper curveBootstrapper() {
-        return new com.poccurves.engine.application.model.CurveBootstrapper();
+    public com.poccurves.engine.application.construcao.CurveBootstrapper curveBootstrapper() {
+        return new com.poccurves.engine.application.construcao.CurveBootstrapper();
     }
 
     /** Spring injeta aqui a lista dos dois @Component que implementam a porta (BuiltinModeloConstrucao, GroovyModeloConstrucao). */

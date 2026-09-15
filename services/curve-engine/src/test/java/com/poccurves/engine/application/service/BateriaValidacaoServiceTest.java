@@ -1,11 +1,11 @@
 package com.poccurves.engine.application.service;
 import com.poccurves.engine.application.model.Classificacao;
 import com.poccurves.engine.application.model.ContextoValidacao;
-import com.poccurves.engine.application.model.CurvaJuros;
+import com.poccurves.engine.application.construcao.CurvaJuros;
 import com.poccurves.engine.application.model.LimiteValidacao;
 import com.poccurves.engine.application.model.ResultadoTeste;
 import com.poccurves.engine.application.model.ResultadoValidacao;
-import com.poccurves.engine.application.model.Vertice;
+import com.poccurves.engine.application.construcao.Vertice;
 import com.poccurves.engine.application.port.ValidacaoCurvaRepositoryPort;
 import com.poccurves.engine.application.validator.TesteValidacao;
 

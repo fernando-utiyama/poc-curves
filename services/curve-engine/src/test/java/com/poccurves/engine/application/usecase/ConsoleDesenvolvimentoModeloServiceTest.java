@@ -1,7 +1,7 @@
 package com.poccurves.engine.application.usecase;
 import com.poccurves.engine.application.exception.ModeloConstrucaoException;
-import com.poccurves.engine.application.model.CurvaJuros;
-import com.poccurves.engine.application.model.Vertice;
+import com.poccurves.engine.application.construcao.CurvaJuros;
+import com.poccurves.engine.application.construcao.Vertice;
 import com.poccurves.engine.application.port.ModeloConstrucaoPort;
 
 import com.poccurves.engine.dto.EngineDtos.*;

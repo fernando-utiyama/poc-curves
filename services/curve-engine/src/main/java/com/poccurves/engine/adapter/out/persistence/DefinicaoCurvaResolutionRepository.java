@@ -1,5 +1,5 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.application.model.ConfiguracaoInterpolacao;
+import com.poccurves.engine.application.construcao.ConfiguracaoInterpolacao;
 import com.poccurves.engine.application.model.DefinicaoResolvida;
 import com.poccurves.engine.application.model.LimiteValidacao;
 import com.poccurves.engine.application.port.DefinicaoCurvaResolutionRepositoryPort;

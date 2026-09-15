@@ -1,5 +1,4 @@
 package com.poccurves.engine.application.model;
-import com.poccurves.engine.application.validator.TesteValidacao;
 
 import java.math.BigDecimal;
 import java.util.Objects;

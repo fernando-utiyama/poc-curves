@@ -1,5 +1,5 @@
 package com.poccurves.engine.application.service;
-import com.poccurves.engine.application.model.CurvaJuros;
+import com.poccurves.engine.application.construcao.CurvaJuros;
 import com.poccurves.engine.application.model.InsumoDI1;
 import com.poccurves.engine.application.model.ModeloCurva;
 import com.poccurves.engine.application.port.ModeloConstrucaoPort;

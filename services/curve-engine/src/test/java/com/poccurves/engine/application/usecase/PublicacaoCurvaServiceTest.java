@@ -8,7 +8,7 @@ import com.poccurves.engine.application.model.OrigemVersao;
 import com.poccurves.engine.application.model.ResultadoTeste;
 import com.poccurves.engine.application.model.ResultadoValidacao;
 import com.poccurves.engine.application.model.VersaoCurva;
-import com.poccurves.engine.application.model.Vertice;
+import com.poccurves.engine.application.construcao.Vertice;
 import com.poccurves.engine.application.port.CurvaPublicadaEventPort;
 import com.poccurves.engine.application.port.DefinicaoCurvaResolutionRepositoryPort;
 import com.poccurves.engine.application.port.InsumoDI1RepositoryPort;

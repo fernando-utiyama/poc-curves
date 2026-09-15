@@ -3,7 +3,7 @@ import com.poccurves.engine.application.model.Classificacao;
 import com.poccurves.engine.application.model.ContextoValidacao;
 import com.poccurves.engine.application.model.ResultadoTeste;
 import com.poccurves.engine.application.model.ResultadoValidacao;
-import com.poccurves.engine.application.model.RoundingPolicy;
+import com.poccurves.engine.application.construcao.RoundingPolicy;
 
 
 import java.math.BigDecimal;

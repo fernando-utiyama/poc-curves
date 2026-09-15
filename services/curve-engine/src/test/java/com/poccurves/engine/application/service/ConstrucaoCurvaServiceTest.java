@@ -1,6 +1,6 @@
 package com.poccurves.engine.application.service;
 import com.poccurves.engine.application.exception.VersaoJaExisteException;
-import com.poccurves.engine.application.model.CurvaJuros;
+import com.poccurves.engine.application.construcao.CurvaJuros;
 import com.poccurves.engine.application.model.DefinicaoResolvida;
 import com.poccurves.engine.application.model.InsumoDI1;
 import com.poccurves.engine.application.model.ModeloCurva;

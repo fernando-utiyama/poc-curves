@@ -1,12 +1,12 @@
 package com.poccurves.engine.application.usecase;
-import com.poccurves.engine.application.model.ConfiguracaoInterpolacao;
-import com.poccurves.engine.application.model.Interpolador;
-import com.poccurves.engine.application.model.InterpoladorRegistry;
+import com.poccurves.engine.application.construcao.ConfiguracaoInterpolacao;
+import com.poccurves.engine.application.construcao.Interpolador;
+import com.poccurves.engine.application.construcao.InterpoladorRegistry;
 import com.poccurves.engine.application.model.MomentoCurva;
-import com.poccurves.engine.application.model.PoliticaExtrapolacao;
-import com.poccurves.engine.application.model.PoliticaExtrapolacaoRegistry;
+import com.poccurves.engine.application.construcao.PoliticaExtrapolacao;
+import com.poccurves.engine.application.construcao.PoliticaExtrapolacaoRegistry;
 import com.poccurves.engine.application.model.VersaoCurva;
-import com.poccurves.engine.application.model.Vertice;
+import com.poccurves.engine.application.construcao.Vertice;
 import com.poccurves.engine.application.port.CacheInterpolacaoPort;
 import com.poccurves.engine.application.port.DefinicaoCurvaResolutionRepositoryPort;
 import com.poccurves.engine.application.port.VersaoCurvaRepositoryPort;
@@ -90,8 +90,8 @@ public class InterpolacaoService {
 
     private ItemInterpolacaoResultado calcularItem(
             List<Vertice> vertices,
-            com.poccurves.engine.application.model.Interpolador interpolador,
-            com.poccurves.engine.application.model.PoliticaExtrapolacao politicaExtrapolacao,
+            com.poccurves.engine.application.construcao.Interpolador interpolador,
+            com.poccurves.engine.application.construcao.PoliticaExtrapolacao politicaExtrapolacao,
             int prazo,
             int prazoMinimo,
             int prazoMaximo,

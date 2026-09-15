@@ -1,9 +1,9 @@
 package com.poccurves.engine.application.validator;
 import com.poccurves.engine.application.model.ContextoValidacao;
-import com.poccurves.engine.application.model.CurvaJuros;
+import com.poccurves.engine.application.construcao.CurvaJuros;
 import com.poccurves.engine.application.model.InsumoDI1;
 import com.poccurves.engine.application.model.ResultadoValidacao;
-import com.poccurves.engine.application.model.Vertice;
+import com.poccurves.engine.application.construcao.Vertice;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

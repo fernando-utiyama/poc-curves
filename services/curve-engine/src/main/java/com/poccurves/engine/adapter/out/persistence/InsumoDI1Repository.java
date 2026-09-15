@@ -1,5 +1,4 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.application.model.CurvaJuros;
 import com.poccurves.engine.application.model.InsumoDI1;
 import com.poccurves.engine.application.port.InsumoDI1RepositoryPort;
 

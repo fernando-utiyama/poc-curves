@@ -1,5 +1,5 @@
 package com.poccurves.engine.application;
-import com.poccurves.engine.application.model.RoundingPolicy;
+import com.poccurves.engine.application.construcao.RoundingPolicy;
 
 import org.junit.jupiter.api.Test;
 

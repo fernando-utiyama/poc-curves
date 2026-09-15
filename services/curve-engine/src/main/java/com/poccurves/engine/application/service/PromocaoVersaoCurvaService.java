@@ -2,7 +2,6 @@ package com.poccurves.engine.application.service;
 import com.poccurves.engine.application.model.MomentoCurva;
 import com.poccurves.engine.application.model.VersaoCurva;
 import com.poccurves.engine.application.port.VersaoCurvaRepositoryPort;
-import com.poccurves.engine.application.usecase.PublicacaoCurvaService;
 
 import org.springframework.transaction.annotation.Transactional;
 

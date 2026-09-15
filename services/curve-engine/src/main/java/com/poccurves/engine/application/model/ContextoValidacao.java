@@ -1,6 +1,6 @@
 package com.poccurves.engine.application.model;
-import com.poccurves.engine.application.validator.TesteValidacao;
 
+import com.poccurves.engine.application.construcao.CurvaJuros;
 
 import java.util.List;
 import java.util.Objects;

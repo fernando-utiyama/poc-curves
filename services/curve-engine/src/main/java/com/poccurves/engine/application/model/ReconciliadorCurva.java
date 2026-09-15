@@ -1,5 +1,8 @@
 package com.poccurves.engine.application.model;
 
+import com.poccurves.engine.application.construcao.CurvaJuros;
+import com.poccurves.engine.application.construcao.Vertice;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;

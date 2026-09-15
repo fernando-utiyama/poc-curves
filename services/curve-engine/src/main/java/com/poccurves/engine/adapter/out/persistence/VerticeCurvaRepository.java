@@ -1,5 +1,5 @@
 package com.poccurves.engine.adapter.out.persistence;
-import com.poccurves.engine.application.model.Vertice;
+import com.poccurves.engine.application.construcao.Vertice;
 import com.poccurves.engine.application.port.VerticeCurvaRepositoryPort;
 
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;

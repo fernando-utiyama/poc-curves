@@ -1,10 +1,7 @@
 package com.poccurves.engine.application.port;
-import com.poccurves.engine.application.exception.ModeloConstrucaoException;
-import com.poccurves.engine.application.model.CurvaJuros;
+import com.poccurves.engine.application.construcao.CurvaJuros;
 import com.poccurves.engine.application.model.InsumoDI1;
 import com.poccurves.engine.application.model.ModeloCurva;
-import com.poccurves.engine.application.model.TipoModelo;
-import com.poccurves.engine.application.service.ModeloConstrucaoResolver;
 
 
 import java.util.List;

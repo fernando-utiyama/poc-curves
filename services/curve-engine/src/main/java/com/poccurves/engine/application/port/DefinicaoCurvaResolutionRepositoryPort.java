@@ -1,5 +1,5 @@
 package com.poccurves.engine.application.port;
-import com.poccurves.engine.application.model.ConfiguracaoInterpolacao;
+import com.poccurves.engine.application.construcao.ConfiguracaoInterpolacao;
 import com.poccurves.engine.application.model.DefinicaoResolvida;
 
 

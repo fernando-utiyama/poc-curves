@@ -1,7 +1,7 @@
 package com.poccurves.engine.application.usecase;
 import com.poccurves.engine.application.model.Classificacao;
 import com.poccurves.engine.application.model.ContextoValidacao;
-import com.poccurves.engine.application.model.CurvaJuros;
+import com.poccurves.engine.application.construcao.CurvaJuros;
 import com.poccurves.engine.application.model.DefinicaoResolvida;
 import com.poccurves.engine.application.model.MomentoCurva;
 import com.poccurves.engine.application.model.ResultadoValidacao;
@@ -14,7 +14,6 @@ import com.poccurves.engine.application.port.VerticeCurvaRepositoryPort;
 import com.poccurves.engine.application.service.BateriaValidacaoService;
 import com.poccurves.engine.application.service.ConstrucaoCurvaService;
 import com.poccurves.engine.application.service.PromocaoVersaoCurvaService;
-import com.poccurves.engine.application.validator.TesteComparacaoCurvaImportada;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
