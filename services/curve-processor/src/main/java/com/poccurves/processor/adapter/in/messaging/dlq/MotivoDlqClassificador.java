@@ -1,9 +1,11 @@
 package com.poccurves.processor.adapter.in.messaging.dlq;
+import com.poccurves.processor.application.exception.BlobNaoEncontradoException;
 import com.poccurves.processor.application.exception.CurvaNaoMapeadaException;
 import com.poccurves.processor.application.exception.CurvaVaziaException;
 import com.poccurves.processor.application.exception.DatasetDesconhecidoException;
 import com.poccurves.processor.application.exception.EnvelopeInvalidoException;
 import com.poccurves.processor.application.exception.IncoerenciaModoOrigemException;
+import com.poccurves.processor.application.exception.IntegridadeBlobException;
 import com.poccurves.processor.application.exception.ParseFalhouException;
 
 import org.springframework.kafka.support.serializer.DeserializationException;
@@ -42,6 +44,12 @@ public final class MotivoDlqClassificador {
         if (causa instanceof IncoerenciaModoOrigemException) {
             return "VALIDATION_ERROR";
         }
+        if (causa instanceof BlobNaoEncontradoException) {
+            return "BLOB_NOT_FOUND";
+        }
+        if (causa instanceof IntegridadeBlobException) {
+            return "BLOB_INTEGRITY_ERROR";
+        }
         return "PROCESSING_ERROR";
     }
 
@@ -58,7 +66,9 @@ public final class MotivoDlqClassificador {
                     || atual instanceof ParseFalhouException
                     || atual instanceof CurvaNaoMapeadaException
                     || atual instanceof CurvaVaziaException
-                    || atual instanceof IncoerenciaModoOrigemException) {
+                    || atual instanceof IncoerenciaModoOrigemException
+                    || atual instanceof BlobNaoEncontradoException
+                    || atual instanceof IntegridadeBlobException) {
                 return atual;
             }
             atual = atual.getCause();

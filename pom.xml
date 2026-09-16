@@ -31,6 +31,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <archunit.version>1.5.0</archunit.version>
         <h2.version>2.3.232</h2.version>
+        <azure.storage.blob.version>12.30.0</azure.storage.blob.version>
     </properties>
 
     <dependencyManagement>
@@ -39,6 +40,11 @@
                 <groupId>com.h2database</groupId>
                 <artifactId>h2</artifactId>
                 <version>${h2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-storage-blob</artifactId>
+                <version>${azure.storage.blob.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

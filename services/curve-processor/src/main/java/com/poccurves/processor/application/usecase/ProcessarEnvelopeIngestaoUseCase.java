@@ -1,6 +1,8 @@
 package com.poccurves.processor.application.usecase;
+import com.poccurves.processor.application.exception.BlobNaoEncontradoException;
 import com.poccurves.processor.application.exception.DatasetDesconhecidoException;
 import com.poccurves.processor.application.exception.EnvelopeInvalidoException;
+import com.poccurves.processor.application.exception.IntegridadeBlobException;
 import com.poccurves.processor.application.exception.ParseFalhouException;
 import com.poccurves.processor.application.model.DatasetParser;
 import com.poccurves.processor.application.model.DatasetParserRegistry;
@@ -11,6 +13,7 @@ import com.poccurves.processor.application.model.PontoDadoMercado;
 import com.poccurves.processor.application.model.ResultadoProcessamentoBloco;
 import com.poccurves.processor.application.model.TipoPayload;
 import com.poccurves.processor.application.model.VerticeCurva;
+import com.poccurves.processor.application.port.BlobStorageReadPort;
 import com.poccurves.processor.application.port.ExecucaoCurvaLeituraRepositoryPort;
 import com.poccurves.processor.application.port.NormalizedEventPort;
 import com.poccurves.processor.application.port.PontoDadoMercadoRepositoryPort;
@@ -22,7 +25,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
 
-import java.nio.charset.Charset;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,6 +51,7 @@ public class ProcessarEnvelopeIngestaoUseCase {
     private final PontoDadoMercadoRepositoryPort pontoDadoMercadoRepository;
     private final PublicacaoCurvaService publicacaoCurvaService;
     private final NormalizedEventPort normalizedEventPort;
+    private final BlobStorageReadPort blobStorageReadPort;
 
     public ProcessarEnvelopeIngestaoUseCase(
             DatasetParserRegistry parserRegistry,
@@ -55,7 +60,8 @@ public class ProcessarEnvelopeIngestaoUseCase {
             ExecucaoCurvaLeituraRepositoryPort execucaoCurvaLeituraRepository,
             PontoDadoMercadoRepositoryPort pontoDadoMercadoRepository,
             PublicacaoCurvaService publicacaoCurvaService,
-            NormalizedEventPort normalizedEventPort
+            NormalizedEventPort normalizedEventPort,
+            BlobStorageReadPort blobStorageReadPort
     ) {
         this.parserRegistry = parserRegistry;
         this.ingestaoService = ingestaoService;
@@ -64,6 +70,7 @@ public class ProcessarEnvelopeIngestaoUseCase {
         this.pontoDadoMercadoRepository = pontoDadoMercadoRepository;
         this.publicacaoCurvaService = publicacaoCurvaService;
         this.normalizedEventPort = normalizedEventPort;
+        this.blobStorageReadPort = blobStorageReadPort;
     }
 
     public void processar(EventEnvelope envelope) {
@@ -81,7 +88,7 @@ public class ProcessarEnvelopeIngestaoUseCase {
         JsonNode payload = envelope.payload();
         String encoding = textoObrigatorio(payload, "encoding");
         String contentHash = textoObrigatorio(payload, "contentHash");
-        byte[] conteudo = reconstruirConteudo(payload, encoding);
+        byte[] conteudo = buscarConteudoDoBlob(payload, contentHash);
 
         ParseResult parseResult = parser.parse(conteudo, encoding, envelope.referenceDate());
         if (parseResult instanceof ParseResult.Falha falha) {
@@ -172,45 +179,39 @@ public class ProcessarEnvelopeIngestaoUseCase {
     }
 
     /**
-     * Reconstrói o conteúdo bruto do bloco a partir de {@code payload.records}
-     * (contracts/events/marketdata-raw.schema.json): cada item é um objeto
-     * com um campo {@code raw} contendo o fragmento estrutural original
-     * (ex. um {@code <BizGrp>} inteiro, ou uma linha de um CSV), unidos por
-     * `\n` na ordem em que aparecem. Um separador é necessário para conteúdo
-     * baseado em linha (ex. a curva pronta da B3, um CSV) — sem ele, linhas
-     * de registros diferentes ficariam coladas sem quebra. Não quebra o
-     * conteúdo baseado em XML (ex. BVBG.086/BVBG.028): espaço em branco
-     * entre elementos `<BizGrp>` irmãos é inócuo para o parser XML. Itens
-     * sem o campo {@code raw} caem no fallback de serializar o próprio nó
-     * de volta para texto, para não quebrar caso o conteúdo já chegue como
-     * texto simples.
+     * Busca o conteúdo bruto referenciado pelo evento em blob storage (blobContainer/blobPath,
+     * contracts/events/marketdata-raw.schema.json) e confere o hash declarado antes de devolver
+     * — openspec/changes/raw-file-blob-storage substitui o antigo caminho de reconstrução a
+     * partir de payload.records[] por esta leitura de blob.
      */
-    private byte[] reconstruirConteudo(JsonNode payload, String encoding) {
-        JsonNode records = payload.get("records");
-        StringBuilder builder = new StringBuilder();
-        if (records != null && records.isArray()) {
-            boolean primeiro = true;
-            for (JsonNode item : records) {
-                if (!primeiro) {
-                    builder.append('\n');
-                }
-                primeiro = false;
-                if (item.has("raw")) {
-                    builder.append(item.get("raw").asText());
-                } else if (item.isTextual()) {
-                    builder.append(item.asText());
-                } else {
-                    builder.append(item.toString());
-                }
-            }
+    private byte[] buscarConteudoDoBlob(JsonNode payload, String contentHashEsperado) {
+        String blobContainer = textoObrigatorio(payload, "blobContainer");
+        String blobPath = textoObrigatorio(payload, "blobPath");
+
+        if (!blobStorageReadPort.existe(blobContainer, blobPath)) {
+            throw new BlobNaoEncontradoException(blobContainer, blobPath);
         }
-        Charset charset;
+
+        byte[] conteudo = blobStorageReadPort.baixar(blobContainer, blobPath);
+        String hashCalculado = "sha256:" + calcularSha256Hex(conteudo);
+        if (!hashCalculado.equals(contentHashEsperado)) {
+            throw new IntegridadeBlobException(blobContainer, blobPath, contentHashEsperado, hashCalculado);
+        }
+        return conteudo;
+    }
+
+    private String calcularSha256Hex(byte[] conteudo) {
         try {
-            charset = Charset.forName(encoding);
-        } catch (Exception e) {
-            charset = java.nio.charset.StandardCharsets.UTF_8;
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(conteudo);
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 não disponível na JVM", e);
         }
-        return builder.toString().getBytes(charset);
     }
 
     private String textoObrigatorio(JsonNode payload, String campo) {

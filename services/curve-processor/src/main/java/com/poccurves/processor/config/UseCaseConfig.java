@@ -11,6 +11,7 @@ import com.poccurves.processor.application.port.VersaoCurvaRepositoryPort;
 import com.poccurves.processor.application.port.VerticeCurvaRepositoryPort;
 import com.poccurves.processor.application.service.BateriaValidacaoCarga;
 import com.poccurves.processor.application.usecase.IngestaoService;
+import com.poccurves.processor.application.port.BlobStorageReadPort;
 import com.poccurves.processor.application.usecase.ProcessarEnvelopeIngestaoUseCase;
 import com.poccurves.processor.application.usecase.PublicacaoCurvaService;
 import com.poccurves.processor.application.util.MetricasIngestao;
@@ -68,10 +69,11 @@ public class UseCaseConfig {
             ExecucaoCurvaLeituraRepositoryPort execucaoCurvaLeituraRepositoryPort,
             PontoDadoMercadoRepositoryPort pontoDadoMercadoRepositoryPort,
             PublicacaoCurvaService publicacaoCurvaService,
-            NormalizedEventPort normalizedEventPort
+            NormalizedEventPort normalizedEventPort,
+            BlobStorageReadPort blobStorageReadPort
     ) {
         return new ProcessarEnvelopeIngestaoUseCase(
                 datasetParserRegistry, ingestaoService, metricasIngestao, execucaoCurvaLeituraRepositoryPort,
-                pontoDadoMercadoRepositoryPort, publicacaoCurvaService, normalizedEventPort);
+                pontoDadoMercadoRepositoryPort, publicacaoCurvaService, normalizedEventPort, blobStorageReadPort);
     }
 }
