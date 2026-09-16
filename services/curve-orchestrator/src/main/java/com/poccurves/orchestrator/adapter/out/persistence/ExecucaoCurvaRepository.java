@@ -14,6 +14,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -271,7 +272,7 @@ public class ExecucaoCurvaRepository implements ExecucaoCurvaRepositoryPort {
     }
 
     @Override
-    public List<ExecucaoCurva> buscarExecucoesEmAndamento() {
+    public List<ExecucaoCurva> buscarExecucoesEmAndamento(Instant iniciadoAntesDe) {
         return jdbcTemplate.query(
                 """
                 SELECT id, correlacao_id, execucao_pai_id, definicao_curva_id, conjunto_dados, data_referencia,
@@ -279,8 +280,10 @@ public class ExecucaoCurvaRepository implements ExecucaoCurvaRepositoryPort {
                        margem_segundos, duracao_por_etapa, tentativas, codigo_erro, mensagem_erro, iniciado_em, finalizado_em
                 FROM execucao_curva
                 WHERE estado IN ('PENDENTE','EXECUTANDO','CONSTRUINDO','EM_RISCO','ATRASADA')
+                  AND iniciado_em < ?
                 """,
-                this::mapearLinha
+                this::mapearLinha,
+                Timestamp.from(iniciadoAntesDe)
         );
     }
 }

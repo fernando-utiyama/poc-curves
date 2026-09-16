@@ -38,6 +38,17 @@ services:
     url: ${CURVE_ENGINE_URL:http://localhost:8083}
     timeout-seconds: ${CURVE_ENGINE_TIMEOUT_SECONDS:5}
 
+agendamento:
+  execucao-presa:
+    # Tempo mínimo desde iniciado_em para uma execução não-terminal ser considerada presa de
+    # verdade (openspec/changes/orchestrator-multi-instance-scheduling) — deliberadamente
+    # folgado, para não derrubar execução legítima de outra réplica ainda dentro da janela de
+    # tentativa. Usado tanto no boot (ReconciliacaoInicializacaoRunner) quanto na reconciliação
+    # periódica (ReconciliacaoExecucoesPresasScheduler).
+    limite-minutos: ${AGENDAMENTO_EXECUCAO_PRESA_LIMITE_MINUTOS:60}
+    # Intervalo entre execuções da reconciliação periódica.
+    intervalo-segundos: ${AGENDAMENTO_EXECUCAO_PRESA_INTERVALO_SEGUNDOS:60}
+
 backfill:
   # Tamanho do pool dedicado ao despacho e execução de dias de backfill (tarefa 7.3 do backlog) —
   # separado do pool de agendamentos (SchedulingConfig.agendamentoTaskScheduler).
