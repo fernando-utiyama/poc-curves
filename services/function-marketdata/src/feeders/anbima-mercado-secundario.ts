@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { ehDiaDePregao } from '../calendario.js';
 import { classificarRespostaFonte } from '../classificacao-fonte.js';
+import type { BlobUploader } from '../blob-storage.js';
+import { montarCaminhoBlob } from '../blob-storage.js';
 import {
   failed,
   noData,
@@ -19,16 +21,16 @@ import { verificarConteudoNaoVazio, verificarTamanhoDeclarado } from '../integri
 import type { EnviarMensagem } from '../kafka-publisher.js';
 import { publicarBloco } from '../kafka-publisher.js';
 import { calcularEventId, calcularLoteId } from '../lote-id.js';
-import { dividirLinhasEmBlocos } from '../linhas.js';
-import { montarRecords } from '../registros-payload.js';
+import { formatarDataAAMMDD } from '../data-aammdd.js';
 import { urlDownloadAnbima } from './nome-arquivo-anbima.js';
 
 /** Nome de dataset sob o qual este feeder é registrado — ver `registro-feeders-anbima.ts`. */
 export const DATASET_ANBIMA_MERCADO_SECUNDARIO = 'ANBIMA_MERCADO_SECUNDARIO';
 
+/** Container/fonte usado na convenção de caminho de blob (openspec/changes/raw-file-blob-storage). */
+const BLOB_CONTAINER_ANBIMA = 'anbima';
+
 const ENCODING_ARQUIVO_ANBIMA = 'iso-8859-1';
-/** Título + linha em branco + cabeçalho — confirmado real contra `ms260821.txt` (fixtures/ms260821_fixture.txt). */
-const LINHAS_DE_CABECALHO = 3;
 
 const HTTP_CONFIG_PADRAO: HttpClientConfig = {
   timeoutMs: 30_000,
@@ -39,10 +41,8 @@ const HTTP_CONFIG_PADRAO: HttpClientConfig = {
 export interface ConfigFeederAnbimaMercadoSecundario {
   readonly httpConfig?: HttpClientConfig;
   readonly fetchImpl?: FetchLike;
-  readonly tamanhoBloco?: number;
+  readonly blobUploader: BlobUploader;
 }
-
-const TAMANHO_BLOCO_PADRAO = 50;
 
 /**
  * Feeder do arquivo de mercado secundário da ANBIMA
@@ -70,22 +70,22 @@ const TAMANHO_BLOCO_PADRAO = 50;
  *       B3, não um substituto para a tarefa 3.4 (curva pronta) do backlog do
  *       feeder B3.</li>
  * </ul>
- * Corte estrutural por LINHA (`dividirLinhasEmBlocos`), não por elemento
- * XML — cada linha de dado vira um registro opaco, sem interpretar campo
- * nenhum (mesmo princípio de xml-estrutural.ts para a B3).
+ * O conteúdo bruto completo é gravado em blob storage (openspec/changes/
+ * raw-file-blob-storage) antes da publicação — o feeder não interpreta
+ * nenhum campo, só grava e publica a referência do blob.
  */
 export class FeederAnbimaMercadoSecundario implements Feeder {
   private readonly httpConfig: HttpClientConfig;
   private readonly fetchImpl: FetchLike | undefined;
-  private readonly tamanhoBloco: number;
+  private readonly blobUploader: BlobUploader;
 
   constructor(
     private readonly enviar: EnviarMensagem,
-    config: ConfigFeederAnbimaMercadoSecundario = {},
+    config: ConfigFeederAnbimaMercadoSecundario,
   ) {
     this.httpConfig = config.httpConfig ?? HTTP_CONFIG_PADRAO;
     this.fetchImpl = config.fetchImpl;
-    this.tamanhoBloco = config.tamanhoBloco ?? TAMANHO_BLOCO_PADRAO;
+    this.blobUploader = config.blobUploader;
   }
 
   async acquire(params: AcquisitionParams): Promise<AcquisitionResult> {
@@ -128,47 +128,42 @@ export class FeederAnbimaMercadoSecundario implements Feeder {
       }
     }
 
-    let blocos;
-    try {
-      blocos = dividirLinhasEmBlocos(conteudo, this.tamanhoBloco, LINHAS_DE_CABECALHO);
-    } catch (erro) {
-      const mensagem = erro instanceof Error ? erro.message : String(erro);
-      return failed('estrutura de arquivo inesperada', mensagem);
-    }
-
     const loteId = calcularLoteId('ANBIMA', params.dataset, params.referenceDate, conteudo);
     const producedAt = new Date().toISOString();
     const contentHash = `sha256:${createHash('sha256').update(conteudo).digest('hex')}`;
 
-    for (const bloco of blocos) {
-      await publicarBloco(
-        {
-          envelope: {
-            eventId: calcularEventId(loteId, bloco.sequencia),
-            correlationId: params.correlationId,
-            source: 'ANBIMA',
-            dataset: params.dataset,
-            referenceDate: params.referenceDate,
-            producedAt,
-            schemaVersion: '1.0',
-            payloadKind: 'INDIVIDUAL_QUOTES',
-            loteId,
-            sequencia: bloco.sequencia,
-            totalBlocos: bloco.totalBlocos,
-            payload: {
-              sourceUrl: url,
-              encoding: ENCODING_ARQUIVO_ANBIMA,
-              contentHash,
-              sizeBytes: conteudo.length,
-              records: montarRecords(bloco, ENCODING_ARQUIVO_ANBIMA),
-            },
-          },
-          faixa: params.faixa,
-        },
-        this.enviar,
-      );
-    }
+    const nomeArquivo = `ms${formatarDataAAMMDD(params.referenceDate)}.txt`;
+    const caminhoBlob = montarCaminhoBlob(params.referenceDate, nomeArquivo);
+    await this.blobUploader.gravar(BLOB_CONTAINER_ANBIMA, caminhoBlob, conteudo);
 
-    return published(loteId, blocos.length);
+    await publicarBloco(
+      {
+        envelope: {
+          eventId: calcularEventId(loteId, 1),
+          correlationId: params.correlationId,
+          source: 'ANBIMA',
+          dataset: params.dataset,
+          referenceDate: params.referenceDate,
+          producedAt,
+          schemaVersion: '1.0',
+          payloadKind: 'INDIVIDUAL_QUOTES',
+          loteId,
+          sequencia: 1,
+          totalBlocos: 1,
+          payload: {
+            sourceUrl: url,
+            encoding: ENCODING_ARQUIVO_ANBIMA,
+            contentHash,
+            sizeBytes: conteudo.length,
+            blobContainer: BLOB_CONTAINER_ANBIMA,
+            blobPath: caminhoBlob,
+          },
+        },
+        faixa: params.faixa,
+      },
+      this.enviar,
+    );
+
+    return published(loteId, 1);
   }
 }

@@ -22,6 +22,10 @@ function fabricaProdutorFake(enviar: EnviarMensagem = vi.fn().mockResolvedValue(
   return { fabrica, desconectar };
 }
 
+/** Connection string de desenvolvimento do Azurite — só precisa parsear, nunca conecta de verdade nestes testes (NO_DATA não chega a gravar blob). */
+const AZURITE_CONNECTION_STRING_FAKE =
+  'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;';
+
 describe('azure function handler acquireHandler', () => {
   it('400: corpo não é JSON válido — nem tenta conectar ao Kafka', async () => {
     const { fabrica } = fabricaProdutorFake();
@@ -49,6 +53,7 @@ describe('azure function handler acquireHandler', () => {
     expect(JSON.stringify(resposta.jsonBody)).toContain('referenceDate');
     expect(JSON.stringify(resposta.jsonBody)).toContain('faixa');
     expect(JSON.stringify(resposta.jsonBody)).toContain('kafkaBootstrapServers');
+    expect(JSON.stringify(resposta.jsonBody)).toContain('azuriteConnectionString');
     expect(fabrica).not.toHaveBeenCalled();
   });
 
@@ -62,6 +67,7 @@ describe('azure function handler acquireHandler', () => {
         referenceDate: '2026-08-21',
         faixa: 'ROTINA',
         kafkaBootstrapServers: 'localhost:9092',
+        azuriteConnectionString: AZURITE_CONNECTION_STRING_FAKE,
       }),
       contexto(),
     );
@@ -83,6 +89,7 @@ describe('azure function handler acquireHandler', () => {
         referenceDate: '2026-08-23',
         faixa: 'ROTINA',
         kafkaBootstrapServers: 'localhost:9092',
+        azuriteConnectionString: AZURITE_CONNECTION_STRING_FAKE,
       }),
       contexto(),
     );
@@ -104,6 +111,7 @@ describe('azure function handler acquireHandler', () => {
         referenceDate: '2026-08-23',
         faixa: 'ROTINA',
         kafkaBootstrapServers: 'localhost:9092',
+        azuriteConnectionString: AZURITE_CONNECTION_STRING_FAKE,
       }),
       contexto(),
     );
@@ -123,6 +131,7 @@ describe('azure function handler acquireHandler', () => {
         referenceDate: '2026-08-23',
         faixa: 'ROTINA',
         kafkaBootstrapServers: 'localhost:9092',
+        azuriteConnectionString: AZURITE_CONNECTION_STRING_FAKE,
         correlationId: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
       }),
       contexto(),

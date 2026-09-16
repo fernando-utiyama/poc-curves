@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { ehDiaDePregao } from '../calendario.js';
 import { classificarRespostaFonte } from '../classificacao-fonte.js';
+import type { BlobUploader } from '../blob-storage.js';
+import { montarCaminhoBlob } from '../blob-storage.js';
 import {
   failed,
   noData,
@@ -19,13 +21,12 @@ import { verificarConteudoNaoVazio } from '../integridade.js';
 import type { EnviarMensagem } from '../kafka-publisher.js';
 import { publicarBloco } from '../kafka-publisher.js';
 import { calcularEventId, calcularLoteId } from '../lote-id.js';
-import { montarRecords } from '../registros-payload.js';
-import { TAMANHO_BLOCO_PADRAO } from '../tamanho-bloco.js';
-import { dividirXmlEmBlocos } from '../xml-estrutural.js';
 import { lerEntradaMaisRecente, verificarArquivoZip } from '../zip.js';
 import { urlDownloadB3 } from './nome-arquivo-b3.js';
 
 const ENCODING_ARQUIVOS_B3 = 'utf-8';
+/** Container/fonte usado na convenção de caminho de blob (openspec/changes/raw-file-blob-storage). */
+const BLOB_CONTAINER_B3 = 'b3';
 
 const HTTP_CONFIG_PADRAO: HttpClientConfig = {
   timeoutMs: 60_000,
@@ -38,6 +39,7 @@ export interface ConfigFeederB3ArquivoPesquisaPregao {
   readonly prefixoArquivo: string;
   readonly httpConfig?: HttpClientConfig;
   readonly fetchImpl?: FetchLike;
+  readonly blobUploader: BlobUploader;
 }
 
 /**
@@ -72,9 +74,10 @@ export interface ConfigFeederB3ArquivoPesquisaPregao {
  *       segue usada como camada adicional de defesa (5xx real continua
  *       classificado como fonte indisponível), mas o sinal primário e
  *       confirmado é o ZIP externo vazio.</li>
- *   <li>O arquivo XML real do BVBG.028 chega a ~800MB, acima do limite de
- *       comprimento de string do V8 — por isso o corte estrutural
- *       (xml-estrutural.ts) opera inteiramente sobre `Buffer`.</li>
+ *   <li>O arquivo XML real do BVBG.028 chega a ~800MB — o conteúdo é gravado
+ *       em blob storage inteiramente como `Buffer` (openspec/changes/
+ *       raw-file-blob-storage), nunca convertido para `string` do V8, que
+ *       tem limite de comprimento bem abaixo disso.</li>
  * </ul>
  */
 export class FeederB3ArquivoPesquisaPregao implements Feeder {
@@ -157,47 +160,41 @@ export class FeederB3ArquivoPesquisaPregao implements Feeder {
 
     const conteudoXml = entradaMaisRecente.dados;
 
-    let blocos;
-    try {
-      blocos = dividirXmlEmBlocos(conteudoXml, 'BizGrp', TAMANHO_BLOCO_PADRAO);
-    } catch (erro) {
-      const mensagem = erro instanceof Error ? erro.message : String(erro);
-      return failed('estrutura XML inesperada', mensagem);
-    }
-
     const loteId = calcularLoteId('B3', params.dataset, params.referenceDate, conteudoXml);
     const producedAt = new Date().toISOString();
     const contentHash = `sha256:${createHash('sha256').update(conteudoXml).digest('hex')}`;
 
-    for (const bloco of blocos) {
-      await publicarBloco(
-        {
-          envelope: {
-            eventId: calcularEventId(loteId, bloco.sequencia),
-            correlationId: params.correlationId,
-            source: 'B3',
-            dataset: params.dataset,
-            referenceDate: params.referenceDate,
-            producedAt,
-            schemaVersion: '1.0',
-            payloadKind: 'INDIVIDUAL_QUOTES',
-            loteId,
-            sequencia: bloco.sequencia,
-            totalBlocos: bloco.totalBlocos,
-            payload: {
-              sourceUrl: url,
-              encoding: ENCODING_ARQUIVOS_B3,
-              contentHash,
-              sizeBytes: conteudoXml.length,
-              records: montarRecords(bloco, ENCODING_ARQUIVOS_B3),
-            },
-          },
-          faixa: params.faixa,
-        },
-        this.enviar,
-      );
-    }
+    const caminhoBlob = montarCaminhoBlob(params.referenceDate, entradaMaisRecente.nome);
+    await this.config.blobUploader.gravar(BLOB_CONTAINER_B3, caminhoBlob, conteudoXml);
 
-    return published(loteId, blocos.length);
+    await publicarBloco(
+      {
+        envelope: {
+          eventId: calcularEventId(loteId, 1),
+          correlationId: params.correlationId,
+          source: 'B3',
+          dataset: params.dataset,
+          referenceDate: params.referenceDate,
+          producedAt,
+          schemaVersion: '1.0',
+          payloadKind: 'INDIVIDUAL_QUOTES',
+          loteId,
+          sequencia: 1,
+          totalBlocos: 1,
+          payload: {
+            sourceUrl: url,
+            encoding: ENCODING_ARQUIVOS_B3,
+            contentHash,
+            sizeBytes: conteudoXml.length,
+            blobContainer: BLOB_CONTAINER_B3,
+            blobPath: caminhoBlob,
+          },
+        },
+        faixa: params.faixa,
+      },
+      this.enviar,
+    );
+
+    return published(loteId, 1);
   }
 }

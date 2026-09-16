@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { FeederB3ArquivoPesquisaPregao } from './b3-arquivo-pesquisa-pregao.js';
 import type { AcquisitionParams } from '../feeder.js';
+import type { BlobUploader } from '../blob-storage.js';
+
+function criarBlobUploaderFake(): BlobUploader & { gravar: ReturnType<typeof vi.fn> } {
+  return { gravar: vi.fn().mockResolvedValue(undefined) };
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const conteudoFixturePR = readFileSync(
@@ -68,11 +73,13 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
     ]);
     const fetchImpl = vi.fn().mockResolvedValue(new Response(respostaDuploZip, { status: 200 }));
     const enviar = vi.fn().mockResolvedValue(undefined);
+    const blobUploader = criarBlobUploaderFake();
 
     const feeder = new FeederB3ArquivoPesquisaPregao(enviar, {
       prefixoArquivo: 'PR',
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader,
     });
 
     const resultado = await feeder.acquire(paramsBase);
@@ -83,17 +90,26 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
       expect.anything(),
     );
     if (resultado.kind === 'PUBLISHED') {
-      expect(resultado.totalBlocos).toBeGreaterThan(0);
+      expect(resultado.totalBlocos).toBe(1);
     }
-    expect(enviar).toHaveBeenCalled();
+    expect(enviar).toHaveBeenCalledTimes(1);
+    expect(blobUploader.gravar).toHaveBeenCalledTimes(1);
+
+    // Prova que a revisão ESCOLHIDA foi a mais recente (rev2, gravada no blob), não a rev1 (vazia).
+    const [container, caminho, conteudoGravado] = blobUploader.gravar.mock.calls[0] as [
+      string,
+      string,
+      Buffer,
+    ];
+    expect(container).toBe('b3');
+    expect(caminho).toBe('2026-08-21/BVBG.086.01_rev2_final.xml');
+    expect(conteudoGravado.toString('utf-8')).toContain('TTENT');
 
     const primeiraChamada = enviar.mock.calls[0]?.[0];
     const valorPublicado = JSON.parse(primeiraChamada.valor);
-    expect(valorPublicado.payload.records).toBeInstanceOf(Array);
-    expect(valorPublicado.payload.records[0]).toHaveProperty('raw');
-    expect(valorPublicado.payload.records[0].raw).toContain('<BizGrp>');
-    // Prova que a revisão ESCOLHIDA foi a mais recente (rev2), não a rev1 (vazia).
-    expect(valorPublicado.payload.records[0].raw).toContain('TTENT');
+    expect(valorPublicado.payload.blobContainer).toBe('b3');
+    expect(valorPublicado.payload.blobPath).toBe('2026-08-21/BVBG.086.01_rev2_final.xml');
+    expect(valorPublicado.payload.records).toBeUndefined();
   });
 
   it('NO_DATA: ZIP externo vazio (0 entradas) — o sinal real confirmado de "ainda não publicado" para este endpoint', async () => {
@@ -104,6 +120,7 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
       prefixoArquivo: 'PR',
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
     });
 
     const resultado = await feeder.acquire(paramsBase);
@@ -120,6 +137,7 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
       prefixoArquivo: 'PR',
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
     });
 
     const resultado = await feeder.acquire({ ...paramsBase, referenceDate: '2026-09-07' }); // Independência
@@ -137,6 +155,7 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
       prefixoArquivo: 'PR',
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
     });
 
     const resultado = await feeder.acquire(paramsBase);
@@ -153,6 +172,7 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
       prefixoArquivo: 'PR',
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
     });
 
     const resultado = await feeder.acquire(paramsBase);
@@ -171,6 +191,7 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
       prefixoArquivo: 'PR',
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
     });
 
     const resultado = await feeder.acquire(paramsBase);
@@ -192,6 +213,7 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
       prefixoArquivo: 'PR',
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
     });
 
     const resultado = await feeder.acquire(paramsBase);
@@ -211,6 +233,7 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
       prefixoArquivo: 'IN',
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
     });
 
     await feeder.acquire({ ...paramsBase, dataset: 'BVBG.028' });

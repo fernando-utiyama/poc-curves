@@ -6,6 +6,7 @@ import {
   type InvocationContext,
 } from '@azure/functions';
 import { v4 as uuidv4 } from 'uuid';
+import { AzureBlobUploader } from './blob-storage.js';
 import { DATASET_ANBIMA_MERCADO_SECUNDARIO } from './feeders/anbima-mercado-secundario.js';
 import type { Faixa } from './feeder.js';
 import { criarProdutorKafkaReal, type ProdutorKafkaReal } from './kafka-producer-real.js';
@@ -37,6 +38,7 @@ interface CorpoRequisicaoAquisicao {
   readonly faixa?: Faixa;
   readonly correlationId?: string;
   readonly kafkaBootstrapServers?: string;
+  readonly azuriteConnectionString?: string;
 }
 
 /** Fábrica do produtor Kafka — injetável em teste para não depender de um broker real. */
@@ -66,6 +68,7 @@ export function criarAcquireHandler(
     if (!corpo.referenceDate) faltando.push('referenceDate');
     if (!corpo.faixa) faltando.push('faixa');
     if (!corpo.kafkaBootstrapServers) faltando.push('kafkaBootstrapServers');
+    if (!corpo.azuriteConnectionString) faltando.push('azuriteConnectionString');
     if (faltando.length > 0) {
       return {
         status: 400,
@@ -80,7 +83,8 @@ export function criarAcquireHandler(
 
     const produtor = await fabricaProdutor(corpo.kafkaBootstrapServers as string);
     try {
-      const registro = montarRegistroCompleto(produtor.enviar);
+      const blobUploader = new AzureBlobUploader(corpo.azuriteConnectionString as string);
+      const registro = montarRegistroCompleto(produtor.enviar, blobUploader);
 
       let feeder;
       try {

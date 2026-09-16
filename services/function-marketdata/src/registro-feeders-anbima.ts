@@ -1,3 +1,4 @@
+import type { BlobUploader } from './blob-storage.js';
 import {
   DATASET_ANBIMA_MERCADO_SECUNDARIO,
   FeederAnbimaMercadoSecundario,
@@ -11,6 +12,13 @@ import type { RegistroFeeders } from './registro-feeders.js';
  * povoa, então os dois convivem no mesmo roteador de datasets (ver
  * docs/extensao-feeders.md).
  */
-export function registrarFeedersAnbima(registro: RegistroFeeders, enviar: EnviarMensagem): void {
-  registro.registrar(DATASET_ANBIMA_MERCADO_SECUNDARIO, new FeederAnbimaMercadoSecundario(enviar));
+export function registrarFeedersAnbima(
+  registro: RegistroFeeders,
+  enviar: EnviarMensagem,
+  blobUploader: BlobUploader,
+): void {
+  registro.registrar(
+    DATASET_ANBIMA_MERCADO_SECUNDARIO,
+    new FeederAnbimaMercadoSecundario(enviar, { blobUploader }),
+  );
 }

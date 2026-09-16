@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { v4 as uuidv4 } from 'uuid';
+import { AzureBlobUploader } from './blob-storage.js';
 import { DATASET_ANBIMA_MERCADO_SECUNDARIO } from './feeders/anbima-mercado-secundario.js';
 import type { Faixa } from './feeder.js';
 import { criarProdutorKafkaReal } from './kafka-producer-real.js';
@@ -42,7 +43,12 @@ function lerCorpo(req: IncomingMessage): Promise<string> {
   });
 }
 
-async function tratarAcquire(req: IncomingMessage, res: ServerResponse, kafkaBootstrapServers: string): Promise<void> {
+async function tratarAcquire(
+  req: IncomingMessage,
+  res: ServerResponse,
+  kafkaBootstrapServers: string,
+  azuriteConnectionString: string,
+): Promise<void> {
   let corpo: CorpoRequisicaoAquisicao;
   try {
     const texto = await lerCorpo(req);
@@ -66,7 +72,8 @@ async function tratarAcquire(req: IncomingMessage, res: ServerResponse, kafkaBoo
   const correlationId = corpo.correlationId ?? uuidv4();
   const produtor = await criarProdutorKafkaReal(kafkaBootstrapServers);
   try {
-    const registro = montarRegistroCompleto(produtor.enviar);
+    const blobUploader = new AzureBlobUploader(azuriteConnectionString);
+    const registro = montarRegistroCompleto(produtor.enviar, blobUploader);
 
     let feeder;
     try {
@@ -96,7 +103,11 @@ async function tratarAcquire(req: IncomingMessage, res: ServerResponse, kafkaBoo
   }
 }
 
-function iniciarServidor(porta: number, kafkaBootstrapServers: string) {
+function iniciarServidor(
+  porta: number,
+  kafkaBootstrapServers: string,
+  azuriteConnectionString: string,
+) {
   const server = createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -104,9 +115,13 @@ function iniciarServidor(porta: number, kafkaBootstrapServers: string) {
       return;
     }
     if (req.method === 'POST' && req.url === '/acquire') {
-      tratarAcquire(req, res, kafkaBootstrapServers).catch((erro) => {
+      tratarAcquire(req, res, kafkaBootstrapServers, azuriteConnectionString).catch((erro) => {
         console.error(
-          JSON.stringify({ nivel: 'error', mensagem: 'falha não tratada em /acquire', erro: String(erro) }),
+          JSON.stringify({
+            nivel: 'error',
+            mensagem: 'falha não tratada em /acquire',
+            erro: String(erro),
+          }),
         );
         if (!res.headersSent) {
           res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -125,12 +140,21 @@ function iniciarServidor(porta: number, kafkaBootstrapServers: string) {
 function main(): void {
   const porta = Number(process.env['PORT'] ?? '8091');
   const kafkaBootstrapServers = process.env['KAFKA_BOOTSTRAP_SERVERS'];
-  if (!kafkaBootstrapServers) {
-    throw new Error('variável de ambiente obrigatória ausente: KAFKA_BOOTSTRAP_SERVERS');
+  const azuriteConnectionString = process.env['AZURITE_CONNECTION_STRING'];
+  const faltando: string[] = [];
+  if (!kafkaBootstrapServers) faltando.push('KAFKA_BOOTSTRAP_SERVERS');
+  if (!azuriteConnectionString) faltando.push('AZURITE_CONNECTION_STRING');
+  if (faltando.length > 0) {
+    throw new Error(`variáveis de ambiente obrigatórias ausentes: ${faltando.join(', ')}`);
   }
 
-  iniciarServidor(porta, kafkaBootstrapServers);
-  console.log(JSON.stringify({ nivel: 'info', mensagem: `servidor HTTP de aquisição de pé na porta ${porta}` }));
+  iniciarServidor(porta, kafkaBootstrapServers as string, azuriteConnectionString as string);
+  console.log(
+    JSON.stringify({
+      nivel: 'info',
+      mensagem: `servidor HTTP de aquisição de pé na porta ${porta}`,
+    }),
+  );
 }
 
 main();

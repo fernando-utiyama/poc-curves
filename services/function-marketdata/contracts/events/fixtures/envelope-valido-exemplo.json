@@ -15,10 +15,7 @@
     "encoding": "utf-8",
     "contentHash": "sha256:3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1",
     "sizeBytes": 176697071,
-    "records": [
-      {
-        "raw": "<BizGrp><Document><PricRpt><SctyId><TckrSymb>DI1F27</TckrSymb></SctyId><FinInstrmId><OthrId><Id>DI1F27</Id></OthrId></FinInstrmId><TradDt><Dt>2026-08-21</Dt></TradDt><FinInstrmAttrbts><AdjstdQtTax>14.129</AdjstdQtTax></FinInstrmAttrbts></PricRpt></Document></BizGrp>"
-      }
-    ]
+    "blobContainer": "b3",
+    "blobPath": "2026-08-21/PR260821.xml"
   }
 }

@@ -7,6 +7,11 @@ import {
   FeederAnbimaMercadoSecundario,
 } from './anbima-mercado-secundario.js';
 import type { AcquisitionParams } from '../feeder.js';
+import type { BlobUploader } from '../blob-storage.js';
+
+function criarBlobUploaderFake(): BlobUploader & { gravar: ReturnType<typeof vi.fn> } {
+  return { gravar: vi.fn().mockResolvedValue(undefined) };
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const conteudoFixtureReal = readFileSync(
@@ -31,13 +36,15 @@ function respostaComContentLength(conteudo: Buffer, status: number): Response {
 }
 
 describe('FeederAnbimaMercadoSecundario', () => {
-  it('PUBLISHED: baixa o arquivo real (@-delimitado, ISO-8859-1, CRLF), pula as 3 linhas de cabeçalho e publica os blocos', async () => {
+  it('PUBLISHED: baixa o arquivo real (@-delimitado, ISO-8859-1, CRLF) e grava em blob storage', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(respostaComContentLength(conteudoFixtureReal, 200));
     const enviar = vi.fn().mockResolvedValue(undefined);
+    const blobUploader = criarBlobUploaderFake();
 
     const feeder = new FeederAnbimaMercadoSecundario(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader,
     });
 
     const resultado = await feeder.acquire(paramsBase);
@@ -47,40 +54,30 @@ describe('FeederAnbimaMercadoSecundario', () => {
       'https://www.anbima.com.br/informacoes/merc-sec/arqs/ms260821.txt',
       expect.anything(),
     );
-    expect(enviar).toHaveBeenCalled();
+    expect(enviar).toHaveBeenCalledTimes(1);
+    expect(blobUploader.gravar).toHaveBeenCalledTimes(1);
+
+    const [container, caminho, conteudoGravado] = blobUploader.gravar.mock.calls[0] as [
+      string,
+      string,
+      Buffer,
+    ];
+    expect(container).toBe('anbima');
+    expect(caminho).toBe('2026-08-21/ms260821.txt');
+    // Conteúdo bruto completo (com cabeçalho institucional) gravado sem interpretação.
+    expect(conteudoGravado.toString('latin1')).toContain('ANBIMA - Associação');
+    expect(conteudoGravado.toString('latin1')).toContain('LTN@20260821');
 
     const primeiraChamada = enviar.mock.calls[0]?.[0];
     const valorPublicado = JSON.parse(primeiraChamada.valor);
     expect(valorPublicado.source).toBe('ANBIMA');
     expect(valorPublicado.payload.encoding).toBe('iso-8859-1');
-    expect(valorPublicado.payload.records).toBeInstanceOf(Array);
-    // Primeira linha de dado real do arquivo é um título LTN — nem cabeçalho nem título institucional.
-    expect(valorPublicado.payload.records[0].raw).toContain('LTN@20260821');
-    expect(valorPublicado.payload.records[0].raw).not.toContain('ANBIMA - Associação');
-    expect(valorPublicado.payload.records[0].raw).not.toContain('Titulo@Data Referencia');
+    expect(valorPublicado.payload.blobContainer).toBe('anbima');
+    expect(valorPublicado.payload.blobPath).toBe('2026-08-21/ms260821.txt');
+    expect(valorPublicado.payload.records).toBeUndefined();
   });
 
-  it('PUBLISHED: 51 linhas de dado reais divididas corretamente em blocos', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(respostaComContentLength(conteudoFixtureReal, 200));
-    const enviar = vi.fn().mockResolvedValue(undefined);
-
-    const feeder = new FeederAnbimaMercadoSecundario(enviar, {
-      httpConfig: HTTP_CONFIG_RAPIDO,
-      fetchImpl,
-      tamanhoBloco: 20,
-    });
-
-    const resultado = await feeder.acquire(paramsBase);
-
-    expect(resultado.kind).toBe('PUBLISHED');
-    if (resultado.kind === 'PUBLISHED') {
-      // 51 linhas de dado reais / 20 por bloco = 3 blocos (20, 20, 11)
-      expect(resultado.totalBlocos).toBe(3);
-    }
-    expect(enviar).toHaveBeenCalledTimes(3);
-  });
-
-  it('decodifica acentuação real corretamente (ISO-8859-1, não UTF-8)', async () => {
+  it('decodifica acentuação real corretamente (ISO-8859-1, não UTF-8) no conteúdo gravado no blob', async () => {
     // Uma linha de dado real fabricada com um campo de texto livre acentuado em ISO-8859-1.
     const cabecalho = Buffer.from('ANBIMA - Titulo\r\n\r\nTitulo@Desc\r\n', 'latin1');
     const linhaComAcento = Buffer.from('LTN@Título com acentuação\r\n', 'latin1');
@@ -88,16 +85,17 @@ describe('FeederAnbimaMercadoSecundario', () => {
 
     const fetchImpl = vi.fn().mockResolvedValue(respostaComContentLength(conteudo, 200));
     const enviar = vi.fn().mockResolvedValue(undefined);
+    const blobUploader = criarBlobUploaderFake();
     const feeder = new FeederAnbimaMercadoSecundario(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader,
     });
 
     await feeder.acquire(paramsBase);
 
-    const primeiraChamada = enviar.mock.calls[0]?.[0];
-    const valorPublicado = JSON.parse(primeiraChamada.valor);
-    expect(valorPublicado.payload.records[0].raw).toBe('LTN@Título com acentuação');
+    const [, , conteudoGravado] = blobUploader.gravar.mock.calls[0] as [string, string, Buffer];
+    expect(conteudoGravado.toString('latin1')).toContain('LTN@Título com acentuação');
   });
 
   it('NO_DATA: HTTP 404 real (ANBIMA responde 404 de verdade para arquivo inexistente, diferente da B3)', async () => {
@@ -107,6 +105,7 @@ describe('FeederAnbimaMercadoSecundario', () => {
     const feeder = new FeederAnbimaMercadoSecundario(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
     });
 
     const resultado = await feeder.acquire(paramsBase);
@@ -122,6 +121,7 @@ describe('FeederAnbimaMercadoSecundario', () => {
     const feeder = new FeederAnbimaMercadoSecundario(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
     });
 
     const resultado = await feeder.acquire({ ...paramsBase, referenceDate: '2026-08-23' }); // domingo
@@ -138,6 +138,7 @@ describe('FeederAnbimaMercadoSecundario', () => {
     const feeder = new FeederAnbimaMercadoSecundario(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
     });
 
     const resultado = await feeder.acquire(paramsBase);
@@ -153,6 +154,7 @@ describe('FeederAnbimaMercadoSecundario', () => {
     const feeder = new FeederAnbimaMercadoSecundario(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
     });
 
     const resultado = await feeder.acquire(paramsBase);
@@ -173,6 +175,7 @@ describe('FeederAnbimaMercadoSecundario', () => {
     const feeder = new FeederAnbimaMercadoSecundario(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
     });
 
     const resultado = await feeder.acquire(paramsBase);

@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { AzureBlobUploader } from './blob-storage.js';
 import { DATASET_ANBIMA_MERCADO_SECUNDARIO } from './feeders/anbima-mercado-secundario.js';
 import type { Faixa } from './feeder.js';
 import { criarProdutorKafkaReal } from './kafka-producer-real.js';
@@ -47,6 +48,7 @@ interface ParametrosAmbiente {
   readonly faixa: Faixa;
   readonly correlationId: string;
   readonly kafkaBootstrapServers: string;
+  readonly azuriteConnectionString: string;
   readonly healthPort: number;
 }
 
@@ -55,12 +57,14 @@ function lerParametrosObrigatorios(): ParametrosAmbiente {
   const referenceDate = process.env['ACQUISITION_REFERENCE_DATE'];
   const faixa = process.env['ACQUISITION_FAIXA'] as Faixa | undefined;
   const kafkaBootstrapServers = process.env['KAFKA_BOOTSTRAP_SERVERS'];
+  const azuriteConnectionString = process.env['AZURITE_CONNECTION_STRING'];
 
   const faltando: string[] = [];
   if (!dataset) faltando.push('ACQUISITION_DATASET');
   if (!referenceDate) faltando.push('ACQUISITION_REFERENCE_DATE');
   if (!faixa) faltando.push('ACQUISITION_FAIXA');
   if (!kafkaBootstrapServers) faltando.push('KAFKA_BOOTSTRAP_SERVERS');
+  if (!azuriteConnectionString) faltando.push('AZURITE_CONNECTION_STRING');
   if (faltando.length > 0) {
     throw new Error(`variáveis de ambiente obrigatórias ausentes: ${faltando.join(', ')}`);
   }
@@ -71,6 +75,7 @@ function lerParametrosObrigatorios(): ParametrosAmbiente {
     faixa: faixa as Faixa,
     correlationId: process.env['ACQUISITION_CORRELATION_ID'] ?? uuidv4(),
     kafkaBootstrapServers: kafkaBootstrapServers as string,
+    azuriteConnectionString: azuriteConnectionString as string,
     healthPort: Number(process.env['HEALTH_PORT'] ?? '8090'),
   };
 }
@@ -81,7 +86,8 @@ async function main(): Promise<number> {
   const produtor = await criarProdutorKafkaReal(params.kafkaBootstrapServers);
 
   try {
-    const registro = montarRegistroCompleto(produtor.enviar);
+    const blobUploader = new AzureBlobUploader(params.azuriteConnectionString);
+    const registro = montarRegistroCompleto(produtor.enviar, blobUploader);
     registrarFeedersBloomberg(registro, produtor.enviar);
     const feeder = registro.resolver(params.dataset);
 
