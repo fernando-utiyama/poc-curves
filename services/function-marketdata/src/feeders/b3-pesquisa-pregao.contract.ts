@@ -49,7 +49,7 @@ describe('contrato real: endpoint pesquisapregao da B3', () => {
     }
     expect(enviar).toHaveBeenCalledTimes(1);
     const valorPublicado = JSON.parse(enviar.mock.calls[0]?.[0].valor);
-    expect(valorPublicado.payload.blobContainer).toBe('b3');
+    expect(valorPublicado.payload.blobContainer).toBe('b3-raw');
     expect(valorPublicado.payload.blobPath).toMatch(/^2026-08-21\//);
   }, 90_000);
 

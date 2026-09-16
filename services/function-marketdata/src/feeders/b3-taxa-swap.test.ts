@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
-import { FeederB3ArquivoPesquisaPregao } from './b3-arquivo-pesquisa-pregao.js';
+import { FeederB3TaxaSwap } from './b3-taxa-swap.js';
 import type { AcquisitionParams } from '../feeder.js';
 import type { BlobUploader } from '../blob-storage.js';
 
@@ -12,8 +12,8 @@ function criarBlobUploaderFake(): BlobUploader & { gravar: ReturnType<typeof vi.
 }
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const conteudoFixturePR = readFileSync(
-  join(__dirname, '..', '..', 'fixtures', 'BVBG.086.01_fixture.xml'),
+const conteudoFixtureTaxaSwap = readFileSync(
+  join(__dirname, '..', '..', 'fixtures', 'TaxaSwap_20260914_fixture.txt'),
 );
 
 const HTTP_CONFIG_RAPIDO = { timeoutMs: 1000, maxRetries: 1, baseBackoffMs: 1 };
@@ -30,19 +30,15 @@ function construirZipComEntradas(
 }
 
 /**
- * Reproduz a forma REAL da resposta do endpoint `pesquisapregao/download`
- * (confirmado ao vivo contra a B3 nesta sessão): um ZIP externo com UMA
- * entrada nomeada `nomeArquivoPedido`, cujo conteúdo é OUTRO ZIP — o real,
- * com as revisões intraday do dataset.
+ * Reproduz a forma REAL do endpoint `pesquisapregao/download` para o prefixo
+ * `TS` — **igual a PR/IN, duplamente aninhado** (achado real desta sessão,
+ * ver javadoc de `FeederB3TaxaSwap`): um ZIP externo com UMA entrada nomeada
+ * `TS<AAMMDD>.ex_` (o stub self-extracting), cujo conteúdo é outro ZIP com a
+ * entrada real `TaxaSwap.txt` dentro.
  */
-function construirRespostaB3DuploZip(
-  nomeArquivoPedido: string,
-  revisoes: ReadonlyArray<{ nome: string; conteudo: Buffer; data: Date }>,
-): Buffer {
-  const zipInterno = construirZipComEntradas(revisoes);
-  return construirZipComEntradas([
-    { nome: nomeArquivoPedido, conteudo: zipInterno, data: new Date() },
-  ]);
+function construirRespostaTaxaSwap(nomeArquivoPedido: string, nomeEntradaInterna: string, conteudo: Buffer): Buffer {
+  const zipInterno = construirZipComEntradas([{ nome: nomeEntradaInterna, conteudo, data: new Date() }]);
+  return construirZipComEntradas([{ nome: nomeArquivoPedido, conteudo: zipInterno, data: new Date() }]);
 }
 
 function construirZipVazio(): Buffer {
@@ -51,32 +47,20 @@ function construirZipVazio(): Buffer {
 
 const paramsBase: AcquisitionParams = {
   source: 'B3',
-  dataset: 'BVBG.086',
-  referenceDate: '2026-08-21',
+  dataset: 'B3_TAXA_SWAP_DCL',
+  referenceDate: '2026-09-14',
   faixa: 'ROTINA',
   correlationId: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
 };
 
-describe('FeederB3ArquivoPesquisaPregao', () => {
-  it('PUBLISHED: desempacota os dois níveis de ZIP, escolhe a revisão intraday mais recente, divide em blocos e publica todos', async () => {
-    const respostaDuploZip = construirRespostaB3DuploZip('PR260821.zip', [
-      {
-        nome: 'BVBG.086.01_rev1.xml',
-        conteudo: Buffer.from('<Vazio/>'),
-        data: new Date('2026-08-21T18:42:00Z'),
-      },
-      {
-        nome: 'BVBG.086.01_rev2_final.xml',
-        conteudo: conteudoFixturePR,
-        data: new Date('2026-08-21T20:37:00Z'),
-      },
-    ]);
-    const fetchImpl = vi.fn().mockResolvedValue(new Response(respostaDuploZip, { status: 200 }));
+describe('FeederB3TaxaSwap', () => {
+  it('PUBLISHED: desempacota os dois níveis de ZIP, grava o arquivo inteiro no blob e publica um evento sob o dataset pedido', async () => {
+    const resposta = construirRespostaTaxaSwap('TS260914.ex_', 'TaxaSwap.txt', conteudoFixtureTaxaSwap);
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(resposta, { status: 200 }));
     const enviar = vi.fn().mockResolvedValue(undefined);
     const blobUploader = criarBlobUploaderFake();
 
-    const feeder = new FeederB3ArquivoPesquisaPregao(enviar, {
-      prefixoArquivo: 'PR',
+    const feeder = new FeederB3TaxaSwap(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
       blobUploader,
@@ -86,7 +70,7 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
 
     expect(resultado.kind).toBe('PUBLISHED');
     expect(fetchImpl).toHaveBeenCalledWith(
-      'https://www.b3.com.br/pesquisapregao/download?filelist=PR260821.zip',
+      'https://www.b3.com.br/pesquisapregao/download?filelist=TS260914.ex_',
       expect.anything(),
     );
     if (resultado.kind === 'PUBLISHED') {
@@ -95,29 +79,45 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
     expect(enviar).toHaveBeenCalledTimes(1);
     expect(blobUploader.gravar).toHaveBeenCalledTimes(1);
 
-    // Prova que a revisão ESCOLHIDA foi a mais recente (rev2, gravada no blob), não a rev1 (vazia).
     const [container, caminho, conteudoGravado] = blobUploader.gravar.mock.calls[0] as [
       string,
       string,
       Buffer,
     ];
     expect(container).toBe('b3-raw');
-    expect(caminho).toBe('2026-08-21/BVBG.086.01_rev2_final.xml');
-    expect(conteudoGravado.toString('utf-8')).toContain('TTENT');
+    expect(caminho).toBe('2026-09-14/TaxaSwap.txt');
+    expect(conteudoGravado.equals(conteudoFixtureTaxaSwap)).toBe(true);
 
     const primeiraChamada = enviar.mock.calls[0]?.[0];
     const valorPublicado = JSON.parse(primeiraChamada.valor);
+    expect(valorPublicado.dataset).toBe('B3_TAXA_SWAP_DCL');
     expect(valorPublicado.payload.blobContainer).toBe('b3-raw');
-    expect(valorPublicado.payload.blobPath).toBe('2026-08-21/BVBG.086.01_rev2_final.xml');
+    expect(valorPublicado.payload.blobPath).toBe('2026-09-14/TaxaSwap.txt');
     expect(valorPublicado.payload.records).toBeUndefined();
   });
 
-  it('NO_DATA: ZIP externo vazio (0 entradas) — o sinal real confirmado de "ainda não publicado" para este endpoint', async () => {
+  it('PUBLISHED: mesma aquisição, dataset diferente (outra curva alvo) — o feeder não filtra nada, só muda o dataset publicado', async () => {
+    const resposta = construirRespostaTaxaSwap('TS260914.ex_', 'TaxaSwap.txt', conteudoFixtureTaxaSwap);
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(resposta, { status: 200 }));
+    const enviar = vi.fn().mockResolvedValue(undefined);
+
+    const feeder = new FeederB3TaxaSwap(enviar, {
+      httpConfig: HTTP_CONFIG_RAPIDO,
+      fetchImpl,
+      blobUploader: criarBlobUploaderFake(),
+    });
+
+    await feeder.acquire({ ...paramsBase, dataset: 'B3_TAXA_SWAP_INP' });
+
+    const valorPublicado = JSON.parse(enviar.mock.calls[0]?.[0].valor);
+    expect(valorPublicado.dataset).toBe('B3_TAXA_SWAP_INP');
+  });
+
+  it('NO_DATA: ZIP vazio (0 entradas) — sinal real de "ainda não publicado" para este endpoint', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(construirZipVazio(), { status: 200 }));
     const enviar = vi.fn();
 
-    const feeder = new FeederB3ArquivoPesquisaPregao(enviar, {
-      prefixoArquivo: 'PR',
+    const feeder = new FeederB3TaxaSwap(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
       blobUploader: criarBlobUploaderFake(),
@@ -133,8 +133,7 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
     const fetchImpl = vi.fn();
     const enviar = vi.fn();
 
-    const feeder = new FeederB3ArquivoPesquisaPregao(enviar, {
-      prefixoArquivo: 'PR',
+    const feeder = new FeederB3TaxaSwap(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
       blobUploader: criarBlobUploaderFake(),
@@ -151,8 +150,7 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
     const fetchImpl = vi.fn().mockRejectedValue(new Error('ECONNRESET'));
     const enviar = vi.fn();
 
-    const feeder = new FeederB3ArquivoPesquisaPregao(enviar, {
-      prefixoArquivo: 'PR',
+    const feeder = new FeederB3TaxaSwap(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
       blobUploader: criarBlobUploaderFake(),
@@ -168,8 +166,7 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 503 }));
     const enviar = vi.fn();
 
-    const feeder = new FeederB3ArquivoPesquisaPregao(enviar, {
-      prefixoArquivo: 'PR',
+    const feeder = new FeederB3TaxaSwap(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
       blobUploader: criarBlobUploaderFake(),
@@ -187,8 +184,7 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
       .mockResolvedValue(new Response(Buffer.from('nao eh zip'), { status: 200 }));
     const enviar = vi.fn();
 
-    const feeder = new FeederB3ArquivoPesquisaPregao(enviar, {
-      prefixoArquivo: 'PR',
+    const feeder = new FeederB3TaxaSwap(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
       blobUploader: criarBlobUploaderFake(),
@@ -200,17 +196,16 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
     expect(enviar).not.toHaveBeenCalled();
   });
 
-  it('FAILED: ZIP externo válido, mas a entrada interna não é um ZIP (formato inesperado)', async () => {
+  it('FAILED: ZIP externo válido, mas a entrada interna não é um ZIP (regressão real — era exatamente o formato assumido antes desta sessão corrigir para duplo aninhamento)', async () => {
     const respostaComEntradaInternaInvalida = construirZipComEntradas([
-      { nome: 'PR260821.zip', conteudo: Buffer.from('isto não é um zip'), data: new Date() },
+      { nome: 'TS260914.ex_', conteudo: conteudoFixtureTaxaSwap, data: new Date() },
     ]);
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(new Response(respostaComEntradaInternaInvalida, { status: 200 }));
     const enviar = vi.fn();
 
-    const feeder = new FeederB3ArquivoPesquisaPregao(enviar, {
-      prefixoArquivo: 'PR',
+    const feeder = new FeederB3TaxaSwap(enviar, {
       httpConfig: HTTP_CONFIG_RAPIDO,
       fetchImpl,
       blobUploader: criarBlobUploaderFake(),
@@ -220,27 +215,5 @@ describe('FeederB3ArquivoPesquisaPregao', () => {
 
     expect(resultado.kind).toBe('FAILED');
     expect(enviar).not.toHaveBeenCalled();
-  });
-
-  it('usa o prefixo IN para o dataset de cadastro (BVBG.028), mesma forma de aquisição', async () => {
-    const resposta = construirRespostaB3DuploZip('IN260821.zip', [
-      { nome: 'BVBG.028.02.xml', conteudo: conteudoFixturePR, data: new Date() },
-    ]);
-    const fetchImpl = vi.fn().mockResolvedValue(new Response(resposta, { status: 200 }));
-    const enviar = vi.fn().mockResolvedValue(undefined);
-
-    const feeder = new FeederB3ArquivoPesquisaPregao(enviar, {
-      prefixoArquivo: 'IN',
-      httpConfig: HTTP_CONFIG_RAPIDO,
-      fetchImpl,
-      blobUploader: criarBlobUploaderFake(),
-    });
-
-    await feeder.acquire({ ...paramsBase, dataset: 'BVBG.028' });
-
-    expect(fetchImpl).toHaveBeenCalledWith(
-      'https://www.b3.com.br/pesquisapregao/download?filelist=IN260821.zip',
-      expect.anything(),
-    );
   });
 });

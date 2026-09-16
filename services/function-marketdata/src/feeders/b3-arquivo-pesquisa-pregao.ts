@@ -25,8 +25,15 @@ import { lerEntradaMaisRecente, verificarArquivoZip } from '../zip.js';
 import { urlDownloadB3 } from './nome-arquivo-b3.js';
 
 const ENCODING_ARQUIVOS_B3 = 'utf-8';
-/** Container/fonte usado na convenção de caminho de blob (openspec/changes/raw-file-blob-storage). */
-const BLOB_CONTAINER_B3 = 'b3';
+/**
+ * Container/fonte usado na convenção de caminho de blob (openspec/changes/raw-file-blob-storage).
+ * "b3" sozinho (2 caracteres) viola o mínimo de 3 caracteres exigido pelo Azure Blob Storage para
+ * nome de container — confirmado ao vivo contra Azurite real (`RestError: The specified resource
+ * name length is not within the permissible limits`), achado ao rodar o feeder de TS ponta a
+ * ponta pela primeira vez (openspec/changes/b3-additional-curves) — afetava também este feeder,
+ * só nunca tinha sido exercitado contra um blob storage real até então.
+ */
+const BLOB_CONTAINER_B3 = 'b3-raw';
 
 const HTTP_CONFIG_PADRAO: HttpClientConfig = {
   timeoutMs: 60_000,

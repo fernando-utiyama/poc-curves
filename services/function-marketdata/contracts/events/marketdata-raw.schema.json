@@ -25,8 +25,8 @@
     },
     "blobContainer": {
       "type": "string",
-      "minLength": 1,
-      "description": "Nome do container/pasta raiz de primeiro nível no blob storage onde o arquivo bruto foi gravado (ex.: 'b3', 'anbima') — corresponde ao primeiro segmento do caminho <fonte>/<data-referencia>/<nome-arquivo-original>."
+      "minLength": 3,
+      "description": "Nome do container/pasta raiz de primeiro nível no blob storage onde o arquivo bruto foi gravado (ex.: 'b3-raw', 'anbima') — corresponde ao primeiro segmento do caminho <fonte>/<data-referencia>/<nome-arquivo-original>. Mínimo de 3 caracteres (restrição real do Azure Blob Storage para nome de container)."
     },
     "blobPath": {
       "type": "string",

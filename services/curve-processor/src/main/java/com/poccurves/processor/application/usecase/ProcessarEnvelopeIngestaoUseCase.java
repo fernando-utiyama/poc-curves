@@ -3,21 +3,29 @@ import com.poccurves.processor.application.exception.BlobNaoEncontradoException;
 import com.poccurves.processor.application.exception.DatasetDesconhecidoException;
 import com.poccurves.processor.application.exception.EnvelopeInvalidoException;
 import com.poccurves.processor.application.exception.IntegridadeBlobException;
+import com.poccurves.processor.application.exception.OraculoTaxaSwapDivergenteException;
+import com.poccurves.processor.application.exception.OraculoTaxaSwapIndisponivelException;
 import com.poccurves.processor.application.exception.ParseFalhouException;
 import com.poccurves.processor.application.model.DatasetParser;
 import com.poccurves.processor.application.model.DatasetParserRegistry;
+import com.poccurves.processor.application.model.DefinicaoCurvaResumo;
 import com.poccurves.processor.application.model.EstadoLoteIngestao;
 import com.poccurves.processor.application.model.LoteIngestao;
+import com.poccurves.processor.application.model.MomentoCurva;
 import com.poccurves.processor.application.model.ParseResult;
 import com.poccurves.processor.application.model.PontoDadoMercado;
 import com.poccurves.processor.application.model.ResultadoProcessamentoBloco;
 import com.poccurves.processor.application.model.TipoPayload;
 import com.poccurves.processor.application.model.VerticeCurva;
 import com.poccurves.processor.application.port.BlobStorageReadPort;
+import com.poccurves.processor.application.port.DefinicaoCurvaLeituraRepositoryPort;
 import com.poccurves.processor.application.port.ExecucaoCurvaLeituraRepositoryPort;
 import com.poccurves.processor.application.port.NormalizedEventPort;
 import com.poccurves.processor.application.port.PontoDadoMercadoRepositoryPort;
+import com.poccurves.processor.application.port.VersaoCurvaRepositoryPort;
+import com.poccurves.processor.application.port.VerticeCurvaRepositoryPort;
 import com.poccurves.processor.application.util.MetricasIngestao;
+import com.poccurves.processor.application.validator.OraculoTaxaSwapValidator;
 
 import com.poccurves.common.event.EventEnvelope;
 import com.poccurves.common.event.PayloadKind;
@@ -44,6 +52,16 @@ public class ProcessarEnvelopeIngestaoUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(ProcessarEnvelopeIngestaoUseCase.class);
 
+    /**
+     * Datasets do TaxaSwap.txt cuja publicação exige o oráculo cruzado de PRE (spec "Validação
+     * do layout por oráculo cruzado", openspec/changes/b3-additional-curves) — PRE não entra
+     * porque ele MESMO é o oráculo, não algo validado contra ele.
+     */
+    private static final java.util.Set<String> DATASETS_TAXA_SWAP_COM_ORACULO = java.util.Set.of(
+            "B3_TAXA_SWAP_DCL", "B3_TAXA_SWAP_PTX", "B3_TAXA_SWAP_INP", "B3_TAXA_SWAP_DPL");
+    private static final String DATASET_ORACULO_PRE = "B3_TAXA_SWAP_PRE";
+    private static final String DEFINICAO_ORACULO_REFERENCIA = "B3_CURVA_PRE";
+
     private final DatasetParserRegistry parserRegistry;
     private final IngestaoService ingestaoService;
     private final MetricasIngestao metricasIngestao;
@@ -52,6 +70,9 @@ public class ProcessarEnvelopeIngestaoUseCase {
     private final PublicacaoCurvaService publicacaoCurvaService;
     private final NormalizedEventPort normalizedEventPort;
     private final BlobStorageReadPort blobStorageReadPort;
+    private final DefinicaoCurvaLeituraRepositoryPort definicaoCurvaLeituraRepository;
+    private final VersaoCurvaRepositoryPort versaoCurvaRepository;
+    private final VerticeCurvaRepositoryPort verticeCurvaRepository;
 
     public ProcessarEnvelopeIngestaoUseCase(
             DatasetParserRegistry parserRegistry,
@@ -61,7 +82,10 @@ public class ProcessarEnvelopeIngestaoUseCase {
             PontoDadoMercadoRepositoryPort pontoDadoMercadoRepository,
             PublicacaoCurvaService publicacaoCurvaService,
             NormalizedEventPort normalizedEventPort,
-            BlobStorageReadPort blobStorageReadPort
+            BlobStorageReadPort blobStorageReadPort,
+            DefinicaoCurvaLeituraRepositoryPort definicaoCurvaLeituraRepository,
+            VersaoCurvaRepositoryPort versaoCurvaRepository,
+            VerticeCurvaRepositoryPort verticeCurvaRepository
     ) {
         this.parserRegistry = parserRegistry;
         this.ingestaoService = ingestaoService;
@@ -71,6 +95,9 @@ public class ProcessarEnvelopeIngestaoUseCase {
         this.publicacaoCurvaService = publicacaoCurvaService;
         this.normalizedEventPort = normalizedEventPort;
         this.blobStorageReadPort = blobStorageReadPort;
+        this.definicaoCurvaLeituraRepository = definicaoCurvaLeituraRepository;
+        this.versaoCurvaRepository = versaoCurvaRepository;
+        this.verticeCurvaRepository = verticeCurvaRepository;
     }
 
     public void processar(EventEnvelope envelope) {
@@ -122,7 +149,7 @@ public class ProcessarEnvelopeIngestaoUseCase {
                 // de recuperar pra dead-letter (mesmo achado real já feito em curve-engine/
                 // ConstrucaoRequestListener), então uma falha real aqui fica completamente muda.
                 try {
-                    publicarCurvaImportadaSePossivel(envelope, resultado.lote());
+                    publicarCurvaImportadaSePossivel(envelope, resultado.lote(), conteudo, encoding);
                 } catch (Throwable t) {
                     log.error("DIAGNÓSTICO 12.2: falha ao publicar curva importada dataset={} referenceDate={}", envelope.dataset(), envelope.referenceDate(), t);
                     if (t instanceof RuntimeException re) {
@@ -146,7 +173,7 @@ public class ProcessarEnvelopeIngestaoUseCase {
      * dead-letter — esses SÃO problemas reais de configuração, ao contrário da ausência de
      * execucao_curva vinculada.
      */
-    private void publicarCurvaImportadaSePossivel(EventEnvelope envelope, LoteIngestao lote) {
+    private void publicarCurvaImportadaSePossivel(EventEnvelope envelope, LoteIngestao lote, byte[] conteudo, String encoding) {
         Optional<ExecucaoCurvaLeituraRepositoryPort.ExecucaoCurvaResumo> execucaoOpt =
                 execucaoCurvaLeituraRepository.buscarPorCorrelacaoId(envelope.correlationId());
         if (execucaoOpt.isEmpty()) {
@@ -157,6 +184,10 @@ public class ProcessarEnvelopeIngestaoUseCase {
         if (execucao.momentoCurva() == null) {
             log.warn("execucao_curva {} não tem momento_curva definido; versão IMPORTADA não publicada", execucao.id());
             return;
+        }
+
+        if (DATASETS_TAXA_SWAP_COM_ORACULO.contains(envelope.dataset())) {
+            validarOraculoTaxaSwap(envelope, conteudo, encoding, execucao.momentoCurva());
         }
 
         List<PontoDadoMercado> pontos = pontoDadoMercadoRepository.buscarPorLoteIngestaoId(lote.id());
@@ -176,6 +207,44 @@ public class ProcessarEnvelopeIngestaoUseCase {
 
         log.info("curva importada publicada: dataset={} versionId={} versionNumber={} vertexCount={}",
                 envelope.dataset(), versao.id(), versao.numeroVersao(), vertices.size());
+    }
+
+    /**
+     * Spec "Validação do layout por oráculo cruzado" (openspec/changes/b3-additional-curves):
+     * antes de publicar DCL/PTX/INP/DPL, extrai de novo os vértices de PRE do MESMO conteúdo
+     * bruto (o TaxaSwap.txt inteiro já foi baixado para esta aquisição, independente de qual
+     * curva alvo disparou) e compara contra a curva PRE oficial já publicada via curva pronta de
+     * referência (B3_CURVA_PRE) para a mesma data/momento. Bloqueia a publicação (lança) se o
+     * oráculo ainda não existir ou se algum prazo em comum divergir — nunca publica uma curva
+     * derivada de um layout que não foi possível confirmar.
+     */
+    private void validarOraculoTaxaSwap(EventEnvelope envelope, byte[] conteudo, String encoding, MomentoCurva momentoCurva) {
+        DatasetParser parserPre = parserRegistry.resolver(DATASET_ORACULO_PRE)
+                .orElseThrow(() -> new IllegalStateException("parser do dataset oráculo " + DATASET_ORACULO_PRE + " não registrado"));
+        ParseResult parseResultPre = parserPre.parse(conteudo, encoding, envelope.referenceDate());
+
+        List<VerticeCurva> preExtraido = List.of();
+        if (parseResultPre instanceof ParseResult.Sucesso sucesso) {
+            preExtraido = sucesso.pontos().stream()
+                    .map(p -> new VerticeCurva(Integer.parseInt(p.chaveInstrumento()), null, null, p.valor(), null))
+                    .toList();
+        }
+
+        Optional<DefinicaoCurvaResumo> definicaoOraculo = definicaoCurvaLeituraRepository.resolverPorCodigo(DEFINICAO_ORACULO_REFERENCIA);
+        List<VerticeCurva> oraculo = definicaoOraculo
+                .flatMap(def -> versaoCurvaRepository.buscarPublicadaAtual(def.definicaoCurvaId(), envelope.referenceDate(), momentoCurva))
+                .map(versao -> verticeCurvaRepository.buscarPorVersaoCurvaId(versao.id()))
+                .orElse(List.of());
+
+        if (preExtraido.isEmpty() || oraculo.isEmpty()
+                || OraculoTaxaSwapValidator.semPrazosEmComum(preExtraido, oraculo)) {
+            throw new OraculoTaxaSwapIndisponivelException(envelope.referenceDate());
+        }
+
+        List<Integer> divergentes = OraculoTaxaSwapValidator.prazosDivergentes(preExtraido, oraculo);
+        if (!divergentes.isEmpty()) {
+            throw new OraculoTaxaSwapDivergenteException(divergentes);
+        }
     }
 
     /**

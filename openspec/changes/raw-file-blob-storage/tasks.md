@@ -11,9 +11,9 @@
 ## 3. function-marketdata: gravação em blob
 
 - [ ] 3.1 Implementar um cliente de blob storage (`blob-storage.ts` ou similar) com uma função de escrita (`gravarBlob(fonte, dataReferencia, nomeArquivo, conteudo)`) usando o SDK oficial (`@azure/storage-blob`), com teste unitário contra um emulador/mocked client (sem depender do Azurite real rodando na suíte padrão — mesmo princípio já usado para Kafka/HTTP neste módulo).
-- [ ] 3.2 Alterar `FeederB3ArquivoPesquisaPregao` para gravar o conteúdo desempacotado (após o duplo unwrap de ZIP, antes do corte estrutural) em blob no caminho `b3/<data>/<nome-arquivo>`, publicar um único evento com a referência do blob, e remover a chamada a `dividirXmlEmBlocos` nesse caminho. Verificar com teste unitário (fixture existente) que passa a publicar 1 evento em vez de N blocos.
+- [ ] 3.2 Alterar `FeederB3ArquivoPesquisaPregao` para gravar o conteúdo desempacotado (após o duplo unwrap de ZIP, antes do corte estrutural) em blob no caminho `b3-raw/<data>/<nome-arquivo>`, publicar um único evento com a referência do blob, e remover a chamada a `dividirXmlEmBlocos` nesse caminho. Verificar com teste unitário (fixture existente) que passa a publicar 1 evento em vez de N blocos.
 - [ ] 3.3 Alterar `FeederAnbimaMercadoSecundario` da mesma forma, caminho `anbima/<data>/<nome-arquivo>`.
-- [ ] 3.4 Implementar o feeder de TS (`b3-additional-curves`, tarefa 2, ainda pendente) já neste novo padrão desde o início — gravar `TaxaSwap.txt` em `b3/<data>/TaxaSwap.txt` uma vez, publicar N eventos (um por curva alvo configurada), cada um referenciando o MESMO blob (o path não muda por curva, só o `dataset` do evento).
+- [ ] 3.4 Implementar o feeder de TS (`b3-additional-curves`, tarefa 2, ainda pendente) já neste novo padrão desde o início — gravar `TaxaSwap.txt` em `b3-raw/<data>/TaxaSwap.txt` uma vez, publicar N eventos (um por curva alvo configurada), cada um referenciando o MESMO blob (o path não muda por curva, só o `dataset` do evento).
 - [ ] 3.5 Verificar que a suíte padrão de `function-marketdata` (`npm test`) roda sem rede/sem Azurite real, e que o teste de contrato opcional (fora da suíte padrão) cobre a gravação real contra um Azurite local.
 
 ## 4. curve-processor: leitura de blob

@@ -32,7 +32,7 @@ export class AzureBlobUploader implements BlobUploader {
 /**
  * Monta o caminho do blob dentro do container a partir da data de referência
  * e do nome do arquivo original — convenção <data-referencia>/<nome-arquivo>
- * (o container em si já representa a fonte, ex. "b3", "anbima").
+ * (o container em si já representa a fonte, ex. "b3-raw", "anbima").
  */
 export function montarCaminhoBlob(dataReferencia: string, nomeArquivo: string): string {
   return `${dataReferencia}/${nomeArquivo}`;

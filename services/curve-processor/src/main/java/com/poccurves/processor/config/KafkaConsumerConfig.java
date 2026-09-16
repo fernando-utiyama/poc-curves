@@ -4,6 +4,7 @@ import com.poccurves.processor.application.exception.CurvaVaziaException;
 import com.poccurves.processor.application.exception.DatasetDesconhecidoException;
 import com.poccurves.processor.application.exception.EnvelopeInvalidoException;
 import com.poccurves.processor.application.exception.IncoerenciaModoOrigemException;
+import com.poccurves.processor.application.exception.OraculoTaxaSwapDivergenteException;
 import com.poccurves.processor.application.exception.ParseFalhouException;
 import com.poccurves.processor.application.util.MetricasIngestao;
 
@@ -120,7 +121,16 @@ public class KafkaConsumerConfig {
                 ParseFalhouException.class,
                 CurvaNaoMapeadaException.class,
                 CurvaVaziaException.class,
-                IncoerenciaModoOrigemException.class);
+                IncoerenciaModoOrigemException.class,
+                // OraculoTaxaSwapIndisponivelException (openspec/changes/b3-additional-curves)
+                // fica DE FORA desta lista de propósito — é transitória, não permanente feito as
+                // acima: se o oráculo B3_CURVA_PRE for publicado dentro da janela de backoff (2
+                // minutos, maxElapsedTime abaixo), a retentativa recupera sozinha; se não for,
+                // esgota a janela e cai na dead-letter do mesmo jeito (ORACLE_UNAVAILABLE) — a
+                // retentativa aqui é uma chance, não uma garantia de recuperação. Divergência já é
+                // permanente — o mesmo conteúdo do arquivo sempre vai divergir do mesmo jeito,
+                // retentar não muda nada.
+                OraculoTaxaSwapDivergenteException.class);
 
         ConcurrentKafkaListenerContainerFactory<String, String> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();

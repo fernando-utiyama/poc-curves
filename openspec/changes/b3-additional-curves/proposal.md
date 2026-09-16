@@ -4,7 +4,7 @@ A POC hoje só publica uma curva (PRE), mas a arquitetura de ingestão de curva 
 
 ## What Changes
 
-- Novo feeder em `function-marketdata` para adquirir o arquivo `TaxaSwap.txt` (dataset `B3_TAXA_SWAP`, endpoint `pesquisapregao/download?filelist=TS<AAMMDD>.zip`, mesmo padrão de arquivo compactado já usado pelos datasets `PR`/`IN`), classificado como `payloadKind: READY_CURVE`.
+- Novo feeder em `function-marketdata` para adquirir o arquivo `TaxaSwap.txt` (dataset `B3_TAXA_SWAP`, endpoint `pesquisapregao/download?filelist=TS<AAMMDD>.ex_` — mesmo endpoint de `PR`/`IN`, mas extensão `.ex_`, confirmada ao vivo; **não** `.zip` como PR/IN, suposição inicial por analogia que se provou errada), classificado como `payloadKind: READY_CURVE`.
 - Novo parser de layout de largura fixa em `curve-processor` para o `TaxaSwap.txt`, extraindo os vértices (prazo em dias úteis/corridos, taxa ou preço) dos códigos de curva alvo desta mudança — `PRE` (oráculo cruzado, já importada hoje via `referenceRatesProxy`), `DCL`, `PTX`, `INP`, `DPL` — e ignorando os demais ~100 códigos presentes no mesmo arquivo.
 - Validação do layout do `TaxaSwap.txt` (não documentado formalmente em lugar nenhum do projeto) usando `PRE` como oráculo: os vértices extraídos do `TaxaSwap.txt` para PRE devem bater, dígito a dígito após a mesma política de arredondamento, com os vértices já validados hoje via `referenceRatesProxy` para a mesma data de pregão.
 - Cadastro de quatro novas `definicao_curva` (DCL, PTX, INP, DPL) com modo de origem `IMPORTED`, reaproveitando 100% do pipeline de publicação de curva importada já existente (`ProcessarEnvelopeIngestaoUseCase`, `imported-curve-ingestion`) — sem alterar seu comportamento.

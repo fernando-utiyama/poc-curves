@@ -70,10 +70,14 @@ public class UseCaseConfig {
             PontoDadoMercadoRepositoryPort pontoDadoMercadoRepositoryPort,
             PublicacaoCurvaService publicacaoCurvaService,
             NormalizedEventPort normalizedEventPort,
-            BlobStorageReadPort blobStorageReadPort
+            BlobStorageReadPort blobStorageReadPort,
+            DefinicaoCurvaLeituraRepositoryPort definicaoCurvaLeituraRepositoryPort,
+            VersaoCurvaRepositoryPort versaoCurvaRepositoryPort,
+            VerticeCurvaRepositoryPort verticeCurvaRepositoryPort
     ) {
         return new ProcessarEnvelopeIngestaoUseCase(
                 datasetParserRegistry, ingestaoService, metricasIngestao, execucaoCurvaLeituraRepositoryPort,
-                pontoDadoMercadoRepositoryPort, publicacaoCurvaService, normalizedEventPort, blobStorageReadPort);
+                pontoDadoMercadoRepositoryPort, publicacaoCurvaService, normalizedEventPort, blobStorageReadPort,
+                definicaoCurvaLeituraRepositoryPort, versaoCurvaRepositoryPort, verticeCurvaRepositoryPort);
     }
 }

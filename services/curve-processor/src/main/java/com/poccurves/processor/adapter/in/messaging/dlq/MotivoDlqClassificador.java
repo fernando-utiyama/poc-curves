@@ -6,6 +6,8 @@ import com.poccurves.processor.application.exception.DatasetDesconhecidoExceptio
 import com.poccurves.processor.application.exception.EnvelopeInvalidoException;
 import com.poccurves.processor.application.exception.IncoerenciaModoOrigemException;
 import com.poccurves.processor.application.exception.IntegridadeBlobException;
+import com.poccurves.processor.application.exception.OraculoTaxaSwapDivergenteException;
+import com.poccurves.processor.application.exception.OraculoTaxaSwapIndisponivelException;
 import com.poccurves.processor.application.exception.ParseFalhouException;
 
 import org.springframework.kafka.support.serializer.DeserializationException;
@@ -50,6 +52,12 @@ public final class MotivoDlqClassificador {
         if (causa instanceof IntegridadeBlobException) {
             return "BLOB_INTEGRITY_ERROR";
         }
+        if (causa instanceof OraculoTaxaSwapDivergenteException) {
+            return "ORACLE_DIVERGENCE";
+        }
+        if (causa instanceof OraculoTaxaSwapIndisponivelException) {
+            return "ORACLE_UNAVAILABLE";
+        }
         return "PROCESSING_ERROR";
     }
 
@@ -68,7 +76,9 @@ public final class MotivoDlqClassificador {
                     || atual instanceof CurvaVaziaException
                     || atual instanceof IncoerenciaModoOrigemException
                     || atual instanceof BlobNaoEncontradoException
-                    || atual instanceof IntegridadeBlobException) {
+                    || atual instanceof IntegridadeBlobException
+                    || atual instanceof OraculoTaxaSwapDivergenteException
+                    || atual instanceof OraculoTaxaSwapIndisponivelException) {
                 return atual;
             }
             atual = atual.getCause();
