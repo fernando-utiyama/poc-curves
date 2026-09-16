@@ -1,26 +1,28 @@
 ## 1. Coordenação de disparo via constraint existente (zero tabelas novas)
 
-- [ ] 1.1 Em `DisparoAgendadoExecutor.executar`, envolver `execucaoCurvaRepository.inserir(execucao)` num tratamento que captura especificamente a violação da constraint única de `execucao_curva` (V14) — não uma exceção genérica — loga em nível INFO ("disparo já assumido por outra réplica", nomeando alvo/data/momento) e retorna sem propagar. Verificar com teste unitário que uma violação de constraint simulada é tratada sem lançar exceção, e que qualquer outra exceção de banco continua propagando normalmente.
-- [ ] 1.2 Verificar com teste de integração (duas chamadas concorrentes a `executar` para o mesmo agendamento/data, contra o mesmo banco de teste) que exatamente uma `ExecucaoCurva` é criada e exatamente uma chamada a `acionarFeederEEncadear` ocorre (cenários "Duas réplicas disparam o mesmo cron ao mesmo tempo" e "Réplica perdedora não gera erro visível" da spec).
+- [x] 1.1 `DisparoAgendadoExecutor.executar` envolve `execucaoCurvaRepository.inserir(execucao)` num try/catch para `org.springframework.dao.DuplicateKeyException` — loga em nível INFO nomeando alvo/data/momento e retorna sem propagar. Confirmado que `org.springframework.dao..` não está na lista de pacotes banidos do `ArchitectureTest` para `application/` (rodei o teste depois da mudança, não presumi). Teste unitário cobre o cenário (constraint simulada não propaga exceção, `vincularExecucao`/`acionarFeederEEncadear` não são chamados).
+- [ ] 1.2 **Parcial, não fechada**: a cobertura hoje é unitária (mock de `DuplicateKeyException`), não um teste de integração com duas chamadas concorrentes de verdade contra o mesmo banco. Confirma o tratamento da exceção, mas não a condição de corrida real (duas threads/processos inserindo ao mesmo tempo) — fica para a tarefa 4 (verificação com réplicas reais), que é o ambiente onde a corrida de verdade pode ser observada.
 
 ## 2. Reconciliação periódica de execuções presas (reaproveita ReconciliacaoService)
 
-- [ ] 2.1 Adicionar a `ExecucaoCurvaRepositoryPort`/`buscarExecucoesEmAndamento` (ou um método novo) um filtro por tempo decorrido desde `iniciado_em`, parametrizado por um limite configurável — sem coluna nova, usando `iniciado_em` que já existe.
-- [ ] 2.2 Ajustar `ReconciliacaoService.reconciliarExecucoesPresas()` para usar esse filtro por tempo, em vez de considerar "presa" qualquer execução não-terminal — verificar com teste unitário os dois cenários da spec ("Réplica cai no meio do processamento" e "Execução legítima não é derrubada prematuramente").
-- [ ] 2.3 Agendar a chamada periódica de `reconciliarExecucoesPresas()` (reaproveitando o `TaskScheduler` já existente ou um `@Scheduled` simples), mantendo a chamada existente no boot (`ReconciliacaoInicializacaoRunner`) intacta.
-- [ ] 2.4 Definir o valor default do limite de "presa de verdade" (maior janela de tentativa configurada entre os agendamentos ativos, mais margem — valor simples, não uma junção por agendamento) e documentá-lo.
+- [x] 2.1 `ExecucaoCurvaRepositoryPort.buscarExecucoesEmAndamento` passa a exigir `Instant iniciadoAntesDe`; a query em `ExecucaoCurvaRepository` ganha `AND iniciado_em < ?`. Sem coluna nova.
+- [x] 2.2 `ReconciliacaoService.reconciliarExecucoesPresas(Duration limiteAntiguidade)` calcula `Instant.now().minus(limiteAntiguidade)` e usa o filtro. Teste novo cobre o cálculo do instante-limite; os testes existentes (marca pendente/executando como falha) continuam cobrindo o comportamento de reconciliação em si.
+- [x] 2.3 Novo `ReconciliacaoExecucoesPresasScheduler` (`@Scheduled`, `adapter/in/scheduling`) chama o mesmo serviço periodicamente; `ReconciliacaoInicializacaoRunner` mantido intacto no boot, agora também parametrizado pelo mesmo limite.
+- [x] 2.4 Default definido como constante simples e conservadora (`agendamento.execucao-presa.limite-minutos`, default 60 min) — não uma junção por agendamento, como já simplificado no design.md. Documentado em `application.yml` com comentário explicando o porquê.
 
 ## 3. Reconciliação periódica do catálogo de agendamentos
 
-- [ ] 3.1 Implementar o método de reconciliação em `AgendamentoSchedulerRegistry` (ou classe nova dedicada): lê `agendamentoRepository.listarAtivos()`, compara com o `ConcurrentHashMap` local, registra o que é novo, cancela o que sumiu do resultado, reagenda o que mudou `expressaoHorario`/`fusoHorario` (comparando os campos, não recriando sempre) — verificar com teste unitário os três casos (novo, removido, alterado) isoladamente.
-- [ ] 3.2 Agendar essa reconciliação para rodar em intervalo curto e configurável (propriedade nova, ex. `agendamento.reconciliacao.intervalo-segundos`, default a definir).
-- [ ] 3.3 Fazer `AgendamentoBootstrap` chamar essa mesma reconciliação (em vez de `registrar` um a um) — comportamento de boot preservado, código não duplicado.
-- [ ] 3.4 Remover a chamada direta a `schedulerRegistry` de `AgendamentoService.cadastrar/editar/ativar/desativar` — esses métodos passam a só escrever no banco; verificar com teste que a convergência acontece só via reconciliação (cenários "Agendamento criado em uma réplica aparece nas demais", "Edição de horário propaga", "Desativação para o disparo" da spec).
+- [x] 3.1 `AgendamentoSchedulerRegistry.reconciliar(List<Agendamento>)` implementado — passou a guardar `expressaoHorario`/`fusoHorario` junto com o `ScheduledFuture` (record `RegistroAtivo`) para poder comparar sem estado externo. Teste novo cobre os três casos (novo, removido, alterado) numa única chamada.
+- [x] 3.2 Novo `AgendamentoReconciliacaoScheduler` (`@Scheduled`), intervalo configurável via `agendamento.reconciliacao.intervalo-segundos` (default 30s).
+- [x] 3.3 `AgendamentoBootstrap` chama `ReconciliacaoAgendamentosService.reconciliar()` em vez de `registrar` um a um — mesmo código do boot e da reconciliação periódica, sem duplicação.
+- [x] 3.4 `AgendamentoService.cadastrar/editar/ativar/desativar` não dependem mais de `AgendamentoSchedulerPort` — só escrevem no banco. `UseCaseConfig` ganhou o bean `ReconciliacaoAgendamentosService` para a convergência.
+
+77/77 testes de `curve-orchestrator` verdes (reator inteiro também verde), `ArchitectureTest` confirmando que nenhuma classe nova violou a fronteira hexagonal.
 
 ## 4. Verificação com múltiplas réplicas reais
 
 - [ ] 4.1 Configurar o compose local para subir 2 réplicas de `curve-orchestrator` contra o mesmo SQL Server (`deploy.replicas` do Podman Compose, ou dois serviços nomeados apontando para a mesma imagem — o que o Podman Compose suportar de verdade; confirmar qual funciona antes de assumir).
-- [ ] 4.2 Rodar um agendamento real de ponta a ponta com as 2 réplicas de pé e confirmar, por `execucao_curva`, que só uma execução foi criada e só uma chamada ao feeder ocorreu.
+- [ ] 4.2 Rodar um agendamento real de ponta a ponta com as 2 réplicas de pé e confirmar, por `execucao_curva`, que só uma execução foi criada e só uma chamada ao feeder ocorreu — **fecha a lacuna deixada pela tarefa 1.2** (verificação real de corrida, não só unitária).
 - [ ] 4.3 Criar, editar e desativar um agendamento via a API de uma réplica e confirmar (logs ou consulta) que a outra réplica converge dentro do intervalo de reconciliação configurado, sem reiniciar.
 - [ ] 4.4 Simular uma réplica caindo no meio de uma execução (matar o processo com uma `ExecucaoCurva` em `EXECUTANDO`) e confirmar que a outra réplica reconcilia depois do limite de tempo configurado, sem esperar reinício.
 
