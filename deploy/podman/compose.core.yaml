@@ -15,6 +15,7 @@ networks:
 volumes:
   kafka-data:
   sqlserver-data:
+  azurite-data:
 
 services:
   kafka:
@@ -74,6 +75,25 @@ services:
       timeout: 5s
       retries: 40
       start_period: 20s
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: curvas-azurite
+    hostname: azurite
+    restart: unless-stopped
+    networks: [curvas-net]
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    volumes:
+      - azurite-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc 127.0.0.1 10000 -z"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
 
   # Container de inicialização: cria os tópicos do catálogo (contracts/events/topics.yaml)
   # contra um broker sem criação automática. Roda até o fim e sai com código zero;
