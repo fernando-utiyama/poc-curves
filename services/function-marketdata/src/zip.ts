@@ -69,3 +69,47 @@ export function lerEntradaMaisRecente(conteudo: Buffer): { nome: string; dados: 
 
   return { nome: maisRecente.entryName, dados };
 }
+
+export type ResultadoDesempacotamentoDuplo =
+  | { readonly tipo: 'SUCESSO'; readonly nome: string; readonly dados: Buffer }
+  | { readonly tipo: 'ZIP_EXTERNO_VAZIO' }
+  | { readonly tipo: 'INVALIDO'; readonly etapa: 'EXTERNO' | 'INTERNO'; readonly motivo: string };
+
+/**
+ * Desempacota um ZIP duplamente aninhado — o formato real dos downloads da
+ * B3 (PR/IN/TS, ver javadoc de {@link FeederB3ArquivoPesquisaPregao} e
+ * {@link FeederB3TaxaSwap}): o corpo HTTP é um ZIP externo com uma entrada
+ * que é, ela mesma, outro ZIP; a entrada mais recente desse ZIP interno é o
+ * conteúdo real. Consolida a sequência verificar→desempacotar→verificar→
+ * desempacotar que os dois feeders B3 duplicavam byte a byte.
+ * <p>
+ * `ZIP_EXTERNO_VAZIO` é o sinal real de "arquivo ainda não publicado" para
+ * este endpoint (a B3 sempre responde HTTP 200, mesmo sem o arquivo) — quem
+ * chama decide a mensagem `noData` apropriada para o seu dataset.
+ */
+export function desempacotarZipDuploB3(conteudoZipExterno: Buffer): ResultadoDesempacotamentoDuplo {
+  const zipExternoValido = verificarArquivoZip(conteudoZipExterno);
+  if (!zipExternoValido.valido) {
+    return { tipo: 'INVALIDO', etapa: 'EXTERNO', motivo: zipExternoValido.motivo ?? 'ZIP externo inválido' };
+  }
+
+  let zipInterno: { nome: string; dados: Buffer };
+  try {
+    zipInterno = lerEntradaMaisRecente(conteudoZipExterno);
+  } catch {
+    return { tipo: 'ZIP_EXTERNO_VAZIO' };
+  }
+
+  const zipInternoValido = verificarArquivoZip(zipInterno.dados);
+  if (!zipInternoValido.valido) {
+    return { tipo: 'INVALIDO', etapa: 'INTERNO', motivo: zipInternoValido.motivo ?? 'ZIP interno inválido' };
+  }
+
+  try {
+    const entradaMaisRecente = lerEntradaMaisRecente(zipInterno.dados);
+    return { tipo: 'SUCESSO', nome: entradaMaisRecente.nome, dados: entradaMaisRecente.dados };
+  } catch (erro) {
+    const mensagem = erro instanceof Error ? erro.message : String(erro);
+    return { tipo: 'INVALIDO', etapa: 'INTERNO', motivo: mensagem };
+  }
+}
