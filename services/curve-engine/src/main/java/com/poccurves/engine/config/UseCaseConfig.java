@@ -2,8 +2,12 @@ package com.poccurves.engine.config;
 import com.poccurves.engine.application.construcao.CurveBootstrapper;
 import com.poccurves.engine.application.construcao.InterpoladorRegistry;
 import com.poccurves.engine.application.construcao.PoliticaExtrapolacaoRegistry;
+import com.poccurves.engine.application.port.BtrsCurvaPrimrConsultaRepositoryPort;
 import com.poccurves.engine.application.port.CacheInterpolacaoPort;
+import com.poccurves.engine.application.port.ConfgCurvaRepositoryPort;
+import com.poccurves.engine.application.port.CurvaDataRepositoryPort;
 import com.poccurves.engine.application.port.CurvaPublicadaEventPort;
+import com.poccurves.engine.application.port.DadoCurvaRepositoryPort;
 import com.poccurves.engine.application.port.DefinicaoCurvaResolutionRepositoryPort;
 import com.poccurves.engine.application.port.InsumoDI1RepositoryPort;
 import com.poccurves.engine.application.port.JsonPort;
@@ -14,6 +18,7 @@ import com.poccurves.engine.application.port.ValidacaoCurvaRepositoryPort;
 import com.poccurves.engine.application.port.VersaoCurvaRepositoryPort;
 import com.poccurves.engine.application.port.VerticeCurvaRepositoryPort;
 import com.poccurves.engine.application.service.BateriaValidacaoService;
+import com.poccurves.engine.application.service.ConstrucaoCurvaB3Service;
 import com.poccurves.engine.application.service.ConstrucaoCurvaService;
 import com.poccurves.engine.application.service.ModeloConstrucaoResolver;
 import com.poccurves.engine.application.service.PromocaoVersaoCurvaService;
@@ -87,6 +92,18 @@ public class UseCaseConfig {
                 definicaoCurvaResolutionRepository, modeloCurvaRepository, versaoCurvaRepository,
                 verticeCurvaRepository, procedenciaCurvaRepository, insumoDI1Repository,
                 modeloConstrucaoResolver, jsonPort);
+    }
+
+    @Bean
+    public ConstrucaoCurvaB3Service construcaoCurvaB3Service(
+            BtrsCurvaPrimrConsultaRepositoryPort btrsCurvaPrimrRepository,
+            ConfgCurvaRepositoryPort confgCurvaRepository,
+            InterpoladorRegistry interpoladorRegistry,
+            DadoCurvaRepositoryPort dadoCurvaRepository,
+            CurvaDataRepositoryPort curvaDataRepository) {
+        return new ConstrucaoCurvaB3Service(
+                btrsCurvaPrimrRepository, confgCurvaRepository, interpoladorRegistry,
+                dadoCurvaRepository, curvaDataRepository);
     }
 
     @Bean

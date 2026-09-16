@@ -109,5 +109,11 @@ public class EngineDtos {
             UUID runId,
             UUID executionId
     ) {}
+
+    /** Pedido de construção das curvas TS B3 (openspec/changes/b3-additional-curves) — schema legado (V22). */
+    public record ConstrucaoCurvaB3Request(
+            String tickerIndcd,
+            LocalDate referenceDate
+    ) {}
 }
 

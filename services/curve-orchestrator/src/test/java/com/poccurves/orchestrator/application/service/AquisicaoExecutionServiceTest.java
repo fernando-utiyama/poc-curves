@@ -7,6 +7,7 @@ import com.poccurves.orchestrator.application.model.Faixa;
 import com.poccurves.orchestrator.application.model.MomentoCurva;
 import com.poccurves.orchestrator.application.model.TipoDisparo;
 import com.poccurves.orchestrator.application.port.BuildRequestPort;
+import com.poccurves.orchestrator.application.port.ConstrucaoCurvaB3Port;
 import com.poccurves.orchestrator.application.port.DefinicaoCurvaConsultaRepositoryPort;
 import com.poccurves.orchestrator.application.port.FunctionMarketdataPort;
 
@@ -27,8 +28,9 @@ class AquisicaoExecutionServiceTest {
         FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
         DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
         BuildRequestPort publisher = mock(BuildRequestPort.class);
+        ConstrucaoCurvaB3Port construcaoCurvaB3 = mock(ConstrucaoCurvaB3Port.class);
 
-        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, 1);
+        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, construcaoCurvaB3, 1);
 
         ExecucaoCurva execucao = ExecucaoCurva.iniciar(
                 UUID.randomUUID(), null, null, "CONJUNTO", LocalDate.now(),
@@ -53,8 +55,9 @@ class AquisicaoExecutionServiceTest {
         FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
         DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
         BuildRequestPort publisher = mock(BuildRequestPort.class);
+        ConstrucaoCurvaB3Port construcaoCurvaB3 = mock(ConstrucaoCurvaB3Port.class);
 
-        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, 1);
+        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, construcaoCurvaB3, 1);
 
         ExecucaoCurva execucao = ExecucaoCurva.iniciar(
                 UUID.randomUUID(), null, null, "CONJUNTO", LocalDate.now(),
@@ -79,12 +82,43 @@ class AquisicaoExecutionServiceTest {
     }
 
     @Test
+    void acionarFeederEEncadearTrataPublishedDeDatasetTaxaSwapDespachandoDiretoParaCurveEngineB3() {
+        FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
+        DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
+        BuildRequestPort publisher = mock(BuildRequestPort.class);
+        ConstrucaoCurvaB3Port construcaoCurvaB3 = mock(ConstrucaoCurvaB3Port.class);
+
+        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, construcaoCurvaB3, 1);
+
+        ExecucaoCurva execucao = ExecucaoCurva.iniciar(
+                UUID.randomUUID(), null, null, "B3_TAXA_SWAP_DCL", LocalDate.now(),
+                MomentoCurva.INTRADIA, TipoDisparo.AGENDADO, "sistema", Faixa.ROTINA, null, null
+        );
+        execucao.iniciarExecucao();
+
+        when(feeder.acionar(any(), any(), any(), any()))
+                .thenReturn(new ResultadoAquisicao("PUBLISHED", "lote1", 1, null, null));
+
+        AquisicaoExecutionService.ExecutionResult result = service.acionarFeederEEncadear(
+                execucao, "B3_TAXA_SWAP_DCL", LocalDate.now(), Faixa.ROTINA, UUID.randomUUID()
+        );
+
+        assertThat(result.resultado().kind()).isEqualTo("PUBLISHED");
+        assertThat(result.progressoStatus()).isEqualTo("EM_PROCESSAMENTO");
+        assertThat(execucao.estado()).isEqualTo(EstadoExecucao.CONSTRUINDO);
+        verify(construcaoCurvaB3).construir(eq("B3_TAXA_SWAP_DCL"), any());
+        verifyNoInteractions(consulta);
+        verifyNoInteractions(publisher);
+    }
+
+    @Test
     void acionarFeederEEncadearTrataFailed() {
         FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
         DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
         BuildRequestPort publisher = mock(BuildRequestPort.class);
+        ConstrucaoCurvaB3Port construcaoCurvaB3 = mock(ConstrucaoCurvaB3Port.class);
 
-        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, 1);
+        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, construcaoCurvaB3, 1);
 
         ExecucaoCurva execucao = ExecucaoCurva.iniciar(
                 UUID.randomUUID(), null, null, "CONJUNTO", LocalDate.now(),
@@ -108,8 +142,9 @@ class AquisicaoExecutionServiceTest {
         FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
         DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
         BuildRequestPort publisher = mock(BuildRequestPort.class);
+        ConstrucaoCurvaB3Port construcaoCurvaB3 = mock(ConstrucaoCurvaB3Port.class);
 
-        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, 1);
+        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, construcaoCurvaB3, 1);
 
         ExecucaoCurva execucao = ExecucaoCurva.iniciar(
                 UUID.randomUUID(), null, null, "CONJUNTO", LocalDate.now(),
@@ -133,8 +168,9 @@ class AquisicaoExecutionServiceTest {
         FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
         DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
         BuildRequestPort publisher = mock(BuildRequestPort.class);
+        ConstrucaoCurvaB3Port construcaoCurvaB3 = mock(ConstrucaoCurvaB3Port.class);
 
-        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, 2);
+        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, construcaoCurvaB3, 2);
 
         ExecucaoCurva execucao = ExecucaoCurva.iniciar(
                 UUID.randomUUID(), null, null, "CONJUNTO", LocalDate.now(),
@@ -162,8 +198,9 @@ class AquisicaoExecutionServiceTest {
         FunctionMarketdataPort feeder = mock(FunctionMarketdataPort.class);
         DefinicaoCurvaConsultaRepositoryPort consulta = mock(DefinicaoCurvaConsultaRepositoryPort.class);
         BuildRequestPort publisher = mock(BuildRequestPort.class);
+        ConstrucaoCurvaB3Port construcaoCurvaB3 = mock(ConstrucaoCurvaB3Port.class);
 
-        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, 2);
+        AquisicaoExecutionService service = new AquisicaoExecutionService(feeder, consulta, publisher, construcaoCurvaB3, 2);
 
         ExecucaoCurva execucao = ExecucaoCurva.iniciar(
                 UUID.randomUUID(), null, null, "CONJUNTO", LocalDate.now(),

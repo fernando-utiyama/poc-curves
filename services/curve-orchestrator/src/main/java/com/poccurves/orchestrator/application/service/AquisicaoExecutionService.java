@@ -4,6 +4,7 @@ import com.poccurves.orchestrator.application.model.DefinicaoConsumidora;
 import com.poccurves.orchestrator.application.model.ExecucaoCurva;
 import com.poccurves.orchestrator.application.model.Faixa;
 import com.poccurves.orchestrator.application.port.BuildRequestPort;
+import com.poccurves.orchestrator.application.port.ConstrucaoCurvaB3Port;
 import com.poccurves.orchestrator.application.port.DefinicaoCurvaConsultaRepositoryPort;
 import com.poccurves.orchestrator.application.port.FunctionMarketdataPort;
 
@@ -15,26 +16,40 @@ import org.slf4j.MDC;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public class AquisicaoExecutionService {
 
     private static final Logger log = LoggerFactory.getLogger(AquisicaoExecutionService.class);
 
+    /**
+     * Datasets do TaxaSwap.txt no schema legado (openspec/changes/b3-additional-curves,
+     * legado-schema-curvas-mercado) — mesma lista de {@code DATASETS_TAXA_SWAP_SCHEMA_LEGADO} no
+     * curve-processor. Não têm mais {@code definicao_curva} BOOTSTRAPPED (essas curvas saíram do
+     * schema antigo), então são despachadas direto para o curve-engine aqui, em vez de passar
+     * pela resolução genérica {@link #definicaoCurvaConsultaRepository}.
+     */
+    private static final Set<String> DATASETS_TAXA_SWAP_SCHEMA_LEGADO = Set.of(
+            "B3_TAXA_SWAP_PRE", "B3_TAXA_SWAP_DCL", "B3_TAXA_SWAP_PTX", "B3_TAXA_SWAP_INP", "B3_TAXA_SWAP_DPL");
+
     private final FunctionMarketdataPort functionMarketdataClient;
     private final DefinicaoCurvaConsultaRepositoryPort definicaoCurvaConsultaRepository;
     private final BuildRequestPort buildRequestPublisher;
+    private final ConstrucaoCurvaB3Port construcaoCurvaB3Publisher;
     private final int maxRetentativas;
 
     public AquisicaoExecutionService(
             FunctionMarketdataPort functionMarketdataClient,
             DefinicaoCurvaConsultaRepositoryPort definicaoCurvaConsultaRepository,
             BuildRequestPort buildRequestPublisher,
+            ConstrucaoCurvaB3Port construcaoCurvaB3Publisher,
             int maxRetentativas
     ) {
         this.functionMarketdataClient = functionMarketdataClient;
         this.definicaoCurvaConsultaRepository = definicaoCurvaConsultaRepository;
         this.buildRequestPublisher = buildRequestPublisher;
+        this.construcaoCurvaB3Publisher = construcaoCurvaB3Publisher;
         this.maxRetentativas = maxRetentativas;
     }
 
@@ -68,6 +83,29 @@ public class AquisicaoExecutionService {
 
             switch (resultado.kind()) {
                 case "PUBLISHED" -> {
+                    if (DATASETS_TAXA_SWAP_SCHEMA_LEGADO.contains(conjuntoDados)) {
+                        try {
+                            construcaoCurvaB3Publisher.construir(conjuntoDados, dataReferencia);
+                            execucao.iniciarConstrucao();
+                            return new ExecutionResult(
+                                    resultado,
+                                    "EM_PROCESSAMENTO",
+                                    "Aquisição publicada com sucesso (loteId=" + resultado.loteId() + ", "
+                                            + resultado.totalBlocos() + " blocos). Pedido de construção TS B3 emitido para "
+                                            + conjuntoDados + ".",
+                                    false
+                            );
+                        } catch (Exception e) {
+                            return new ExecutionResult(
+                                    resultado,
+                                    "EM_PROCESSAMENTO",
+                                    "Aquisição publicada com sucesso (loteId=" + resultado.loteId() + "), mas falha ao emitir "
+                                            + "pedido de construção TS B3 para " + conjuntoDados + ": " + e.getMessage(),
+                                    false
+                            );
+                        }
+                    }
+
                     List<DefinicaoConsumidora> consumidoras =
                             definicaoCurvaConsultaRepository.buscarDefinicoesBootstrappedQueConsomem(
                                     conjuntoDados, dataReferencia);

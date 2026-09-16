@@ -3,6 +3,7 @@ import com.poccurves.orchestrator.application.port.AgendamentoRepositoryPort;
 import com.poccurves.orchestrator.application.port.AgendamentoSchedulerPort;
 import com.poccurves.orchestrator.application.port.BackfillRepositoryPort;
 import com.poccurves.orchestrator.application.port.BuildRequestPort;
+import com.poccurves.orchestrator.application.port.ConstrucaoCurvaB3Port;
 import com.poccurves.orchestrator.application.port.CurveProcessorCargaManualPort;
 import com.poccurves.orchestrator.application.port.DefinicaoCurvaConsultaRepositoryPort;
 import com.poccurves.orchestrator.application.port.ExecucaoCurvaRepositoryPort;
@@ -46,8 +47,11 @@ public class UseCaseConfig {
             FunctionMarketdataPort functionMarketdataClient,
             DefinicaoCurvaConsultaRepositoryPort definicaoCurvaConsultaRepository,
             BuildRequestPort buildRequestPublisher,
+            ConstrucaoCurvaB3Port construcaoCurvaB3Publisher,
             @Value("${resiliencia.retentativas-maximas:3}") int maxRetentativas) {
-        return new AquisicaoExecutionService(functionMarketdataClient, definicaoCurvaConsultaRepository, buildRequestPublisher, maxRetentativas);
+        return new AquisicaoExecutionService(
+                functionMarketdataClient, definicaoCurvaConsultaRepository, buildRequestPublisher,
+                construcaoCurvaB3Publisher, maxRetentativas);
     }
 
     @Bean

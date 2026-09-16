@@ -7,6 +7,7 @@ import com.poccurves.orchestrator.application.model.TipoDisparo;
 import com.poccurves.orchestrator.application.service.AquisicaoExecutionService;
 
 import tools.jackson.databind.ObjectMapper;
+import com.poccurves.orchestrator.adapter.out.http.CurveEngineB3Client;
 import com.poccurves.orchestrator.adapter.out.http.CurveEngineClient;
 import com.poccurves.orchestrator.adapter.out.http.FunctionMarketdataClient;
 import com.poccurves.orchestrator.adapter.out.persistence.DefinicaoCurvaConsultaRepository;
@@ -65,8 +66,10 @@ class DisparoManualServiceIT {
     private final DefinicaoCurvaConsultaRepository definicaoCurvaConsultaRepository =
             new DefinicaoCurvaConsultaRepository(jdbcTemplateSa(), new ObjectMapper());
     private final CurveEngineClient curveEngineClient = new CurveEngineClient(curveEngineRestClient());
+    private final CurveEngineB3Client curveEngineB3Client = new CurveEngineB3Client(curveEngineRestClient());
     private final AquisicaoExecutionService aquisicaoExecutionService = new AquisicaoExecutionService(
-            new FunctionMarketdataClient(feederClient()), definicaoCurvaConsultaRepository, curveEngineClient, 3);
+            new FunctionMarketdataClient(feederClient()), definicaoCurvaConsultaRepository, curveEngineClient,
+            curveEngineB3Client, 3);
     private final DisparoManualService service = new DisparoManualService(repository, aquisicaoExecutionService);
 
     @AfterEach

@@ -194,6 +194,11 @@ services:
       CURVE_ORCHESTRATOR_DB_PASSWORD: ${CURVE_ORCHESTRATOR_DB_PASSWORD:-CurveOrchestratorP0c!Local}
       FUNCTION_MARKETDATA_URL: http://function-marketdata-http:8091
       CURVE_PROCESSOR_URL: http://curve-processor:8081
+      # Faltava aqui (só existia no bloco de curve-bff) — sem isso o orchestrator caía no
+      # default de application.yml (http://localhost:8083), que dentro do próprio container do
+      # orchestrator não é o curve-engine; nunca pego porque o despacho de construção real
+      # nunca tinha sido exercitado ponta a ponta contra o compose até agora.
+      CURVE_ENGINE_URL: http://curve-engine:8083
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health | grep -q '\"status\":\"UP\"'"]

@@ -58,6 +58,10 @@ public class CurveEngineSecurityConfig {
                         // sem autenticação). Exigir JWT aqui quebraria a chamada em tempo real.
                         .requestMatchers(HttpMethod.POST, "/api/v1/construcoes").permitAll()
 
+                        // Mesma chamada interna serviço-a-serviço acima, agora para a construção
+                        // das curvas TS B3 (openspec/changes/b3-additional-curves).
+                        .requestMatchers(HttpMethod.POST, "/api/v1/curvas-b3/construir").permitAll()
+
                         // Importar/validar script Groovy é a única ação restrita a administrador —
                         // executa código arbitrário e, se válido, persiste como modelo de precificação.
                         .requestMatchers(HttpMethod.POST, "/api/v1/modelos/validar-groovy").hasRole("CURVE_ADMIN")
