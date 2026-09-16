@@ -39,6 +39,14 @@ public class B3TaxaSwapParser implements DatasetParser {
     private static final int TAMANHO_LINHA = 72;
     private static final int CASAS_DECIMAIS_TAXA_TEORICA = 7;
 
+    /**
+     * Um vértice bruto do TaxaSwap.txt, com os dois prazos (dias úteis e dias corridos) — usado
+     * pelo caminho novo de gravação em {@code tBtrsCurvaPrimr} (openspec/changes/legado-schema-
+     * curvas-mercado), que tem coluna para os dois, diferente de {@link PontoDadoMercado}.
+     */
+    public record VerticeTaxaSwap(int diasUteis, int diasCorridos, java.math.BigDecimal taxa) {
+    }
+
     private final String dataset;
     private final String codigoCurva;
 
@@ -139,5 +147,66 @@ public class B3TaxaSwapParser implements DatasetParser {
         }
 
         return new ParseResult.Sucesso(pontos);
+    }
+
+    /**
+     * Extrai os vértices de um código de curva com os dois prazos (dias úteis e dias corridos) —
+     * caminho novo de gravação em {@code tBtrsCurvaPrimr}, que tem coluna para os dois, diferente
+     * do caminho genérico ({@link #parse}, que só usa dias úteis porque {@link PontoDadoMercado}
+     * não tem campo para os dois). Estático porque este caminho não passa pelo
+     * {@code DatasetParserRegistry} genérico — é acionado direto por
+     * {@code ProcessarEnvelopeIngestaoUseCase} para os datasets B3_TAXA_SWAP_DCL/PTX/INP/DPL,
+     * sem instanciar um {@code B3TaxaSwapParser} por curva.
+     *
+     * @throws IllegalArgumentException se alguma linha do código pedido estiver malformada
+     */
+    public static java.util.List<VerticeTaxaSwap> extrairVertices(byte[] conteudo, String encoding, String codigoCurva) {
+        Charset charset;
+        try {
+            charset = Charset.forName(encoding);
+        } catch (IllegalCharsetNameException | UnsupportedCharsetException e) {
+            throw new IllegalArgumentException("encoding não suportado: " + encoding, e);
+        }
+
+        String textoCompleto = new String(conteudo, charset);
+        String[] linhas = textoCompleto.split("\n", -1);
+
+        java.util.List<VerticeTaxaSwap> vertices = new ArrayList<>();
+
+        for (String linhaComEspacos : linhas) {
+            String linha = linhaComEspacos.strip();
+            if (linha.isEmpty()) {
+                continue;
+            }
+
+            if (linha.length() != TAMANHO_LINHA) {
+                throw new IllegalArgumentException(
+                        "linha do arquivo de taxas de swap com tamanho inesperado (esperado " + TAMANHO_LINHA
+                                + " colunas, encontrado " + linha.length() + "): \"" + linha + "\"");
+            }
+
+            String codigoTaxaLinha = linha.substring(21, 26).strip();
+            if (!codigoTaxaLinha.equals(codigoCurva)) {
+                continue;
+            }
+
+            int diasCorridos = Integer.parseInt(linha.substring(41, 46).strip());
+            int diasUteis = Integer.parseInt(linha.substring(46, 51).strip());
+
+            char sinal = linha.charAt(51);
+            if (sinal != '+' && sinal != '-') {
+                throw new IllegalArgumentException(
+                        "sinal da taxa teórica inválido na linha da curva " + codigoCurva + ": '" + sinal + "'");
+            }
+
+            BigDecimal taxa = new BigDecimal(linha.substring(52, 66)).movePointLeft(CASAS_DECIMAIS_TAXA_TEORICA);
+            if (sinal == '-') {
+                taxa = taxa.negate();
+            }
+
+            vertices.add(new VerticeTaxaSwap(diasUteis, diasCorridos, taxa));
+        }
+
+        return vertices;
     }
 }

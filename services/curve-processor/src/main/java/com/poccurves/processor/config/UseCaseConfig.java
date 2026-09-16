@@ -1,5 +1,6 @@
 package com.poccurves.processor.config;
 import com.poccurves.processor.application.model.DatasetParserRegistry;
+import com.poccurves.processor.application.port.BtrsCurvaPrimrRepositoryPort;
 import com.poccurves.processor.application.port.DefinicaoCurvaLeituraRepositoryPort;
 import com.poccurves.processor.application.port.ExecucaoCurvaLeituraRepositoryPort;
 import com.poccurves.processor.application.port.LoteIngestaoRepositoryPort;
@@ -71,13 +72,11 @@ public class UseCaseConfig {
             PublicacaoCurvaService publicacaoCurvaService,
             NormalizedEventPort normalizedEventPort,
             BlobStorageReadPort blobStorageReadPort,
-            DefinicaoCurvaLeituraRepositoryPort definicaoCurvaLeituraRepositoryPort,
-            VersaoCurvaRepositoryPort versaoCurvaRepositoryPort,
-            VerticeCurvaRepositoryPort verticeCurvaRepositoryPort
+            BtrsCurvaPrimrRepositoryPort btrsCurvaPrimrRepositoryPort
     ) {
         return new ProcessarEnvelopeIngestaoUseCase(
                 datasetParserRegistry, ingestaoService, metricasIngestao, execucaoCurvaLeituraRepositoryPort,
                 pontoDadoMercadoRepositoryPort, publicacaoCurvaService, normalizedEventPort, blobStorageReadPort,
-                definicaoCurvaLeituraRepositoryPort, versaoCurvaRepositoryPort, verticeCurvaRepositoryPort);
+                btrsCurvaPrimrRepositoryPort);
     }
 }
