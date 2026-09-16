@@ -9,6 +9,7 @@ import com.poccurves.orchestrator.application.service.AquisicaoExecutionService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -97,7 +98,19 @@ public class DisparoAgendadoExecutor {
                 null,
                 null
         );
-        execucaoCurvaRepository.inserir(execucao);
+        try {
+            execucaoCurvaRepository.inserir(execucao);
+        } catch (DuplicateKeyException e) {
+            // Coordenação entre réplicas (openspec/changes/orchestrator-multi-instance-scheduling):
+            // com múltiplas réplicas do curve-orchestrator, mais de uma pode disparar o mesmo
+            // agendamento no mesmo horário. O índice único filtrado ux_execucao_curva_ativa_conjunto/
+            // _definicao (db/migration/V14) já impede duas execuções ativas para o mesmo alvo/data/
+            // momento — aqui só reconhecemos essa violação como "outra réplica já assumiu", em vez
+            // de deixá-la subir como falha não tratada.
+            log.info("Agendamento {} ignorado: outra réplica já assumiu o disparo para conjuntoDados={}/definicaoCurvaId={} em {}/{}.",
+                    agendamento.id(), agendamento.conjuntoDados(), agendamento.definicaoCurvaId(), dataReferencia, agendamento.momentoCurva());
+            return;
+        }
         agendamentoRepository.vincularExecucao(execucao.id(), agendamento.id());
 
         execucao.iniciarExecucao();

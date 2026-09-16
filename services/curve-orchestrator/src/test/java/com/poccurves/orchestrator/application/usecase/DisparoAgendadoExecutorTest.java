@@ -14,6 +14,7 @@ import com.poccurves.orchestrator.application.port.FunctionMarketdataPort.Result
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -77,6 +78,30 @@ class DisparoAgendadoExecutorTest {
 
             verify(aquisicaoExecutionService, times(2)).acionarFeederEEncadear(any(), any(), any(), any(), any());
             verify(execucaoCurvaRepository, atLeastOnce()).atualizar(any(ExecucaoCurva.class));
+        }
+    }
+
+    @Test
+    void outraReplicaJaAssumiuODisparoNaoPropagaExcecaoNemAcionaFeeder() {
+        // Simula a corrida entre réplicas (openspec/changes/orchestrator-multi-instance-scheduling):
+        // duas réplicas passam pelo check de execução ativa antes de qualquer uma inserir, e o
+        // índice único de execucao_curva (V14) rejeita a segunda tentativa de INSERT.
+        Agendamento a = Agendamento.reconstituir(
+                UUID.randomUUID(), null, "CONJUNTO", MomentoCurva.INTRADIA, Faixa.ROTINA,
+                "0 0 12 * * ?", "America/Sao_Paulo", 30, 60, true, "teste", null, null
+        );
+        when(agendamentoRepository.buscarPorId(a.id())).thenReturn(Optional.of(a));
+        when(execucaoCurvaRepository.buscarExecucaoAtivaParaConjuntoDados(any(), any(), any())).thenReturn(Optional.empty());
+        doThrow(new DuplicateKeyException("violação de índice único simulada"))
+                .when(execucaoCurvaRepository).inserir(any());
+
+        try (var mockedCalendario = mockStatic(com.poccurves.orchestrator.application.model.CalendarioPregao.class)) {
+            mockedCalendario.when(() -> com.poccurves.orchestrator.application.model.CalendarioPregao.ehDiaDePregao(any())).thenReturn(true);
+
+            executor.executar(a.id());
+
+            verify(agendamentoRepository, never()).vincularExecucao(any(), any());
+            verify(aquisicaoExecutionService, never()).acionarFeederEEncadear(any(), any(), any(), any(), any());
         }
     }
 
