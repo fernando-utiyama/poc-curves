@@ -37,11 +37,16 @@ Toda réplica SHALL reconciliar seu registro local de agendamentos contra o cat�
 - **WHEN** um agendamento é desativado
 - **THEN** nenhuma réplica SHALL processar esse agendamento além do intervalo de reconciliação, mesmo que ele já estivesse registrado localmente antes da desativação
 
-### Requirement: Lock não bloqueia indefinidamente
+### Requirement: Execução presa não bloqueia indefinidamente
 
-O lock distribuído de um disparo SHALL ter um tempo máximo de posse, de forma que a falha ou queda de uma réplica no meio do processamento não impeça permanentemente que o mesmo agendamento seja processado no próximo horário devido.
+Uma execução deixada em estado não-terminal por uma réplica que caiu no meio do processamento SHALL ser detectada e reconciliada por outra réplica ainda viva, sem exigir reinício de nenhum processo, e sem depender de nenhuma tabela ou mecanismo de lock além do que já existe para rastrear execuções.
 
-#### Scenario: Réplica cai com o lock tomado
+#### Scenario: Réplica cai no meio do processamento
 
-- **WHEN** a réplica que tomou o lock de um disparo cai antes de liberá-lo
-- **THEN** o lock SHALL expirar automaticamente após o tempo máximo configurado, e o próximo horário devido do agendamento SHALL poder ser processado normalmente por qualquer réplica
+- **WHEN** a réplica que criou uma execução cai antes de concluí-la, e o tempo decorrido desde o início ultrapassa o limite configurado de detecção de execução presa
+- **THEN** outra réplica viva SHALL reconciliar essa execução (marcá-la como falha), liberando o alvo/data/momento para uma nova tentativa
+
+#### Scenario: Execução legítima não é derrubada prematuramente
+
+- **WHEN** uma execução está em andamento havia menos tempo que o limite de detecção de execução presa
+- **THEN** a reconciliação periódica MUST NOT marcá-la como falha
