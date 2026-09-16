@@ -34,7 +34,8 @@ do serviço é reutilizável e não precisa ser reescrito:
 |---|---|---|
 | Cliente HTTP com retentativa | `src/http-client.ts` | timeout, backoff exponencial com jitter, retentativa só para falha de transporte |
 | Verificação de integridade | `src/integridade.ts` | conteúdo vazio, tamanho declarado, arquivo compactado corrompido |
-| Quebra em blocos | `src/blocos.ts`, `src/xml-estrutural.ts` | corte estrutural de arquivos grandes, com `loteId`/`sequencia`/`totalBlocos` |
+| Quebra em blocos | `src/blocos.ts`, `src/xml-estrutural.ts` | corte estrutural de conteúdo grande vindo de uma resposta única (ex.: Bloomberg Data License), com `loteId`/`sequencia`/`totalBlocos` — ver ressalva abaixo para feeder de **arquivo** |
+| Gravação em blob storage | `src/blob-storage.ts` (`BlobUploader`/`AzureBlobUploader`) | arquivo bruto completo gravado em blob (Azurite local / Azure Blob em produção) antes de publicar — ver "Feeder de arquivo" abaixo |
 | Identificadores determinísticos | `src/lote-id.ts` | `loteId` e `eventId` — mesmo conteúdo produz o mesmo id, sempre |
 | Produtor Kafka | `src/kafka-publisher.ts` | monta o envelope, resolve tópico/chave de partição pela faixa, valida contra o schema (ajv) antes de publicar |
 | Roteador de datasets | `src/registro-feeders.ts` | expõe `RegistroFeeders.registrar(dataset, feeder)` — o feeder novo só se registra ali |
@@ -44,9 +45,18 @@ do serviço é reutilizável e não precisa ser reescrito:
 1. **Como buscar o dado na fonte** — chamada HTTP, arquivo, ou outro
    transporte (ver "Modo de entrega" abaixo). Isto é específico da fonte;
    nada no núcleo assume HTTP.
-2. **Como extrair os registros do formato bruto da fonte** e entregá-los como
-   uma lista para `dividirEmBlocos`/`dividirXmlEmBlocos` — corte sempre
-   estrutural ("este arquivo tem N registros"), nunca semântico.
+2. **Se a fonte é um arquivo para baixar** (ZIP, TXT, o que for — o caso de
+   B3 PR/IN/TS e ANBIMA), o feeder **grava o conteúdo bruto completo em blob
+   storage** (`BlobUploader.gravar`, caminho `<fonte>/<data-referencia>/<nome-
+   arquivo-original>`) e publica **um único evento** referenciando o blob
+   (`blobContainer`/`blobPath`), em vez de cortar em blocos — ver
+   `openspec/changes/raw-file-blob-storage` para o design completo e
+   `src/feeders/b3-arquivo-pesquisa-pregao.ts`/`anbima-mercado-secundario.ts`
+   como exemplo real. **Se a fonte não é um arquivo** (ex.: uma resposta HTTP
+   síncrona só de dados, sem um "arquivo original" para arquivar — caso do
+   Bloomberg Data License hoje), o corte em blocos (`dividirEmBlocos`/
+   `dividirXmlEmBlocos`, corte sempre estrutural, nunca semântico) continua
+   sendo o padrão válido.
 3. **Qual `payloadKind` declarar** em cada evento: `INDIVIDUAL_QUOTES` para
    cotações/contratos individuais, `READY_CURVE` para curva pronta —
    depende do endpoint/dataset consultado, não é uma escolha livre por feeder.

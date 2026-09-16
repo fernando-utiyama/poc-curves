@@ -26,9 +26,9 @@
 
 ## 5. Documentação e registro da decisão
 
-- [ ] 5.1 Adicionar nota em `openspec/changes/curves-solution-architecture/design.md` registrando a reversão da decisão anti-claim-check, com link para esta mudança e a justificativa (arquivamento/reprocessamento como requisito novo, aceito conscientemente).
-- [ ] 5.2 Atualizar `docs/extensao-feeders.md` com o novo padrão esperado de um feeder de arquivo (gravar em blob antes de publicar).
-- [ ] 5.3 Atualizar `openspec/changes/b3-additional-curves/tasks.md` (seção 2, feeder de TS) para apontar para este novo padrão em vez do padrão de blocos Kafka descrito antes desta mudança existir.
+- [x] 5.1 Nota adicionada em `curves-solution-architecture/design.md` (seção D1b), registrando a reversão com link para esta mudança e a justificativa.
+- [x] 5.2 `docs/extensao-feeders.md` atualizado: tabela de peças reutilizáveis ganha a linha de blob storage, e a seção "O que o feeder novo precisa decidir sozinho" distingue feeder de arquivo (blob) de feeder de resposta única sem arquivo original (continua em blocos, caso Bloomberg).
+- [x] 5.3 `b3-additional-curves/tasks.md` já apontava para o novo padrão desde a sessão em que esta mudança foi proposta (seção 2, nota de correção de desenho).
 
 ## 6. Ponta a ponta
 
