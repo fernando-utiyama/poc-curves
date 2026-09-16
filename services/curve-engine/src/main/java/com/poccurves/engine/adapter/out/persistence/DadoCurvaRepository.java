@@ -31,14 +31,7 @@ public class DadoCurvaRepository implements DadoCurvaRepositoryPort {
             return;
         }
 
-        List<Object[]> batchArgs = vertices.stream()
-                .map(v -> new Object[]{
-                        Date.valueOf(dataReferencia),
-                        tickerIndcd,
-                        Date.valueOf(v.dataVertice()),
-                        v.valor()
-                })
-                .toList();
+        List<Object[]> batchArgs = VerticeConstruidoJdbc.paraBatchArgs(tickerIndcd, dataReferencia, vertices);
 
         jdbcTemplate.batchUpdate(
                 "INSERT INTO tDadoCurva (dBaseReft, cTickerIndcd, dVertcReft, vPrecoTx) VALUES (?, ?, ?, ?)",

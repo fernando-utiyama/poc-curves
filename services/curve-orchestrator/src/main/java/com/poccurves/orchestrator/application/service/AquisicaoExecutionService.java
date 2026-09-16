@@ -84,26 +84,18 @@ public class AquisicaoExecutionService {
             switch (resultado.kind()) {
                 case "PUBLISHED" -> {
                     if (DATASETS_TAXA_SWAP_SCHEMA_LEGADO.contains(conjuntoDados)) {
+                        String mensagemTaxaSwap;
                         try {
                             construcaoCurvaB3Publisher.construir(conjuntoDados, dataReferencia);
                             execucao.iniciarConstrucao();
-                            return new ExecutionResult(
-                                    resultado,
-                                    "EM_PROCESSAMENTO",
-                                    "Aquisição publicada com sucesso (loteId=" + resultado.loteId() + ", "
-                                            + resultado.totalBlocos() + " blocos). Pedido de construção TS B3 emitido para "
-                                            + conjuntoDados + ".",
-                                    false
-                            );
+                            mensagemTaxaSwap = "Aquisição publicada com sucesso (loteId=" + resultado.loteId() + ", "
+                                    + resultado.totalBlocos() + " blocos). Pedido de construção TS B3 emitido para "
+                                    + conjuntoDados + ".";
                         } catch (Exception e) {
-                            return new ExecutionResult(
-                                    resultado,
-                                    "EM_PROCESSAMENTO",
-                                    "Aquisição publicada com sucesso (loteId=" + resultado.loteId() + "), mas falha ao emitir "
-                                            + "pedido de construção TS B3 para " + conjuntoDados + ": " + e.getMessage(),
-                                    false
-                            );
+                            mensagemTaxaSwap = "Aquisição publicada com sucesso (loteId=" + resultado.loteId() + "), mas falha ao emitir "
+                                    + "pedido de construção TS B3 para " + conjuntoDados + ": " + e.getMessage();
                         }
+                        return new ExecutionResult(resultado, "EM_PROCESSAMENTO", mensagemTaxaSwap, false);
                     }
 
                     List<DefinicaoConsumidora> consumidoras =

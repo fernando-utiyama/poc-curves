@@ -57,6 +57,10 @@ public class ProcessarEnvelopeIngestaoUseCase {
      * antigo OraculoTaxaSwapValidator/OraculoTaxaSwap*Exception foram removidos (sem chamador
      * desde que este caminho passou a cobrir os 5 datasets) — recuperável do histórico do git se
      * a mesma ideia voltar a fazer sentido contra o schema novo.
+     * <p>
+     * Mesma lista duplicada em {@code AquisicaoExecutionService.DATASETS_TAXA_SWAP_SCHEMA_LEGADO}
+     * (curve-orchestrator) — sem fonte única de verdade entre os dois serviços; se um terceiro
+     * consumidor precisar da mesma lista, vale extrair para um lugar compartilhado.
      */
     private static final java.util.Set<String> DATASETS_TAXA_SWAP_SCHEMA_LEGADO = java.util.Set.of(
             "B3_TAXA_SWAP_DCL", "B3_TAXA_SWAP_PTX", "B3_TAXA_SWAP_INP", "B3_TAXA_SWAP_DPL", "B3_TAXA_SWAP_PRE");

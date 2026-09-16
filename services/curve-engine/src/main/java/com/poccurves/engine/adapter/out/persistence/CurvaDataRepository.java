@@ -35,14 +35,7 @@ public class CurvaDataRepository implements CurvaDataRepositoryPort {
             return;
         }
 
-        List<Object[]> batchArgs = pontos.stream()
-                .map(p -> new Object[]{
-                        Date.valueOf(dataReferencia),
-                        tickerIndcd,
-                        Date.valueOf(p.dataVertice()),
-                        p.valor()
-                })
-                .toList();
+        List<Object[]> batchArgs = VerticeConstruidoJdbc.paraBatchArgs(tickerIndcd, dataReferencia, pontos);
 
         jdbcTemplate.batchUpdate(
                 "INSERT INTO tCurvaData (dBaseReft, cTickerIndcd, dVertcReft, vPrecoTx) VALUES (?, ?, ?, ?)",
