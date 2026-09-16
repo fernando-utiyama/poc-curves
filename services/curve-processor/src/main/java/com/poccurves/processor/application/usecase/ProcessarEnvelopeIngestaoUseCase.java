@@ -53,10 +53,10 @@ public class ProcessarEnvelopeIngestaoUseCase {
      * curva adaptada ao schema legado real (openspec/changes/legado-schema-curvas-mercado).
      * PRE (DIxPRE) entra igual às demais — na primeira rodada (V23) tinha ficado de fora por
      * ter sido usado só pelo oráculo cruzado que este caminho substituiu, mas é uma curva do
-     * arquivo como qualquer outra (achado corrigido na V24: faltava a linha em tCurvaMercd).
-     * O antigo OraculoTaxaSwapValidator/OraculoTaxaSwap*Exception continuam no código, intactos
-     * e testados, só que sem chamador agora — não apagados porque a mesma ideia pode voltar a
-     * fazer sentido contra o schema novo.
+     * arquivo como qualquer outra (achado corrigido na V24: faltava a linha em tCurvaMercd). O
+     * antigo OraculoTaxaSwapValidator/OraculoTaxaSwap*Exception foram removidos (sem chamador
+     * desde que este caminho passou a cobrir os 5 datasets) — recuperável do histórico do git se
+     * a mesma ideia voltar a fazer sentido contra o schema novo.
      */
     private static final java.util.Set<String> DATASETS_TAXA_SWAP_SCHEMA_LEGADO = java.util.Set.of(
             "B3_TAXA_SWAP_DCL", "B3_TAXA_SWAP_PTX", "B3_TAXA_SWAP_INP", "B3_TAXA_SWAP_DPL", "B3_TAXA_SWAP_PRE");

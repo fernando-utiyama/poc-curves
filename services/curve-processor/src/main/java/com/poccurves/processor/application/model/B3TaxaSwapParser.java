@@ -77,64 +77,25 @@ public class B3TaxaSwapParser implements DatasetParser {
 
         Objects.requireNonNull(referenceDate, "referenceDate não pode ser nula");
 
-        String textoCompleto = new String(conteudo, charset);
-        String[] linhas = textoCompleto.split("\n", -1);
-
         List<PontoDadoMercado> pontos = new ArrayList<>();
 
-        for (String linhaComEspacos : linhas) {
-            String linha = linhaComEspacos.strip();
-            if (linha.isEmpty()) {
-                continue;
-            }
-
-            if (linha.length() != TAMANHO_LINHA) {
-                return new ParseResult.Falha(
-                        "linha do arquivo de taxas de swap com tamanho inesperado (esperado " + TAMANHO_LINHA + " colunas)",
-                        "tamanho encontrado: " + linha.length() + ", linha: \"" + linha + "\"");
-            }
-
-            String codigoTaxaLinha = linha.substring(21, 26).strip();
-            if (!codigoTaxaLinha.equals(codigoCurva)) {
-                continue;
-            }
-
-            String diasUteisTexto = linha.substring(46, 51).strip();
-            int diasUteis;
+        for (String linha : linhasNaoVazias(conteudo, charset)) {
+            LinhaTaxaSwap linhaParseada;
             try {
-                diasUteis = Integer.parseInt(diasUteisTexto);
-            } catch (NumberFormatException e) {
-                return new ParseResult.Falha(
-                        "dias úteis não numéricos na linha da curva " + codigoCurva,
-                        "valor: \"" + diasUteisTexto + "\", linha: \"" + linha + "\"");
+                linhaParseada = parseLinha(linha, codigoCurva);
+            } catch (IllegalArgumentException e) {
+                return new ParseResult.Falha(e.getMessage(), "linha: \"" + linha + "\"");
             }
-
-            char sinal = linha.charAt(51);
-            if (sinal != '+' && sinal != '-') {
-                return new ParseResult.Falha(
-                        "sinal da taxa teórica inválido na linha da curva " + codigoCurva,
-                        "sinal encontrado: '" + sinal + "', linha: \"" + linha + "\"");
-            }
-
-            String taxaTeoricaTexto = linha.substring(52, 66);
-            BigDecimal valor;
-            try {
-                valor = new BigDecimal(taxaTeoricaTexto).movePointLeft(CASAS_DECIMAIS_TAXA_TEORICA);
-            } catch (NumberFormatException e) {
-                return new ParseResult.Falha(
-                        "taxa teórica não numérica na linha da curva " + codigoCurva,
-                        "valor: \"" + taxaTeoricaTexto + "\", linha: \"" + linha + "\"");
-            }
-            if (sinal == '-') {
-                valor = valor.negate();
+            if (linhaParseada == null) {
+                continue;
             }
 
             pontos.add(new PontoDadoMercado(
                     "B3",
                     this.dataset,
                     referenceDate,
-                    String.valueOf(diasUteis),
-                    valor,
+                    String.valueOf(linhaParseada.diasUteis()),
+                    linhaParseada.taxa(),
                     TIPO_COTACAO_TAXA_MERCADO_SWAP,
                     null
             ));
@@ -155,12 +116,13 @@ public class B3TaxaSwapParser implements DatasetParser {
      * do caminho genérico ({@link #parse}, que só usa dias úteis porque {@link PontoDadoMercado}
      * não tem campo para os dois). Estático porque este caminho não passa pelo
      * {@code DatasetParserRegistry} genérico — é acionado direto por
-     * {@code ProcessarEnvelopeIngestaoUseCase} para os datasets B3_TAXA_SWAP_DCL/PTX/INP/DPL,
-     * sem instanciar um {@code B3TaxaSwapParser} por curva.
+     * {@code ProcessarEnvelopeIngestaoUseCase} para os datasets do TaxaSwap.txt (PRE/DCL/PTX/
+     * INP/DPL), sem instanciar um {@code B3TaxaSwapParser} por curva.
      *
-     * @throws IllegalArgumentException se alguma linha do código pedido estiver malformada
+     * @throws IllegalArgumentException se o encoding não for suportado ou alguma linha do código
+     *                                   pedido estiver malformada
      */
-    public static java.util.List<VerticeTaxaSwap> extrairVertices(byte[] conteudo, String encoding, String codigoCurva) {
+    public static List<VerticeTaxaSwap> extrairVertices(byte[] conteudo, String encoding, String codigoCurva) {
         Charset charset;
         try {
             charset = Charset.forName(encoding);
@@ -168,45 +130,75 @@ public class B3TaxaSwapParser implements DatasetParser {
             throw new IllegalArgumentException("encoding não suportado: " + encoding, e);
         }
 
+        List<VerticeTaxaSwap> vertices = new ArrayList<>();
+        for (String linha : linhasNaoVazias(conteudo, charset)) {
+            LinhaTaxaSwap linhaParseada = parseLinha(linha, codigoCurva);
+            if (linhaParseada != null) {
+                vertices.add(new VerticeTaxaSwap(
+                        linhaParseada.diasUteis(), linhaParseada.diasCorridos(), linhaParseada.taxa()));
+            }
+        }
+        return vertices;
+    }
+
+    private static List<String> linhasNaoVazias(byte[] conteudo, Charset charset) {
         String textoCompleto = new String(conteudo, charset);
-        String[] linhas = textoCompleto.split("\n", -1);
+        return java.util.Arrays.stream(textoCompleto.split("\n", -1))
+                .map(String::strip)
+                .filter(linha -> !linha.isEmpty())
+                .toList();
+    }
 
-        java.util.List<VerticeTaxaSwap> vertices = new ArrayList<>();
+    /** Uma linha (72 colunas) já decodificada do TaxaSwap.txt, compartilhada por {@link #parse} e {@link #extrairVertices}. */
+    private record LinhaTaxaSwap(int diasUteis, int diasCorridos, BigDecimal taxa) {
+    }
 
-        for (String linhaComEspacos : linhas) {
-            String linha = linhaComEspacos.strip();
-            if (linha.isEmpty()) {
-                continue;
-            }
-
-            if (linha.length() != TAMANHO_LINHA) {
-                throw new IllegalArgumentException(
-                        "linha do arquivo de taxas de swap com tamanho inesperado (esperado " + TAMANHO_LINHA
-                                + " colunas, encontrado " + linha.length() + "): \"" + linha + "\"");
-            }
-
-            String codigoTaxaLinha = linha.substring(21, 26).strip();
-            if (!codigoTaxaLinha.equals(codigoCurva)) {
-                continue;
-            }
-
-            int diasCorridos = Integer.parseInt(linha.substring(41, 46).strip());
-            int diasUteis = Integer.parseInt(linha.substring(46, 51).strip());
-
-            char sinal = linha.charAt(51);
-            if (sinal != '+' && sinal != '-') {
-                throw new IllegalArgumentException(
-                        "sinal da taxa teórica inválido na linha da curva " + codigoCurva + ": '" + sinal + "'");
-            }
-
-            BigDecimal taxa = new BigDecimal(linha.substring(52, 66)).movePointLeft(CASAS_DECIMAIS_TAXA_TEORICA);
-            if (sinal == '-') {
-                taxa = taxa.negate();
-            }
-
-            vertices.add(new VerticeTaxaSwap(diasUteis, diasCorridos, taxa));
+    /**
+     * Parseia uma linha do código de curva pedido — layout compartilhado por {@link #parse} e
+     * {@link #extrairVertices}. Retorna {@code null} (sem erro) quando a linha é de outro código
+     * de curva, o caso comum já que o arquivo real traz mais de 100 códigos misturados.
+     *
+     * @throws IllegalArgumentException se a linha do código pedido estiver malformada
+     */
+    private static LinhaTaxaSwap parseLinha(String linha, String codigoCurva) {
+        if (linha.length() != TAMANHO_LINHA) {
+            throw new IllegalArgumentException(
+                    "linha do arquivo de taxas de swap com tamanho inesperado (esperado " + TAMANHO_LINHA
+                            + " colunas, encontrado " + linha.length() + ")");
         }
 
-        return vertices;
+        String codigoTaxaLinha = linha.substring(21, 26).strip();
+        if (!codigoTaxaLinha.equals(codigoCurva)) {
+            return null;
+        }
+
+        int diasCorridos;
+        int diasUteis;
+        try {
+            diasCorridos = Integer.parseInt(linha.substring(41, 46).strip());
+            diasUteis = Integer.parseInt(linha.substring(46, 51).strip());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "prazo não numérico na linha da curva " + codigoCurva + ": \"" + linha + "\"", e);
+        }
+
+        char sinal = linha.charAt(51);
+        if (sinal != '+' && sinal != '-') {
+            throw new IllegalArgumentException(
+                    "sinal da taxa teórica inválido na linha da curva " + codigoCurva + ": '" + sinal + "'");
+        }
+
+        BigDecimal taxa;
+        try {
+            taxa = new BigDecimal(linha.substring(52, 66)).movePointLeft(CASAS_DECIMAIS_TAXA_TEORICA);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "taxa teórica não numérica na linha da curva " + codigoCurva + ": \"" + linha + "\"", e);
+        }
+        if (sinal == '-') {
+            taxa = taxa.negate();
+        }
+
+        return new LinhaTaxaSwap(diasUteis, diasCorridos, taxa);
     }
 }
