@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://poc-curves/contracts/events/marketdata-raw.schema.json",
   "title": "Payload de Dados Brutos de Mercado (Marketdata Raw)",
-  "description": "Schema do payload dos eventos trafegados nas três faixas de ingestão bruta (rotina, prioritária e massa). Transporta blocos estruturais do arquivo adquirido sem interpretação semântica de regras de negócio pelo feeder.",
+  "description": "Schema do payload dos eventos trafegados nas três faixas de ingestão bruta (rotina, prioritária e massa). Transporta uma referência ao arquivo bruto completo, gravado em blob storage pelo feeder, sem interpretação semântica de regras de negócio.",
   "type": "object",
   "properties": {
     "sourceUrl": {
@@ -23,13 +23,15 @@
       "minimum": 0,
       "description": "Tamanho total em bytes do conteúdo bruto original adquirido."
     },
-    "records": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object"
-      },
-      "description": "Array contendo os registros do bloco atual. O feeder realiza apenas corte estrutural (linhas/blocos), mantendo os registros como objetos livres para normalização posterior pelo curve-processor."
+    "blobContainer": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Nome do container/pasta raiz de primeiro nível no blob storage onde o arquivo bruto foi gravado (ex.: 'b3', 'anbima') — corresponde ao primeiro segmento do caminho <fonte>/<data-referencia>/<nome-arquivo-original>."
+    },
+    "blobPath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Caminho completo do blob dentro do container, incluindo data de referência e nome do arquivo original (ex.: '2026-09-14/TaxaSwap.txt')."
     },
     "curveId": {
       "type": "string",
@@ -41,7 +43,8 @@
     "encoding",
     "contentHash",
     "sizeBytes",
-    "records"
+    "blobContainer",
+    "blobPath"
   ],
   "additionalProperties": false
 }
