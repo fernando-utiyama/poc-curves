@@ -4,23 +4,25 @@ import com.poccurves.orchestrator.application.model.AgendamentoComUltimaExecucao
 import com.poccurves.orchestrator.application.model.Faixa;
 import com.poccurves.orchestrator.application.model.MomentoCurva;
 import com.poccurves.orchestrator.application.port.AgendamentoRepositoryPort;
-import com.poccurves.orchestrator.application.port.AgendamentoSchedulerPort;
 
 
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Cadastro de agendamentos — só escreve no banco. A convergência do registro local de cada
+ * réplica (registrar/cancelar/reagendar no {@code AgendamentoSchedulerPort}) não é mais
+ * responsabilidade daqui: é feita pela reconciliação periódica ({@code ReconciliacaoAgendamentosService},
+ * openspec/changes/orchestrator-multi-instance-scheduling) — antes, mutar o scheduler na mesma
+ * requisição HTTP só convergia a réplica que a atendeu, deixando as demais desatualizadas até
+ * reiniciarem.
+ */
 public class AgendamentoService {
 
     private final AgendamentoRepositoryPort agendamentoRepository;
-    private final AgendamentoSchedulerPort schedulerRegistry;
 
-    public AgendamentoService(
-            AgendamentoRepositoryPort agendamentoRepository,
-            AgendamentoSchedulerPort schedulerRegistry
-    ) {
+    public AgendamentoService(AgendamentoRepositoryPort agendamentoRepository) {
         this.agendamentoRepository = agendamentoRepository;
-        this.schedulerRegistry = schedulerRegistry;
     }
 
     public Agendamento cadastrar(
@@ -40,7 +42,6 @@ public class AgendamentoService {
                 intervaloTentativaSegundos, criadoPor
         );
         agendamentoRepository.inserir(agendamento);
-        schedulerRegistry.registrar(agendamento);
         return agendamento;
     }
 
@@ -57,10 +58,6 @@ public class AgendamentoService {
 
         agendamento.editar(expressaoHorario, fusoHorario, janelaTentativaMinutos, intervaloTentativaSegundos, faixa);
         agendamentoRepository.atualizar(agendamento);
-
-        if (agendamento.ativo()) {
-            schedulerRegistry.reagendar(agendamento);
-        }
         return agendamento;
     }
 
@@ -74,7 +71,6 @@ public class AgendamentoService {
 
         agendamento.ativar();
         agendamentoRepository.atualizar(agendamento);
-        schedulerRegistry.registrar(agendamento);
         return agendamento;
     }
 
@@ -88,7 +84,6 @@ public class AgendamentoService {
 
         agendamento.desativar();
         agendamentoRepository.atualizar(agendamento);
-        schedulerRegistry.cancelar(id);
         return agendamento;
     }
 

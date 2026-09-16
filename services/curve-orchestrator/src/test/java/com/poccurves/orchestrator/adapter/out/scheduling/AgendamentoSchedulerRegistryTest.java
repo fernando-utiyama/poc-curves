@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -88,5 +89,43 @@ class AgendamentoSchedulerRegistryTest {
         Object future2 = getMap(registry).get(a.id());
         assertThat(future1).isNotSameAs(future2);
         assertThat(getMap(registry)).hasSize(1);
+    }
+
+    @Test
+    void reconciliarRegistraCancelaEReagendaConformeOCatalogo() throws Exception {
+        Agendamento mantidoSemMudanca = Agendamento.criar(
+                UUID.randomUUID(), null, MomentoCurva.INTRADIA, Faixa.ROTINA,
+                "0 0 12 * * ?", "America/Sao_Paulo", 30, 60, "teste"
+        );
+        Agendamento seraDesativado = Agendamento.criar(
+                UUID.randomUUID(), null, MomentoCurva.INTRADIA, Faixa.ROTINA,
+                "0 0 13 * * ?", "America/Sao_Paulo", 30, 60, "teste"
+        );
+        Agendamento teraHorarioAlterado = Agendamento.criar(
+                UUID.randomUUID(), null, MomentoCurva.INTRADIA, Faixa.ROTINA,
+                "0 0 14 * * ?", "America/Sao_Paulo", 30, 60, "teste"
+        );
+
+        registry.registrar(mantidoSemMudanca);
+        registry.registrar(seraDesativado);
+        registry.registrar(teraHorarioAlterado);
+        assertThat(getMap(registry)).hasSize(3);
+        Object futureMantido = getMap(registry).get(mantidoSemMudanca.id());
+        Object futureAlterado = getMap(registry).get(teraHorarioAlterado.id());
+
+        Agendamento novoNaProximaReconciliacao = Agendamento.criar(
+                UUID.randomUUID(), null, MomentoCurva.INTRADIA, Faixa.ROTINA,
+                "0 0 15 * * ?", "America/Sao_Paulo", 30, 60, "teste"
+        );
+        teraHorarioAlterado.editar("0 30 14 * * ?", "America/Sao_Paulo", 30, 60, Faixa.ROTINA);
+
+        registry.reconciliar(List.of(mantidoSemMudanca, teraHorarioAlterado, novoNaProximaReconciliacao));
+
+        ConcurrentHashMap<UUID, ?> mapFinal = getMap(registry);
+        assertThat(mapFinal).hasSize(3);
+        assertThat(mapFinal).doesNotContainKey(seraDesativado.id());
+        assertThat(mapFinal.get(mantidoSemMudanca.id())).isSameAs(futureMantido);
+        assertThat(mapFinal.get(teraHorarioAlterado.id())).isNotSameAs(futureAlterado);
+        assertThat(mapFinal).containsKey(novoNaProximaReconciliacao.id());
     }
 }

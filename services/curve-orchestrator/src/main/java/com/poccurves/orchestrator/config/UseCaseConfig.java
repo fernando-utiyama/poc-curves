@@ -17,6 +17,7 @@ import com.poccurves.orchestrator.application.usecase.DisparoAgendadoExecutor;
 import com.poccurves.orchestrator.application.usecase.DisparoManualService;
 import com.poccurves.orchestrator.application.usecase.ExecucoesService;
 import com.poccurves.orchestrator.application.usecase.MaterializarPendenciaDlqUseCase;
+import com.poccurves.orchestrator.application.usecase.ReconciliacaoAgendamentosService;
 import com.poccurves.orchestrator.application.usecase.ReconciliacaoService;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -29,10 +30,15 @@ import java.util.concurrent.ExecutorService;
 public class UseCaseConfig {
 
     @Bean
-    public AgendamentoService agendamentoService(
+    public AgendamentoService agendamentoService(AgendamentoRepositoryPort agendamentoRepository) {
+        return new AgendamentoService(agendamentoRepository);
+    }
+
+    @Bean
+    public ReconciliacaoAgendamentosService reconciliacaoAgendamentosService(
             AgendamentoRepositoryPort agendamentoRepository,
             AgendamentoSchedulerPort schedulerRegistry) {
-        return new AgendamentoService(agendamentoRepository, schedulerRegistry);
+        return new ReconciliacaoAgendamentosService(agendamentoRepository, schedulerRegistry);
     }
 
     @Bean

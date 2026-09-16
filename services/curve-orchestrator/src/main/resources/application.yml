@@ -39,6 +39,11 @@ services:
     timeout-seconds: ${CURVE_ENGINE_TIMEOUT_SECONDS:5}
 
 agendamento:
+  reconciliacao:
+    # Intervalo entre reconciliações periódicas do catálogo de agendamentos contra o registro
+    # local de cada réplica (AgendamentoReconciliacaoScheduler) — converge criação, edição,
+    # ativação e desativação de agendamento sem depender de reinício.
+    intervalo-segundos: ${AGENDAMENTO_RECONCILIACAO_INTERVALO_SEGUNDOS:30}
   execucao-presa:
     # Tempo mínimo desde iniciado_em para uma execução não-terminal ser considerada presa de
     # verdade (openspec/changes/orchestrator-multi-instance-scheduling) — deliberadamente
