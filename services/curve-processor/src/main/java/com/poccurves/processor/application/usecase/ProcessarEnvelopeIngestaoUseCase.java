@@ -205,10 +205,10 @@ public class ProcessarEnvelopeIngestaoUseCase {
     }
 
     /**
-     * Caminho novo para as curvas TS B3 (DCL/PTX/INP/DPL, openspec/changes/legado-schema-curvas-
-     * mercado) — grava direto em {@code tBtrsCurvaPrimr} (schema legado, db/migration/V22/V23),
-     * substituindo por completo o caminho genérico (ponto_dado_mercado/lote_ingestao/
-     * versao_curva/vertice_curva) para esses datasets. Não passa pelo {@link DatasetParserRegistry}
+     * Caminho novo para as curvas TS B3 (PRE/DCL/PTX/INP/DPL, openspec/changes/legado-schema-
+     * curvas-mercado) — grava direto em {@code tBtrsCurvaPrimr} (schema legado, db/migration/
+     * V22/V23/V24), substituindo por completo o caminho genérico (ponto_dado_mercado/
+     * lote_ingestao/versao_curva/vertice_curva) para esses datasets. Não passa pelo {@link DatasetParserRegistry}
      * nem pelo {@link IngestaoService} — extrai os vértices direto do blob via
      * {@link B3TaxaSwapParser#extrairVertices} (que, diferente do caminho genérico, também
      * captura dias corridos, não só dias úteis — {@code tBtrsCurvaPrimr} tem coluna para os

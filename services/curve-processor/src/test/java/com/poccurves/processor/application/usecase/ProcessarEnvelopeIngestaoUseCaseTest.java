@@ -154,7 +154,8 @@ class ProcessarEnvelopeIngestaoUseCaseTest {
      */
     private static final String LINHA_DCL_REAL_1 = "0049060010120260914T1DCL  CUPOM LIMPO - S0000100001-00001179600000F00001";
     private static final String LINHA_DCL_REAL_2 = "0049100010120260914T1DCL  CUPOM LIMPO - S0000700005-00000065400000F00007";
-    private static final byte[] CONTEUDO_TAXA_SWAP = String.join("\n", LINHA_DCL_REAL_1, LINHA_DCL_REAL_2)
+    private static final String LINHA_PRE_REAL = "0146360010120260914T1PRE  DIxPRE         0000100001+00000139000000F00001";
+    private static final byte[] CONTEUDO_TAXA_SWAP = String.join("\n", LINHA_DCL_REAL_1, LINHA_DCL_REAL_2, LINHA_PRE_REAL)
             .getBytes(StandardCharsets.ISO_8859_1);
     private static final UUID CORRELATION_ID_TAXA_SWAP = UUID.fromString("c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33");
 
@@ -214,6 +215,26 @@ class ProcessarEnvelopeIngestaoUseCaseTest {
     }
 
     @Test
+    void gravaPreDIxPreEmTBtrsCurvaPrimrIgnorandoLinhasDeOutrosCodigosNoMesmoArquivo() throws Exception {
+        BtrsCurvaPrimrRepositoryPort btrsCurvaPrimrRepositoryMock = mock(BtrsCurvaPrimrRepositoryPort.class);
+        IngestaoService ingestaoServiceMock = mock(IngestaoService.class);
+        ProcessarEnvelopeIngestaoUseCase useCase = new ProcessarEnvelopeIngestaoUseCase(
+                new DatasetParserRegistry(List.of()), ingestaoServiceMock, new MetricasIngestao(new SimpleMeterRegistry()),
+                mock(ExecucaoCurvaLeituraRepositoryPort.class), mock(PontoDadoMercadoRepositoryPort.class),
+                mock(PublicacaoCurvaService.class), mock(NormalizedEventPort.class), blobStorageReadPortComTaxaSwap(),
+                btrsCurvaPrimrRepositoryMock);
+
+        useCase.processar(envelopeTaxaSwap("B3_TAXA_SWAP_PRE"));
+
+        // O mesmo arquivo tem 2 linhas DCL antes da linha PRE — só a de PRE deve virar vértice.
+        verify(btrsCurvaPrimrRepositoryMock).substituirVertices(
+                "B3_TAXA_SWAP_PRE", LocalDate.of(2026, 9, 14), List.of(
+                        new VerticeTaxaSwap(1, 1, new BigDecimal("13.9000000"))));
+
+        verifyNoInteractions(ingestaoServiceMock);
+    }
+
+    @Test
     void gravaSomenteOCodigoDeCurvaPedidoIgnorandoOutrosNoMesmoArquivo() throws Exception {
         BtrsCurvaPrimrRepositoryPort btrsCurvaPrimrRepositoryMock = mock(BtrsCurvaPrimrRepositoryPort.class);
         ProcessarEnvelopeIngestaoUseCase useCase = new ProcessarEnvelopeIngestaoUseCase(
@@ -222,7 +243,7 @@ class ProcessarEnvelopeIngestaoUseCaseTest {
                 mock(PublicacaoCurvaService.class), mock(NormalizedEventPort.class), blobStorageReadPortComTaxaSwap(),
                 btrsCurvaPrimrRepositoryMock);
 
-        // O arquivo só tem linhas DCL — pedir PTX (não presente) deve falhar, não gravar nada.
+        // O arquivo só tem linhas DCL e PRE — pedir PTX (não presente) deve falhar, não gravar nada.
         assertThatThrownBy(() -> useCase.processar(envelopeTaxaSwap("B3_TAXA_SWAP_PTX")))
                 .isInstanceOf(ParseFalhouException.class);
 
