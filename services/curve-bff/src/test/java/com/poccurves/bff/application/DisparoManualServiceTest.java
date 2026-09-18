@@ -35,7 +35,7 @@ class DisparoManualServiceTest {
         // 2026-08-23 é Domingo
         LocalDate domingo = LocalDate.of(2026, 8, 23);
         DisparoManualRequest request = new DisparoManualRequest(
-                domingo, List.of("BVBG_086"), "Disparo de teste em domingo"
+                domingo, List.of("B3_TAXA_SWAP_DCL"), "Disparo de teste em domingo"
         );
 
         DisparoManualResponse response = service.disparoManual(request);
@@ -54,15 +54,15 @@ class DisparoManualServiceTest {
     void deveDelegarDisparoComDoisConjuntosDeInsumoAoOrquestradorSemAlterarAResposta() {
         LocalDate diaUtil = LocalDate.of(2026, 8, 21); // sexta-feira
         DisparoManualRequest request = new DisparoManualRequest(
-                diaUtil, List.of("BVBG_086", "BVBG_028"), "Disparo de teste com dois insumos"
+                diaUtil, List.of("B3_TAXA_SWAP_DCL", "B3_TAXA_SWAP_PTX"), "Disparo de teste com dois insumos"
         );
         DisparoManualResponse respostaReal = new DisparoManualResponse(
                 "corr-real-123",
                 "DISPARADO",
                 "Disparo aceito pelo orquestrador.",
                 List.of(
-                        new ProgressoConjuntoDTO("BVBG_086", "INICIADO", "na fila"),
-                        new ProgressoConjuntoDTO("BVBG_028", "INICIADO", "na fila")
+                        new ProgressoConjuntoDTO("B3_TAXA_SWAP_DCL", "INICIADO", "na fila"),
+                        new ProgressoConjuntoDTO("B3_TAXA_SWAP_PTX", "INICIADO", "na fila")
                 )
         );
         when(orchestratorClient.disparoManual(request)).thenReturn(respostaReal);
@@ -84,7 +84,7 @@ class DisparoManualServiceTest {
     @Test
     void devePassarAdianteOStatusJaEmAndamentoRetornadoPeloOrquestrador() {
         LocalDate diaUtil = LocalDate.of(2026, 8, 21);
-        DisparoManualRequest request = new DisparoManualRequest(diaUtil, List.of("BVBG_086"), "teste");
+        DisparoManualRequest request = new DisparoManualRequest(diaUtil, List.of("B3_TAXA_SWAP_DCL"), "teste");
         DisparoManualResponse respostaJaEmAndamento = new DisparoManualResponse(
                 "corr-existente-456", "JA_EM_ANDAMENTO", "Já existe uma execução em andamento para esta data.", List.of());
         when(orchestratorClient.disparoManual(request)).thenReturn(respostaJaEmAndamento);
@@ -103,7 +103,7 @@ class DisparoManualServiceTest {
     @Test
     void devePropagarFalhaQuandoOrquestradorNaoResponde() {
         LocalDate diaUtil = LocalDate.of(2026, 8, 21);
-        DisparoManualRequest request = new DisparoManualRequest(diaUtil, List.of("BVBG_086"), "teste");
+        DisparoManualRequest request = new DisparoManualRequest(diaUtil, List.of("B3_TAXA_SWAP_DCL"), "teste");
         when(orchestratorClient.disparoManual(any()))
                 .thenThrow(HttpServerErrorException.create(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Not Found", null, null, null));

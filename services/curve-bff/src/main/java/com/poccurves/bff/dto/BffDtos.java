@@ -173,7 +173,7 @@ public class BffDtos {
 
     public record DisparoManualRequest(
             @JsonFormat(pattern = "yyyy-MM-dd") LocalDate dataReferencia,
-            List<String> conjuntosInsumo, // [BVBG_086, BVBG_028, PRECOS, TAXAS_REFERENCIA]
+            List<String> conjuntosInsumo, // ex.: [B3_TAXA_SWAP_DCL, B3_TAXA_SWAP_PTX, B3_CURVA_PRE]
             String justificativa
     ) {}
 

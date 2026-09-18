@@ -48,7 +48,7 @@ class FunctionMarketdataClientIT {
         FunctionMarketdataClient client = new FunctionMarketdataClient(clienteParaPorta(8091));
 
         FunctionMarketdataClient.ResultadoAquisicao resultado = client.acionar(
-                "BVBG.086", LocalDate.of(2035, 6, 15), "ROTINA", UUID.randomUUID());
+                "B3_TAXA_SWAP_DCL", LocalDate.of(2035, 6, 15), "ROTINA", UUID.randomUUID());
 
         assertThat(resultado).isNotNull();
         assertThat(resultado.kind()).isEqualTo("NO_DATA");
@@ -77,7 +77,7 @@ class FunctionMarketdataClientIT {
         FunctionMarketdataClient client = new FunctionMarketdataClient(clienteParaPorta(porta));
 
         FunctionMarketdataClient.ResultadoAquisicao resultado = client.acionar(
-                "BVBG.028", LocalDate.of(2026, 8, 21), "PRIORITARIA", UUID.randomUUID());
+                "B3_TAXA_SWAP_PTX", LocalDate.of(2026, 8, 21), "PRIORITARIA", UUID.randomUUID());
 
         assertThat(resultado).isNotNull();
         assertThat(resultado.kind()).isEqualTo("FAILED");

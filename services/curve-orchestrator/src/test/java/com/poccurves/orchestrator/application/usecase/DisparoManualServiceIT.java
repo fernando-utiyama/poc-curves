@@ -74,14 +74,14 @@ class DisparoManualServiceIT {
 
     @AfterEach
     void limpar() {
-        jdbcTemplateSa().update("DELETE FROM execucao_curva WHERE conjunto_dados LIKE 'IT[DSU]_%' OR conjunto_dados = 'BVBG.086'");
+        jdbcTemplateSa().update("DELETE FROM execucao_curva WHERE conjunto_dados LIKE 'IT[DSU]_%' OR conjunto_dados = 'B3_TAXA_SWAP_DCL'");
     }
 
     @Test
     void disparoManualParaDataFuturaSemDadoPersisteExecucaoSemDado() {
         // Precisa ser um dataset real reconhecido pelo RegistroFeeders (function-marketdata) —
         // um nome inventado faz o feeder devolver 400 (DatasetNaoSuportadoError), não NO_DATA.
-        String conjunto = "BVBG.086";
+        String conjunto = "B3_TAXA_SWAP_DCL";
         DisparoManualRequest request = new DisparoManualRequest(
                 LocalDate.of(2035, 6, 15), List.of(conjunto), "teste de auditoria");
 

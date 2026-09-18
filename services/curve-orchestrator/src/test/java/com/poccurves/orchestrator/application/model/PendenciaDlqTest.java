@@ -18,7 +18,7 @@ class PendenciaDlqTest {
                 "PARSE_FAILED",
                 null,
                 "B3",
-                "PR_DI1",
+                "B3_TAXA_SWAP_DCL",
                 LocalDate.now(),
                 "marketdata.rotina.v1",
                 2,
@@ -44,7 +44,7 @@ class PendenciaDlqTest {
                 "SCHEMA_VALIDATION_ERROR",
                 "Campo taxa inválido",
                 "B3",
-                "PR_DI1",
+                "B3_TAXA_SWAP_DCL",
                 dataReferencia,
                 "marketdata.rotina.v1",
                 1,
@@ -63,7 +63,7 @@ class PendenciaDlqTest {
         assertThat(pendencia.motivo()).isEqualTo("SCHEMA_VALIDATION_ERROR");
         assertThat(pendencia.detalhe()).isEqualTo("Campo taxa inválido");
         assertThat(pendencia.fonte()).isEqualTo("B3");
-        assertThat(pendencia.conjuntoDados()).isEqualTo("PR_DI1");
+        assertThat(pendencia.conjuntoDados()).isEqualTo("B3_TAXA_SWAP_DCL");
         assertThat(pendencia.dataReferencia()).isEqualTo(dataReferencia);
         assertThat(pendencia.topicoOrigem()).isEqualTo("marketdata.rotina.v1");
         assertThat(pendencia.particaoOrigem()).isEqualTo(1);
@@ -88,46 +88,46 @@ class PendenciaDlqTest {
         Instant falhouEm = Instant.now();
 
         // idEvento
-        assertThatThrownBy(() -> PendenciaDlq.abrir(null, correlacaoId, "MOTIVO", null, "B3", "PR_DI1", dataRef, "topico.in", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
+        assertThatThrownBy(() -> PendenciaDlq.abrir(null, correlacaoId, "MOTIVO", null, "B3", "B3_TAXA_SWAP_DCL", dataRef, "topico.in", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("idEvento");
-        assertThatThrownBy(() -> PendenciaDlq.abrir("", correlacaoId, "MOTIVO", null, "B3", "PR_DI1", dataRef, "topico.in", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
+        assertThatThrownBy(() -> PendenciaDlq.abrir("", correlacaoId, "MOTIVO", null, "B3", "B3_TAXA_SWAP_DCL", dataRef, "topico.in", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("idEvento");
-        assertThatThrownBy(() -> PendenciaDlq.abrir("   ", correlacaoId, "MOTIVO", null, "B3", "PR_DI1", dataRef, "topico.in", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
+        assertThatThrownBy(() -> PendenciaDlq.abrir("   ", correlacaoId, "MOTIVO", null, "B3", "B3_TAXA_SWAP_DCL", dataRef, "topico.in", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("idEvento");
 
         // motivo
-        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, null, null, "B3", "PR_DI1", dataRef, "topico.in", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
+        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, null, null, "B3", "B3_TAXA_SWAP_DCL", dataRef, "topico.in", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("motivo");
-        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "", null, "B3", "PR_DI1", dataRef, "topico.in", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
+        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "", null, "B3", "B3_TAXA_SWAP_DCL", dataRef, "topico.in", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("motivo");
-        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "   ", null, "B3", "PR_DI1", dataRef, "topico.in", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
+        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "   ", null, "B3", "B3_TAXA_SWAP_DCL", dataRef, "topico.in", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("motivo");
 
         // topicoOrigem
-        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "MOTIVO", null, "B3", "PR_DI1", dataRef, null, 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
+        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "MOTIVO", null, "B3", "B3_TAXA_SWAP_DCL", dataRef, null, 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("topicoOrigem");
-        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "MOTIVO", null, "B3", "PR_DI1", dataRef, "", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
+        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "MOTIVO", null, "B3", "B3_TAXA_SWAP_DCL", dataRef, "", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("topicoOrigem");
-        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "MOTIVO", null, "B3", "PR_DI1", dataRef, "   ", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
+        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "MOTIVO", null, "B3", "B3_TAXA_SWAP_DCL", dataRef, "   ", 0, 0L, "topico.dlq", 0, 0L, "grupo", "1.0", falhouEm))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("topicoOrigem");
 
         // topicoDlq
-        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "MOTIVO", null, "B3", "PR_DI1", dataRef, "topico.in", 0, 0L, null, 0, 0L, "grupo", "1.0", falhouEm))
+        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "MOTIVO", null, "B3", "B3_TAXA_SWAP_DCL", dataRef, "topico.in", 0, 0L, null, 0, 0L, "grupo", "1.0", falhouEm))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("topicoDlq");
-        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "MOTIVO", null, "B3", "PR_DI1", dataRef, "topico.in", 0, 0L, "", 0, 0L, "grupo", "1.0", falhouEm))
+        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "MOTIVO", null, "B3", "B3_TAXA_SWAP_DCL", dataRef, "topico.in", 0, 0L, "", 0, 0L, "grupo", "1.0", falhouEm))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("topicoDlq");
-        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "MOTIVO", null, "B3", "PR_DI1", dataRef, "topico.in", 0, 0L, "   ", 0, 0L, "grupo", "1.0", falhouEm))
+        assertThatThrownBy(() -> PendenciaDlq.abrir("evt-1", correlacaoId, "MOTIVO", null, "B3", "B3_TAXA_SWAP_DCL", dataRef, "topico.in", 0, 0L, "   ", 0, 0L, "grupo", "1.0", falhouEm))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("topicoDlq");
     }
@@ -140,7 +140,7 @@ class PendenciaDlqTest {
                 "PARSE_FAILED",
                 null,
                 "B3",
-                "PR_DI1",
+                "B3_TAXA_SWAP_DCL",
                 LocalDate.now(),
                 "marketdata.rotina.v1",
                 2,

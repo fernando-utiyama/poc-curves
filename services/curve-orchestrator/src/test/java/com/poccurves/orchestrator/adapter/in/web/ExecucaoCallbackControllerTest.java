@@ -35,7 +35,7 @@ class ExecucaoCallbackControllerTest {
 
     private ExecucaoCurva criarExecucaoEmConstruindo() {
         ExecucaoCurva execucao = ExecucaoCurva.iniciar(
-                UUID.randomUUID(), null, null, "BVBG.086", LocalDate.of(2026, 8, 25),
+                UUID.randomUUID(), null, null, "B3_TAXA_SWAP_DCL", LocalDate.of(2026, 8, 25),
                 MomentoCurva.FECHAMENTO, TipoDisparo.AGENDADO, "sistema",
                 Faixa.ROTINA, null, null);
         execucao.iniciarExecucao();

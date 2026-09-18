@@ -34,7 +34,7 @@ class AlertasServiceTest {
         Instant umaHoraEMeiaAtras = Instant.now().minus(90, ChronoUnit.MINUTES);
 
         GrupoPendenciaDTO grupo = new GrupoPendenciaDTO(
-                UUID.randomUUID(), "ERRO_SCHEMA", "B3", "BVBG_086", LocalDate.now(), 5,
+                UUID.randomUUID(), "ERRO_SCHEMA", "B3", "B3_TAXA_SWAP_DCL", LocalDate.now(), 5,
                 umaHoraEMeiaAtras, Instant.now(), "Campo ausente", "ABERTO"
         );
 
@@ -103,7 +103,7 @@ class AlertasServiceTest {
     void deveClassificarSeveridadeCriticaQuandoPendenciaMaisAntigaPassarDeQuatroHoras() {
         Instant cincoHorasAtras = Instant.now().minus(300, ChronoUnit.MINUTES);
         GrupoPendenciaDTO grupo = new GrupoPendenciaDTO(
-                UUID.randomUUID(), "ERRO_SCHEMA", "B3", "BVBG_086", LocalDate.now(), 20,
+                UUID.randomUUID(), "ERRO_SCHEMA", "B3", "B3_TAXA_SWAP_DCL", LocalDate.now(), 20,
                 cincoHorasAtras, Instant.now(), "Campo ausente", "ABERTO");
 
         when(orchestratorClient.getPendenciasSumario())

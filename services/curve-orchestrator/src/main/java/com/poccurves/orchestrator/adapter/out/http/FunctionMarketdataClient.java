@@ -44,7 +44,7 @@ public class FunctionMarketdataClient implements FunctionMarketdataPort {
      * Resposta HTTP 502 representa um resultado de negócio do tipo {@code FAILED}
      * com corpo estruturado, sendo desserializado normalmente sem disparar exceção de transporte.
      *
-     * @param dataset identificador do dataset (ex: "BVBG.086", "BVBG.028")
+     * @param dataset identificador do dataset (ex: "B3_TAXA_SWAP_DCL", "B3_CURVA_PRE")
      * @param referenceDate data de referência
      * @param faixa faixa de execução ("ROTINA", "PRIORITARIA", "MASSA")
      * @param correlationId identificador de correlação da orquestração

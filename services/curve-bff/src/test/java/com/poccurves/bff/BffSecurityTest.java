@@ -59,7 +59,7 @@ class BffSecurityTest {
         mockMvc.perform(post("/api/v1/acoes/disparo-manual")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_CURVE_VIEWER")))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"conjuntosInsumo\":[\"BVBG_086\"]}"))
+                        .content("{\"conjuntosInsumo\":[\"B3_TAXA_SWAP_DCL\"]}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -71,7 +71,7 @@ class BffSecurityTest {
         mockMvc.perform(post("/api/v1/acoes/disparo-manual")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_CURVE_OPERATOR")))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"conjuntosInsumo\":[\"BVBG_086\"]}"))
+                        .content("{\"conjuntosInsumo\":[\"B3_TAXA_SWAP_DCL\"]}"))
                 .andExpect(status().isOk());
     }
 }

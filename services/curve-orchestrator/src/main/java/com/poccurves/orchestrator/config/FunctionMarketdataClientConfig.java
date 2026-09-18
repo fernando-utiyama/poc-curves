@@ -10,7 +10,7 @@ import java.time.Duration;
 
 /**
  * Configuração do cliente HTTP para o function-marketdata-http.
- * Acionamento de aquisição de insumos (BVBG.086, BVBG.028, etc.).
+ * Acionamento de aquisição de insumos (B3_TAXA_SWAP_DCL, B3_CURVA_PRE, etc.).
  */
 @Configuration
 public class FunctionMarketdataClientConfig {

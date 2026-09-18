@@ -15,7 +15,7 @@ class ExecucaoCurvaTest {
                 UUID.randomUUID(),
                 null,
                 null,
-                "PR_DI1",
+                "B3_TAXA_SWAP_DCL",
                 LocalDate.now(),
                 MomentoCurva.FECHAMENTO,
                 TipoDisparo.AGENDADO,
@@ -35,7 +35,7 @@ class ExecucaoCurvaTest {
                 correlacaoId,
                 null,
                 null,
-                "PR_DI1",
+                "B3_TAXA_SWAP_DCL",
                 dataReferencia,
                 MomentoCurva.FECHAMENTO,
                 TipoDisparo.AGENDADO,
@@ -49,7 +49,7 @@ class ExecucaoCurvaTest {
         assertThat(execucao.correlacaoId()).isEqualTo(correlacaoId);
         assertThat(execucao.execucaoPaiId()).isNull();
         assertThat(execucao.definicaoCurvaId()).isNull();
-        assertThat(execucao.conjuntoDados()).isEqualTo("PR_DI1");
+        assertThat(execucao.conjuntoDados()).isEqualTo("B3_TAXA_SWAP_DCL");
         assertThat(execucao.dataReferencia()).isEqualTo(dataReferencia);
         assertThat(execucao.momentoCurva()).isEqualTo(MomentoCurva.FECHAMENTO);
         assertThat(execucao.disparo()).isEqualTo(TipoDisparo.AGENDADO);
@@ -185,15 +185,15 @@ class ExecucaoCurvaTest {
 
     @Test
     void deveLancarExcecaoQuandoCamposObrigatoriosForemNulosNoIniciar() {
-        assertThatThrownBy(() -> ExecucaoCurva.iniciar(null, null, null, "PR_DI1", LocalDate.now(), MomentoCurva.FECHAMENTO, TipoDisparo.AGENDADO, null, Faixa.ROTINA, null, null))
+        assertThatThrownBy(() -> ExecucaoCurva.iniciar(null, null, null, "B3_TAXA_SWAP_DCL", LocalDate.now(), MomentoCurva.FECHAMENTO, TipoDisparo.AGENDADO, null, Faixa.ROTINA, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("correlacaoId");
 
-        assertThatThrownBy(() -> ExecucaoCurva.iniciar(UUID.randomUUID(), null, null, "PR_DI1", LocalDate.now(), MomentoCurva.FECHAMENTO, null, null, Faixa.ROTINA, null, null))
+        assertThatThrownBy(() -> ExecucaoCurva.iniciar(UUID.randomUUID(), null, null, "B3_TAXA_SWAP_DCL", LocalDate.now(), MomentoCurva.FECHAMENTO, null, null, Faixa.ROTINA, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("disparo");
 
-        assertThatThrownBy(() -> ExecucaoCurva.iniciar(UUID.randomUUID(), null, null, "PR_DI1", LocalDate.now(), MomentoCurva.FECHAMENTO, TipoDisparo.AGENDADO, null, null, null, null))
+        assertThatThrownBy(() -> ExecucaoCurva.iniciar(UUID.randomUUID(), null, null, "B3_TAXA_SWAP_DCL", LocalDate.now(), MomentoCurva.FECHAMENTO, TipoDisparo.AGENDADO, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("faixa");
     }
