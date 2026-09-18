@@ -16,7 +16,7 @@ public class CurveEngineClient implements CurveEnginePort {
 
     private final RestClient restClient;
 
-    public CurveEngineClient(@Qualifier("curveEngineClient") RestClient restClient) {
+    public CurveEngineClient(@Qualifier("curveEngineRestClient") RestClient restClient) {
         this.restClient = restClient;
     }
 
@@ -38,15 +38,6 @@ public class CurveEngineClient implements CurveEnginePort {
                     SecaoDegradadaDTO.erro("Serviço curve-engine indisponível: " + e.getMessage())
             );
         }
-    }
-
-    public ComparacaoResponse compararModelos(ComparacaoModelosRequest request) {
-        return restClient.post()
-                .uri("/api/v1/modelos/comparar")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(request)
-                .retrieve()
-                .body(ComparacaoResponse.class);
     }
 
     public ImportarModeloResponse validarScriptGroovy(ImportarModeloGroovyRequest request) {

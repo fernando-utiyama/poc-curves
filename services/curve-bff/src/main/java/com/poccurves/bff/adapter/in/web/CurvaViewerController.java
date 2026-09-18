@@ -1,15 +1,11 @@
 package com.poccurves.bff.adapter.in.web;
 
 import com.poccurves.bff.dto.BffDtos.CurvaViewerResponse;
-import com.poccurves.bff.dto.BffDtos.InterpolacaoRequest;
-import com.poccurves.bff.dto.BffDtos.InterpolacaoResponse;
 import com.poccurves.bff.application.CurvaViewerService;
-import com.poccurves.bff.application.InterpolacaoService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.time.LocalDate;
 
 @RestController
@@ -22,14 +18,12 @@ public class CurvaViewerController {
         this.viewerService = viewerService;
     }
 
-    @GetMapping("/{codigo}/viewer")
+    @GetMapping("/{ticker}/viewer")
     public ResponseEntity<CurvaViewerResponse> getCurvaViewer(
-            @PathVariable String codigo,
+            @PathVariable String ticker,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataReferencia,
-            @RequestParam(defaultValue = "FECHAMENTO") String momento,
-            @RequestParam(required = false) Integer versao,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant asOf
+            @RequestParam(defaultValue = "FECHAMENTO") String momento
     ) {
-        return ResponseEntity.ok(viewerService.obterCurvaViewer(codigo, dataReferencia, momento, versao, asOf));
+        return ResponseEntity.ok(viewerService.obterCurvaViewer(ticker, dataReferencia, momento));
     }
 }

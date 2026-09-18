@@ -20,7 +20,7 @@ public class CurveOrchestratorClient implements CurveOrchestratorPort {
 
     private final RestClient restClient;
 
-    public CurveOrchestratorClient(@Qualifier("curveOrchestratorClient") RestClient restClient) {
+    public CurveOrchestratorClient(@Qualifier("curveOrchestratorRestClient") RestClient restClient) {
         this.restClient = restClient;
     }
 

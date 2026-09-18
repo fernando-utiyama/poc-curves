@@ -56,8 +56,9 @@ public class BffSecurityConfig {
                         .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/metrics").permitAll()
 
                         // Ações restritas a Administrador
-                        .requestMatchers(HttpMethod.POST, "/api/v1/curvas/*/definicao").hasRole("CURVE_ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/curvas/*/definicao").hasRole("CURVE_ADMIN")
+                        // Criar/atualizar definição de curva não existe mais (POST/PUT
+                        // /api/v1/curvas/*/definicao removidos) — curve-api migrou para o
+                        // catálogo achatado tCurvaMercd, sem CRUD de definição via API.
                         .requestMatchers(HttpMethod.POST, "/api/v1/modelos/importar").hasRole("CURVE_ADMIN")
                         // Regra fantasma, encontrada na auditoria desta sessão: não existe
                         // nenhum controller/endpoint /api/v1/modelos/trocar — a troca de

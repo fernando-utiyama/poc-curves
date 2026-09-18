@@ -2,6 +2,8 @@ package com.poccurves.bff.application;
 
 import com.poccurves.bff.dto.BffDtos.*;
 
+import java.util.NoSuchElementException;
+
 public class CatalogoService {
 
     private final CurveApiPort curveApiClient;
@@ -10,23 +12,12 @@ public class CatalogoService {
         this.curveApiClient = curveApiClient;
     }
 
-    public CatalogoResponse getCatalogo(String codigo, String modoOrigem, String estado, int pagina, int tamanho) {
-        return curveApiClient.getCatalogo(codigo, modoOrigem, estado, pagina, tamanho);
+    public CatalogoResponse listarCurvas() {
+        return curveApiClient.getCatalogo();
     }
 
-    public DefinicaoCurvaDTO getDefinicao(String codigo) {
-        return curveApiClient.getDefinicaoCurva(codigo);
-    }
-
-    public DefinicaoCurvaDTO criarDefinicao(String codigo, CriarOuAtualizarDefinicaoCurvaRequest req) {
-        return curveApiClient.criarDefinicaoCurva(codigo, req);
-    }
-
-    public DefinicaoCurvaDTO atualizarDefinicao(String codigo, CriarOuAtualizarDefinicaoCurvaRequest req) {
-        return curveApiClient.atualizarDefinicaoCurva(codigo, req);
-    }
-
-    public byte[] downloadModeloCarga(String codigo, String formato) {
-        return curveApiClient.downloadModeloCarga(codigo, formato);
+    public CurvaMercadoDTO obterCurva(String ticker) {
+        return curveApiClient.getCurva(ticker)
+                .orElseThrow(() -> new NoSuchElementException("Curva '" + ticker + "' não encontrada."));
     }
 }

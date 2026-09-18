@@ -34,11 +34,6 @@ public class ModelosController {
         return ResponseEntity.ok(modelosService.importarModeloGroovy(request));
     }
 
-    @PostMapping("/modelos/comparar")
-    public ResponseEntity<ComparacaoResponse> compararModelos(@RequestBody ComparacaoModelosRequest request) {
-        return ResponseEntity.ok(comparacaoService.compararModelos(request));
-    }
-
     @PostMapping({"/curvas/comparacao", "/comparacao"})
     public ResponseEntity<ComparacaoResponse> compararCurvas(@RequestBody ComparacaoCurvasRequest request) {
         return ResponseEntity.ok(comparacaoService.compararCurvas(request));

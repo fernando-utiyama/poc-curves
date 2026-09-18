@@ -21,44 +21,36 @@ public class PainelDoDiaService {
     public PainelDoDiaResponse obterPainelDoDia(LocalDate dataReferencia) {
         LocalDate dataRef = dataReferencia != null ? dataReferencia : LocalDate.now();
 
-        // Obtém catálogo de definições
-        CatalogoResponse catalogo = curveApiClient.getCatalogo(null, null, "ATIVA", 0, 100);
+        CatalogoResponse catalogo = curveApiClient.getCatalogo();
         List<ItemPainelDoDiaDTO> itens = new ArrayList<>();
 
         LocalTime agora = LocalTime.now();
 
-        for (ItemCatalogoDTO def : catalogo.itens()) {
-            // Busca se há curva publicada
-            var curvaPublicadaOpt = curveApiClient.getCurvaPublicada(def.codigo(), dataRef, "FECHAMENTO", null, null);
-            var ultimaExecOpt = orchestratorClient.getUltimaExecucaoCurva(def.codigo(), dataRef, "FECHAMENTO");
+        for (CurvaMercadoDTO def : catalogo.curvas()) {
+            // "publicada" para o schema novo é a curva construída (tCurvaData) ter pontos para a data.
+            var curvaConstruidaOpt = curveApiClient.getCurvaConstruida(def.tickerIndcd(), dataRef);
+            boolean publicada = curvaConstruidaOpt.isPresent() && !curvaConstruidaOpt.get().pontos().isEmpty();
+            var ultimaExecOpt = orchestratorClient.getUltimaExecucaoCurva(def.tickerIndcd(), dataRef, "FECHAMENTO");
 
-            // Horário limite padrão (19:00 caso não disponível na listagem de catálogo)
+            // Horário limite padrão (19:00) — já era um fallback fixo antes desta mudança
+            // (o catálogo nunca carregou horário limite por curva de forma confiável).
             LocalTime horarioLimite = LocalTime.of(19, 0);
             int tempoRestante = (int) Duration.between(agora, horarioLimite).toMinutes();
 
             String status;
-            Integer versaoNum = null;
-            String etapaAtual = null;
             Integer margemMinutos = null;
+            String etapaAtual = null;
             String motivoReprovacao = null;
-            Integer alertasAviso = null;
-            java.time.Instant publicadoEm = null;
 
-            if (curvaPublicadaOpt.isPresent()) {
-                var curva = curvaPublicadaOpt.get();
+            if (publicada) {
                 status = "PUBLICADA";
-                versaoNum = curva.numeroVersao();
-                publicadoEm = curva.publicadoEm();
                 margemMinutos = Math.max(0, tempoRestante);
-                if (curva.validacao() != null && "APROVADA_COM_AVISOS".equalsIgnoreCase(curva.validacao().statusGeral())) {
-                    alertasAviso = (int) curva.validacao().itens().stream().filter(i -> "REPROVADO".equalsIgnoreCase(i.resultado())).count();
-                }
             } else if (ultimaExecOpt.isPresent()) {
                 var exec = ultimaExecOpt.get();
                 etapaAtual = exec.etapaAtual();
                 if ("CONCLUIDA_COM_ERRO".equalsIgnoreCase(exec.estado()) || "REPROVADA".equalsIgnoreCase(exec.estado())) {
                     status = "REPROVADA";
-                    motivoReprovacao = exec.erroMensagem() != null ? exec.erroMensagem() : "Falha na validação da curva";
+                    motivoReprovacao = exec.erroMensagem() != null ? exec.erroMensagem() : "Falha na construção da curva";
                 } else if ("EM_ANDAMENTO".equalsIgnoreCase(exec.estado())) {
                     if (tempoRestante < 30 && tempoRestante >= 0) {
                         status = "EM_RISCO";
@@ -75,19 +67,21 @@ public class PainelDoDiaService {
             }
 
             itens.add(new ItemPainelDoDiaDTO(
-                    def.codigo(),
-                    def.nome(),
-                    def.moeda(),
-                    def.modoOrigem(),
+                    def.tickerIndcd(),
+                    def.tickerIndcd(),
+                    def.moedaNegoc(),
+                    def.classfInstt(),
                     status,
                     horarioLimite.toString(),
                     tempoRestante > 0 ? tempoRestante : 0,
                     margemMinutos,
                     etapaAtual,
-                    versaoNum,
+                    // versaoNumero/publicadoEm não existem mais (tCurvaData não tem versionamento
+                    // nem carimbo de publicação) — alertasAvisoContagem idem (sem validação no schema novo).
+                    null,
                     motivoReprovacao,
-                    alertasAviso,
-                    publicadoEm
+                    null,
+                    null
             ));
         }
 

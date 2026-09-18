@@ -18,8 +18,8 @@ public class UseCaseConfig {
     }
 
     @Bean
-    public ComparacaoService comparacaoService(CurveApiPort curveApiPort, CurveEnginePort curveEnginePort) {
-        return new ComparacaoService(curveApiPort, curveEnginePort);
+    public ComparacaoService comparacaoService(CurveApiPort curveApiPort) {
+        return new ComparacaoService(curveApiPort);
     }
 
     @Bean

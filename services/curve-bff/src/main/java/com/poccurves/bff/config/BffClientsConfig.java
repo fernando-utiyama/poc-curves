@@ -74,8 +74,15 @@ public class BffClientsConfig {
         return factory;
     }
 
+    /**
+     * Nome do bean não pode ser "curveApiClient" — colide com o @Component de mesmo nome
+     * (adapter/out/http/CurveApiClient), que o Spring também registra com esse nome por
+     * padrão; achado real ao subir o serviço pela primeira vez via compose nesta sessão
+     * (BeanDefinitionOverrideException, serviço nunca tinha subido antes). Mesmo motivo para
+     * os dois beans abaixo.
+     */
     @Bean
-    public RestClient curveApiClient() {
+    public RestClient curveApiRestClient() {
         return RestClient.builder()
                 .baseUrl(curveApiUrl)
                 .requestFactory(createRequestFactory(curveApiTimeout))
@@ -84,7 +91,7 @@ public class BffClientsConfig {
     }
 
     @Bean
-    public RestClient curveEngineClient() {
+    public RestClient curveEngineRestClient() {
         return RestClient.builder()
                 .baseUrl(curveEngineUrl)
                 .requestFactory(createRequestFactory(curveEngineTimeout))
@@ -93,7 +100,7 @@ public class BffClientsConfig {
     }
 
     @Bean
-    public RestClient curveOrchestratorClient() {
+    public RestClient curveOrchestratorRestClient() {
         return RestClient.builder()
                 .baseUrl(curveOrchestratorUrl)
                 .requestFactory(createRequestFactory(curveOrchestratorTimeout))

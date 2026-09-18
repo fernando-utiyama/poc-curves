@@ -6,7 +6,5 @@ public interface CurveEnginePort {
 
     InterpolacaoResponse interpolar(String codigo, InterpolacaoRequest request);
 
-    ComparacaoResponse compararModelos(ComparacaoModelosRequest request);
-
     ImportarModeloResponse validarScriptGroovy(ImportarModeloGroovyRequest request);
 }

@@ -2,29 +2,18 @@ package com.poccurves.bff.application;
 
 import com.poccurves.bff.dto.BffDtos.*;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
 
 public interface CurveApiPort {
 
-    CatalogoResponse getCatalogo(String codigo, String modoOrigem, String estado, int pagina, int tamanho);
+    CatalogoResponse getCatalogo();
 
-    DefinicaoCurvaDTO getDefinicaoCurva(String codigo);
+    Optional<CurvaMercadoDTO> getCurva(String ticker);
 
-    DefinicaoCurvaDTO criarDefinicaoCurva(String codigo, CriarOuAtualizarDefinicaoCurvaRequest req);
+    Optional<CurvaDadosDTO> getVertices(String ticker, LocalDate dataReferencia);
 
-    DefinicaoCurvaDTO atualizarDefinicaoCurva(String codigo, CriarOuAtualizarDefinicaoCurvaRequest req);
-
-    byte[] downloadModeloCarga(String codigo, String formato);
-
-    Optional<CurvaViewerResponse> getCurvaPublicada(
-            String codigo,
-            LocalDate dataReferencia,
-            String momento,
-            Integer versao,
-            Instant asOf
-    );
+    Optional<CurvaDadosDTO> getCurvaConstruida(String ticker, LocalDate dataReferencia);
 
     ComparacaoResponse compararCurvas(ComparacaoCurvasRequest request);
 }

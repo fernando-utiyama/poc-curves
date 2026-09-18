@@ -2,9 +2,9 @@ package com.poccurves.bff.application;
 
 import com.poccurves.bff.dto.BffDtos.*;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -20,27 +20,30 @@ public class CurvaViewerService {
         this.orchestratorClient = orchestratorClient;
     }
 
-    public CurvaViewerResponse obterCurvaViewer(
-            String codigo,
-            LocalDate dataReferencia,
-            String momento,
-            Integer versao,
-            Instant asOf
-    ) {
-        long startTotal = System.currentTimeMillis();
-
-        // 1. Chamada paralela ao curve-api (curva, vértices, procedência, validação)
-        CompletableFuture<Optional<CurvaViewerResponse>> curvaFuture = CompletableFuture.supplyAsync(() ->
-                curveApiClient.getCurvaPublicada(codigo, dataReferencia, momento, versao, asOf)
+    public CurvaViewerResponse obterCurvaViewer(String ticker, LocalDate dataReferencia, String momento) {
+        // 1-3. Chamadas paralelas: vértices e curva construída (curve-api), última execução (curve-orchestrator).
+        CompletableFuture<Optional<CurvaDadosDTO>> verticesFuture = CompletableFuture.supplyAsync(() ->
+                curveApiClient.getVertices(ticker, dataReferencia)
         );
-
-        // 2. Chamada paralela ao curve-orchestrator (última execução)
+        CompletableFuture<Optional<CurvaDadosDTO>> curvaFuture = CompletableFuture.supplyAsync(() ->
+                curveApiClient.getCurvaConstruida(ticker, dataReferencia)
+        );
         CompletableFuture<Optional<ExecucaoResumoDTO>> execucaoFuture = CompletableFuture.supplyAsync(() ->
-                orchestratorClient.getUltimaExecucaoCurva(codigo, dataReferencia, momento)
+                orchestratorClient.getUltimaExecucaoCurva(ticker, dataReferencia, momento)
         );
 
-        // Aguarda respostas com timeout
-        Optional<CurvaViewerResponse> curvaOpt;
+        Optional<CurvaDadosDTO> verticesOpt;
+        SecaoDegradadaDTO secaoVerticesStatus;
+        try {
+            long t0 = System.currentTimeMillis();
+            verticesOpt = verticesFuture.get(5, TimeUnit.SECONDS);
+            secaoVerticesStatus = SecaoDegradadaDTO.ok(System.currentTimeMillis() - t0);
+        } catch (Exception e) {
+            verticesOpt = Optional.empty();
+            secaoVerticesStatus = SecaoDegradadaDTO.erro("Falha ao obter vértices do curve-api: " + e.getMessage());
+        }
+
+        Optional<CurvaDadosDTO> curvaOpt;
         SecaoDegradadaDTO secaoCurvaStatus;
         try {
             long t0 = System.currentTimeMillis();
@@ -62,59 +65,25 @@ public class CurvaViewerService {
             secaoExecStatus = SecaoDegradadaDTO.erro("Falha ao obter execução do curve-orchestrator: " + e.getMessage());
         }
 
-        if (curvaOpt.isEmpty() && execOpt.isEmpty()) {
-            throw new NoSuchElementException("Curva '" + codigo + "' não encontrada para a data " + dataReferencia);
+        boolean verticesPresentes = verticesOpt.isPresent() && !verticesOpt.get().pontos().isEmpty();
+        boolean curvaPresente = curvaOpt.isPresent() && !curvaOpt.get().pontos().isEmpty();
+
+        if (!verticesPresentes && !curvaPresente && execOpt.isEmpty()) {
+            throw new NoSuchElementException("Curva '" + ticker + "' não encontrada para a data " + dataReferencia);
         }
 
-        if (curvaOpt.isPresent()) {
-            CurvaViewerResponse base = curvaOpt.get();
-            return new CurvaViewerResponse(
-                    base.versaoCurvaId(),
-                    base.codigoCurva(),
-                    base.nomeCurva(),
-                    base.modoOrigem(),
-                    base.dataReferencia(),
-                    base.momento(),
-                    base.numeroVersao(),
-                    base.estadoVersao(),
-                    base.origemVersao(),
-                    base.isVersaoCorrente(),
-                    base.razaoSelecaoVersao(),
-                    base.publicadoEm(),
-                    base.vertices() != null ? base.vertices() : Collections.emptyList(),
-                    base.procedencia(),
-                    base.validacao(),
-                    execOpt.orElse(null),
-                    base.vertices() != null ? SecaoDegradadaDTO.ok(10L) : SecaoDegradadaDTO.erro("Vértices indisponíveis"),
-                    base.procedencia() != null ? SecaoDegradadaDTO.ok(5L) : SecaoDegradadaDTO.erro("Procedência indisponível"),
-                    base.validacao() != null ? SecaoDegradadaDTO.ok(5L) : SecaoDegradadaDTO.erro("Validação indisponível"),
-                    secaoExecStatus
-            );
-        } else {
-            // Curva ainda não publicada, mas execução em andamento/falha disponível
-            ExecucaoResumoDTO exec = execOpt.get();
-            return new CurvaViewerResponse(
-                    null,
-                    codigo.toUpperCase(),
-                    codigo.toUpperCase(),
-                    "BOOTSTRAPPED",
-                    dataReferencia,
-                    momento != null ? momento : "FECHAMENTO",
-                    0,
-                    "NAO_PUBLICADA",
-                    "NENHUMA",
-                    false,
-                    "NENHUMA",
-                    null,
-                    Collections.emptyList(),
-                    null,
-                    null,
-                    exec,
-                    SecaoDegradadaDTO.erro("Curva ainda não publicada na data"),
-                    SecaoDegradadaDTO.erro("Curva ainda não publicada na data"),
-                    SecaoDegradadaDTO.erro("Curva ainda não publicada na data"),
-                    secaoExecStatus
-            );
-        }
+        List<PontoCurvaDTO> vertices = verticesOpt.map(CurvaDadosDTO::pontos).orElse(Collections.emptyList());
+        List<PontoCurvaDTO> curva = curvaOpt.map(CurvaDadosDTO::pontos).orElse(Collections.emptyList());
+
+        return new CurvaViewerResponse(
+                ticker,
+                dataReferencia,
+                vertices,
+                curva,
+                execOpt.orElse(null),
+                secaoVerticesStatus,
+                secaoCurvaStatus,
+                secaoExecStatus
+        );
     }
 }

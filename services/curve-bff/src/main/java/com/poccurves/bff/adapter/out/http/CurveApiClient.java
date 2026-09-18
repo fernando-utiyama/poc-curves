@@ -3,100 +3,76 @@ package com.poccurves.bff.adapter.out.http;
 import com.poccurves.bff.application.CurveApiPort;
 import com.poccurves.bff.dto.BffDtos.*;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
-import java.util.UUID;
 
 @Component
 public class CurveApiClient implements CurveApiPort {
 
     private final RestClient restClient;
 
-    public CurveApiClient(@Qualifier("curveApiClient") RestClient restClient) {
+    public CurveApiClient(@Qualifier("curveApiRestClient") RestClient restClient) {
         this.restClient = restClient;
     }
 
-    public CatalogoResponse getCatalogo(String codigo, String modoOrigem, String estado, int pagina, int tamanho) {
+    @Override
+    public CatalogoResponse getCatalogo() {
         return restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/curvas/definicoes")
-                        .queryParamIfPresent("codigo", Optional.ofNullable(codigo))
-                        .queryParamIfPresent("modoOrigem", Optional.ofNullable(modoOrigem))
-                        .queryParamIfPresent("estado", Optional.ofNullable(estado))
-                        .queryParam("pagina", pagina)
-                        .queryParam("tamanhoPagina", tamanho)
-                        .build())
+                .uri("/curvas")
                 .retrieve()
                 .body(CatalogoResponse.class);
     }
 
-    public DefinicaoCurvaDTO getDefinicaoCurva(String codigo) {
-        return restClient.get()
-                .uri("/curvas/definicoes/{codigo}", codigo)
-                .retrieve()
-                .body(DefinicaoCurvaDTO.class);
-    }
-
-    public DefinicaoCurvaDTO criarDefinicaoCurva(String codigo, CriarOuAtualizarDefinicaoCurvaRequest req) {
-        // Envia para o curve-api
-        return restClient.post()
-                .uri("/curvas/definicoes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(req)
-                .retrieve()
-                .body(DefinicaoCurvaDTO.class);
-    }
-
-    public DefinicaoCurvaDTO atualizarDefinicaoCurva(String codigo, CriarOuAtualizarDefinicaoCurvaRequest req) {
-        return restClient.put()
-                .uri("/curvas/definicoes/{codigo}", codigo)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(req)
-                .retrieve()
-                .body(DefinicaoCurvaDTO.class);
-    }
-
-    public byte[] downloadModeloCarga(String codigo, String formato) {
-        return restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/curvas/definicoes/{codigo}/modelo-carga")
-                        .queryParam("formato", formato)
-                        .build(codigo))
-                .retrieve()
-                .body(byte[].class);
-    }
-
-    public Optional<CurvaViewerResponse> getCurvaPublicada(
-            String codigo,
-            LocalDate dataReferencia,
-            String momento,
-            Integer versao,
-            Instant asOf
-    ) {
+    @Override
+    public Optional<CurvaMercadoDTO> getCurva(String ticker) {
         try {
-            CurvaViewerResponse resp = restClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/curvas/{codigo}")
-                            .queryParam("dataReferencia", dataReferencia)
-                            .queryParamIfPresent("momento", Optional.ofNullable(momento))
-                            .queryParamIfPresent("versao", Optional.ofNullable(versao))
-                            .queryParamIfPresent("asOf", Optional.ofNullable(asOf))
-                            .build(codigo))
-                    .retrieve()
-                    .body(CurvaViewerResponse.class);
-            return Optional.ofNullable(resp);
+            return Optional.ofNullable(
+                    restClient.get()
+                            .uri("/curvas/{ticker}", ticker)
+                            .retrieve()
+                            .body(CurvaMercadoDTO.class));
         } catch (Exception e) {
             return Optional.empty();
         }
     }
 
+    @Override
+    public Optional<CurvaDadosDTO> getVertices(String ticker, LocalDate dataReferencia) {
+        try {
+            return Optional.ofNullable(
+                    restClient.get()
+                            .uri(uriBuilder -> uriBuilder
+                                    .path("/curvas/{ticker}/vertices")
+                                    .queryParam("dataReferencia", dataReferencia)
+                                    .build(ticker))
+                            .retrieve()
+                            .body(CurvaDadosDTO.class));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<CurvaDadosDTO> getCurvaConstruida(String ticker, LocalDate dataReferencia) {
+        try {
+            return Optional.ofNullable(
+                    restClient.get()
+                            .uri(uriBuilder -> uriBuilder
+                                    .path("/curvas/{ticker}/curva")
+                                    .queryParam("dataReferencia", dataReferencia)
+                                    .build(ticker))
+                            .retrieve()
+                            .body(CurvaDadosDTO.class));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
     public ComparacaoResponse compararCurvas(ComparacaoCurvasRequest request) {
         return restClient.post()
                 .uri("/curvas/comparacao")

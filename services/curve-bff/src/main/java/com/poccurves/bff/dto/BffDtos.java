@@ -51,80 +51,16 @@ public class BffDtos {
     // ==========================================
 
     public record CatalogoResponse(
-            List<ItemCatalogoDTO> itens,
-            int totalElementos,
-            int pagina,
-            int totalPaginas
+            List<CurvaMercadoDTO> curvas
     ) {}
 
-    public record ItemCatalogoDTO(
-            UUID id,
-            String codigo,
-            String nome,
-            String moeda,
-            String modoOrigem,
-            String estado,
-            int versaoVigenteNumero,
-            String modeloApontadoNome
-    ) {}
-
-    public record LimiteValidacaoDTO(
-            String teste,
-            String classificacao,
-            String limite
-    ) {}
-
-    public record DefinicaoCurvaDTO(
-            UUID id,
-            String codigo,
-            String nome,
-            String moeda,
-            String modoOrigem,
-            String estado,
-            String horarioLimitePublicacao,
-            UUID versaoDefinicaoId,
-            int versaoNumero,
-            Integer versaoOrigemNumero,
-            String contagemDias,
-            String calendario,
-            String interpolador,
-            String politicaExtrapolacao,
-            String politicaArredondamento,
-            String modeloApontadoCodigo,
-            Integer orcamentoIngestaoSegundos,
-            Integer orcamentoConstrucaoSegundos,
-            Integer orcamentoValidacaoSegundos,
-            Integer orcamentoPublicacaoSegundos,
-            Integer janelaBloqueioMinutos,
-            List<String> vinculosFonte,
-            List<String> dependeDe,
-            List<LimiteValidacaoDTO> limitesValidacao,
-            @JsonFormat(pattern = "yyyy-MM-dd") LocalDate vigenciaInicio,
-            @JsonFormat(pattern = "yyyy-MM-dd") LocalDate vigenciaFim
-    ) {}
-
-    public record CriarOuAtualizarDefinicaoCurvaRequest(
-            String nome,
-            String moeda,
-            String modoOrigem,
-            String estado,
-            String horarioLimitePublicacao,
-            String contagemDias,
-            String calendario,
-            String interpolador,
-            String politicaExtrapolacao,
-            String politicaArredondamento,
-            UUID modeloApontadoId,
-            String modeloApontadoCodigo,
-            Integer orcamentoIngestaoSegundos,
-            Integer orcamentoConstrucaoSegundos,
-            Integer orcamentoValidacaoSegundos,
-            Integer orcamentoPublicacaoSegundos,
-            Integer janelaBloqueioMinutos,
-            List<String> vinculosFonte,
-            List<String> dependeDe,
-            List<LimiteValidacaoDTO> limitesValidacao,
-            @JsonFormat(pattern = "yyyy-MM-dd") LocalDate vigenciaInicio
+    public record CurvaMercadoDTO(
+            String tickerIndcd,
+            String classfInstt,
+            String classAtivo,
+            String moedaNegoc,
+            @JsonFormat(pattern = "yyyy-MM-dd") LocalDate inicVigencia,
+            String usuarCalc
     ) {}
 
     // ==========================================
@@ -145,28 +81,15 @@ public class BffDtos {
         }
     }
 
-    public record VerticeCurvaDTO(
-            int prazoDiasUteis,
-            Integer prazoDiasCorridos,
-            @JsonFormat(pattern = "yyyy-MM-dd") LocalDate dataVencimento,
-            BigDecimal taxa,
-            BigDecimal fatorDesconto
+    public record PontoCurvaDTO(
+            @JsonFormat(pattern = "yyyy-MM-dd") LocalDate dataVertice,
+            BigDecimal valor
     ) {}
 
-    public record ProcedenciaCurvaDTO(
-            UUID execucaoCurvaId,
-            String correlationId,
-            int numeroVersaoDefinicao,
-            String modeloCodigo,
-            String checksumModelo,
-            String referenciasInsumo,
-            String hashConjuntoInsumos,
-            Long loteIngestaoId,
-            String arquivoCarga,
-            String hashArquivo,
-            String carregadoPor,
-            String justificativa,
-            String versaoMotor
+    public record CurvaDadosDTO(
+            String tickerIndcd,
+            @JsonFormat(pattern = "yyyy-MM-dd") LocalDate dataReferencia,
+            List<PontoCurvaDTO> pontos
     ) {}
 
     public record ItemValidacaoDTO(
@@ -176,11 +99,6 @@ public class BffDtos {
             BigDecimal medidaObservada,
             BigDecimal limiteAplicado,
             String detalhe
-    ) {}
-
-    public record ValidacaoCurvaDTO(
-            String statusGeral,
-            List<ItemValidacaoDTO> itens
     ) {}
 
     public record ExecucaoResumoDTO(
@@ -193,25 +111,13 @@ public class BffDtos {
     ) {}
 
     public record CurvaViewerResponse(
-            UUID versaoCurvaId,
-            String codigoCurva,
-            String nomeCurva,
-            String modoOrigem,
+            String ticker,
             @JsonFormat(pattern = "yyyy-MM-dd") LocalDate dataReferencia,
-            String momento,
-            int numeroVersao,
-            String estadoVersao,
-            String origemVersao,
-            boolean isVersaoCorrente,
-            String razaoSelecaoVersao,
-            Instant publicadoEm,
-            List<VerticeCurvaDTO> vertices,
-            ProcedenciaCurvaDTO procedencia,
-            ValidacaoCurvaDTO validacao,
+            List<PontoCurvaDTO> vertices,
+            List<PontoCurvaDTO> curva,
             ExecucaoResumoDTO ultimaExecucao,
             SecaoDegradadaDTO secaoVertices,
-            SecaoDegradadaDTO secaoProcedencia,
-            SecaoDegradadaDTO secaoValidacao,
+            SecaoDegradadaDTO secaoCurva,
             SecaoDegradadaDTO secaoExecucao
     ) {}
 
@@ -242,41 +148,23 @@ public class BffDtos {
             SecaoDegradadaDTO statusMotor
     ) {}
 
-    public record CurvaIdentificadorDTO(
-            String codigo,
-            Integer versao
-    ) {}
-
     public record ComparacaoCurvasRequest(
             @JsonFormat(pattern = "yyyy-MM-dd") LocalDate dataReferencia,
-            String momento,
-            CurvaIdentificadorDTO curvaA,
-            CurvaIdentificadorDTO curvaB
+            String tickerA,
+            String tickerB
     ) {}
 
-    public record ItemComparacaoDTO(
-            int prazoDiasUteis,
-            BigDecimal taxaA,
-            BigDecimal taxaB,
-            BigDecimal diferencaTaxaBps,
-            BigDecimal fatorDescontoA,
-            BigDecimal fatorDescontoB,
-            String status // COINCIDENTE, PRESENTE_APENAS_EM_A, PRESENTE_APENAS_EM_B
+    public record ItemComparacaoCurvasDTO(
+            @JsonFormat(pattern = "yyyy-MM-dd") LocalDate dataVertice,
+            BigDecimal valorA,
+            BigDecimal valorB
     ) {}
 
     public record ComparacaoResponse(
             @JsonFormat(pattern = "yyyy-MM-dd") LocalDate dataReferencia,
-            String rotuloCurvaA,
-            String rotuloCurvaB,
-            List<ItemComparacaoDTO> diferencas
-    ) {}
-
-    public record ComparacaoModelosRequest(
-            String codigoCurva,
-            @JsonFormat(pattern = "yyyy-MM-dd") LocalDate dataReferencia,
-            String momento,
-            String modeloA,
-            String modeloB
+            String tickerA,
+            String tickerB,
+            List<ItemComparacaoCurvasDTO> pontos
     ) {}
 
     // ==========================================
