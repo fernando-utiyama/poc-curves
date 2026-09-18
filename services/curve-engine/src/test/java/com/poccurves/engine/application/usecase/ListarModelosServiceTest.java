@@ -17,7 +17,7 @@ class ListarModelosServiceTest {
     @Test
     void listaTodosOsModelosMapeadosParaDTO() {
         ModeloCurvaRepositoryPort repository = mock(ModeloCurvaRepositoryPort.class);
-        ModeloCurva builtin = ModeloCurva.builtin("PRE_DI1_B3", "Modelo Padrão");
+        ModeloCurva builtin = ModeloCurva.builtin("MODELO_TESTE", "Modelo Padrão");
         when(repository.listarTodos()).thenReturn(List.of(builtin));
 
         ListarModelosService service = new ListarModelosService(repository);
@@ -25,7 +25,7 @@ class ListarModelosServiceTest {
 
         assertThat(resposta.modelos()).hasSize(1);
         var dto = resposta.modelos().get(0);
-        assertThat(dto.codigo()).isEqualTo("PRE_DI1_B3");
+        assertThat(dto.codigo()).isEqualTo("MODELO_TESTE");
         assertThat(dto.tipo()).isEqualTo("BUILTIN");
         assertThat(dto.estado()).isEqualTo(EstadoModelo.ATIVO.name());
     }

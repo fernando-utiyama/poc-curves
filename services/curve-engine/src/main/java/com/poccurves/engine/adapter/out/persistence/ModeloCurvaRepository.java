@@ -81,16 +81,6 @@ public class ModeloCurvaRepository implements ModeloCurvaRepositoryPort {
     }
 
     @Override
-    public List<ModeloCurva> listarAtivos() {
-        String sql = """
-                SELECT id, codigo, nome, tipo, estado, codigo_fonte, checksum, importado_por, importado_em
-                FROM modelo_curva
-                WHERE estado = 'ATIVO'
-                """;
-        return jdbcTemplate.query(sql, mapper);
-    }
-
-    @Override
     public List<ModeloCurva> listarTodos() {
         String sql = """
                 SELECT id, codigo, nome, tipo, estado, codigo_fonte, checksum, importado_por, importado_em

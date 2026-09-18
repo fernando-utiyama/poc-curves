@@ -1,7 +1,7 @@
 package com.poccurves.engine.application.usecase;
 import com.poccurves.engine.application.exception.ModeloConstrucaoException;
 import com.poccurves.engine.application.construcao.CurvaJuros;
-import com.poccurves.engine.application.model.InsumoDI1;
+import com.poccurves.engine.application.construcao.Vertice;
 import com.poccurves.engine.application.model.ModeloCurva;
 import com.poccurves.engine.application.port.ModeloConstrucaoPort;
 
@@ -28,8 +28,8 @@ public class ConsoleDesenvolvimentoModeloService {
             return new TestarScriptGroovyResponse("ERRO_COMPILACAO", "script Groovy não pode ser vazio", List.of());
         }
 
-        List<InsumoDI1> insumos = request.insumos() == null ? List.of() : request.insumos().stream()
-                .map(i -> new InsumoDI1(i.ticker(), i.taxaAjuste(), i.diasUteisVencimento(), i.dataVencimento()))
+        List<Vertice> insumos = request.insumos() == null ? List.of() : request.insumos().stream()
+                .map(v -> new Vertice(v.prazoDiasUteis(), null, v.dataVencimento(), v.taxa(), null))
                 .toList();
 
         ModeloCurva modeloTemporario = ModeloCurva.importarGroovy(

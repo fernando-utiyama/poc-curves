@@ -10,10 +10,8 @@ import java.util.UUID;
  * Espelha a tabela versao_curva (db/migration/V4__versao_curva.sql).
  * <p>
  * O modelo usado não é rastreado aqui — {@code versao_curva} não tem coluna
- * {@code modelo_curva_id} (só {@code versao_definicao_curva} e {@code procedencia_curva}
- * têm, adicionada em V5). Quem quer saber o modelo apontado hoje consulta
- * {@code versao_definicao_curva}; quem quer saber o modelo que produziu esta versão
- * específica consulta {@link ProcedenciaCurva#modeloCurvaId()}.
+ * {@code modelo_curva_id} (só {@code versao_definicao_curva} tem). Quem quer saber o modelo
+ * apontado hoje consulta {@code versao_definicao_curva}.
  */
 public class VersaoCurva {
 

@@ -7,13 +7,14 @@ import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Leitura de {@code versao_curva} (schema antigo) — só as curvas IMPORTED (ex. B3_CURVA_PRE, que
+ * o curve-processor publica direto nessa tabela) ainda usam este caminho; a construção
+ * BOOTSTRAPPED (DI1) que escrevia aqui foi removida (limpeza de BVBG.086/BVBG.028). Só leitura
+ * porque curve-engine nunca escreveu versao_curva por conta própria além do que já foi removido —
+ * quem publica é o curve-processor.
+ */
 public interface VersaoCurvaRepositoryPort {
-    void inserir(VersaoCurva versao);
-    void atualizar(VersaoCurva versao);
-    Optional<VersaoCurva> buscarPorId(UUID id);
     Optional<VersaoCurva> buscarVersaoVigentePublicada(UUID definicaoCurvaId, LocalDate dataReferencia, MomentoCurva momentoCurva);
-    Optional<VersaoCurva> buscarUltimaVersaoPublicadaAnterior(UUID definicaoCurvaId, LocalDate dataReferenciaAntesDe, MomentoCurva momentoCurva);
-    int proximoNumeroVersao(UUID definicaoCurvaId, LocalDate dataReferencia, MomentoCurva momentoCurva);
     Optional<VersaoCurva> buscarPorNumeroVersao(UUID definicaoCurvaId, LocalDate dataReferencia, MomentoCurva momentoCurva, int numeroVersao);
-    Optional<VersaoCurva> buscarPorExecucaoCurvaId(UUID execucaoCurvaId);
 }

@@ -1,6 +1,6 @@
 package com.poccurves.engine.application.usecase;
 import com.poccurves.engine.application.exception.ModeloConstrucaoException;
-import com.poccurves.engine.application.model.InsumoDI1;
+import com.poccurves.engine.application.construcao.Vertice;
 import com.poccurves.engine.application.model.ModeloCurva;
 import com.poccurves.engine.application.port.ModeloConstrucaoPort;
 import com.poccurves.engine.application.port.ModeloCurvaRepositoryPort;
@@ -24,14 +24,14 @@ import java.util.Optional;
 public class ImportarModeloGroovyService {
 
     /**
-     * Insumos sintéticos usados só para provar que o script compila e roda sem estourar — não
-     * representam nenhum dado de mercado real. Mesmo formato de {@link InsumoDI1} que o motor
-     * usa de verdade, para o script exercitar o caminho real de acesso aos campos.
+     * Vértices sintéticos usados só para provar que o script compila e roda sem estourar — não
+     * representam nenhum dado de mercado real. Mesmo formato de {@link Vertice} que o motor usa
+     * de verdade, para o script exercitar o caminho real de acesso aos campos.
      */
-    private static final List<InsumoDI1> INSUMOS_AMOSTRA = List.of(
-            new InsumoDI1("DI1F26", new BigDecimal("13.50"), 21, LocalDate.of(2026, 1, 2)),
-            new InsumoDI1("DI1N26", new BigDecimal("13.20"), 126, LocalDate.of(2026, 7, 1)),
-            new InsumoDI1("DI1F27", new BigDecimal("12.90"), 273, LocalDate.of(2027, 1, 4))
+    private static final List<Vertice> INSUMOS_AMOSTRA = List.of(
+            new Vertice(21, null, LocalDate.of(2026, 1, 2), new BigDecimal("13.50"), null),
+            new Vertice(126, null, LocalDate.of(2026, 7, 1), new BigDecimal("13.20"), null),
+            new Vertice(273, null, LocalDate.of(2027, 1, 4), new BigDecimal("12.90"), null)
     );
 
     private final ModeloCurvaRepositoryPort modeloCurvaRepository;

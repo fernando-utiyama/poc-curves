@@ -85,14 +85,17 @@ class VerticeCurvaRepositoryIT {
     }
 
     @Test
-    void inserirTodosEBuscarPorVersaoCurvaDevolveOrdenadoPorPrazo() {
-        // Ordem de entrada de propósito invertida (252 antes de 21) -- a query tem que ordenar, não a lista.
-        List<Vertice> desordenados = List.of(
-                new Vertice(252, null, LocalDate.of(2027, 1, 4), new BigDecimal("0.1200"), new BigDecimal("0.892857")),
-                new Vertice(21, null, LocalDate.of(2026, 4, 10), new BigDecimal("0.1000"), null)
-        );
-
-        repository.inserirTodos(versaoCurvaId, desordenados);
+    void buscarPorVersaoCurvaDevolveOrdenadoPorPrazo() {
+        // Ordem de inserção de propósito invertida (252 antes de 21) -- a query tem que ordenar, não a inserção.
+        JdbcTemplate sa = jdbcTemplateSa();
+        sa.update("""
+                INSERT INTO vertice_curva (versao_curva_id, prazo_dias_uteis, prazo_dias_corridos, data_vencimento, taxa, fator_desconto)
+                VALUES (?, 252, NULL, ?, ?, ?)
+                """, versaoCurvaId, java.sql.Date.valueOf(LocalDate.of(2027, 1, 4)), new BigDecimal("0.1200"), new BigDecimal("0.892857"));
+        sa.update("""
+                INSERT INTO vertice_curva (versao_curva_id, prazo_dias_uteis, prazo_dias_corridos, data_vencimento, taxa, fator_desconto)
+                VALUES (?, 21, NULL, ?, ?, NULL)
+                """, versaoCurvaId, java.sql.Date.valueOf(LocalDate.of(2026, 4, 10)), new BigDecimal("0.1000"));
 
         List<Vertice> lidos = repository.buscarPorVersaoCurva(versaoCurvaId);
 

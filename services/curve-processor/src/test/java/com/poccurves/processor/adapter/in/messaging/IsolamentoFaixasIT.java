@@ -78,12 +78,8 @@ class IsolamentoFaixasIT {
         limparDadosDeTeste();
     }
 
-    private String fragmentoBizGrp(String ticker) {
-        return "<BizGrp><Document><PricRpt><SctyId><TckrSymb>" + ticker + "</TckrSymb></SctyId>"
-                + "<FinInstrmId><OthrId><Id>x</Id></OthrId></FinInstrmId>"
-                + "<TradDt><Dt>2026-08-21</Dt></TradDt>"
-                + "<FinInstrmAttrbts><AdjstdQtTax>10.000</AdjstdQtTax></FinInstrmAttrbts>"
-                + "</PricRpt></Document></BizGrp>";
+    private String linhaCurvaPronta(String diasUteis) {
+        return "DI x pré;" + diasUteis + ";" + diasUteis + ";10,000";
     }
 
     private String envelope(String loteId, List<String> tickers) {
@@ -92,7 +88,7 @@ class IsolamentoFaixasIT {
             if (i > 0) {
                 records.append(",");
             }
-            records.append("{\"raw\":\"").append(fragmentoBizGrp(tickers.get(i))).append("\"}");
+            records.append("{\"raw\":\"").append(linhaCurvaPronta(tickers.get(i))).append("\"}");
         }
         records.append("]");
 
@@ -101,7 +97,7 @@ class IsolamentoFaixasIT {
                   "eventId": "%s",
                   "correlationId": "%s",
                   "source": "B3",
-                  "dataset": "BVBG.086",
+                  "dataset": "B3_CURVA_PRE",
                   "referenceDate": "2026-08-21",
                   "producedAt": "2026-08-21T18:00:00Z",
                   "schemaVersion": "1.0",

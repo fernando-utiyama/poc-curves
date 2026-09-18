@@ -1,12 +1,13 @@
 package com.poccurves.engine.application.service;
-import com.poccurves.engine.application.construcao.InterpoladorLinear;
-import com.poccurves.engine.application.construcao.InterpoladorRegistry;
+import com.poccurves.engine.adapter.out.construcao.BuiltinModeloConstrucao;
+import com.poccurves.engine.application.model.ModeloCurva;
 import com.poccurves.engine.application.model.VerticeBtrs;
 import com.poccurves.engine.application.model.VerticeConstruido;
 import com.poccurves.engine.application.port.BtrsCurvaPrimrConsultaRepositoryPort;
 import com.poccurves.engine.application.port.ConfgCurvaRepositoryPort;
 import com.poccurves.engine.application.port.CurvaDataRepositoryPort;
 import com.poccurves.engine.application.port.DadoCurvaRepositoryPort;
+import com.poccurves.engine.application.port.ModeloCurvaRepositoryPort;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,21 +34,26 @@ class ConstrucaoCurvaB3ServiceTest {
 
     @Mock private BtrsCurvaPrimrConsultaRepositoryPort btrsCurvaPrimrRepository;
     @Mock private ConfgCurvaRepositoryPort confgCurvaRepository;
+    @Mock private ModeloCurvaRepositoryPort modeloCurvaRepository;
     @Mock private DadoCurvaRepositoryPort dadoCurvaRepository;
     @Mock private CurvaDataRepositoryPort curvaDataRepository;
 
-    private final InterpoladorRegistry interpoladorRegistry = new InterpoladorRegistry(List.of(new InterpoladorLinear()));
+    // Resolver real com o modelo BUILTIN real (só transcreve, sem I/O) — cobre a integração
+    // real entre ConstrucaoCurvaB3Service e ModeloConstrucaoResolver, não só o mock.
+    private final ModeloConstrucaoResolver modeloConstrucaoResolver =
+            new ModeloConstrucaoResolver(List.of(new BuiltinModeloConstrucao()));
 
     private ConstrucaoCurvaB3Service service;
 
     private final String ticker = "B3_TAXA_SWAP_DCL";
     private final LocalDate dataRef = LocalDate.of(2026, 9, 14);
+    private static final String CODIGO_MODELO = BuiltinModeloConstrucao.CODIGO_TAXA_SWAP_TRANSCRICAO_B3;
 
     @BeforeEach
     void setup() {
         service = new ConstrucaoCurvaB3Service(
-                btrsCurvaPrimrRepository, confgCurvaRepository, interpoladorRegistry,
-                dadoCurvaRepository, curvaDataRepository);
+                btrsCurvaPrimrRepository, confgCurvaRepository, modeloCurvaRepository,
+                modeloConstrucaoResolver, dadoCurvaRepository, curvaDataRepository);
     }
 
     @Test
@@ -56,7 +62,9 @@ class ConstrucaoCurvaB3ServiceTest {
                 new VerticeBtrs(1, 1, new BigDecimal("13.90")),
                 new VerticeBtrs(30, 21, new BigDecimal("13.85"))
         ));
-        when(confgCurvaRepository.buscarMotorCalcVigente(ticker, dataRef)).thenReturn(Optional.of("LINEAR"));
+        when(confgCurvaRepository.buscarMotorCalcVigente(ticker, dataRef)).thenReturn(Optional.of(CODIGO_MODELO));
+        when(modeloCurvaRepository.buscarPorCodigo(CODIGO_MODELO))
+                .thenReturn(Optional.of(ModeloCurva.builtin(CODIGO_MODELO, "nome")));
 
         service.construir(ticker, dataRef);
 
@@ -107,15 +115,34 @@ class ConstrucaoCurvaB3ServiceTest {
     }
 
     @Test
-    void lancaExcecaoQuandoMotorCalcNaoEstaRegistrado() {
+    void lancaExcecaoQuandoModeloNaoExiste() {
         when(btrsCurvaPrimrRepository.buscarVertices(ticker, dataRef)).thenReturn(List.of(
                 new VerticeBtrs(1, 1, new BigDecimal("13.90"))
         ));
-        when(confgCurvaRepository.buscarMotorCalcVigente(ticker, dataRef)).thenReturn(Optional.of("METODO_INEXISTENTE"));
+        when(confgCurvaRepository.buscarMotorCalcVigente(ticker, dataRef)).thenReturn(Optional.of("MODELO_INEXISTENTE"));
+        when(modeloCurvaRepository.buscarPorCodigo("MODELO_INEXISTENTE")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.construir(ticker, dataRef))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("METODO_INEXISTENTE");
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("MODELO_INEXISTENTE");
+
+        verify(dadoCurvaRepository, never()).substituirVertices(any(), any(), any());
+    }
+
+    @Test
+    void lancaExcecaoQuandoModeloEstaDesabilitado() {
+        ModeloCurva modeloDesabilitado = ModeloCurva.builtin(CODIGO_MODELO, "nome");
+        modeloDesabilitado.desabilitar();
+
+        when(btrsCurvaPrimrRepository.buscarVertices(ticker, dataRef)).thenReturn(List.of(
+                new VerticeBtrs(1, 1, new BigDecimal("13.90"))
+        ));
+        when(confgCurvaRepository.buscarMotorCalcVigente(ticker, dataRef)).thenReturn(Optional.of(CODIGO_MODELO));
+        when(modeloCurvaRepository.buscarPorCodigo(CODIGO_MODELO)).thenReturn(Optional.of(modeloDesabilitado));
+
+        assertThatThrownBy(() -> service.construir(ticker, dataRef))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("DESABILITADO");
 
         verify(dadoCurvaRepository, never()).substituirVertices(any(), any(), any());
     }

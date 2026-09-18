@@ -7,7 +7,7 @@ Normaliza e persiste dado de mercado ingerido; publica curvas importadas e carre
 ```
 com.poccurves.processor
 ├── application/
-│   ├── model/            entidades e regras puras — parsers B3 (B3CurvaProntaParser, Bvbg028/086), leitores
+│   ├── model/            entidades e regras puras — parsers B3 (B3CurvaProntaParser, B3TaxaSwapParser), leitores
 │   │                     CSV/XLSX, VersaoCurva/VerticeCurva, LoteIngestao, PontoDadoMercado...
 │   ├── validator/        bateria de carga manual (TesteAderenciaCurvaReferencia, TesteTaxasNaoNegativas)
 │   ├── exception/        LoteJaExisteException, CurvaNaoMapeadaException, EnvelopeInvalidoException...

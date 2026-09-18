@@ -71,8 +71,8 @@ class ModeloCurvaRepositoryIT {
         assertThat(groovyLido.get().importadoPor()).isEqualTo("teste");
         assertThat(groovyLido.get().importadoEm()).isNotNull();
 
-        List<ModeloCurva> ativos = repository.listarAtivos();
-        assertThat(ativos).extracting(ModeloCurva::codigo).contains(codigoBuiltin, codigoGroovy);
+        List<ModeloCurva> todos = repository.listarTodos();
+        assertThat(todos).extracting(ModeloCurva::codigo).contains(codigoBuiltin, codigoGroovy);
 
         builtin.desabilitar();
         repository.atualizar(builtin);
@@ -80,8 +80,5 @@ class ModeloCurvaRepositoryIT {
         Optional<ModeloCurva> desabilitado = repository.buscarPorCodigo(codigoBuiltin);
         assertThat(desabilitado).isPresent();
         assertThat(desabilitado.get().estado()).isEqualTo(EstadoModelo.DESABILITADO);
-
-        List<ModeloCurva> ativosDepois = repository.listarAtivos();
-        assertThat(ativosDepois).extracting(ModeloCurva::codigo).doesNotContain(codigoBuiltin);
     }
 }

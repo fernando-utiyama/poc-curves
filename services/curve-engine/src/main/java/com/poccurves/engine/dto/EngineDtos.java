@@ -16,31 +16,6 @@ import java.util.UUID;
  */
 public class EngineDtos {
 
-    public record ComparacaoModelosRequest(
-            String codigoCurva,
-            LocalDate dataReferencia,
-            String momento,
-            String modeloA,
-            String modeloB
-    ) {}
-
-    public record ItemComparacaoDTO(
-            int prazoDiasUteis,
-            BigDecimal taxaA,
-            BigDecimal taxaB,
-            BigDecimal diferencaTaxaBps,
-            BigDecimal fatorDescontoA,
-            BigDecimal fatorDescontoB,
-            String status // COINCIDENTE, PRESENTE_APENAS_EM_A, PRESENTE_APENAS_EM_B
-    ) {}
-
-    public record ComparacaoResponse(
-            LocalDate dataReferencia,
-            String rotuloCurvaA,
-            String rotuloCurvaB,
-            List<ItemComparacaoDTO> diferencas
-    ) {}
-
     public record ImportarModeloGroovyRequest(
             String codigo,
             String nome,
@@ -91,23 +66,15 @@ public class EngineDtos {
 
     public record TestarScriptGroovyRequest(
             String scriptGroovy,
-            List<InsumoAmostraDTO> insumos
+            List<VerticeAmostraDTO> insumos
     ) {
-        public record InsumoAmostraDTO(String ticker, BigDecimal taxaAjuste, Integer diasUteisVencimento, LocalDate dataVencimento) {}
+        public record VerticeAmostraDTO(int prazoDiasUteis, BigDecimal taxa, LocalDate dataVencimento) {}
     }
 
     public record TestarScriptGroovyResponse(
             String status, // OK, ERRO_COMPILACAO, ERRO_EXECUCAO
             String mensagem,
             List<Vertice> vertices
-    ) {}
-
-    public record ConstrucaoCurvaRequest(
-            String curveCode,
-            LocalDate referenceDate,
-            String curveMoment,
-            UUID runId,
-            UUID executionId
     ) {}
 
     /** Pedido de construção das curvas TS B3 (openspec/changes/b3-additional-curves) — schema legado (V22). */

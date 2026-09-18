@@ -1,5 +1,5 @@
 package com.poccurves.processor.application.usecase;
-import com.poccurves.processor.application.model.Bvbg086PricRptParser;
+import com.poccurves.processor.application.model.B3CurvaProntaParser;
 import com.poccurves.processor.application.model.EstadoLoteIngestao;
 import com.poccurves.processor.application.model.ParseResult;
 import com.poccurves.processor.application.model.PontoDadoMercado;
@@ -16,8 +16,6 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -36,9 +34,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * contrato contra fonte real do feeder (tarefa 6.8 do feeder).
  * <p>
  * Prova, contra o banco de dados de verdade e a credencial restrita real
- * (curve_processor_app — tarefa 1.6), o caminho completo: parse do fixture
- * real da B3 -&gt; persistência transacional -&gt; consolidação do lote -&gt;
- * detecção de divergência -&gt; idempotência de redelivery.
+ * (curve_processor_app — tarefa 1.6), o caminho completo: parse de um bloco
+ * real de curva pronta B3 (B3_CURVA_PRE) -&gt; persistência transacional -&gt;
+ * consolidação do lote -&gt; detecção de divergência -&gt; idempotência de
+ * redelivery.
  */
 @SpringBootTest(classes = CurveProcessorApplication.class)
 class IngestaoServiceIT {
@@ -73,7 +72,7 @@ class IngestaoServiceIT {
 
     private void limparDadosDeTeste() {
         JdbcTemplate sa = jdbcTemplateSa();
-        sa.update("DELETE FROM ponto_dado_mercado WHERE conjunto_dados = 'BVBG.086' AND chave_instrumento IN ('DI1Z28','DI1J30','DI1V31') AND data_referencia = '2026-08-21'");
+        sa.update("DELETE FROM ponto_dado_mercado WHERE conjunto_dados = 'B3_CURVA_PRE' AND chave_instrumento IN ('10','21','32') AND data_referencia = '2026-08-21'");
         sa.update("DELETE FROM lote_ingestao WHERE lote_externo_id LIKE 'it-lote-%'");
     }
 
@@ -82,26 +81,29 @@ class IngestaoServiceIT {
         limparDadosDeTeste();
     }
 
-    private byte[] lerFixture() throws IOException {
-        try (InputStream in = getClass().getResourceAsStream("/fixtures/bvbg086_di1_4blocos.xml")) {
-            assertThat(in).isNotNull();
-            return in.readAllBytes();
-        }
+    /** 3 linhas reais de curva pronta B3 (Descrição;Dias Úteis;Dias Corridos;Preço/Taxa) — mesmo formato de {@code B3CurvaProntaParserTest}. */
+    private byte[] conteudoCurvaPronta() {
+        String[] linhas = {
+                "DI x pré;10;14;14,129",
+                "DI x pré;21;30;14,334",
+                "DI x pré;32;45;14,448"
+        };
+        return String.join("\n", linhas).getBytes(StandardCharsets.UTF_8);
     }
 
     @Test
-    void processaBlocoRealDaB3PersisteConsolidaEDetectaDivergenciaEmRedelivery() throws IOException {
+    void processaBlocoRealDaB3PersisteConsolidaEDetectaDivergenciaEmRedelivery() {
         String loteExternoId = "it-lote-" + UUID.randomUUID();
         limparDadosDeTeste();
 
-        Bvbg086PricRptParser parser = new Bvbg086PricRptParser("BVBG.086");
-        ParseResult resultado = parser.parse(lerFixture(), StandardCharsets.UTF_8.name(), LocalDate.of(2026, 8, 21));
+        B3CurvaProntaParser parser = new B3CurvaProntaParser("B3_CURVA_PRE");
+        ParseResult resultado = parser.parse(conteudoCurvaPronta(), StandardCharsets.UTF_8.name(), LocalDate.of(2026, 8, 21));
         List<PontoDadoMercado> pontos = ((ParseResult.Sucesso) resultado).pontos();
         assertThat(pontos).hasSize(3);
 
         // 1) Primeiro bloco (único, totalBlocos=1) processado -> lote deve consolidar direto para COMPLETO
         ResultadoProcessamentoBloco r1 = ingestaoService.processarBloco(
-                "B3", "BVBG.086", LocalDate.of(2026, 8, 21), loteExternoId,
+                "B3", "B3_CURVA_PRE", LocalDate.of(2026, 8, 21), loteExternoId,
                 UUID.randomUUID(), "evt-1", "sha256:" + "a".repeat(64), 1, 1, TipoPayload.INDIVIDUAL_QUOTES, pontos);
 
         assertThat(r1.lote().estado()).isEqualTo(EstadoLoteIngestao.COMPLETO);
@@ -109,25 +111,25 @@ class IngestaoServiceIT {
         assertThat(r1.divergenciasNoBloco()).isEmpty();
 
         BigDecimal valorGravado = jdbcTemplate.queryForObject(
-                "SELECT valor FROM ponto_dado_mercado WHERE fonte='B3' AND conjunto_dados='BVBG.086' AND data_referencia='2026-08-21' AND chave_instrumento='DI1Z28'",
+                "SELECT valor FROM ponto_dado_mercado WHERE fonte='B3' AND conjunto_dados='B3_CURVA_PRE' AND data_referencia='2026-08-21' AND chave_instrumento='10'",
                 BigDecimal.class);
         assertThat(valorGravado).isEqualByComparingTo("14.129");
 
         // 2) Redelivery do MESMO eventId -> no-op idempotente, nada muda
         ResultadoProcessamentoBloco r2 = ingestaoService.processarBloco(
-                "B3", "BVBG.086", LocalDate.of(2026, 8, 21), loteExternoId,
+                "B3", "B3_CURVA_PRE", LocalDate.of(2026, 8, 21), loteExternoId,
                 UUID.randomUUID(), "evt-1", "sha256:" + "a".repeat(64), 1, 1, TipoPayload.INDIVIDUAL_QUOTES, pontos);
         assertThat(r2.divergenciasNoBloco()).isEmpty();
         assertThat(r2.lote().blocosRecebidos()).isEqualTo(1);
 
-        // 3) Um lote NOVO (loteExternoId diferente) regravando DI1Z28 com valor diferente -> divergência detectada
+        // 3) Um lote NOVO (loteExternoId diferente) regravando a chave '10' com valor diferente -> divergência detectada
         String segundoLoteExternoId = "it-lote-" + UUID.randomUUID();
         PontoDadoMercado pontoDivergente = new PontoDadoMercado(
-                "B3", "BVBG.086", LocalDate.of(2026, 8, 21), "DI1Z28",
-                new BigDecimal("99.999"), Bvbg086PricRptParser.TIPO_COTACAO_TAXA_AJUSTE, null);
+                "B3", "B3_CURVA_PRE", LocalDate.of(2026, 8, 21), "10",
+                new BigDecimal("99.999"), B3CurvaProntaParser.TIPO_COTACAO_TAXA_CURVA_PRONTA, null);
 
         ResultadoProcessamentoBloco r3 = ingestaoService.processarBloco(
-                "B3", "BVBG.086", LocalDate.of(2026, 8, 21), segundoLoteExternoId,
+                "B3", "B3_CURVA_PRE", LocalDate.of(2026, 8, 21), segundoLoteExternoId,
                 UUID.randomUUID(), "evt-1", "sha256:" + "b".repeat(64), 1, 1, TipoPayload.INDIVIDUAL_QUOTES, List.of(pontoDivergente));
 
         assertThat(r3.divergenciasNoBloco()).hasSize(1);

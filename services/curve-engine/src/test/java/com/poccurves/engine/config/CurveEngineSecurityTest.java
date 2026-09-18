@@ -1,5 +1,4 @@
 package com.poccurves.engine.config;
-import com.poccurves.engine.application.usecase.CompararModelosService;
 import com.poccurves.engine.application.usecase.ImportarModeloGroovyService;
 import com.poccurves.engine.application.usecase.InterpolacaoService;
 import com.poccurves.engine.application.usecase.ListarModelosService;
@@ -42,8 +41,6 @@ class CurveEngineSecurityTest {
     private ListarModelosService listarModelosService;
     @MockitoBean
     private ImportarModeloGroovyService importarModeloGroovyService;
-    @MockitoBean
-    private CompararModelosService compararModelosService;
 
     @Test
     void requisicaoSemTokenDeveRetornar401() throws Exception {

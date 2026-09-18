@@ -95,17 +95,13 @@ class MensagemInvalidaNaoTravaParticaoIT {
     }
 
     private String envelopeValido(String loteId, String ticker) {
-        String fragmento = "<BizGrp><Document><PricRpt><SctyId><TckrSymb>" + ticker + "</TckrSymb></SctyId>"
-                + "<FinInstrmId><OthrId><Id>x</Id></OthrId></FinInstrmId>"
-                + "<TradDt><Dt>2026-08-21</Dt></TradDt>"
-                + "<FinInstrmAttrbts><AdjstdQtTax>10.000</AdjstdQtTax></FinInstrmAttrbts>"
-                + "</PricRpt></Document></BizGrp>";
+        String fragmento = "DI x pré;" + ticker + ";" + ticker + ";10,000";
         return """
                 {
                   "eventId": "%s",
                   "correlationId": "%s",
                   "source": "B3",
-                  "dataset": "BVBG.086",
+                  "dataset": "B3_CURVA_PRE",
                   "referenceDate": "2026-08-21",
                   "producedAt": "2026-08-21T18:00:00Z",
                   "schemaVersion": "1.0",

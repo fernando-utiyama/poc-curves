@@ -33,7 +33,7 @@ class ConsoleDesenvolvimentoModeloServiceTest {
         CurvaJuros curva = CurvaJuros.de(List.of(new Vertice(21, null, null, new BigDecimal("13.50"), null)));
         when(groovyModeloConstrucao.construir(any(), any())).thenReturn(curva);
 
-        var insumo = new TestarScriptGroovyRequest.InsumoAmostraDTO("DI1F26", new BigDecimal("13.50"), 21, LocalDate.of(2026, 1, 2));
+        var insumo = new TestarScriptGroovyRequest.VerticeAmostraDTO(21, new BigDecimal("13.50"), LocalDate.of(2026, 1, 2));
         TestarScriptGroovyResponse resposta = service.testar(new TestarScriptGroovyRequest("[[prazoDiasUteis: 21, taxa: 13.50]]", List.of(insumo)));
 
         assertThat(resposta.status()).isEqualTo("OK");

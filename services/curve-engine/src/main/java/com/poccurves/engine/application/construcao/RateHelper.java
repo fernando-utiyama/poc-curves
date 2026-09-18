@@ -1,9 +1,6 @@
 package com.poccurves.engine.application.construcao;
 
-import com.poccurves.engine.application.model.InsumoDI1;
-
 import java.math.BigDecimal;
-import java.util.Objects;
 
 /**
  * Classe utilitária para extração e validação de taxas de insumos de mercado.
@@ -15,27 +12,7 @@ public final class RateHelper {
     }
 
     /**
-     * Extrai e valida a taxa de um insumo DI1.
-     * 
-     * @param insumo o insumo DI1
-     * @return a taxa validada
-     * @throws IllegalArgumentException se a taxa for nula ou <= -1
-     * @throws NullPointerException se o insumo for nulo
-     */
-    public static BigDecimal taxaDi1(InsumoDI1 insumo) {
-        Objects.requireNonNull(insumo, "insumo não pode ser nulo");
-        BigDecimal taxa = insumo.taxaAjuste();
-        if (taxa == null) {
-            throw new IllegalArgumentException("taxa nula no insumo " + insumo.ticker());
-        }
-        if (taxa.compareTo(BigDecimal.valueOf(-1)) <= 0) {
-            throw new IllegalArgumentException("taxa inválida no insumo " + insumo.ticker() + ", deve ser > -1: " + taxa);
-        }
-        return taxa;
-    }
-
-    /**
-     * Extrai e valida a taxa do CDI, já anualizada base 252 (mesma convenção de {@link #taxaDi1}).
+     * Extrai e valida a taxa do CDI, já anualizada base 252.
      * <p>
      * A fonte de dado existe desde a seção 9 de {@code openspec/changes/function-marketdata/tasks.md}
      * (feeder BCB, série 4389 — "Taxa de juros - CDI anualizada base 252") — não é mais um

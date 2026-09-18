@@ -1,7 +1,6 @@
 package com.poccurves.engine.adapter.out.construcao;
 import com.poccurves.engine.application.construcao.CurvaJuros;
-import com.poccurves.engine.application.construcao.CurveBootstrapper;
-import com.poccurves.engine.application.model.InsumoDI1;
+import com.poccurves.engine.application.construcao.Vertice;
 import com.poccurves.engine.application.model.ModeloCurva;
 import com.poccurves.engine.application.model.TipoModelo;
 import com.poccurves.engine.application.port.ModeloConstrucaoPort;
@@ -14,17 +13,23 @@ import java.util.function.Function;
 
 /**
  * Despacha para a implementação Java embutida (TipoModelo.BUILTIN) correspondente ao
- * {@code codigo} do modelo. Hoje só existe uma: PRE_DI1_B3 (montagem direta a partir de DI1,
- * {@link CurveBootstrapper}) — a estrutura fica pronta para outros modelos embutidos futuros.
+ * {@code codigo} do modelo. Hoje só existe TAXA_SWAP_TRANSCRICAO_B3 — as curvas TS B3
+ * (openspec/changes/b3-additional-curves) já vêm com o valor final calculado pela B3 (Manual de
+ * Curvas), então a "construção" é a montagem direta de {@link CurvaJuros} a partir dos vértices
+ * recebidos, sem nenhum cálculo — a estrutura fica pronta para outros modelos embutidos futuros
+ * (ex. um bootstrap de verdade, se uma curva calibrada a partir de insumo bruto voltar a existir).
  */
 @Component
 public class BuiltinModeloConstrucao implements ModeloConstrucaoPort {
 
-    private final Map<String, Function<List<InsumoDI1>, CurvaJuros>> implementacoesPorCodigo;
+    /** Modelo embutido padrão das curvas TS B3 — ver {@link com.poccurves.engine.adapter.in.bootstrap.ModeloCurvaBootstrap}. */
+    public static final String CODIGO_TAXA_SWAP_TRANSCRICAO_B3 = "TAXA_SWAP_TRANSCRICAO_B3";
 
-    public BuiltinModeloConstrucao(CurveBootstrapper curveBootstrapper) {
+    private final Map<String, Function<List<Vertice>, CurvaJuros>> implementacoesPorCodigo;
+
+    public BuiltinModeloConstrucao() {
         this.implementacoesPorCodigo = Map.of(
-                "PRE_DI1_B3", curveBootstrapper::montarCurvaPreDeDi1
+                CODIGO_TAXA_SWAP_TRANSCRICAO_B3, CurvaJuros::de
         );
     }
 
@@ -34,8 +39,8 @@ public class BuiltinModeloConstrucao implements ModeloConstrucaoPort {
     }
 
     @Override
-    public CurvaJuros construir(ModeloCurva modelo, List<InsumoDI1> insumos) {
-        Function<List<InsumoDI1>, CurvaJuros> implementacao = implementacoesPorCodigo.get(modelo.codigo());
+    public CurvaJuros construir(ModeloCurva modelo, List<Vertice> insumos) {
+        Function<List<Vertice>, CurvaJuros> implementacao = implementacoesPorCodigo.get(modelo.codigo());
         if (implementacao == null) {
             throw new IllegalStateException("modelo embutido desconhecido: " + modelo.codigo());
         }

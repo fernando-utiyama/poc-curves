@@ -31,7 +31,7 @@ class ModeloCurvaBootstrapTest {
     @Test
     void naoRecriaSeJaExiste() {
         ModeloCurva existente = mock(ModeloCurva.class);
-        when(modeloCurvaRepository.buscarPorCodigo("PRE_DI1_B3")).thenReturn(Optional.of(existente));
+        when(modeloCurvaRepository.buscarPorCodigo("TAXA_SWAP_TRANSCRICAO_B3")).thenReturn(Optional.of(existente));
 
         bootstrap.run(mock(ApplicationArguments.class));
 
@@ -40,7 +40,7 @@ class ModeloCurvaBootstrapTest {
 
     @Test
     void criaSeNaoExistir() {
-        when(modeloCurvaRepository.buscarPorCodigo("PRE_DI1_B3")).thenReturn(Optional.empty());
+        when(modeloCurvaRepository.buscarPorCodigo("TAXA_SWAP_TRANSCRICAO_B3")).thenReturn(Optional.empty());
 
         bootstrap.run(mock(ApplicationArguments.class));
 
@@ -48,7 +48,7 @@ class ModeloCurvaBootstrapTest {
         verify(modeloCurvaRepository).inserir(captor.capture());
 
         ModeloCurva salvo = captor.getValue();
-        assertThat(salvo.codigo()).isEqualTo("PRE_DI1_B3");
+        assertThat(salvo.codigo()).isEqualTo("TAXA_SWAP_TRANSCRICAO_B3");
         assertThat(salvo.tipo().name()).isEqualTo("BUILTIN");
     }
 }

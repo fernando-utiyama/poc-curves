@@ -15,7 +15,7 @@ class LoteIngestaoTest {
         return LoteIngestao.abrir(
                 null,
                 "B3",
-                "PR_DI1",
+                "B3_CURVA_PRE",
                 TipoPayload.INDIVIDUAL_QUOTES,
                 dataReferencia,
                 "lote-ext-1",
@@ -33,7 +33,7 @@ class LoteIngestaoTest {
         assertThat(lote.id()).isNull();
         assertThat(lote.execucaoCurvaId()).isNull();
         assertThat(lote.fonte()).isEqualTo("B3");
-        assertThat(lote.conjuntoDados()).isEqualTo("PR_DI1");
+        assertThat(lote.conjuntoDados()).isEqualTo("B3_CURVA_PRE");
         assertThat(lote.tipoPayload()).isEqualTo(TipoPayload.INDIVIDUAL_QUOTES);
         assertThat(lote.dataReferencia()).isEqualTo(dataReferencia);
         assertThat(lote.loteExternoId()).isEqualTo("lote-ext-1");
@@ -51,7 +51,7 @@ class LoteIngestaoTest {
     @Test
     void deveLancarIllegalArgumentExceptionQuandoTotalBlocosMenorQueUm() {
         assertThatThrownBy(() -> LoteIngestao.abrir(
-                null, "B3", "PR_DI1", TipoPayload.INDIVIDUAL_QUOTES,
+                null, "B3", "B3_CURVA_PRE", TipoPayload.INDIVIDUAL_QUOTES,
                 dataReferencia, "lote-ext-1", null, "evt-inicial", "abc123", 0
         )).isInstanceOf(IllegalArgumentException.class);
     }
@@ -59,22 +59,22 @@ class LoteIngestaoTest {
     @Test
     void deveLancarIllegalArgumentExceptionQuandoCamposObrigatoriosEstiveremEmBranco() {
         assertThatThrownBy(() -> LoteIngestao.abrir(
-                null, "   ", "PR_DI1", TipoPayload.INDIVIDUAL_QUOTES,
+                null, "   ", "B3_CURVA_PRE", TipoPayload.INDIVIDUAL_QUOTES,
                 dataReferencia, "lote-ext-1", null, "evt-inicial", "abc123", 3
         )).isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> LoteIngestao.abrir(
-                null, "B3", "PR_DI1", TipoPayload.INDIVIDUAL_QUOTES,
+                null, "B3", "B3_CURVA_PRE", TipoPayload.INDIVIDUAL_QUOTES,
                 dataReferencia, "   ", null, "evt-inicial", "abc123", 3
         )).isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> LoteIngestao.abrir(
-                null, "B3", "PR_DI1", TipoPayload.INDIVIDUAL_QUOTES,
+                null, "B3", "B3_CURVA_PRE", TipoPayload.INDIVIDUAL_QUOTES,
                 dataReferencia, "lote-ext-1", null, "   ", "abc123", 3
         )).isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> LoteIngestao.abrir(
-                null, "B3", "PR_DI1", TipoPayload.INDIVIDUAL_QUOTES,
+                null, "B3", "B3_CURVA_PRE", TipoPayload.INDIVIDUAL_QUOTES,
                 dataReferencia, "lote-ext-1", null, "evt-inicial", "   ", 3
         )).isInstanceOf(IllegalArgumentException.class);
     }
@@ -82,7 +82,7 @@ class LoteIngestaoTest {
     @Test
     void deveLancarNullPointerExceptionQuandoTipoPayloadForNulo() {
         assertThatThrownBy(() -> LoteIngestao.abrir(
-                null, "B3", "PR_DI1", null,
+                null, "B3", "B3_CURVA_PRE", null,
                 dataReferencia, "lote-ext-1", null, "evt-inicial", "abc123", 3
         )).isInstanceOf(NullPointerException.class);
     }
@@ -177,7 +177,7 @@ class LoteIngestaoTest {
                 42L,
                 null,
                 "B3",
-                "PR_DI1",
+                "B3_CURVA_PRE",
                 TipoPayload.INDIVIDUAL_QUOTES,
                 dataReferencia,
                 "lote-ext-1",
@@ -207,7 +207,7 @@ class LoteIngestaoTest {
     @Test
     void reidratarPermiteContinuarRegistrandoBlocosQuandoAbertoENaoEstaCompleto() {
         LoteIngestao lote = LoteIngestao.reidratar(
-                7L, null, "B3", "PR_DI1", TipoPayload.INDIVIDUAL_QUOTES, dataReferencia,
+                7L, null, "B3", "B3_CURVA_PRE", TipoPayload.INDIVIDUAL_QUOTES, dataReferencia,
                 "lote-ext-2", null, "evt-1", "hash1", 2, 1, 10, 10, 0, null,
                 EstadoLoteIngestao.ABERTO, java.time.Instant.now()
         );

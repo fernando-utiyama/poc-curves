@@ -1,7 +1,6 @@
 package com.poccurves.engine.adapter.out.construcao;
 import com.poccurves.engine.application.exception.ModeloConstrucaoException;
 import com.poccurves.engine.application.construcao.CurvaJuros;
-import com.poccurves.engine.application.model.InsumoDI1;
 import com.poccurves.engine.application.model.ModeloCurva;
 import com.poccurves.engine.application.model.TipoModelo;
 import com.poccurves.engine.application.construcao.Vertice;
@@ -61,7 +60,7 @@ import java.util.concurrent.TimeoutException;
  * <p>
  * Tempo limite de execução numa thread separada, cancelável.
  * <p>
- * <b>Contrato do script</b>: recebe a variável {@code insumos} ({@code List<InsumoDI1>}) e
+ * <b>Contrato do script</b>: recebe a variável {@code insumos} ({@code List<Vertice>}) e
  * deve avaliar, como última expressão, uma {@code List} de {@code Map} — cada um com pelo
  * menos as chaves {@code prazoDiasUteis} (inteiro) e {@code taxa} (número/BigDecimal/texto
  * decimal), e opcionalmente {@code prazoDiasCorridos}, {@code dataVencimento} (texto
@@ -116,7 +115,7 @@ public class GroovyModeloConstrucao implements ModeloConstrucaoPort {
             java.util.Collections.class.getName(),
             java.time.LocalDate.class.getName(),
             java.time.temporal.ChronoUnit.class.getName(),
-            InsumoDI1.class.getName(),
+            Vertice.class.getName(),
             groovy.lang.GroovyObject.class.getName(),
             groovy.lang.Closure.class.getName(),
             groovy.lang.Script.class.getName(),
@@ -187,7 +186,7 @@ public class GroovyModeloConstrucao implements ModeloConstrucaoPort {
     }
 
     @Override
-    public CurvaJuros construir(ModeloCurva modelo, List<InsumoDI1> insumos) {
+    public CurvaJuros construir(ModeloCurva modelo, List<Vertice> insumos) {
         String script = modelo.codigoFonte();
         if (script == null || script.isBlank()) {
             throw new ModeloConstrucaoException(ModeloConstrucaoException.Fase.COMPILACAO, "script Groovy vazio", null);

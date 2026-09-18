@@ -1,7 +1,5 @@
 package com.poccurves.engine.adapter.out.persistence;
 import com.poccurves.engine.application.model.MomentoCurva;
-import com.poccurves.engine.application.model.OrigemVersao;
-import com.poccurves.engine.application.model.VersaoCurva;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,8 +17,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Teste de integração real: exige o ambiente local Podman de pé (deploy/podman/up.sh --lite),
- * com o SQL Server já migrado até V18. Nomeado com sufixo "IT" — fora do build padrão (mvn test
- * só coleta **&#47;*Test.java).
+ * com o SQL Server já migrado até V18. {@code inserir}/{@code atualizar}/{@code
+ * proximoNumeroVersao}/{@code buscarPorId}/{@code buscarPorExecucaoCurvaId}/{@code
+ * buscarUltimaVersaoPublicadaAnterior} foram removidos junto com a limpeza da curva DI1/
+ * BOOTSTRAPPED (BVBG.086/BVBG.028) — só a leitura usada por {@code InterpolacaoService}
+ * (curvas IMPORTED, ex. B3_CURVA_PRE) sobrevive. Semeia a versão diretamente via {@code sa},
+ * já que o repositório não escreve mais.
  */
 class VersaoCurvaRepositoryIT {
 
@@ -38,8 +42,7 @@ class VersaoCurvaRepositoryIT {
         return new JdbcTemplate(ds);
     }
 
-    private final JdbcTemplate jdbcTemplate = jdbcTemplateApp();
-    private final VersaoCurvaRepository repository = new VersaoCurvaRepository(jdbcTemplate);
+    private final VersaoCurvaRepository repository = new VersaoCurvaRepository(jdbcTemplateApp());
 
     private String codigoCurva;
     private UUID definicaoCurvaId;
@@ -56,7 +59,7 @@ class VersaoCurvaRepositoryIT {
 
         sa.update("""
                 INSERT INTO definicao_curva (id, codigo, nome, moeda, modo_origem, horario_limite_publicacao, estado, criado_por)
-                VALUES (?, ?, 'teste IT', 'BRL', 'BOOTSTRAPPED', '18:00', 'ATIVA', 'teste')
+                VALUES (?, ?, 'teste IT', 'BRL', 'IMPORTED', '18:00', 'ATIVA', 'teste')
                 """, definicaoCurvaId, codigoCurva);
         sa.update("""
                 INSERT INTO versao_definicao_curva (
@@ -79,63 +82,40 @@ class VersaoCurvaRepositoryIT {
         sa.update("DELETE FROM definicao_curva WHERE id = ?", definicaoCurvaId);
     }
 
-    @Test
-    void fluxoCompletoInserirBuscarPublicarProximoNumero() {
-        LocalDate dataReferencia = LocalDate.of(2026, 3, 10);
-
-        assertThat(repository.proximoNumeroVersao(definicaoCurvaId, dataReferencia, MomentoCurva.FECHAMENTO)).isEqualTo(1);
-
-        VersaoCurva versao = VersaoCurva.criar(
-                definicaoCurvaId, versaoDefinicaoCurvaId, dataReferencia, MomentoCurva.FECHAMENTO,
-                1, OrigemVersao.CALCULADA, execucaoCurvaId
-        );
-        repository.inserir(versao);
-
-        Optional<VersaoCurva> lida = repository.buscarPorId(versao.id());
-        assertThat(lida).isPresent();
-        assertThat(lida.get().estado().name()).isEqualTo("EM_VALIDACAO");
-        assertThat(lida.get().dataReferencia()).isEqualTo(dataReferencia);
-
-        Optional<VersaoCurva> lidaPorExecucao = repository.buscarPorExecucaoCurvaId(execucaoCurvaId);
-        assertThat(lidaPorExecucao).isPresent();
-        assertThat(lidaPorExecucao.get().id()).isEqualTo(versao.id());
-
-        assertThat(repository.buscarVersaoVigentePublicada(definicaoCurvaId, dataReferencia, MomentoCurva.FECHAMENTO)).isEmpty();
-
-        versao.publicar();
-        repository.atualizar(versao);
-
-        Optional<VersaoCurva> publicada = repository.buscarVersaoVigentePublicada(definicaoCurvaId, dataReferencia, MomentoCurva.FECHAMENTO);
-        assertThat(publicada).isPresent();
-        assertThat(publicada.get().estado().name()).isEqualTo("PUBLICADA");
-        assertThat(publicada.get().publicadoEm()).isNotNull();
-
-        assertThat(repository.proximoNumeroVersao(definicaoCurvaId, dataReferencia, MomentoCurva.FECHAMENTO)).isEqualTo(2);
+    private void seedVersaoCurva(UUID id, LocalDate dataReferencia, int numeroVersao, String estado, Instant publicadoEm) {
+        jdbcTemplateSa().update("""
+                INSERT INTO versao_curva (
+                    id, definicao_curva_id, versao_definicao_curva_id, data_referencia,
+                    momento_curva, numero_versao, origem_versao, estado, execucao_curva_id, publicado_em
+                ) VALUES (?, ?, ?, ?, 'FECHAMENTO', ?, 'IMPORTADA', ?, ?, ?)
+                """, id, definicaoCurvaId, versaoDefinicaoCurvaId, dataReferencia, numeroVersao, estado,
+                execucaoCurvaId, publicadoEm != null ? Timestamp.from(publicadoEm) : null);
     }
 
     @Test
-    void buscarUltimaVersaoPublicadaAnteriorEncontraDataMaisRecenteAntesDaInformada() {
-        LocalDate dataAntiga = LocalDate.of(2026, 3, 5);
-        LocalDate dataRecente = LocalDate.of(2026, 3, 9);
-        LocalDate dataConsulta = LocalDate.of(2026, 3, 10);
+    void buscarVersaoVigentePublicadaEBuscarPorNumeroVersaoLeemOQueFoiSemeado() {
+        LocalDate dataReferencia = LocalDate.of(2026, 3, 10);
+        UUID versaoId = UUID.randomUUID();
+        seedVersaoCurva(versaoId, dataReferencia, 1, "PUBLICADA", Instant.now());
 
-        VersaoCurva versaoAntiga = VersaoCurva.criar(
-                definicaoCurvaId, versaoDefinicaoCurvaId, dataAntiga, MomentoCurva.FECHAMENTO,
-                1, OrigemVersao.CALCULADA, execucaoCurvaId
-        );
-        versaoAntiga.publicar();
-        repository.inserir(versaoAntiga);
+        Optional<com.poccurves.engine.application.model.VersaoCurva> publicada =
+                repository.buscarVersaoVigentePublicada(definicaoCurvaId, dataReferencia, MomentoCurva.FECHAMENTO);
+        assertThat(publicada).isPresent();
+        assertThat(publicada.get().id()).isEqualTo(versaoId);
+        assertThat(publicada.get().estado().name()).isEqualTo("PUBLICADA");
+        assertThat(publicada.get().publicadoEm()).isNotNull();
 
-        VersaoCurva versaoRecente = VersaoCurva.criar(
-                definicaoCurvaId, versaoDefinicaoCurvaId, dataRecente, MomentoCurva.FECHAMENTO,
-                1, OrigemVersao.CALCULADA, execucaoCurvaId
-        );
-        versaoRecente.publicar();
-        repository.inserir(versaoRecente);
+        Optional<com.poccurves.engine.application.model.VersaoCurva> porNumero =
+                repository.buscarPorNumeroVersao(definicaoCurvaId, dataReferencia, MomentoCurva.FECHAMENTO, 1);
+        assertThat(porNumero).isPresent();
+        assertThat(porNumero.get().id()).isEqualTo(versaoId);
+    }
 
-        Optional<VersaoCurva> encontrada = repository.buscarUltimaVersaoPublicadaAnterior(definicaoCurvaId, dataConsulta, MomentoCurva.FECHAMENTO);
+    @Test
+    void buscarVersaoVigentePublicadaNaoEncontraVersaoNaoPublicada() {
+        LocalDate dataReferencia = LocalDate.of(2026, 3, 11);
+        seedVersaoCurva(UUID.randomUUID(), dataReferencia, 1, "EM_VALIDACAO", null);
 
-        assertThat(encontrada).isPresent();
-        assertThat(encontrada.get().dataReferencia()).isEqualTo(dataRecente);
+        assertThat(repository.buscarVersaoVigentePublicada(definicaoCurvaId, dataReferencia, MomentoCurva.FECHAMENTO)).isEmpty();
     }
 }

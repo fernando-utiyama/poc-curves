@@ -56,18 +56,17 @@ public class CurveEngineSecurityConfig {
                         // modelo de confiança de rede interna já usado no resto da plataforma
                         // (orchestrator->function-marketdata, orchestrator->curve-processor, também
                         // sem autenticação). Exigir JWT aqui quebraria a chamada em tempo real.
-                        .requestMatchers(HttpMethod.POST, "/api/v1/construcoes").permitAll()
-
-                        // Mesma chamada interna serviço-a-serviço acima, agora para a construção
-                        // das curvas TS B3 (openspec/changes/b3-additional-curves).
+                        // Construção BOOTSTRAPPED (DI1) foi removida (curva-processor/curve-engine
+                        // limpos, openspec/changes/b3-additional-curves) — só a construção das
+                        // curvas TS B3 abaixo continua sendo despachada assim.
                         .requestMatchers(HttpMethod.POST, "/api/v1/curvas-b3/construir").permitAll()
 
                         // Importar/validar script Groovy é a única ação restrita a administrador —
                         // executa código arbitrário e, se válido, persiste como modelo de precificação.
                         .requestMatchers(HttpMethod.POST, "/api/v1/modelos/validar-groovy").hasRole("CURVE_ADMIN")
 
-                        // Todo o resto (interpolação, listagem e comparação de modelos) é
-                        // leitura/cálculo — acessível a qualquer perfil autenticado.
+                        // Todo o resto (interpolação e listagem de modelos) é leitura/cálculo —
+                        // acessível a qualquer perfil autenticado.
                         .anyRequest().hasAnyRole("CURVE_VIEWER", "CURVE_OPERATOR", "CURVE_ADMIN")
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

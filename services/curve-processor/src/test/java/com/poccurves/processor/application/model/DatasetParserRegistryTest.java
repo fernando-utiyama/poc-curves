@@ -21,19 +21,19 @@ class DatasetParserRegistryTest {
 
     @Test
     void deveResolverParserRegistradoComSucesso() {
-        DatasetParser parserA = new DummyParser("PR_DI1");
-        DatasetParser parserB = new DummyParser("BVBG.086");
+        DatasetParser parserA = new DummyParser("DATASET_A");
+        DatasetParser parserB = new DummyParser("DATASET_B");
         DatasetParserRegistry registry = new DatasetParserRegistry(List.of(parserA, parserB));
 
-        Optional<DatasetParser> resultado = registry.resolver("PR_DI1");
+        Optional<DatasetParser> resultado = registry.resolver("DATASET_A");
 
         assertThat(resultado).isPresent();
-        assertThat(resultado.get().dataset()).isEqualTo("PR_DI1");
+        assertThat(resultado.get().dataset()).isEqualTo("DATASET_A");
     }
 
     @Test
     void deveRetornarVazioQuandoDatasetNaoEstiverRegistrado() {
-        DatasetParser parserA = new DummyParser("PR_DI1");
+        DatasetParser parserA = new DummyParser("DATASET_A");
         DatasetParserRegistry registry = new DatasetParserRegistry(List.of(parserA));
 
         Optional<DatasetParser> resultado = registry.resolver("dataset-nao-registrado");
@@ -43,12 +43,12 @@ class DatasetParserRegistryTest {
 
     @Test
     void deveLancarExcecaoQuandoHouverDatasetsDuplicados() {
-        DatasetParser parserA1 = new DummyParser("PR_DI1");
-        DatasetParser parserA2 = new DummyParser("PR_DI1");
+        DatasetParser parserA1 = new DummyParser("DATASET_A");
+        DatasetParser parserA2 = new DummyParser("DATASET_A");
 
         assertThatThrownBy(() -> new DatasetParserRegistry(List.of(parserA1, parserA2)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("dataset duplicado no registro de parsers: PR_DI1");
+                .hasMessageContaining("dataset duplicado no registro de parsers: DATASET_A");
     }
 
     @Test
@@ -62,7 +62,7 @@ class DatasetParserRegistryTest {
     void deveCriarParseResultSucessoComPontosValidos() {
         PontoDadoMercado ponto = new PontoDadoMercado(
                 "B3",
-                "PR_DI1",
+                "B3_CURVA_PRE",
                 LocalDate.of(2026, 8, 21),
                 "DI1F27",
                 new BigDecimal("10.5"),

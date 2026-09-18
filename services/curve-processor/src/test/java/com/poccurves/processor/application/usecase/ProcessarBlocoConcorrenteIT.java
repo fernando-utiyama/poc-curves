@@ -90,7 +90,7 @@ class ProcessarBlocoConcorrenteIT {
         LocalDate dataRef = LocalDate.of(2026, 8, 21);
 
         PontoDadoMercado ponto = new PontoDadoMercado(
-                "B3", "BVBG.086", dataRef, "CONCORRENCIA_PONTO",
+                "B3", "B3_CURVA_PRE", dataRef, "CONCORRENCIA_PONTO",
                 new BigDecimal("13.500"), "TAXA_AJUSTE", null);
 
         CyclicBarrier largada = new CyclicBarrier(2);
@@ -99,7 +99,7 @@ class ProcessarBlocoConcorrenteIT {
             Callable<ResultadoProcessamentoBloco> chamada = () -> {
                 largada.await(10, TimeUnit.SECONDS);
                 return ingestaoService.processarBloco(
-                        "B3", "BVBG.086", dataRef, loteExternoId,
+                        "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                         UUID.randomUUID(), eventId, "sha256:" + "d".repeat(64), 1, 1,
                         TipoPayload.INDIVIDUAL_QUOTES, List.of(ponto));
             };

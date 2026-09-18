@@ -81,18 +81,18 @@ class IngestaoServiceMultiBlocoIT {
         LocalDate dataRef = LocalDate.of(2026, 8, 21);
 
         PontoDadoMercado pontoA = new PontoDadoMercado(
-                "B3", "BVBG.086", dataRef, "MULTIBLOCO_A",
+                "B3", "B3_CURVA_PRE", dataRef, "MULTIBLOCO_A",
                 new BigDecimal("10.125"), "TAXA_AJUSTE", LocalDate.of(2028, 1, 1));
         PontoDadoMercado pontoB = new PontoDadoMercado(
-                "B3", "BVBG.086", dataRef, "MULTIBLOCO_B",
+                "B3", "B3_CURVA_PRE", dataRef, "MULTIBLOCO_B",
                 new BigDecimal("11.250"), "TAXA_AJUSTE", LocalDate.of(2029, 1, 1));
         PontoDadoMercado pontoC = new PontoDadoMercado(
-                "B3", "BVBG.086", dataRef, "MULTIBLOCO_C",
+                "B3", "B3_CURVA_PRE", dataRef, "MULTIBLOCO_C",
                 new BigDecimal("12.375"), "TAXA_AJUSTE", LocalDate.of(2030, 1, 1));
 
         // Bloco 1 de 3 -> Lote permanece ABERTO
         ResultadoProcessamentoBloco r1 = ingestaoService.processarBloco(
-                "B3", "BVBG.086", dataRef, loteExternoId,
+                "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                 UUID.randomUUID(),
                 "evt-1", "sha256:" + "a".repeat(64), 1, 3,
                 TipoPayload.INDIVIDUAL_QUOTES, List.of(pontoA));
@@ -101,7 +101,7 @@ class IngestaoServiceMultiBlocoIT {
 
         // Bloco 2 de 3 -> Lote permanece ABERTO
         ResultadoProcessamentoBloco r2 = ingestaoService.processarBloco(
-                "B3", "BVBG.086", dataRef, loteExternoId,
+                "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                 UUID.randomUUID(),
                 "evt-2", "sha256:" + "b".repeat(64), 2, 3,
                 TipoPayload.INDIVIDUAL_QUOTES, List.of(pontoB));
@@ -110,7 +110,7 @@ class IngestaoServiceMultiBlocoIT {
 
         // Bloco 3 de 3 -> Lote consolida para COMPLETO
         ResultadoProcessamentoBloco r3 = ingestaoService.processarBloco(
-                "B3", "BVBG.086", dataRef, loteExternoId,
+                "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                 UUID.randomUUID(),
                 "evt-3", "sha256:" + "c".repeat(64), 3, 3,
                 TipoPayload.INDIVIDUAL_QUOTES, List.of(pontoC));
@@ -149,32 +149,32 @@ class IngestaoServiceMultiBlocoIT {
         LocalDate dataRef = LocalDate.of(2026, 8, 21);
 
         PontoDadoMercado pontoA = new PontoDadoMercado(
-                "B3", "BVBG.086", dataRef, "MULTIBLOCO_ORDEM_A",
+                "B3", "B3_CURVA_PRE", dataRef, "MULTIBLOCO_ORDEM_A",
                 new BigDecimal("10.000"), "TAXA_AJUSTE", null);
         PontoDadoMercado pontoB = new PontoDadoMercado(
-                "B3", "BVBG.086", dataRef, "MULTIBLOCO_ORDEM_B",
+                "B3", "B3_CURVA_PRE", dataRef, "MULTIBLOCO_ORDEM_B",
                 new BigDecimal("11.000"), "TAXA_AJUSTE", null);
         PontoDadoMercado pontoC = new PontoDadoMercado(
-                "B3", "BVBG.086", dataRef, "MULTIBLOCO_ORDEM_C",
+                "B3", "B3_CURVA_PRE", dataRef, "MULTIBLOCO_ORDEM_C",
                 new BigDecimal("12.000"), "TAXA_AJUSTE", null);
 
         // 1a chamada: envia sequencia 2
         ingestaoService.processarBloco(
-                "B3", "BVBG.086", dataRef, loteExternoId,
+                "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                 UUID.randomUUID(),
                 "evt-2", "sha256:" + "2".repeat(64), 2, 3,
                 TipoPayload.INDIVIDUAL_QUOTES, List.of(pontoA));
 
         // 2a chamada: envia sequencia 1
         ingestaoService.processarBloco(
-                "B3", "BVBG.086", dataRef, loteExternoId,
+                "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                 UUID.randomUUID(),
                 "evt-1", "sha256:" + "1".repeat(64), 1, 3,
                 TipoPayload.INDIVIDUAL_QUOTES, List.of(pontoB));
 
         // 3a chamada: envia sequencia 3
         ResultadoProcessamentoBloco r3 = ingestaoService.processarBloco(
-                "B3", "BVBG.086", dataRef, loteExternoId,
+                "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                 UUID.randomUUID(),
                 "evt-3", "sha256:" + "3".repeat(64), 3, 3,
                 TipoPayload.INDIVIDUAL_QUOTES, List.of(pontoC));
@@ -210,23 +210,23 @@ class IngestaoServiceMultiBlocoIT {
         LocalDate dataRef = LocalDate.of(2026, 8, 21);
 
         PontoDadoMercado pontoValido = new PontoDadoMercado(
-                "B3", "BVBG.086", dataRef, "MULTIBLOCO_FALHA_OK",
+                "B3", "B3_CURVA_PRE", dataRef, "MULTIBLOCO_FALHA_OK",
                 new BigDecimal("10.500"), "TAXA_AJUSTE", null);
 
         // Bloco 1: Sucesso
         ingestaoService.processarBloco(
-                "B3", "BVBG.086", dataRef, loteExternoId,
+                "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                 UUID.randomUUID(),
                 "evt-1", "sha256:" + "1".repeat(64), 1, 3,
                 TipoPayload.INDIVIDUAL_QUOTES, List.of(pontoValido));
 
         // Bloco 2: Valor com 18 digitos antes do ponto decimal -> estoura DECIMAL(28,12) no banco
         PontoDadoMercado pontoInvalido = new PontoDadoMercado(
-                "B3", "BVBG.086", dataRef, "MULTIBLOCO_FALHA_ERRO",
+                "B3", "B3_CURVA_PRE", dataRef, "MULTIBLOCO_FALHA_ERRO",
                 new BigDecimal("999999999999999999"), "TAXA_AJUSTE", null);
 
         assertThatThrownBy(() -> ingestaoService.processarBloco(
-                "B3", "BVBG.086", dataRef, loteExternoId,
+                "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                 UUID.randomUUID(),
                 "evt-2", "sha256:" + "2".repeat(64), 2, 3,
                 TipoPayload.INDIVIDUAL_QUOTES, List.of(pontoInvalido)))
@@ -271,22 +271,22 @@ class IngestaoServiceMultiBlocoIT {
         LocalDate dataRef = LocalDate.of(2026, 8, 21);
 
         PontoDadoMercado ponto1 = new PontoDadoMercado(
-                "B3", "BVBG.086", dataRef, "MULTIBLOCO_INC_1",
+                "B3", "B3_CURVA_PRE", dataRef, "MULTIBLOCO_INC_1",
                 new BigDecimal("10.000"), "TAXA_AJUSTE", null);
         PontoDadoMercado ponto2 = new PontoDadoMercado(
-                "B3", "BVBG.086", dataRef, "MULTIBLOCO_INC_2",
+                "B3", "B3_CURVA_PRE", dataRef, "MULTIBLOCO_INC_2",
                 new BigDecimal("11.000"), "TAXA_AJUSTE", null);
 
         // Bloco 1 de 3
         ingestaoService.processarBloco(
-                "B3", "BVBG.086", dataRef, loteExternoId,
+                "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                 UUID.randomUUID(),
                 "evt-1", "sha256:" + "1".repeat(64), 1, 3,
                 TipoPayload.INDIVIDUAL_QUOTES, List.of(ponto1));
 
         // Bloco 2 de 3 (bloco 3 nao e enviado)
         ingestaoService.processarBloco(
-                "B3", "BVBG.086", dataRef, loteExternoId,
+                "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                 UUID.randomUUID(),
                 "evt-2", "sha256:" + "2".repeat(64), 2, 3,
                 TipoPayload.INDIVIDUAL_QUOTES, List.of(ponto2));
@@ -325,12 +325,12 @@ class IngestaoServiceMultiBlocoIT {
         BigDecimal valorPonto = new BigDecimal("15.250");
 
         PontoDadoMercado ponto = new PontoDadoMercado(
-                "B3", "BVBG.086", dataRef, "MULTIBLOCO_IDEM",
+                "B3", "B3_CURVA_PRE", dataRef, "MULTIBLOCO_IDEM",
                 valorPonto, "TAXA_AJUSTE", null);
 
         // 1a chamada: processamento inicial do bloco
         ResultadoProcessamentoBloco r1 = ingestaoService.processarBloco(
-                "B3", "BVBG.086", dataRef, loteExternoId,
+                "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                 UUID.randomUUID(), eventId, "sha256:" + "a".repeat(64), 1, 1,
                 TipoPayload.INDIVIDUAL_QUOTES, List.of(ponto));
 
@@ -369,7 +369,7 @@ class IngestaoServiceMultiBlocoIT {
 
         // 2a chamada: redelivery do MESMO bloco (mesmos argumentos e eventId)
         ResultadoProcessamentoBloco r2 = ingestaoService.processarBloco(
-                "B3", "BVBG.086", dataRef, loteExternoId,
+                "B3", "B3_CURVA_PRE", dataRef, loteExternoId,
                 UUID.randomUUID(), eventId, "sha256:" + "a".repeat(64), 1, 1,
                 TipoPayload.INDIVIDUAL_QUOTES, List.of(ponto));
 

@@ -1,5 +1,4 @@
 package com.poccurves.engine.adapter.in.web;
-import com.poccurves.engine.application.usecase.CompararModelosService;
 import com.poccurves.engine.application.usecase.ImportarModeloGroovyService;
 import com.poccurves.engine.application.usecase.ListarModelosService;
 
@@ -13,15 +12,12 @@ public class ModelosController {
 
     private final ListarModelosService listarModelosService;
     private final ImportarModeloGroovyService importarModeloGroovyService;
-    private final CompararModelosService compararModelosService;
 
     public ModelosController(
             ListarModelosService listarModelosService,
-            ImportarModeloGroovyService importarModeloGroovyService,
-            CompararModelosService compararModelosService) {
+            ImportarModeloGroovyService importarModeloGroovyService) {
         this.listarModelosService = listarModelosService;
         this.importarModeloGroovyService = importarModeloGroovyService;
-        this.compararModelosService = compararModelosService;
     }
 
     @GetMapping
@@ -34,10 +30,5 @@ public class ModelosController {
             @RequestBody ImportarModeloGroovyRequest request,
             @RequestHeader(value = "X-User", defaultValue = "sistema") String usuario) {
         return ResponseEntity.ok(importarModeloGroovyService.importar(request, usuario));
-    }
-
-    @PostMapping("/comparar")
-    public ResponseEntity<ComparacaoResponse> comparar(@RequestBody ComparacaoModelosRequest request) {
-        return ResponseEntity.ok(compararModelosService.comparar(request));
     }
 }

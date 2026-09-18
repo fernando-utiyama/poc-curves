@@ -9,6 +9,5 @@ public interface ModeloCurvaRepositoryPort {
     void inserir(ModeloCurva modelo);
     void atualizar(ModeloCurva modelo);
     Optional<ModeloCurva> buscarPorCodigo(String codigo);
-    List<ModeloCurva> listarAtivos();
     List<ModeloCurva> listarTodos();
 }

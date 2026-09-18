@@ -45,7 +45,7 @@ class ModeloConstrucaoResolverTest {
 
     @Test
     void mesmaInstanciaDoResolverAlternaEntreBuiltinEGroovyEVoltaSemReiniciar() {
-        ModeloCurva modeloBuiltin = ModeloCurva.builtin("PRE_DI1_B3", "modelo embutido");
+        ModeloCurva modeloBuiltin = ModeloCurva.builtin("MODELO_TESTE", "modelo embutido");
         ModeloCurva modeloGroovy = ModeloCurva.importarGroovy("ALT", "modelo alternativo", "[[prazoDiasUteis: 21, taxa: 13.50]]", "checksum123", "autor");
 
         CurvaJuros curvaBuiltinEsperada = mock(CurvaJuros.class);

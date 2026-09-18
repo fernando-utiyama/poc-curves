@@ -1,7 +1,7 @@
 package com.poccurves.engine.adapter.out.construcao;
 import com.poccurves.engine.application.exception.ModeloConstrucaoException;
 import com.poccurves.engine.application.construcao.CurvaJuros;
-import com.poccurves.engine.application.model.InsumoDI1;
+import com.poccurves.engine.application.construcao.Vertice;
 import com.poccurves.engine.application.model.ModeloCurva;
 
 import org.junit.jupiter.api.Test;
@@ -21,14 +21,14 @@ class GroovyModeloConstrucaoTest {
         return ModeloCurva.importarGroovy("TESTE_GROOVY", "Modelo de teste", script, "sha256-fake", "tester");
     }
 
-    private final List<InsumoDI1> insumosAmostra = List.of(
-            new InsumoDI1("DI1F26", new BigDecimal("13.50"), 21, LocalDate.of(2026, 1, 2)),
-            new InsumoDI1("DI1N26", new BigDecimal("13.20"), 126, LocalDate.of(2026, 7, 1))
+    private final List<Vertice> insumosAmostra = List.of(
+            new Vertice(21, null, LocalDate.of(2026, 1, 2), new BigDecimal("13.50"), null),
+            new Vertice(126, null, LocalDate.of(2026, 7, 1), new BigDecimal("13.20"), null)
     );
 
     @Test
     void suportaApenasModelosGroovy() {
-        ModeloCurva builtin = ModeloCurva.builtin("PRE_DI1_B3", "nome");
+        ModeloCurva builtin = ModeloCurva.builtin("TAXA_SWAP_TRANSCRICAO_B3", "nome");
         assertThat(construtor.suporta(builtin)).isFalse();
         assertThat(construtor.suporta(modeloComScript("[]"))).isTrue();
     }
@@ -36,7 +36,7 @@ class GroovyModeloConstrucaoTest {
     @Test
     void executaScriptValidoUsandoInsumosEProduzVertices() {
         ModeloCurva modelo = modeloComScript("""
-                insumos.collect { i -> [prazoDiasUteis: i.diasUteisVencimento(), taxa: i.taxaAjuste()] }
+                insumos.collect { i -> [prazoDiasUteis: i.prazoDiasUteis(), taxa: i.taxa()] }
                 """);
 
         CurvaJuros curva = construtor.construir(modelo, insumosAmostra);

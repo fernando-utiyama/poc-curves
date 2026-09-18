@@ -1,7 +1,5 @@
 package com.poccurves.processor.config;
 import com.poccurves.processor.application.model.B3CurvaProntaParser;
-import com.poccurves.processor.application.model.Bvbg028CadastroParser;
-import com.poccurves.processor.application.model.Bvbg086PricRptParser;
 import com.poccurves.processor.application.model.DatasetParser;
 import com.poccurves.processor.application.model.DatasetParserRegistry;
 
@@ -17,6 +15,10 @@ import java.util.List;
  * entrada aqui — {@code ProcessarEnvelopeIngestaoUseCase} intercepta esses datasets antes de
  * chegar neste registro genérico e grava direto em {@code tBtrsCurvaPrimr}, via
  * {@link com.poccurves.processor.application.model.B3TaxaSwapParser#extrairVertices}.
+ * <p>
+ * Os parsers de instrumento bruto BVBG.086/BVBG.028 (DI1/BOOTSTRAPPED) foram removidos —
+ * a plataforma manteve apenas as 5 curvas TS B3 (PRE/DCL/PTX/INP/DPL) e a curva pronta
+ * B3_CURVA_PRE como curvas reais de produção.
  */
 @Configuration
 public class ParserConfig {
@@ -24,10 +26,6 @@ public class ParserConfig {
     @Bean
     public DatasetParserRegistry datasetParserRegistry() {
         List<DatasetParser> parsers = new ArrayList<>();
-        for (String dataset : Bvbg086PricRptParser.datasetsCobertos()) {
-            parsers.add(new Bvbg086PricRptParser(dataset));
-        }
-        parsers.add(new Bvbg028CadastroParser());
         parsers.add(new B3CurvaProntaParser("B3_CURVA_PRE"));
         return new DatasetParserRegistry(parsers);
     }

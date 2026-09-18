@@ -77,7 +77,7 @@ class IngestaoListenerTest {
         IngestaoListener listener = new IngestaoListener(objectMapper, envelopeValidator, useCaseMock);
 
         Acknowledgment ack = mock(Acknowledgment.class);
-        ConsumerRecord<String, String> record = registro(envelopeValidoJson("BVBG_086"));
+        ConsumerRecord<String, String> record = registro(envelopeValidoJson("B3_CURVA_PRE"));
 
         listener.ouvirRotina(record, ack);
 

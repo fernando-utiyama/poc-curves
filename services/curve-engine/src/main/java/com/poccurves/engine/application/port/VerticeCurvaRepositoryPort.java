@@ -5,7 +5,7 @@ import com.poccurves.engine.application.construcao.Vertice;
 import java.util.List;
 import java.util.UUID;
 
+/** Leitura de {@code vertice_curva} (schema antigo) — ver {@link VersaoCurvaRepositoryPort}. */
 public interface VerticeCurvaRepositoryPort {
-    void inserirTodos(UUID versaoCurvaId, List<Vertice> vertices);
     List<Vertice> buscarPorVersaoCurva(UUID versaoCurvaId);
 }

@@ -1,5 +1,4 @@
 package com.poccurves.engine.adapter.in.web;
-import com.poccurves.engine.application.usecase.CompararModelosService;
 import com.poccurves.engine.application.usecase.ImportarModeloGroovyService;
 import com.poccurves.engine.application.usecase.ListarModelosService;
 
@@ -15,8 +14,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,21 +36,19 @@ class ModelosControllerTest {
     private ListarModelosService listarModelosService;
     @MockitoBean
     private ImportarModeloGroovyService importarModeloGroovyService;
-    @MockitoBean
-    private CompararModelosService compararModelosService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void listarRetornaOsModelosDoServico() throws Exception {
         when(listarModelosService.listarModelos()).thenReturn(new ModelosResponse(List.of(
-                new ModeloDTO(UUID.randomUUID(), "PRE_DI1_B3", "Modelo Padrão", "BUILTIN", "ATIVO", null, null)
+                new ModeloDTO(UUID.randomUUID(), "TAXA_SWAP_TRANSCRICAO_B3", "Modelo Padrão", "BUILTIN", "ATIVO", null, null)
         )));
 
         mockMvc.perform(get("/api/v1/modelos")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_CURVE_VIEWER"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.modelos[0].codigo").value("PRE_DI1_B3"))
+                .andExpect(jsonPath("$.modelos[0].codigo").value("TAXA_SWAP_TRANSCRICAO_B3"))
                 .andExpect(jsonPath("$.modelos[0].tipo").value("BUILTIN"));
     }
 
@@ -71,24 +66,5 @@ class ModelosControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("VALIDO"))
                 .andExpect(jsonPath("$.checksum").value("abc123"));
-    }
-
-    @Test
-    void compararRetornaAsDiferencasDoServico() throws Exception {
-        when(compararModelosService.comparar(any())).thenReturn(new ComparacaoResponse(
-                LocalDate.of(2026, 8, 21), "MODELO_A", "MODELO_B",
-                List.of(new ItemComparacaoDTO(21, new BigDecimal("13.50"), new BigDecimal("13.60"),
-                        new BigDecimal("10.00"), null, null, "COINCIDENTE"))
-        ));
-
-        ComparacaoModelosRequest request = new ComparacaoModelosRequest("PRE_DI1_B3", LocalDate.of(2026, 8, 21), "FECHAMENTO", "MODELO_A", "MODELO_B");
-
-        mockMvc.perform(post("/api/v1/modelos/comparar")
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_CURVE_VIEWER")))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.diferencas[0].status").value("COINCIDENTE"))
-                .andExpect(jsonPath("$.diferencas[0].diferencaTaxaBps").value(10.00));
     }
 }

@@ -1,7 +1,5 @@
 package com.poccurves.engine.adapter.out.construcao;
 import com.poccurves.engine.application.construcao.CurvaJuros;
-import com.poccurves.engine.application.construcao.CurveBootstrapper;
-import com.poccurves.engine.application.model.InsumoDI1;
 import com.poccurves.engine.application.model.ModeloCurva;
 import com.poccurves.engine.application.construcao.Vertice;
 
@@ -16,11 +14,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class BuiltinModeloConstrucaoTest {
 
-    private final BuiltinModeloConstrucao construtor = new BuiltinModeloConstrucao(new CurveBootstrapper());
+    private final BuiltinModeloConstrucao construtor = new BuiltinModeloConstrucao();
 
     @Test
     void suportaApenasModelosBuiltin() {
-        ModeloCurva builtin = ModeloCurva.builtin("PRE_DI1_B3", "nome");
+        ModeloCurva builtin = ModeloCurva.builtin(BuiltinModeloConstrucao.CODIGO_TAXA_SWAP_TRANSCRICAO_B3, "nome");
         ModeloCurva groovy = ModeloCurva.importarGroovy("G", "g", "[]", "sha", "tester");
 
         assertThat(construtor.suporta(builtin)).isTrue();
@@ -28,9 +26,9 @@ class BuiltinModeloConstrucaoTest {
     }
 
     @Test
-    void despachaParaOCurveBootstrapperQuandoOCodigoEhConhecido() {
-        ModeloCurva modelo = ModeloCurva.builtin("PRE_DI1_B3", "nome");
-        List<InsumoDI1> insumos = List.of(new InsumoDI1("DI1F26", new BigDecimal("13.50"), 21, LocalDate.of(2026, 1, 2)));
+    void transcreveOsVerticesSemRecalculoQuandoOCodigoEhConhecido() {
+        ModeloCurva modelo = ModeloCurva.builtin(BuiltinModeloConstrucao.CODIGO_TAXA_SWAP_TRANSCRICAO_B3, "nome");
+        List<Vertice> insumos = List.of(new Vertice(21, null, LocalDate.of(2026, 1, 2), new BigDecimal("13.50"), null));
 
         CurvaJuros curva = construtor.construir(modelo, insumos);
 
