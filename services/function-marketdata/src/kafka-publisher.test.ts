@@ -7,7 +7,7 @@ describe('publicarBloco', () => {
     eventId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     correlationId: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
     source: 'B3',
-    dataset: 'PR_DI1',
+    dataset: 'B3_TAXA_SWAP_DCL',
     referenceDate: '2026-08-21',
     producedAt: '2026-08-21T18:00:00Z',
     schemaVersion: '1.0',
@@ -26,7 +26,7 @@ describe('publicarBloco', () => {
     expect(enviarFake).toHaveBeenCalledTimes(1);
     expect(enviarFake).toHaveBeenCalledWith({
       topico: 'marketdata.rotina.v1',
-      chave: 'B3|PR_DI1|2026-08-21',
+      chave: 'B3|B3_TAXA_SWAP_DCL|2026-08-21',
       valor: expect.any(String),
     });
   });
@@ -40,7 +40,7 @@ describe('publicarBloco', () => {
     const chamada = enviarFake.mock.calls[0]?.[0];
     expect(chamada).toBeDefined();
     const valorDesserializado = JSON.parse(chamada.valor);
-    expect(valorDesserializado.dataset).toBe('PR_DI1');
+    expect(valorDesserializado.dataset).toBe('B3_TAXA_SWAP_DCL');
     expect(valorDesserializado.loteId).toBe('lote-abc-1');
   });
 
@@ -78,7 +78,7 @@ describe('publicarBloco', () => {
       nivel: 'info',
       mensagem: 'bloco publicado',
       correlationId: base.correlationId,
-      dataset: 'PR_DI1',
+      dataset: 'B3_TAXA_SWAP_DCL',
       referenceDate: '2026-08-21',
       topico: 'marketdata.rotina.v1',
       loteId: 'lote-abc-1',

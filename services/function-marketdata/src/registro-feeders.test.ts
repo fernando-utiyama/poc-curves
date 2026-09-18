@@ -7,9 +7,9 @@ describe('RegistroFeeders', () => {
     const registro = new RegistroFeeders();
     const feederFalso: Feeder = { acquire: vi.fn() };
 
-    registro.registrar('PR_DI1', feederFalso);
+    registro.registrar('B3_TAXA_SWAP_DCL', feederFalso);
 
-    expect(registro.resolver('PR_DI1')).toBe(feederFalso);
+    expect(registro.resolver('B3_TAXA_SWAP_DCL')).toBe(feederFalso);
   });
 
   it('lança DatasetNaoSuportadoError com o nome do dataset ao resolver dataset inexistente', () => {
@@ -24,10 +24,10 @@ describe('RegistroFeeders', () => {
     const feederFalso: Feeder = { acquire: vi.fn() };
     const outroFeederFalso: Feeder = { acquire: vi.fn() };
 
-    registro.registrar('PR_DI1', feederFalso);
+    registro.registrar('B3_TAXA_SWAP_DCL', feederFalso);
 
-    expect(() => registro.registrar('PR_DI1', outroFeederFalso)).toThrow(
-      'dataset já registrado: PR_DI1',
+    expect(() => registro.registrar('B3_TAXA_SWAP_DCL', outroFeederFalso)).toThrow(
+      'dataset já registrado: B3_TAXA_SWAP_DCL',
     );
   });
 
@@ -37,12 +37,12 @@ describe('RegistroFeeders', () => {
 
     expect(registro.datasetsRegistrados()).toEqual([]);
 
-    registro.registrar('PR_DI1', feederFalso);
-    registro.registrar('BVBG.086', feederFalso);
+    registro.registrar('B3_TAXA_SWAP_DCL', feederFalso);
+    registro.registrar('B3_TAXA_SWAP_PTX', feederFalso);
 
     const datasets = registro.datasetsRegistrados();
     expect(datasets).toHaveLength(2);
-    expect(datasets).toEqual(expect.arrayContaining(['PR_DI1', 'BVBG.086']));
+    expect(datasets).toEqual(expect.arrayContaining(['B3_TAXA_SWAP_DCL', 'B3_TAXA_SWAP_PTX']));
   });
 
   it('lança erro que é instância tanto de DatasetNaoSuportadoError quanto de Error', () => {

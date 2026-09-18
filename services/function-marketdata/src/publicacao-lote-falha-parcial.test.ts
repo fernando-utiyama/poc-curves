@@ -10,7 +10,7 @@ describe('Publicação de lote com falha parcial', () => {
     const baseEnvelope: Omit<ParametrosCriarEnvelope, 'eventId' | 'sequencia'> = {
       correlationId: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
       source: 'B3',
-      dataset: 'PR_DI1',
+      dataset: 'B3_TAXA_SWAP_DCL',
       referenceDate: '2026-08-21',
       producedAt: '2026-08-21T18:00:00Z',
       schemaVersion: '1.0',

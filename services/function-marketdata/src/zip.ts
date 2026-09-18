@@ -77,11 +77,13 @@ export type ResultadoDesempacotamentoDuplo =
 
 /**
  * Desempacota um ZIP duplamente aninhado — o formato real dos downloads da
- * B3 (PR/IN/TS, ver javadoc de {@link FeederB3ArquivoPesquisaPregao} e
- * {@link FeederB3TaxaSwap}): o corpo HTTP é um ZIP externo com uma entrada
- * que é, ela mesma, outro ZIP; a entrada mais recente desse ZIP interno é o
- * conteúdo real. Consolida a sequência verificar→desempacotar→verificar→
- * desempacotar que os dois feeders B3 duplicavam byte a byte.
+ * B3 no endpoint pesquisapregao (ver javadoc de {@link FeederB3TaxaSwap}):
+ * o corpo HTTP é um ZIP externo com uma entrada que é, ela mesma, outro
+ * ZIP; a entrada mais recente desse ZIP interno é o conteúdo real. Extraída
+ * como função própria (não só inline em FeederB3TaxaSwap) porque o mesmo
+ * formato duplo já apareceu em mais de um feeder B3 neste projeto — fica
+ * pronta para reuso se outro feeder de arquivo B3 precisar do mesmo
+ * desempacotamento.
  * <p>
  * `ZIP_EXTERNO_VAZIO` é o sinal real de "arquivo ainda não publicado" para
  * este endpoint (a B3 sempre responde HTTP 200, mesmo sem o arquivo) — quem

@@ -9,9 +9,9 @@ export class DatasetNaoSuportadoError extends Error {
 }
 
 /**
- * Registro de Feeder por nome de dataset (ex.: "PR_DI1", "BVBG.086",
- * "BVBG.028", "CURVA_REFERENCIA"). Resolver um dataset não registrado falha
- * cedo e nomeado — nunca cai num Feeder padrão silenciosamente.
+ * Registro de Feeder por nome de dataset (ex.: "B3_TAXA_SWAP_DCL",
+ * "B3_CURVA_PRE"). Resolver um dataset não registrado falha cedo e
+ * nomeado — nunca cai num Feeder padrão silenciosamente.
  */
 export class RegistroFeeders {
   private readonly porDataset = new Map<string, Feeder>();

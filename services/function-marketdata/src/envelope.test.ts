@@ -6,7 +6,7 @@ describe('criarEnvelope', () => {
     eventId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     correlationId: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
     source: 'B3',
-    dataset: 'PR_DI1',
+    dataset: 'B3_TAXA_SWAP_DCL',
     referenceDate: '2026-08-21',
     producedAt: '2026-08-21T18:00:00Z',
     schemaVersion: '1.0',
@@ -23,7 +23,7 @@ describe('criarEnvelope', () => {
     expect(envelope.eventId).toBe('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11');
     expect(envelope.correlationId).toBe('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22');
     expect(envelope.source).toBe('B3');
-    expect(envelope.dataset).toBe('PR_DI1');
+    expect(envelope.dataset).toBe('B3_TAXA_SWAP_DCL');
     expect(envelope.referenceDate).toBe('2026-08-21');
     expect(envelope.producedAt).toBe('2026-08-21T18:00:00Z');
     expect(envelope.schemaVersion).toBe('1.0');

@@ -44,11 +44,13 @@ export interface ConfigFeederB3TaxaSwap {
 /**
  * Feeder do arquivo "Mercado de Derivativos – Taxas de Mercado para Swaps" da
  * B3 (`TaxaSwap.txt`, endpoint `pesquisapregao/download?filelist=TS<AAMMDD>.ex_`
- * — mesma família de endpoint de {@link FeederB3ArquivoPesquisaPregao}, prefixo
- * "TS", extensão `.ex_`, ZIP duplamente aninhado igual PR/IN — ver
- * `fixtures/README.md` para a descoberta completa e a evidência real por trás
- * de cada detalhe do formato), fonte para as curvas PRE/DCL/PTX/INP/DPL
- * (openspec/changes/b3-additional-curves).
+ * — mesma família de endpoint `pesquisapregao` usada por PR/IN quando este
+ * projeto ainda os ingeria (decisão do usuário: este projeto não fará mais
+ * ingestão do BVBG — PR/IN foram removidos, TS é a única curva desta
+ * família ainda em uso), prefixo "TS", extensão `.ex_`, ZIP duplamente
+ * aninhado — ver `fixtures/README.md` para a descoberta completa e a
+ * evidência real por trás de cada detalhe do formato), fonte para as
+ * curvas PRE/DCL/PTX/INP/DPL (openspec/changes/b3-additional-curves).
  * <p>
  * O arquivo traz mais de 100 códigos de curva na mesma publicação — este
  * feeder não filtra nada, grava o arquivo inteiro em blob e publica **um

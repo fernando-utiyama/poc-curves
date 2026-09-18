@@ -12,21 +12,20 @@ Desenvolvido em **Node.js 20 + TypeScript estrito**, formato **ESM**, testes com
 
 - **Núcleo de aquisição**: interface `Feeder` com retorno padronizado em 3 estados (`PUBLISHED`, `NO_DATA`, `FAILED`).
 - **Identificadores determinísticos**: cálculo determinístico de `loteId` e `eventId`.
-- **Quebra em blocos**: divisão de arquivos volumosos com corte estrutural — por elemento XML repetido (`src/xml-estrutural.ts`, B3) ou por linha (`src/linhas.ts`, ANBIMA). Ambos operam sobre `Buffer`, nunca decodificam o arquivo inteiro para `string` antes de cortar — o BVBG.028 real chega a ~800MB, acima do limite de comprimento de string do V8.
+- **Quebra em blocos**: divisão de arquivos volumosos com corte estrutural — por elemento XML repetido (`src/xml-estrutural.ts`, infraestrutura genérica de blocos B3, hoje sem consumidor de produção ativo desde a remoção do feeder BVBG/PR-IN) ou por linha (`src/linhas.ts`, ANBIMA). Ambos operam sobre `Buffer`, nunca decodificam o arquivo inteiro para `string` antes de cortar — justificativa histórica: o BVBG.028 real chegava a ~800MB, acima do limite de comprimento de string do V8.
 - **Cliente HTTP**: retentativas com backoff exponencial só para falha de transporte.
 - **Integridade**: conteúdo vazio, tamanho declarado (`Content-Length`, quando a fonte o envia), arquivo ZIP bem formado (`src/zip.ts`, B3).
 - **Calendário de pregão**: feriados nacionais e decisão de dia de pregão (B3/ANBIMA).
 - **Produtor Kafka real**: `kafkajs` (`src/kafka-producer-real.ts`), com validação estrita de schema (`ajv`) antes do envio.
-- **Datasets B3** (`src/feeders/b3-arquivo-pesquisa-pregao.ts`): `PR_DI1`/`BVBG.086` (mesmo arquivo real) e `BVBG.028`, via `https://www.b3.com.br/pesquisapregao/download?filelist=<PREFIXO><AAMMDD>.zip`. A resposta real é um ZIP duas vezes aninhado contendo revisões intraday — usa-se a mais recente.
+- **Datasets B3** (`src/feeders/b3-taxa-swap.ts`, `src/feeders/b3-curva-referencia.ts`): `B3_TAXA_SWAP_{PRE,DCL,PTX,INP,DPL}` (arquivo `TaxaSwap.txt`, via `https://www.b3.com.br/pesquisapregao/download?filelist=TS<AAMMDD>.ex_`) e `B3_CURVA_PRE` (curva pronta). A resposta do endpoint `pesquisapregao` é um ZIP duas vezes aninhado contendo revisões intraday — usa-se a mais recente. As curvas BVBG.086/BVBG.028/PR_DI1 (antiga curva DI1 BOOTSTRAPPED) não são mais ingeridas — decisão do usuário: este projeto não fará ingestão do BVBG.
 - **Dataset ANBIMA** (`src/feeders/anbima-mercado-secundario.ts`): `ANBIMA_MERCADO_SECUNDARIO`, via `https://www.anbima.com.br/informacoes/merc-sec/arqs/ms<AAMMDD>.txt` — texto `@`-delimitado, ISO-8859-1, taxas indicativas/PU de títulos públicos federais (LTN/LFT/NTN-B/NTN-C/NTN-F).
 - **Adaptador de container** (`src/main.ts`): lê parâmetros de ambiente, roda uma aquisição, sai com código 0 (`PUBLISHED`/`NO_DATA`) ou 1 (`FAILED`). Verificado de ponta a ponta contra Kafka real.
 - **Handler de Azure Function** (`src/azure-function-handler.ts`): mesmo núcleo, parâmetros por corpo JSON HTTP, resposta HTTP.
 - **Servidor de saúde**: endpoint HTTP nativo para checagem de saúde.
 - **Roteamento de datasets**: catálogo único via `RegistroFeeders`, montado por `src/registro-feeders-completo.ts` a partir dos registros por fonte (`registro-feeders-b3.ts`, `registro-feeders-anbima.ts`).
 
-### Pendente (bloqueado por falta de fixture real)
+### Pendente
 
-- **Dataset de curva pronta da B3** (endpoint de taxas de referência): nenhum arquivo real desse endpoint foi encontrado ainda — o `TS260821.ex_` investigado é um dataset diferente (preços de títulos públicos, não vértices de curva).
 - **Reporte de orquestração**: `curve-orchestrator` ainda não expõe nenhum endpoint HTTP real para reportar início/resultado.
 
 ---
@@ -35,9 +34,8 @@ Desenvolvido em **Node.js 20 + TypeScript estrito**, formato **ESM**, testes com
 
 | Dataset | Fonte | Descrição | Status |
 | :--- | :--- | :--- | :--- |
-| `PR_DI1` / `BVBG.086` | B3 | Preços de referência / ajustes (mesmo arquivo real) | Implementado |
-| `BVBG.028` | B3 | Cadastro de instrumentos | Implementado |
-| curva de referência | B3 | Curva pronta | Bloqueado — sem fixture real |
+| `B3_TAXA_SWAP_PRE` / `_DCL` / `_PTX` / `_INP` / `_DPL` | B3 | Taxas de mercado para swaps (`TaxaSwap.txt`) | Implementado |
+| `B3_CURVA_PRE` | B3 | Curva pronta | Implementado |
 | `ANBIMA_MERCADO_SECUNDARIO` | ANBIMA | Taxas indicativas / PU de títulos públicos (LTN/LFT/NTN-B/NTN-C/NTN-F) | Implementado |
 | `BLOOMBERG_JUROS_CAMBIO` | Bloomberg | Juros, câmbio e outros insumos de curva, via Bloomberg Data License (arquivo em lote assíncrono — submeter pedido, aguardar geração, buscar arquivo pronto) | Implementado, **NÃO verificado contra a Bloomberg real** (sem credenciais/ambiente disponíveis) — construído e testado só contra fixture simulada (`fixtures/bloomberg-arquivo-fixture.csv`). Só roda pelo caminho CLI/agendado (`main.ts`); nunca pelo caminho HTTP síncrono (`main-http.ts`/Azure Function), porque a espera pode levar minutos a horas. |
 
@@ -68,7 +66,7 @@ Os tópicos de destino são definidos em `contracts/events/topics.yaml` e resolv
 Variáveis de ambiente obrigatórias: `ACQUISITION_DATASET`, `ACQUISITION_REFERENCE_DATE` (YYYY-MM-DD), `ACQUISITION_FAIXA` (`ROTINA`/`PRIORITARIA`/`MASSA`), `KAFKA_BOOTSTRAP_SERVERS`. Opcionais: `ACQUISITION_CORRELATION_ID` (gera um UUID se omitido), `HEALTH_PORT` (padrão `8090`).
 
 ```bash
-ACQUISITION_DATASET=BVBG.086 \
+ACQUISITION_DATASET=B3_TAXA_SWAP_DCL \
 ACQUISITION_REFERENCE_DATE=2026-08-21 \
 ACQUISITION_FAIXA=ROTINA \
 KAFKA_BOOTSTRAP_SERVERS=localhost:19092 \

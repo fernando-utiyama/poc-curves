@@ -11,7 +11,7 @@ import { criarServidorSaude } from './servidor-saude.js';
 /**
  * `AcquisitionParams.source` é só metadado de log/rastreio aqui — cada
  * `Feeder` já declara sua própria origem no envelope que publica (ex.:
- * `FeederB3ArquivoPesquisaPregao` sempre usa `'B3'`, nunca confia no que o
+ * `FeederB3TaxaSwap` sempre usa `'B3'`, nunca confia no que o
  * chamador passou), então um mapeamento simples por nome de dataset é
  * suficiente; não precisa vir do `RegistroFeeders` (que só resolve
  * dataset -> Feeder, não dataset -> fonte).

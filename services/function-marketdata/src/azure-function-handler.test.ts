@@ -47,7 +47,7 @@ describe('azure function handler acquireHandler', () => {
     const { fabrica } = fabricaProdutorFake();
     const handler = criarAcquireHandler(fabrica);
 
-    const resposta = await handler(requisicao({ dataset: 'BVBG.086' }), contexto());
+    const resposta = await handler(requisicao({ dataset: 'B3_TAXA_SWAP_DCL' }), contexto());
 
     expect(resposta.status).toBe(400);
     expect(JSON.stringify(resposta.jsonBody)).toContain('referenceDate');
@@ -85,7 +85,7 @@ describe('azure function handler acquireHandler', () => {
     // Domingo — nunca é dia de pregão, então nem tenta a rede real da B3.
     const resposta = await handler(
       requisicao({
-        dataset: 'BVBG.086',
+        dataset: 'B3_TAXA_SWAP_DCL',
         referenceDate: '2026-08-23',
         faixa: 'ROTINA',
         kafkaBootstrapServers: 'localhost:9092',
@@ -107,7 +107,7 @@ describe('azure function handler acquireHandler', () => {
 
     const resposta = await handler(
       requisicao({
-        dataset: 'BVBG.086',
+        dataset: 'B3_TAXA_SWAP_DCL',
         referenceDate: '2026-08-23',
         faixa: 'ROTINA',
         kafkaBootstrapServers: 'localhost:9092',
@@ -127,7 +127,7 @@ describe('azure function handler acquireHandler', () => {
 
     const resposta = await handler(
       requisicao({
-        dataset: 'BVBG.086',
+        dataset: 'B3_TAXA_SWAP_DCL',
         referenceDate: '2026-08-23',
         faixa: 'ROTINA',
         kafkaBootstrapServers: 'localhost:9092',
