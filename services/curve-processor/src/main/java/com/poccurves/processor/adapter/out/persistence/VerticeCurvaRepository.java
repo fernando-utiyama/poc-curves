@@ -47,22 +47,4 @@ public class VerticeCurvaRepository implements VerticeCurvaRepositoryPort {
                 """,
                 batchArgs);
     }
-
-    @Override
-    public List<VerticeCurva> buscarPorVersaoCurvaId(UUID versaoCurvaId) {
-        return jdbcTemplate.query(
-                """
-                SELECT prazo_dias_uteis, prazo_dias_corridos, data_vencimento, taxa, fator_desconto
-                FROM vertice_curva
-                WHERE versao_curva_id = ?
-                """,
-                (rs, rowNum) -> new VerticeCurva(
-                        rs.getInt("prazo_dias_uteis"),
-                        (Integer) rs.getObject("prazo_dias_corridos"),
-                        rs.getObject("data_vencimento", java.time.LocalDate.class),
-                        rs.getBigDecimal("taxa"),
-                        rs.getBigDecimal("fator_desconto")
-                ),
-                versaoCurvaId.toString());
-    }
 }

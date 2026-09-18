@@ -32,7 +32,7 @@ const AZURITE_CONNECTION_STRING_LOCAL =
   'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;';
 
 describe('contrato real: endpoint pesquisapregao da B3, prefixo TS (TaxaSwap.txt)', () => {
-  it('PUBLISHED: baixa e processa de verdade o TS<data>.zip real, único nível de ZIP, grava em blob real', async () => {
+  it('PUBLISHED: baixa e processa de verdade o TS<data>.ex_ real, ZIP duplamente aninhado, grava em blob real', async () => {
     const enviar = vi.fn().mockResolvedValue(undefined);
     const blobUploader = new AzureBlobUploader(AZURITE_CONNECTION_STRING_LOCAL);
     const feeder = new FeederB3TaxaSwap(enviar, { blobUploader });

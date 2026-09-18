@@ -4,7 +4,6 @@ import tools.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
@@ -36,6 +35,11 @@ import java.util.Set;
  * de forma independente (defesa em profundidade): o serviço expõe a porta
  * 8082 diretamente no `compose.yaml`, então não pode depender só do
  * curve-bff estar na frente para barrar acesso não autorizado.
+ * <p>
+ * Após a migração para o schema legado (tCurvaMercd/tDadoCurva/tCurvaData), curve-api é
+ * inteiramente somente-leitura — não existe mais rota de escrita (POST/PUT em
+ * /curvas/definicoes foi removido junto com todo o domínio antigo), então não há mais regra
+ * admin-only aqui: qualquer perfil autenticado pode acessar qualquer rota.
  */
 @Configuration
 @EnableWebSecurity
@@ -56,13 +60,8 @@ public class CurveApiSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/metrics").permitAll()
 
-                        // Cadastro/atualização de definição de curva: só Administrador —
-                        // mesma regra já declarada (mas nunca aplicada) no lado do curve-bff.
-                        .requestMatchers(HttpMethod.POST, "/curvas/definicoes").hasRole("CURVE_ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/curvas/definicoes/*").hasRole("CURVE_ADMIN")
-
-                        // Todo o resto (consultas, comparação, interpolação, modelo de carga)
-                        // é leitura/cálculo — acessível a qualquer perfil autenticado.
+                        // Serviço inteiramente somente-leitura (catálogo/vértices/curva/comparação)
+                        // — acessível a qualquer perfil autenticado, sem rota admin-only.
                         .anyRequest().hasAnyRole("CURVE_VIEWER", "CURVE_OPERATOR", "CURVE_ADMIN")
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

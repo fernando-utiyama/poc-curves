@@ -3,7 +3,6 @@ package com.poccurves.api.config;
 import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.client.RestClient;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.databind.SerializationContext;
 import tools.jackson.databind.ValueSerializer;
@@ -36,12 +35,5 @@ public class AppConfig {
             builder.addModule(bigDecimalModule);
             builder.disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS);
         };
-    }
-
-    @Bean
-    public RestClient engineRestClient(org.springframework.boot.restclient.RestClientCustomizer customizer) {
-        return RestClient.builder()
-                .baseUrl("http://localhost:8083")
-                .build();
     }
 }
