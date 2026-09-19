@@ -1,5 +1,5 @@
 {
-  "name": "@poc-curvas/function-marketdata",
+  "name": "@poc-curvas/conector",
   "version": "0.1.0",
   "private": true,
   "type": "module",

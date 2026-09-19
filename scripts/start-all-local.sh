@@ -37,12 +37,12 @@ JAVA_COMMON_ARGS=(
   "-Dspring.security.oauth2.resourceserver.jwt.jwk-set-uri=${JWT_URI}"
 )
 
-# 1. Feeder: function-marketdata
-echo "  [+] Iniciando function-marketdata (porta 8091)..."
+# 1. Feeder: conector
+echo "  [+] Iniciando conector (porta 8091)..."
 (
-  cd "${REPO_ROOT}/services/function-marketdata"
-  PORT=8091 KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS}" node dist/main-http.js > "${REPO_ROOT}/logs/function-marketdata.log" 2>&1 &
-  echo "{\"Name\":\"function-marketdata\",\"Port\":8091,\"Pid\":$!}" >> "${REPO_ROOT}/.local-processes.json"
+  cd "${REPO_ROOT}/services/conector"
+  PORT=8091 KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS}" node dist/main-http.js > "${REPO_ROOT}/logs/conector.log" 2>&1 &
+  echo "{\"Name\":\"conector\",\"Port\":8091,\"Pid\":$!}" >> "${REPO_ROOT}/.local-processes.json"
 )
 
 # 2. curve-processor

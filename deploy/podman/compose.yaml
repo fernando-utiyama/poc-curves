@@ -217,7 +217,7 @@ services:
     profiles: ["feeder-on-demand"]
     build:
       context: ../..
-      dockerfile: services/function-marketdata/Containerfile
+      dockerfile: services/conector/Containerfile
     image: localhost/function-marketdata:latest
     container_name: curvas-function-marketdata
     hostname: function-marketdata
@@ -253,7 +253,7 @@ services:
   function-marketdata-http:
     build:
       context: ../..
-      dockerfile: services/function-marketdata/Containerfile
+      dockerfile: services/conector/Containerfile
     image: localhost/function-marketdata:latest
     command: ["dist/main-http.js"]
     container_name: curvas-function-marketdata-http

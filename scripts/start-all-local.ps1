@@ -182,11 +182,11 @@ if ($needMavenBuild) {
     Write-Host "    Build Maven concluído com sucesso." -ForegroundColor Green
 }
 
-# Compilação do function-marketdata
-$feederDist = "services/function-marketdata/dist/main-http.js"
+# Compilação do conector
+$feederDist = "services/conector/dist/main-http.js"
 if ($Build -or (-not (Test-Path $feederDist))) {
-    Write-Host "`n==> Sincronizando contratos e compilando function-marketdata..." -ForegroundColor Yellow
-    Push-Location "services/function-marketdata"
+    Write-Host "`n==> Sincronizando contratos e compilando conector..." -ForegroundColor Yellow
+    Push-Location "services/conector"
     try {
         if (-not (Test-Path "node_modules")) {
             & npm install
@@ -194,13 +194,13 @@ if ($Build -or (-not (Test-Path $feederDist))) {
         & npm run sync-contracts
         & npx tsc -p tsconfig.json --outDir dist --noEmit false
         if ($LASTEXITCODE -ne 0) {
-            Write-Error "Falha na compilação do function-marketdata."
+            Write-Error "Falha na compilação do conector."
             exit 1
         }
     } finally {
         Pop-Location
     }
-    Write-Host "    function-marketdata compilado com sucesso." -ForegroundColor Green
+    Write-Host "    conector compilado com sucesso." -ForegroundColor Green
 }
 
 # Verificação do curve-web-ui
@@ -331,12 +331,12 @@ function Start-ServiceProcess {
 
 Write-Host "`n==> Iniciando aplicações ($Mode)..." -ForegroundColor Yellow
 
-# 6.1 Feeder: function-marketdata (Node.js)
+# 6.1 Feeder: conector (Node.js)
 if (-not $SkipFeeder) {
     Start-ServiceProcess `
-        -Name "function-marketdata" `
+        -Name "conector" `
         -Port 8091 `
-        -WorkDir "services/function-marketdata" `
+        -WorkDir "services/conector" `
         -Executable "node" `
         -Arguments @("dist/main-http.js") `
         -EnvVars @{
