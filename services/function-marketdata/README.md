@@ -12,7 +12,7 @@ Desenvolvido em **Node.js 20 + TypeScript estrito**, formato **ESM**, testes com
 
 - **Núcleo de aquisição**: interface `Feeder` com retorno padronizado em 3 estados (`PUBLISHED`, `NO_DATA`, `FAILED`).
 - **Identificadores determinísticos**: cálculo determinístico de `loteId` e `eventId`.
-- **Quebra em blocos**: divisão de arquivos volumosos com corte estrutural — por elemento XML repetido (`src/xml-estrutural.ts`, infraestrutura genérica de blocos B3, hoje sem consumidor de produção ativo desde a remoção do feeder BVBG/PR-IN) ou por linha (`src/linhas.ts`, ANBIMA). Ambos operam sobre `Buffer`, nunca decodificam o arquivo inteiro para `string` antes de cortar — justificativa histórica: o BVBG.028 real chegava a ~800MB, acima do limite de comprimento de string do V8.
+- **Quebra em blocos**: divisão de arquivos volumosos com corte estrutural por linha (`src/linhas.ts`, ANBIMA), sobre a infraestrutura genérica `src/blocos.ts` (também usada por `src/feeders/bloomberg/feeder-bloomberg.ts`). Opera sobre `Buffer`, nunca decodifica o arquivo inteiro para `string` antes de cortar.
 - **Cliente HTTP**: retentativas com backoff exponencial só para falha de transporte.
 - **Integridade**: conteúdo vazio, tamanho declarado (`Content-Length`, quando a fonte o envia), arquivo ZIP bem formado (`src/zip.ts`, B3).
 - **Calendário de pregão**: feriados nacionais e decisão de dia de pregão (B3/ANBIMA).
@@ -108,8 +108,6 @@ Todo cliente HTTP (`fetch`), publicador Kafka e rotinas de espera/backoff são i
 
 ### Fixtures Reais
 Para testes de parsing e quebra em blocos sem acesso à rede, o serviço conta com fixtures em `fixtures/`:
-- `fixtures/BVBG.086.01_fixture.xml`: recorte real contendo 5 elementos `<BizGrp>` extraídos de arquivos de produção da B3.
-- `fixtures/BVBG.028.02_fixture.xml`: recorte real contendo 5 elementos `<BizGrp>` extraídos de arquivos de produção da B3.
 - `fixtures/ms260821_fixture.txt`: arquivo real **completo** de mercado secundário da ANBIMA (6.812 bytes, pequeno o bastante para versionar por inteiro).
 
 A proveniência e os detalhes dessas fixtures estão documentados em `fixtures/README.md`.

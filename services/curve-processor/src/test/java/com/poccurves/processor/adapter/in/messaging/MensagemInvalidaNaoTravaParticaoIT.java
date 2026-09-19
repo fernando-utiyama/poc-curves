@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
 import com.poccurves.processor.CurveProcessorApplication;
+import com.poccurves.processor.testsupport.CurvaProntaTestFixtures;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -94,8 +95,8 @@ class MensagemInvalidaNaoTravaParticaoIT {
         limparDadosDeTeste();
     }
 
-    private String envelopeValido(String loteId, String ticker) {
-        String fragmento = "DI x pré;" + ticker + ";" + ticker + ";10,000";
+    private String envelopeValido(String loteId, String chaveInstrumento) {
+        String linha = CurvaProntaTestFixtures.linha(chaveInstrumento);
         return """
                 {
                   "eventId": "%s",
@@ -117,7 +118,7 @@ class MensagemInvalidaNaoTravaParticaoIT {
                     "records": [{"raw": "%s"}]
                   }
                 }
-                """.formatted(UUID.randomUUID(), UUID.randomUUID(), loteId, "a".repeat(64), fragmento);
+                """.formatted(UUID.randomUUID(), UUID.randomUUID(), loteId, "a".repeat(64), linha);
     }
 
     private void aguardarAte(BooleanSupplier condicao, Duration tempoMaximo) throws InterruptedException {

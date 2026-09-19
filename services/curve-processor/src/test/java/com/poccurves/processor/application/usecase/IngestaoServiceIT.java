@@ -7,6 +7,7 @@ import com.poccurves.processor.application.model.ResultadoProcessamentoBloco;
 import com.poccurves.processor.application.model.TipoPayload;
 
 import com.poccurves.processor.CurveProcessorApplication;
+import com.poccurves.processor.testsupport.CurvaProntaTestFixtures;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,9 +85,9 @@ class IngestaoServiceIT {
     /** 3 linhas reais de curva pronta B3 (Descrição;Dias Úteis;Dias Corridos;Preço/Taxa) — mesmo formato de {@code B3CurvaProntaParserTest}. */
     private byte[] conteudoCurvaPronta() {
         String[] linhas = {
-                "DI x pré;10;14;14,129",
-                "DI x pré;21;30;14,334",
-                "DI x pré;32;45;14,448"
+                CurvaProntaTestFixtures.linha("10", "14", "14,129"),
+                CurvaProntaTestFixtures.linha("21", "30", "14,334"),
+                CurvaProntaTestFixtures.linha("32", "45", "14,448")
         };
         return String.join("\n", linhas).getBytes(StandardCharsets.UTF_8);
     }

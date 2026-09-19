@@ -1,12 +1,10 @@
 package com.poccurves.processor.config;
 import com.poccurves.processor.application.model.B3CurvaProntaParser;
-import com.poccurves.processor.application.model.DatasetParser;
 import com.poccurves.processor.application.model.DatasetParserRegistry;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -25,8 +23,6 @@ public class ParserConfig {
 
     @Bean
     public DatasetParserRegistry datasetParserRegistry() {
-        List<DatasetParser> parsers = new ArrayList<>();
-        parsers.add(new B3CurvaProntaParser("B3_CURVA_PRE"));
-        return new DatasetParserRegistry(parsers);
+        return new DatasetParserRegistry(List.of(new B3CurvaProntaParser("B3_CURVA_PRE")));
     }
 }

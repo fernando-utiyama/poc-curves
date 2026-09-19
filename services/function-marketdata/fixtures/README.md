@@ -1,34 +1,18 @@
-# Fixtures reais B3 (tarefa 6.1)
+# Fixtures reais B3/ANBIMA
 
-Recortes reais dos arquivos oficiais da B3, para testar o corte estrutural
-sem precisar dos arquivos de produção (175–800 MB cada, inviável de versionar).
+Recortes reais de arquivos oficiais, para testar parsing e quebra em blocos
+sem precisar dos arquivos de produção (inviáveis de versionar por inteiro).
 
 | Arquivo | Origem | Data de captura | Encoding |
 |---|---|---|---|
-| `BVBG.086.01_fixture.xml` | `PR260821.zip` → `BVBG.086.01_BV000328202608210328000001840237278.xml` (Preços de Referência / negócios) | 2026-08-21 | UTF-8 |
-| `BVBG.028.02_fixture.xml` | `IN260821.zip` → `BVBG.028.02_BV000327202608210327117330691294583.xml` (Cadastro de instrumentos) | 2026-08-21 | UTF-8 |
 | `b3-curva-pre-20260821_fixture.csv` | Curva pronta DI x PRÉ, endpoint `sistemaswebb3-derivativos.b3.com.br/referenceRatesProxy` (ver seção abaixo) | 2026-08-21 | ISO-8859-1 |
 | `TaxaSwap_20260914_fixture.txt` | `TS260914.zip` → `TaxaSwap.txt` (Mercado de Derivativos – Taxas de Mercado para Swaps, ver seção "TaxaSwap" abaixo) | 2026-09-14 | ISO-8859-1 (só ASCII nas linhas capturadas) |
 
-Cada fixture contém os primeiros **5 elementos `<BizGrp>` reais e completos**
-do arquivo original (nomes de campo, valores e estrutura idênticos ao
-arquivo de produção), com `<TtlNbOfMsg>` ajustado de volta para `5` para
-bater com a contagem real da fixture. O arquivo original tinha
-`<TtlNbOfMsg>76015</TtlNbOfMsg>` (PR) e `<TtlNbOfMsg>223700</TtlNbOfMsg>` (IN).
-
-Os dois compartilham o mesmo envelope externo — `BizFileHdr > Xchg >
-BizGrpDesc` (com `TtlNbOfMsg` declarando a contagem) seguido de `<BizGrp>`
-repetido — confirmando que o corte estrutural (D1b do design.md: "este XML
-tem N elementos repetidos") é feito pela contagem de `<BizGrp>`, igual para
-os dois datasets.
-
-A URL/endpoint real de download por data foi confirmada nesta sessão
-(`https://www.b3.com.br/pesquisapregao/download?filelist=<PREFIXO><AAMMDD>.zip`
-— `PR`/`IN`) e é usada de verdade em `src/feeders/b3-arquivo-pesquisa-pregao.ts`
-e no teste de contrato (`src/feeders/b3-pesquisa-pregao.contract.ts`, tarefa
-6.8), que baixa e processa os arquivos reais de produção (175–800 MB) contra
-a B3 ao vivo — as fixtures aqui continuam servindo para a suíte padrão, que
-não depende de rede.
+As fixtures `BVBG.086.01_fixture.xml`/`BVBG.028.02_fixture.xml` (Preços de
+Referência / Cadastro de instrumentos, formato XML `BizGrp` repetido) foram
+removidas — o feeder de arquivo PR/IN e o corte estrutural por elemento XML
+(`src/xml-estrutural.ts`) que as consumiam foram removidos: decisão do
+usuário, este projeto não fará ingestão do BVBG.
 
 ## Curva pronta (`b3-curva-pre-20260821_fixture.csv`)
 

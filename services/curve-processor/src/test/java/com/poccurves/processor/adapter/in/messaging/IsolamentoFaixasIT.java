@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
 import com.poccurves.processor.CurveProcessorApplication;
+import com.poccurves.processor.testsupport.CurvaProntaTestFixtures;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -78,17 +79,13 @@ class IsolamentoFaixasIT {
         limparDadosDeTeste();
     }
 
-    private String linhaCurvaPronta(String diasUteis) {
-        return "DI x pré;" + diasUteis + ";" + diasUteis + ";10,000";
-    }
-
-    private String envelope(String loteId, List<String> tickers) {
+    private String envelope(String loteId, List<String> chavesInstrumento) {
         StringBuilder records = new StringBuilder("[");
-        for (int i = 0; i < tickers.size(); i++) {
+        for (int i = 0; i < chavesInstrumento.size(); i++) {
             if (i > 0) {
                 records.append(",");
             }
-            records.append("{\"raw\":\"").append(linhaCurvaPronta(tickers.get(i))).append("\"}");
+            records.append("{\"raw\":\"").append(CurvaProntaTestFixtures.linha(chavesInstrumento.get(i))).append("\"}");
         }
         records.append("]");
 

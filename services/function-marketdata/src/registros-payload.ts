@@ -3,7 +3,7 @@ import type { Bloco } from './blocos.js';
 /**
  * Constrói o array `payload.records` (contracts/events/marketdata-raw.schema.json)
  * a partir de um bloco de registros brutos (`Buffer[]`, corte estrutural de
- * xml-estrutural.ts), decodificando cada registro no encoding declarado pela
+ * blocos.ts/linhas.ts), decodificando cada registro no encoding declarado pela
  * fonte. Cada item vira `{ raw: <texto decodificado> }` — o formato que
  * `IngestaoListener.reconstruirConteudo` (curve-processor) espera como
  * caminho primário.

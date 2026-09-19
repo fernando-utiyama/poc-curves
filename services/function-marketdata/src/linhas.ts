@@ -5,9 +5,9 @@ const LF = 0x0a;
 
 /**
  * Extrai as linhas de um conteúdo, como corte estrutural por bytes — nunca
- * decodifica o conteúdo inteiro para `string` primeiro (mesmo motivo de
- * `xml-estrutural.ts`: preservar byte a byte, e não presumir que o arquivo
- * inteiro cabe dentro do limite de comprimento de string do V8). Aceita
+ * decodifica o conteúdo inteiro para `string` primeiro, para preservar byte
+ * a byte e não presumir que o arquivo inteiro cabe dentro do limite de
+ * comprimento de string do V8. Aceita
  * terminador `\n` ou `\r\n` (real: a ANBIMA usa CRLF) — a barra `\r` final,
  * se houver, é removida de cada linha.
  */

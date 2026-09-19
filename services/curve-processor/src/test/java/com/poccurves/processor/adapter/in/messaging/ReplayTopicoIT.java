@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.poccurves.processor.CurveProcessorApplication;
+import com.poccurves.processor.testsupport.CurvaProntaTestFixtures;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -75,8 +76,8 @@ class ReplayTopicoIT {
         limparDadosDeTeste();
     }
 
-    private String envelope(String loteId, String eventId, int sequencia, String ticker) {
-        String fragmento = "DI x pré;" + ticker + ";" + ticker + ";10,000";
+    private String envelope(String loteId, String eventId, int sequencia, String chaveInstrumento) {
+        String linha = CurvaProntaTestFixtures.linha(chaveInstrumento);
         return """
                 {
                   "eventId": "%s",
@@ -98,7 +99,7 @@ class ReplayTopicoIT {
                     "records": [{"raw": "%s"}]
                   }
                 }
-                """.formatted(eventId, UUID.randomUUID(), loteId, sequencia, "a".repeat(64), fragmento);
+                """.formatted(eventId, UUID.randomUUID(), loteId, sequencia, "a".repeat(64), linha);
     }
 
     @Test

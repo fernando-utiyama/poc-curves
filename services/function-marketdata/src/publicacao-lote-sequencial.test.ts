@@ -1,28 +1,24 @@
 import { describe, expect, it, vi, beforeAll } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 import { calcularEventId, calcularLoteId } from './lote-id.js';
-import { dividirXmlEmBlocos } from './xml-estrutural.js';
+import { dividirEmBlocos } from './blocos.js';
 import { montarRecords } from './registros-payload.js';
 import { publicarBloco } from './kafka-publisher.js';
 import type { EventEnvelope } from './envelope.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const fixturePRPath = join(__dirname, '..', 'fixtures', 'BVBG.086.01_fixture.xml');
-const conteudoDoFixturePR = readFileSync(fixturePRPath);
+const registrosSinteticos = [1, 2, 3, 4, 5].map((n) => Buffer.from(`registro-${n}`, 'utf-8'));
+const conteudoSintetico = Buffer.concat(registrosSinteticos);
 
 describe('publicação sequencial de lote em múltiplos blocos', () => {
   const correlationId = 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33';
   const source = 'B3';
-  const dataset = 'PR_DI1';
+  const dataset = 'B3_TAXA_SWAP_DCL';
   const referenceDate = '2026-08-21';
   const producedAt = '2026-08-21T21:00:00Z';
   const schemaVersion = '1.0';
   const payloadKind = 'INDIVIDUAL_QUOTES';
 
-  const loteId = calcularLoteId(source, dataset, referenceDate, conteudoDoFixturePR);
-  const blocos = dividirXmlEmBlocos(conteudoDoFixturePR, 'BizGrp', 2);
+  const loteId = calcularLoteId(source, dataset, referenceDate, conteudoSintetico);
+  const blocos = dividirEmBlocos(registrosSinteticos, 2);
   const enviarFake = vi.fn().mockResolvedValue(undefined);
   const envelopes: EventEnvelope[] = [];
 
@@ -47,7 +43,7 @@ describe('publicação sequencial de lote em múltiplos blocos', () => {
               sourceUrl: 'file://fixture-teste',
               encoding: 'utf-8',
               contentHash: `sha256:${'a'.repeat(64)}`,
-              sizeBytes: conteudoDoFixturePR.length,
+              sizeBytes: conteudoSintetico.length,
               records: montarRecords(bloco, 'utf-8'),
             },
           },
@@ -59,7 +55,7 @@ describe('publicação sequencial de lote em múltiplos blocos', () => {
     }
   });
 
-  it('divide a fixture em exatamente 3 blocos', () => {
+  it('divide os registros sintéticos em exatamente 3 blocos', () => {
     expect(blocos).toHaveLength(3);
   });
 
