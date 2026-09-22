@@ -4,7 +4,6 @@ import path from "path";
 
 const DEFAULT_BASE_URL = "https://www.b3.com.br/pesquisapregao/download";
 const B3_TIME_ZONE = "America/Sao_Paulo";
-const MAX_BUSINESS_DAY_LOOKBACK = 7;
 
 export type DownloadedSwapExFile = {
   buffer: Buffer;
@@ -38,17 +37,6 @@ function toB3Date(date: Date): Date {
   const { year, month, day } = getB3DateParts(date);
 
   return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12));
-}
-
-function shiftDays(date: Date, days: number): Date {
-  const shifted = new Date(date);
-  shifted.setUTCDate(shifted.getUTCDate() + days);
-  return shifted;
-}
-
-function isBusinessDay(date: Date): boolean {
-  const weekday = date.getUTCDay();
-  return weekday !== 0 && weekday !== 6;
 }
 
 /**
@@ -98,10 +86,6 @@ function buildDownloadUrl(baseUrl: string, fileName: string): string {
 
   parsed.searchParams.set("filelist", fileName);
   return validateHttpsUrl(parsed.toString());
-}
-
-function isNotFoundError(error: unknown): boolean {
-  return axios.isAxiosError(error) && error.response?.status === 404;
 }
 
 async function readLocalFile(): Promise<Buffer> {
@@ -158,49 +142,19 @@ export async function downloadSwapExFile(fileName?: string): Promise<Buffer> {
 }
 
 /**
- * TODO: confirmar com o usuario - as 2-3 primeiras linhas deste bloco JSDoc
- * ficaram fora da foto (cortadas no topo). Reconstrucao plausivel a partir
- * do que ficou visivel e do comportamento real da funcao (tenta a data
- * pedida e recua por dias uteis quando a B3 ainda nao publicou o arquivo):
- *
- * Baixa o arquivo `.ex_` mais recente, tentando a data pedida e recuando por
- * até `MAX_BUSINESS_DAY_LOOKBACK` dias úteis quando a B3 ainda não publicou
- * o arquivo do dia (404). Apenas 404 é tolerado e a busca continua no dia
- * útil anterior; outros erros de rede e respostas de servidor continuam
- * sendo reportados imediatamente.
+ * Baixa o arquivo `.ex_` da data pedida (default: hoje, no fuso da B3).
+ * Não há fallback para dias anteriores: se a B3 ainda não publicou o
+ * arquivo do dia, o erro é propagado imediatamente.
  */
 export async function downloadSwapExFileForDate(
   date: Date = new Date(),
 ): Promise<DownloadedSwapExFile> {
   const requestedDate = toB3Date(date);
-  let lastNotFound: unknown;
+  const fileName = buildSwapExFileName(requestedDate);
 
-  for (let offset = 0; offset <= MAX_BUSINESS_DAY_LOOKBACK; offset += 1) {
-    const candidateDate = shiftDays(requestedDate, -offset);
-
-    if (!isBusinessDay(candidateDate)) {
-      continue;
-    }
-
-    const fileName = buildSwapExFileName(candidateDate);
-
-    try {
-      return {
-        buffer: await downloadSwapExFile(fileName),
-        fileName,
-        date: candidateDate,
-      };
-    } catch (error) {
-      if (!isNotFoundError(error)) {
-        throw error;
-      }
-
-      lastNotFound = error;
-    }
-  }
-
-  throw new Error(
-    "[b3DownloadService] Nenhum arquivo .ex_ encontrado nos últimos dias úteis.",
-    { cause: lastNotFound },
-  );
+  return {
+    buffer: await downloadSwapExFile(fileName),
+    fileName,
+    date: requestedDate,
+  };
 }

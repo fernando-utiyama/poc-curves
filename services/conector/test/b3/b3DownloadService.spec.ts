@@ -84,7 +84,7 @@ describe("b3DownloadService", () => {
     );
   });
 
-  it("deve buscar o último dia útil quando a B3 retornar 404", async () => {
+  it("deve falhar imediatamente quando a B3 retornar 404 para a data pedida (sem fallback)", async () => {
     const notFound: Error & (isAxiosError: true) = Object.assign(new Error("not found"), {
       isAxiosError: true,
       response: { status: 404 },
@@ -93,12 +93,11 @@ describe("b3DownloadService", () => {
 
     await expect(downloadSwapExFileForDate(
       new Date(value: "2026-09-07T12:00:00.000Z"),
-    )).rejects.toThrow(/Nenhum arquivo .ex_ encontrado/);
-    expect(mockedAxios.get).toHaveBeenNthCalledWith(1,
-      "https://www.b3.com.br/pesquisaregiao/download?filelist=TS260908.ex_",
-    );
-    expect(mockedAxios.get).toHaveBeenNthCalledWith(2,
-      "https://www.b3.com.br/pesquisaregiao/download?filelist=TS260904.ex_",
+    )).rejects.toThrow(notFound);
+    expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+    expect(mockedAxios.get).toHaveBeenCalledWith(
+      "https://www.b3.com.br/pesquisaregiao/download?filelist=TS260907.ex_",
+      expect.any(Object),
     );
   });
 
@@ -126,16 +125,4 @@ describe("b3DownloadService", () => {
     await expect(downloadSwapExFile(fileName: "TS260908.ex_")).rejects.toThrow(error);
   });
 
-  it("deva falhar após esgotar a busca por arquivos não encontrados", async () => {
-    const notFound: Error & (isAxiosError: true) = Object.assign(new Error("not found"), {
-      isAxiosError: true,
-      response: { status: 404 },
-    });
-    mockedAxios.get.mockRejectedValue(notFound);
-
-    await expect(
-      downloadSwapExFileForDate(new Date(value: "2026-09-07T12:00:00.000Z")),
-    ).rejects.toThrow(/Nenhum arquivo .ex_ encontrado/);
-    expect(mockedAxios.get).toHaveBeenCalledTimes(1);
-  });
 });
