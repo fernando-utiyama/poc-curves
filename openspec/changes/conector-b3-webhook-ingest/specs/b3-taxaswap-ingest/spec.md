@@ -1,6 +1,6 @@
 ## Purpose
 
-Ingerir o arquivo `TaxaSwap.txt` da B3 — já disponibilizado no Blob Storage para uma data de referência — no banco de dados legado, disparado por um webhook de notificação ou por reprocessamento manual via endpoint.
+Ingerir o arquivo `TaxaSwap.txt` da B3 — já disponibilizado no Blob Storage para uma data de referência — no banco oficial do projeto, disparado por um webhook de notificação ou por reprocessamento manual via endpoint.
 
 ## ADDED Requirements
 

@@ -50,12 +50,9 @@
     </dependencyManagement>
 
     <modules>
-        <module>services/common</module>
-        <module>services/curve-processor</module>
         <module>services/curve-engine</module>
         <module>services/curve-api</module>
         <module>services/curve-bff</module>
-        <module>services/curve-orchestrator</module>
     </modules>
 
     <build>

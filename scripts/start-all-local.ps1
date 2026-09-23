@@ -346,15 +346,6 @@ if (-not $SkipFeeder) {
         -HealthUrl "http://localhost:8091/health"
 }
 
-# 6.2 curve-processor (Spring Boot)
-$procJar = (Get-ChildItem -Path "services/curve-processor/target" -Filter "curve-processor-*.jar" -Exclude "*plain.jar" | Select-Object -First 1).FullName
-Start-ServiceProcess `
-    -Name "curve-processor" `
-    -Port 8081 `
-    -WorkDir "services/curve-processor" `
-    -Executable "java" `
-    -Arguments ((Get-SpringCommonArgs "curve-processor") + @("-jar", "`"$procJar`"")) `
-    -HealthUrl "http://localhost:8081/actuator/health"
 
 # 6.3 curve-api (Spring Boot)
 $apiJar = (Get-ChildItem -Path "services/curve-api/target" -Filter "curve-api-*.jar" -Exclude "*plain.jar" | Select-Object -First 1).FullName

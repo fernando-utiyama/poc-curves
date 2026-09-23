@@ -81,28 +81,6 @@ services:
       retries: 15
       start_period: 5s
 
-  curve-processor:
-    build:
-      context: ../..
-      dockerfile: services/curve-processor/Containerfile
-    image: localhost/curve-processor:latest
-    container_name: curvas-processor
-    hostname: curve-processor
-    restart: unless-stopped
-    networks: [curvas-net]
-    ports:
-      - "8081:8081"
-    environment:
-      CURVE_PROCESSOR_DB_PASSWORD: ${CURVE_PROCESSOR_DB_PASSWORD:-CurveProcessorP0c!Local}
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      AZURITE_CONNECTION_STRING: ${AZURITE_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health | grep -q '\"status\":\"UP\"'"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 25s
-
   curve-engine:
     build:
       context: ../..

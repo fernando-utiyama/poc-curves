@@ -45,12 +45,6 @@ echo "  [+] Iniciando conector (porta 8091)..."
   echo "{\"Name\":\"conector\",\"Port\":8091,\"Pid\":$!}" >> "${REPO_ROOT}/.local-processes.json"
 )
 
-# 2. curve-processor
-echo "  [+] Iniciando curve-processor (porta 8081)..."
-PROC_JAR=$(ls "${REPO_ROOT}/services/curve-processor/target/curve-processor-"*.jar | grep -v "plain" | head -1)
-java "${JAVA_COMMON_ARGS[@]}" -jar "${PROC_JAR}" > "${REPO_ROOT}/logs/curve-processor.log" 2>&1 &
-echo "{\"Name\":\"curve-processor\",\"Port\":8081,\"Pid\":$!}" >> "${REPO_ROOT}/.local-processes.json"
-
 # 3. curve-api
 echo "  [+] Iniciando curve-api (porta 8082)..."
 API_JAR=$(ls "${REPO_ROOT}/services/curve-api/target/curve-api-"*.jar | grep -v "plain" | head -1)

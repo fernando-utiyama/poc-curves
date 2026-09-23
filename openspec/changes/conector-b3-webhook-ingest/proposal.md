@@ -8,16 +8,17 @@ O `services/conector` tem o pipeline de contingência (`b3ContingencyHttpTrigger
 - Novo endpoint HTTP de reprocessamento manual, independente do webhook, que roda o mesmo processamento para uma data informada por parâmetro.
 - Novo serviço de download do Blob Storage (o conector hoje só tem `uploadSwapText`, usado pelo `b3ContingencyHttpTrigger` para salvar; falta o `download`/`get` equivalente, que é o lado de leitura desse mesmo par).
 - Reaproveitamento do parser posicional de B3 já existente (`parseB3Line`/`processLines`) e da normalização de tipo de curva (`normalizeCurveType`) para transformar o texto bruto em registros tipados — sem duplicar essa lógica.
-- Nova camada de persistência: primeira escrita em banco do conector, direcionada à tabela legada `tBtrsCurvaPrimr` (V22/V25, `db/h2/schema.sql`) — vértices brutos das curvas TS de B3.
-- Conexão com o banco configurada genericamente por variáveis de ambiente, seguindo o mesmo padrão já usado para Blob/Kafka no conector (`B3_BLOB_CONNECTION_STRING`, `KAFKA_BROKERS` etc.) — pensada para subir localmente, sem nenhuma credencial real documentada nesta change.
+- Nova camada de persistência: primeira escrita em banco do conector, direcionada à tabela `tBtrsCurvaPrimr` (V22/V25) — vértices brutos das curvas TS de B3. Esse é o banco oficial do projeto (schema transcrito de fotos do sistema real); a implementação deve localizar o `.sql` real da fonte em vez de presumir um caminho de arquivo neste repositório.
+- Conexão com o banco configurada genericamente por variáveis de ambiente, seguindo o mesmo padrão já usado para Blob/Kafka no conector (`B3_BLOB_CONNECTION_STRING`, `KAFKA_BROKERS` etc.) — sem nenhuma credencial real documentada nesta change.
 - **Gap explícito de infraestrutura**: `services/conector/package.json` está vazio hoje — não existe nenhum driver de banco configurado no projeto. Esta change precisa escolher e introduzir um.
 - **Requisito de qualidade**: código novo desta change sai com ≥ 90% de cobertura de teste (linhas/statements/funções/branches), verificado via `jest --coverage`.
 - Nenhuma mudança no pipeline Kafka existente (`b3HttpTrigger`) — capacidade aditiva sobre o pipeline de contingência.
+- **Fora do escopo desta change**: a implementação em si não será desenvolvida nesta sessão — esta change é só planejamento (proposal/specs/design/tasks), para retomar depois. Por isso o design não detalha a engenharia de conectividade Node.js → H2 (fica como decisão a resolver na implementação).
 
 ## Capabilities
 
 ### New Capabilities
-- `b3-taxaswap-ingest`: continuação do pipeline de contingência de B3 — leitura do `TaxaSwap.txt` já disponível no Blob Storage (colocado lá pelo `b3ContingencyHttpTrigger`) e persistência no banco de dados legado, disparada por webhook ou por reprocessamento manual via endpoint.
+- `b3-taxaswap-ingest`: continuação do pipeline de contingência de B3 — leitura do `TaxaSwap.txt` já disponível no Blob Storage (colocado lá pelo `b3ContingencyHttpTrigger`) e persistência no banco oficial do projeto, disparada por webhook ou por reprocessamento manual via endpoint.
 
 ### Modified Capabilities
 (nenhuma — não há specs existentes para os pipelines atuais de B3 do conector; esta change não altera comportamento já especificado)
@@ -25,6 +26,6 @@ O `services/conector` tem o pipeline de contingência (`b3ContingencyHttpTrigger
 ## Impact
 
 - **Código**: `services/conector/src/functions/b3/` (2 novos HTTP triggers), `services/conector/src/services/b3/` (novo serviço de download do Blob — par do `uploadSwapText` já usado pela contingência —, novo serviço de persistência), possivelmente novo módulo de mapeamento ticker → `cTickerIndcd`/catálogo `tCurvaMercd`.
-- **Dependências**: novo driver de banco de dados no `package.json` do conector (hoje inexistente) — decisão de qual driver fica para `design.md`.
-- **Banco**: escreve em `tBtrsCurvaPrimr` (schema `db/h2/schema.sql`); depende de `cTickerIndcd` já existir em `tCurvaMercd` (FK obrigatória) — resolução/erro de catálogo ausente é uma decisão de design. Conexão via variáveis de ambiente genéricas, sem credenciais reais nesta change.
+- **Dependências**: novo driver de banco de dados no `package.json` do conector (hoje inexistente) — qual driver e como conectar ficam em aberto para a implementação.
+- **Banco**: escreve em `tBtrsCurvaPrimr`; depende de `cTickerIndcd` já existir em `tCurvaMercd` (FK obrigatória) — resolução/erro de catálogo ausente é uma decisão de design. Conexão via variáveis de ambiente genéricas, sem credenciais reais nesta change.
 - **Sem impacto** no pipeline Kafka (`b3HttpTrigger`) já existente. O pipeline de contingência (`b3ContingencyHttpTrigger`) não é alterado no código — esta change apenas continua o fluxo que ele começa.
