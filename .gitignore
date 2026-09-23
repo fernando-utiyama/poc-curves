@@ -39,3 +39,8 @@ data/local/
 # Logs
 *.log
 logs/
+
+# Material de referência local (fixtures reais baixadas, não versionadas)
+docs/*.exe
+docs/*.zip
+docs/TaxaSwap.txt
