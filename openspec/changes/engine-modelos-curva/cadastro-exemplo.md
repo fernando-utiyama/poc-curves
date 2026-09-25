@@ -1,6 +1,8 @@
 # Exemplo de cadastro das 7 curvas do primeiro objetivo
 
-Exemplo de preenchimento do cadastro descrito no `design.md` (D4) para as curvas do primeiro objetivo do projeto. Serve de base para a carga inicial (tarefa 4.3) e para os testes.
+Exemplo de preenchimento do cadastro descrito no `design.md` (D4) para as curvas do primeiro objetivo do projeto.
+
+**Isto não é o desenho de produção do cadastro.** No sistema real, curva e provedor são criados e editados por um serviço próprio (`acts-srv-curvas`), via CRUD — o engine só lê. O poc ainda não tem esse serviço (fica para um `services/curves` futuro; ver Non-Goals do `design.md`). Até lá, o SQL abaixo é **só seed de teste**: dá a massa de dados mínima para a tarefa 4.3 e para os testes do engine rodarem, sem representar como o cadastro chega ao banco em produção.
 
 ## Pré-requisitos e ressalvas
 

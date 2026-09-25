@@ -22,7 +22,7 @@
 
 - [ ] 4.1 Alterar `tParmConfgCurva` para PK `(cldtfdConfg, cConfgIdtfd)` com `cConfgIdtfd VARCHAR(50)`, no DDL do schema de curvas de mercado e em migração versionada com script de reversão; verificar aplicando a migração num banco local e confirmando que a reversão restaura o estado anterior
 - [ ] 4.2 Criar `tScriptModlCurva`; verificar com a migração aplicada e a entidade JPA mapeando sem erro na subida
-- [ ] 4.3 Cadastrar PRE, DCL, DPL, INP e PTX conforme a spec `b3-ready-curve-model`: códigos da fonte em `tCurvaMercd`, origem em `tCurvaPrvdr`, `cMotorCalc`/`cRotnaCalc` com vigência em `tConfgCurva`, e os demais parâmetros em `tParmConfgCurva`; verificar com consulta SQL que lista o cadastro completo das 5 curvas
+- [ ] 4.3 Cadastrar PRE, DCL, DPL, INP e PTX por seed SQL de teste (`cadastro-exemplo.md`), conforme a spec `b3-ready-curve-model`: códigos da fonte em `tCurvaMercd`, origem em `tCurvaPrvdr`, `cMotorCalc`/`cRotnaCalc` com vigência em `tConfgCurva`, e os demais parâmetros em `tParmConfgCurva`; não é CRUD de cadastro (fora de escopo, ver design.md); verificar com consulta SQL que lista o cadastro completo das 5 curvas
 - [ ] 4.4 Criar `CadastroCurva` e a porta/adaptador que o montam a partir de `tCurvaMercd`, `tCurvaPrvdr`, `tConfgCurva` vigente na data e `tParmConfgCurva`, falhando com o código e o item ausente; verificar com teste de integração para cadastro completo, cadastro sem interpolador e código sem cadastro
 
 ## 5. Registro de modelos e Groovy

@@ -58,6 +58,7 @@ O schema é mantido como está. Como nada é gravado em `tCurvaData`, a FK real 
 - Metodologias de construção de SOFR (Bloomberg) e NTN-B (ANBIMA). Ficam só os pontos de extensão prontos.
 - Bootstrap a partir de contratos, validação estatística de curva e publicação em Kafka.
 - Módulo Maven separado para o núcleo. Fica como pacote do engine; separar depois é mecânico, porque o pacote não depende de Spring.
+- **CRUD de cadastro de curva e provedor.** O engine é só leitor de `tCurvaMercd`/`tCurvaPrvdr`/`tConfgCurva`/`tParmConfgCurva`. No sistema real, quem cria e edita esse cadastro é `acts-srv-curvas`, um serviço à parte. No poc, esse equivalente ainda não existe (`services/curve-api`, renomeado `curve-api-legado`, também nunca escreveu cadastro) e fica para uma mudança futura (`services/curves`). Nesta mudança o cadastro é inserido por SQL direto (`cadastro-exemplo.md`), só para os testes do engine funcionarem — não é o desenho de produção. Dado (pontos em `tDadoCurva`) é diferente de cadastro: o engine continua dono da escrita dos pontos, inclusive por API (D6, D9).
 
 ## Decisions
 
