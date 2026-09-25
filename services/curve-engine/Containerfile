@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1
+#
+# Contexto de build DEVE ser a raiz do monorepo (o serviço depende do reactor Maven inteiro):
+# podman build -f services/curve-engine/Containerfile -t curve-engine .
+
+FROM docker.io/library/maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /workspace
+COPY . .
+RUN mvn -q -pl services/curve-engine -am package -DskipTests
+
+FROM docker.io/library/eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=build /workspace/services/curve-engine/target/curve-engine-*.jar app.jar
+
+EXPOSE 8083
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+  CMD wget -qO- http://localhost:8083/actuator/health | grep -q '"status":"UP"' || exit 1
+
+# -Djava.security.manager=allow: GroovyModeloConstrucao instala um SecurityManager escopado
+# por thread como camada de contenção do sandbox de modelo GROOVY (ver Javadoc da classe) —
+# sem esta flag, System.setSecurityManager lança UnsupportedOperationException no JDK 17+.
+ENTRYPOINT ["java", "-Djava.security.manager=allow", "-jar", "app.jar"]
