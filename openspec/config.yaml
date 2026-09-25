@@ -12,6 +12,16 @@ context: |
   - Curvas alvo da POC: PRE (DI/PRE) como caso principal; DPL/DOL/DOC/INP/CYI como extensao.
   - Rodar tudo local: `podman compose up`. NAO ha dependencia de Azure, nem de Docker Desktop.
 
+  PRIMEIRO OBJETIVO DO PROJETO (curvas a entregar primeiro):
+  - Taxa Swap B3:
+    - DIxPRE
+    - DCL - Cupom limpo de dolar
+    - PTAX - USD
+    - DPL - Cupom limpo DI x IPCA
+    - IBOVESPA
+  - NTN-B - fonte ANBIMA
+  - SOFR - fonte Bloomberg
+
   TOPOLOGIA (as-is do alvo produtivo, reproduzida na POC):
   - feeders: workers Node.js/TypeScript (Azure Functions em prod, containers Node em local)
     que baixam o dado bruto da fonte e publicam em topico Kafka.
