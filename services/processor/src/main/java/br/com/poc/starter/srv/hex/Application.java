@@ -1,6 +1,5 @@
 package br.com.poc.starter.srv.hex;
 
-import br.com.poc.enge.logcloud.spring.EnableLogCloud;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -14,7 +13,6 @@ import java.util.Arrays;
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 
 @SpringBootApplication
-@EnableLogCloud
 @EnableKafka
 public class Application implements CommandLineRunner {
 

@@ -1,5 +1,6 @@
 package br.com.poc.starter.srv.hex.adapter.out.persistence.inmemory.entity;
 
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -8,7 +9,8 @@ import lombok.*;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "AnbimaCurveRaw", schema = "mkt")
+@Table(name = "tAnbmaCurvaPrimr", schema = "dbo")
+@AttributeOverride(name = "uuid", column = @Column(name = "cldtfdUnic", nullable = false))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,12 +18,15 @@ import java.time.LocalDate;
 @Builder
 public class AnbimaCurveRawEntity extends BaseEntity {
 
-    private String ticker;
+    @Column(name = "cTickerIndcd")
+    private String cTickerIndcd;
 
-    @Column(name = "ref_date")
-    private LocalDate refDate;
+    @Column(name = "dBaseReft")
+    private LocalDate dBaseReft;
 
-    private Double vertices;
+    @Column(name = "vPrecoTx")
+    private Double vPrecoTx;
 
-    private Double valor;
+    @Column(name = "vVertcCurva")
+    private Double vVertcCurva;
 }

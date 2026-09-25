@@ -1,0 +1,476 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+    http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.1.1</version>
+  </parent>
+
+  <groupId>br.com.poc.starter</groupId>
+  <artifactId>acts-srv-tcen-curvas-engine</artifactId>
+  <version>1.2.9</version>
+  <packaging>jar</packaging>
+
+  <name>${project.artifactId}</name>
+  <description>TCEN Curvas Microsserviço Engine de Construção de Curvas</description>
+  <organization>
+    <name>Banco POC SA</name>
+  </organization>
+  <licenses>
+    <license>
+      <name>Banco POC SA</name>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <name>Chapter ENG.SW JAVA</name>
+      <organization>Banco POC SA</organization>
+      <organizationUrl>https://banco.poc</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <url>https://github.com/POC-Core/${project.artifactId}</url>
+  </scm>
+
+  <properties>
+    <java.version>21</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>${java.version}</maven.compiler.source>
+    <maven.compiler.target>${java.version}</maven.compiler.target>
+
+    <!-- Dependencies versions - open source replacements for internal POC libs -->
+    <logstash-logback-encoder.version>7.4</logstash-logback-encoder.version>
+    <archunit-junit5.version>1.3.0</archunit-junit5.version>
+    <allure-junit5.version>2.29.0</allure-junit5.version>
+    <rest-assured.version>5.5.0</rest-assured.version>
+
+    <!-- Dependencies versions - BoM -->
+    <springdoc.version>3.1.0</springdoc.version>
+    <spring-cloud.version>2025.1.3</spring-cloud.version>
+
+    <!-- Dependencies versions - Isolated -->
+    <commons-lang3.version>3.20.0</commons-lang3.version>
+    <mapstruct.version>1.6.3</mapstruct.version>
+    <bcprov-jdk18on.version>1.85.2</bcprov-jdk18on.version>
+
+    <!-- Dependencies versions - OpenTelemetry -->
+    <opentelemetry.version>1.62.0</opentelemetry.version>
+
+    <!-- Maven plugins -->
+    <jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
+
+    <!-- CVE-2026-54515 / CVE-2026-19032 -->
+    <jackson-2-bom.version>2.22.3</jackson-2-bom.version>
+    <!-- CVE-2026-54515 -->
+    <jackson-bom.version>3.2.3</jackson-bom.version>
+
+    <!-- CVE-2025-11226 - Logback Janino/config vulnerability -->
+    <logback.version>1.6.3</logback.version>
+    <tomcat.version>11.0.26</tomcat.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Framework | Spring Cloud -->
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring-cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- Framework | SpringDoc (OpenAPI for Spring) -->
+      <dependency>
+        <groupId>org.springdoc</groupId>
+        <artifactId>springdoc-openapi-bom</artifactId>
+        <version>${springdoc.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- Framework | OpenTelemetry -->
+      <dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-bom</artifactId>
+        <version>${opentelemetry.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- External Dependencies | Isolated -->
+      <dependency>
+        <groupId>org.mapstruct</groupId>
+        <artifactId>mapstruct</artifactId>
+        <version>${mapstruct.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mapstruct</groupId>
+        <artifactId>mapstruct-processor</artifactId>
+        <version>${mapstruct.version}</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <!-- Temporary FIX CVE-2026-5598|CVE-2025-14813|CVE-2026-0636 -->
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcprov-jdk18on</artifactId>
+        <version>${bcprov-jdk18on.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-jackson-autoconfigure</artifactId>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- Structured JSON logging (replaces internal logcloud lib) -->
+    <dependency>
+      <groupId>net.logstash.logback</groupId>
+      <artifactId>logstash-logback-encoder</artifactId>
+      <version>${logstash-logback-encoder.version}</version>
+    </dependency>
+
+    <!-- Validation and JSON -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-json</artifactId>
+    </dependency>
+
+    <!-- HTTP server -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+    </dependency>
+
+    <!-- Actuator and Telemetry -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-tracing-bridge-otel</artifactId>
+    </dependency>
+
+    <!-- OpenFeign for http client -->
+    <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-starter-openfeign</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.openfeign</groupId>
+      <artifactId>feign-micrometer</artifactId>
+    </dependency>
+
+    <!-- Redis for cache -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-cache</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
+      <exclusions>
+        <exclusion>
+          <!-- ACS com apontamento (pode ser falso-positivo) -->
+          <!-- CVE-2022-24735 -->
+          <!-- CVE-2025-46817 -->
+          <!-- CVE-2025-46818 -->
+          <!-- CVE-2025-46819 -->
+          <!-- CVE-2025-49844 -->
+          <groupId>redis.clients.authentication</groupId>
+          <artifactId>redis-authx-core</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-pool2</artifactId>
+    </dependency>
+
+    <!-- MapStruct -->
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct-processor</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Groovy para carregamento dinâmico e sandbox de modelos quantitativos -->
+    <dependency>
+      <groupId>org.apache.groovy</groupId>
+      <artifactId>groovy</artifactId>
+      <version>4.0.25</version>
+    </dependency>
+
+    <!-- Bibliotecas Matemáticas e Quantitativas para Interpolações Avançadas e Modelos Groovy Emergenciais -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-math3</artifactId>
+      <version>3.6.1</version>
+    </dependency>
+    <dependency>
+      <groupId>co.dv01.jquantlib</groupId>
+      <artifactId>core</artifactId>
+      <version>0.3.0</version>
+    </dependency>
+
+    <!-- Dependências de teste unitário -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Architecture validation tests (replaces internal archunit plugin) -->
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <version>${archunit-junit5.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Test evidence/report generation (replaces internal qualidade.report plugin) -->
+    <dependency>
+      <groupId>io.qameta.allure</groupId>
+      <artifactId>allure-junit5</artifactId>
+      <version>${allure-junit5.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Functional/API test automation (replaces internal qualidade.backend lib) -->
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <version>${rest-assured.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>${project.artifactId}</finalName>
+    <pluginManagement>
+      <plugins>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-release-plugin</artifactId>
+          <configuration>
+            <releaseProfiles>release</releaseProfiles>
+          </configuration>
+        </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <parameters>true</parameters>
+            <testCompilerArgument>-parameters</testCompilerArgument>
+            <source>${java.version}</source>
+            <target>${java.version}</target>
+            <annotationProcessorPaths>
+              <path>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct-processor</artifactId>
+              </path>
+            </annotationProcessorPaths>
+          </configuration>
+        </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <configuration>
+            <show>private</show>
+            <nohelp>true</nohelp>
+            <tags>
+              <tag>
+                <name>apiNote</name>
+                <placement>a</placement>
+                <head>API Note:</head>
+              </tag>
+              <tag>
+                <name>implSpec</name>
+                <placement>a</placement>
+                <head>Implementation Requirements:</head>
+              </tag>
+              <tag>
+                <name>implNote</name>
+                <placement>a</placement>
+                <head>Implementation Note:</head>
+              </tag>
+            </tags>
+          </configuration>
+        </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <configuration>
+            <runOrder>random</runOrder>
+            <useModulePath>false</useModulePath>
+          </configuration>
+        </plugin>
+
+        <plugin>
+          <!-- Plugin para executar testes de integração -->
+          <!-- Os testes de integracao devem estar src/test/java/integracao-->
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <configuration>
+            <includes>
+              <include>**/*IT.java</include>
+              <include>**/IT*.java</include>
+              <include>**/*ITCase.java</include>
+              <include>**/*IntegrationTest.java</include>
+            </includes>
+          </configuration>
+          <executions>
+            <execution>
+              <goals>
+                <goal>integration-test</goal>
+                <goal>verify</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+
+        <plugin>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <configuration>
+            <layers>
+              <enabled>true</enabled>
+            </layers>
+          </configuration>
+          <executions>
+            <execution>
+              <id>build-info</id>
+              <goals>
+                <goal>build-info</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+
+        <plugin>
+          <groupId>org.jacoco</groupId>
+          <artifactId>jacoco-maven-plugin</artifactId>
+          <version>${jacoco-maven-plugin.version}</version>
+          <executions>
+            <execution>
+              <goals>
+                <goal>prepare-agent</goal>
+              </goals>
+            </execution>
+            <execution>
+              <id>report</id>
+              <phase>test</phase>
+              <goals>
+                <goal>report</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.cyclonedx</groupId>
+        <artifactId>cyclonedx-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>makeAggregateBom</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <!-- verificar se e necessario essa config -->
+  <profiles>
+    <profile>
+      <id>release</id>
+      <activation>
+        <property>
+          <name>release</name>
+          <value>true</value>
+        </property>
+      </activation>
+      <properties>
+        <spring.profiles.include>container</spring.profiles.include>
+      </properties>
+    </profile>
+    <profile>
+      <!-- Profile para desenvolvimento local, não ativar na esteira! -->
+      <id>development</id>
+      <activation>
+        <property>
+          <name>development</name>
+          <value>true</value>
+        </property>
+      </activation>
+      <properties>
+        <spring.profiles.active>development</spring.profiles.active>
+      </properties>
+    </profile>
+  </profiles>
+
+</project>

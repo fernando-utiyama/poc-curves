@@ -19,12 +19,12 @@ public interface AnbimaJpaRepository
     /**
      * Busca registro pelo ticker e data de referência.
      *
-     * @param ticker código do ativo
-     * @param refDate data de referência
+     * @param cTickerIndcd código do ativo
+     * @param dBaseReft data de referência
      * @return Optional contendo a entidade caso exista
      */
-    Optional<AnbimaCurveRawEntity> findByTickerAndRefDate(
-        String ticker,
-        LocalDate refDate
+    Optional<AnbimaCurveRawEntity> findByCTickerIndcdAndDBaseReft(
+        String cTickerIndcd,
+        LocalDate dBaseReft
     );
 }

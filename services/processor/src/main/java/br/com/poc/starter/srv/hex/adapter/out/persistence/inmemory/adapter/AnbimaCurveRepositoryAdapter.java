@@ -26,12 +26,12 @@ public class AnbimaCurveRepositoryAdapter implements AnbimaCurveRepositoryPort {
     @Override
     public Optional<AnbimaCurveRaw> findByTickerAndRefDate(String ticker, LocalDate refDate) {
 
-        return repository.findByTickerAndRefDate(ticker, refDate)
+        return repository.findByCTickerIndcdAndDBaseReft(ticker, refDate)
             .map(entity -> AnbimaCurveRaw.builder()
-                .ticker(entity.getTicker())
-                .refDate(entity.getRefDate())
-                .vertices(entity.getVertices())
-                .valor(entity.getValor())
+                .ticker(entity.getCTickerIndcd())
+                .refDate(entity.getDBaseReft())
+                .vertices(entity.getVVertcCurva())
+                .valor(entity.getVPrecoTx())
                 .build());
     }
 
@@ -40,7 +40,7 @@ public class AnbimaCurveRepositoryAdapter implements AnbimaCurveRepositoryPort {
     public void save(AnbimaCurveRaw curve) {
 
         Optional<AnbimaCurveRawEntity> existing =
-            repository.findByTickerAndRefDate(
+            repository.findByCTickerIndcdAndDBaseReft(
                 curve.getTicker(),
                 curve.getRefDate()
             );
@@ -50,17 +50,17 @@ public class AnbimaCurveRepositoryAdapter implements AnbimaCurveRepositoryPort {
         if (existing.isPresent()) {
             // UPDATE
             entity = existing.get();
-            entity.setVertices(curve.getVertices());
-            entity.setValor(curve.getValor());
+            entity.setVVertcCurva(curve.getVertices());
+            entity.setVPrecoTx(curve.getValor());
             entity.setLastUpdated(LocalDateTime.now(ZoneOffset.UTC));
 
         } else {
             // INSERT
             entity = AnbimaCurveRawEntity.builder()
-                .ticker(curve.getTicker())
-                .refDate(curve.getRefDate())
-                .vertices(curve.getVertices())
-                .valor(curve.getValor())
+                .cTickerIndcd(curve.getTicker())
+                .dBaseReft(curve.getRefDate())
+                .vVertcCurva(curve.getVertices())
+                .vPrecoTx(curve.getValor())
                 .build();
         }
 
