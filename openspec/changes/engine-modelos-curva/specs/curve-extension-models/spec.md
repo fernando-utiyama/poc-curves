@@ -53,7 +53,7 @@ Se nenhum existir, a resolução MUST falhar informando tipo e nome, sem usar mo
 - **THEN** toda curva cadastrada com `LogLinear` passa a usar o script, e não o interpolador Java
 
 #### Scenario: Modelo novo só em Groovy
-- **WHEN** um script Groovy de construção chamado `SOFR_FUTUROS_BLOOMBERG` é ativado
+- **WHEN** um script Groovy de construção chamado `EXEMPLO_SO_GROOVY`, sem equivalente Java, é ativado
 - **THEN** uma curva cadastrada com esse modelo de construção pode ser construída
 
 #### Scenario: Calendário novo em Groovy

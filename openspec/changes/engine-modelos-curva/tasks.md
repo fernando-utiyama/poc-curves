@@ -48,14 +48,29 @@
 - [ ] 7.3 Criar `PUT /api/v1/curvas/{codigo}/{dataBase}/pontos`: recebe a lista completa, valida (vazia, sem data ou valor, data repetida, data não posterior à data-base, dia não útil no calendário cadastrado), substitui os pontos da data numa transação, invalida o cache, exige autenticação, registra usuário e origem manual no log, e devolve os pontos gravados ordenados com dias recalculados e valor arredondado; verificar com testes de edição de um valor, lista menor removendo pontos, criação numa data sem pontos, 422 com sábado mantendo os pontos anteriores, 401 sem credencial, e interpolação seguinte usando o valor editado
 - [ ] 7.4 Criar `GET /api/v1/curvas` (catálogo com filtro `nome`) e as rotas de leitura `GET /api/v1/curvas/por-nome/{dataBase}` e `.../por-nome/{dataBase}/interpolacao`, resolvendo o nome normalizado (sem acentos e sem diferenciar maiúsculas) contra `tCurvaMercd.cTickerIndcd` e o código contra `tCurvaMercd.cTickerIdtfdUnic`; verificar com testes de consulta por nome com acento e caixa diferentes, 404 para nome ou código inexistente, 409 para nome ambíguo após normalização e para código repetido, e busca por trecho do nome no catálogo
 - [ ] 7.5 Criar a gestão de scripts `/api/v1/modelos/{tipo}/{nome}` (enviar, validar, ativar, desativar, listar), com autenticação nas operações de escrita e erros sem stack trace; verificar com testes de controller, incluindo 401 sem credencial e 422 ao ativar versão não validada
-- [ ] 7.6 Remover `CurvaConstrucaoController`, `CurvaCalculoController`, `ModeloUploadController` e os DTOs antigos, e atualizar os clientes internos (curve-bff) para as rotas novas; verificar com `mvn compile` dos serviços afetados e busca sem referências às rotas antigas
+- [ ] 7.6 Remover `CurvaConstrucaoController`, `CurvaCalculoController`, `ModeloUploadController` e os DTOs antigos; verificar com `mvn compile` do engine e busca sem referências às rotas antigas no engine
 
-## 8. Conector e processor
+## 8. NTN-B (ANBIMA)
 
-- [ ] 8.1 Reescrever `curveB3TypeCatalog.ts` com uma entrada por código exato (incluindo `PRE`, `DCL`, `PTX`, `DPL`, `INP`, `ZUS`, `TIC`) e `normalizeB3CurveType.ts` casando primeiro pelo código; verificar com teste Vitest usando linhas reais do `TaxaSwap.txt`: `DCL`/`DPL` não viram `DOL`, `SLP`/`TFP` não viram `PRE`, `PTX`/`INP` publicados e `076` separado de `TIC`
-- [ ] 8.2 Alinhar a entidade B3 do processor com `tBtrsCurvaPrimr` (`cTickerIndcd`, `cDiaCorri`, `cDiaUtil`, `dBaseReft`, `vPrecoTx`), como já feito com `tAnbmaCurvaPrimr`; verificar com `mvn compile` e teste de integração que grava uma mensagem B3 e lê a linha de volta
+- [ ] 8.1 Criar `tSerieTituloNtnb` (vencimento, taxa de cupom, frequência); verificar com a migração aplicada e um `INSERT` de teste
+- [ ] 8.2 Cadastrar a curva `NTN-B` (`tCurvaMercd`/`tCurvaPrvdr`/`tConfgCurva`/`tParmConfgCurva`) apontando para `NTNB_BOOTSTRAP_ANBIMA`, unidade `TAXA`, `Business252`/`Compounded`/`Annual`; verificar com consulta SQL do cadastro completo
+- [ ] 8.3 Criar o modelo de série de título lido de `tSerieTituloNtnb`; verificar com teste que monta o fluxo de caixa (datas e valores de cupom + principal) de uma série de exemplo e confere contra um cálculo manual
+- [ ] 8.4 Ler `tAnbmaCurvaPrimr` por `dVctoTitulo`, associando cada taxa indicativa à sua série; verificar com teste de integração, com `tAnbmaCurvaPrimr` carregada por fixture, que lê N títulos de uma data e associa cada um à série correta
+- [ ] 8.5 Criar o `CouponBondRateHelper`: dado o YTM publicado, o fluxo de caixa e a curva parcial já resolvida, resolve a taxa zero do vencimento por busca de raiz, descontando cupons intermediários pela curva parcial (interpolando quando a data do cupom não é um vencimento resolvido), com limite de iterações e erro nomeando o título; verificar com teste do caso sem cupom intermediário (taxa zero = YTM) e do caso de cupom em data já resolvida (desconto exato)
+- [ ] 8.6 Ordenar os títulos por vencimento e encadear a resolução; verificar com teste de 4+ títulos, com cupons caindo em vencimentos resolvidos e não resolvidos
+- [ ] 8.7 Título sem taxa indicativa na data: excluir do bootstrap sem falhar, e falhar só se nenhum título tiver taxa; verificar com os dois cenários da spec
+- [ ] 8.8 Criar `NTNB_BOOTSTRAP_ANBIMA` (`ModeloConstrucao`, pacote `construcao/ntnbbootstrapanbima`) orquestrando 8.4 → 8.7 e devolvendo os pontos (vencimento real, taxa zero); registrar no `RegistroModelos`; verificar com teste de integração que constrói a `NTN-B` de uma data real, confere o número de pontos contra os títulos em circulação e, reconstruindo a mesma data, obtém pontos idênticos
 
-## 9. Verificação ponta a ponta
+## 9. SOFR (Bloomberg)
 
-- [ ] 9.1 Rodar o fluxo completo com o `TaxaSwap.txt` de uma data real: conector publica, processor grava `tBtrsCurvaPrimr`, engine constrói as 5 curvas pela API nova; verificar pelas respostas da API (construção, consulta dos pontos, edição e interpolação) e pela contagem de linhas em `tDadoCurva` de cada curva
-- [ ] 9.2 Rodar `openspec validate engine-modelos-curva --strict` e a suíte de testes do engine, do processor e do conector; verificar que tudo passa
+- [ ] 9.1 Criar `UnitedStates` (mercado `FederalReserve`) em `calendario/unitedstates`, com os feriados federais dos EUA e a regra de fim de semana; verificar com teste que confere um ano completo de feriados contra uma lista de referência pública
+- [ ] 9.2 Criar a conversão de tenor (`Period.parse`) para data de vértice, com o calendário e a `BusinessDayConvention` cadastrados; verificar com teste para tenores padrão (`10Y`) e não padronizados (`9M`, `15M`)
+- [ ] 9.3 Extrair `construcao/pontosprontos` (pontos já lidos → pontos prontos para gravar) e fazer `PRONTA_TS_B3` usá-lo, sem mudar seu comportamento; verificar que os testes de `PRONTA_TS_B3` continuam passando sem alteração
+- [ ] 9.4 Criar `SOFR_ZERO_BLOOMBERG` (`ModeloConstrucao`, pacote `construcao/sofrzerobloomberg`): lê os nós SOFR da data-base no contrato do design D15, descarta tenor duplicado idêntico registrando no log, converte cada tenor (9.2) e usa `pontosprontos` (9.3), sem conversão de taxa; registrar com nome próprio, nunca reaproveitando `PRONTA_TS_B3`; verificar com teste de integração, com a tabela bruta carregada por fixture, que constrói a `SOFR` de uma data com 21 nós (mais um `1D` duplicado), confere 21 pontos nas datas certas e a proveniência `SOFR_ZERO_BLOOMBERG`
+- [ ] 9.5 Cadastrar a curva `SOFR` apontando para `SOFR_ZERO_BLOOMBERG`, calendário `UnitedStates`/`FederalReserve`, `Actual360`/`Simple`; verificar com consulta SQL do cadastro completo
+- [ ] 9.6 Insumo ausente: construção da `SOFR` numa data sem nós falha informando `SOFR` e a data; verificar com teste de integração
+
+## 10. Verificação ponta a ponta
+
+- [ ] 10.1 Com `tBtrsCurvaPrimr` carregada por fixture a partir do `TaxaSwap.txt` de uma data real, construir as 5 curvas B3 pela API nova; verificar pelas respostas da API (construção, consulta dos pontos, edição e interpolação) e pela contagem de linhas em `tDadoCurva` de cada curva
+- [ ] 10.2 Rodar `openspec validate engine-modelos-curva --strict` e a suíte de testes do engine; verificar que tudo passa

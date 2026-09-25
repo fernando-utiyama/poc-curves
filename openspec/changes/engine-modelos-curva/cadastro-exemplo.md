@@ -7,9 +7,10 @@ Exemplo de preenchimento do cadastro descrito no `design.md` (D4) para as curvas
 ## Pré-requisitos e ressalvas
 
 - **`tParmConfgCurva` em chave/valor** depende da alteração de PK prevista na tarefa 4.1: `(cldtfdConfg, cConfgIdtfd)`, com `cConfgIdtfd VARCHAR(50)`. Com a PK atual (só `cldtfdConfg`), a tabela aceita uma linha por configuração, e os parâmetros abaixo não cabem. Essa decisão ainda está aberta.
-- **Modelos nativos desta mudança:** só `PRONTA_TS_B3`. As 5 curvas B3 funcionam com ele. **NTN-B** e **SOFR** usam os modelos de construção `PRONTA_ANBIMA` e `SOFR_FUTUROS_BLOOMBERG`, que não fazem parte desta mudança. Eles podem ser criados como script Groovy (spec `curve-extension-models`) ou numa mudança seguinte. Até lá, a construção dessas duas falha informando modelo inexistente, que é o comportamento especificado.
-- **FK das tabelas brutas:** `tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr` e `tBbergCurvaPrimr` têm FK de `cTickerIndcd` para `tCurvaMercd`. Pelo design (D5 e Risks), o bruto é gravado sob o código na fonte (ex.: `PRE`), então cada código na fonte também precisa de uma linha em `tCurvaMercd`, como curva primária. Essas linhas levam `cTickerIdtfdUnic = NULL`, para não colidir com os códigos das curvas de mercado nas rotas por código. Elas não aparecem no SQL abaixo.
-- **Valores a conferir:** as casas decimais do INP (o manual diz só "pontos de índice", e o TaxaSwap mostra 2 casas) e o formato dos dados de NTN-B e SOFR nas tabelas brutas.
+- **Modelos nativos desta mudança:** `PRONTA_TS_B3` para as 5 curvas B3, `NTNB_BOOTSTRAP_ANBIMA` para a NTN-B (spec `ntnb-anbima-curve-model`) e `SOFR_ZERO_BLOOMBERG` para o SOFR (spec `sofr-bloomberg-curve-model`).
+- **FK das tabelas brutas:** `tBtrsCurvaPrimr` e `tAnbmaCurvaPrimr` têm FK de `cTickerIndcd` para `tCurvaMercd`. Pelo design (D5 e Risks), o bruto é gravado sob o código na fonte (ex.: `PRE`), então cada código na fonte também precisa de uma linha em `tCurvaMercd`, como curva primária. Essas linhas levam `cTickerIdtfdUnic = NULL`, para não colidir com os códigos das curvas de mercado nas rotas por código. Elas não aparecem no SQL abaixo.
+- **Dados brutos:** o engine só lê as tabelas brutas, preenchidas pelo conector e pelo processor (design D10). A NTN-B precisa de `dVctoTitulo` em `tAnbmaCurvaPrimr` e da carga de `tSerieTituloNtnb` (D11, D13); o SOFR, da tabela de nós por tenor (D15). Nos testes, as tabelas brutas são carregadas por fixture.
+- **Valores a conferir:** as casas decimais do INP (o manual diz só "pontos de índice", e o TaxaSwap mostra 2 casas).
 
 ## Visão geral
 
@@ -20,15 +21,15 @@ Exemplo de preenchimento do cadastro descrito no `design.md` (D4) para as curvas
 | `PTX` | PTAX - USD | B3 (TaxaSwap) | `PTX` | `PRONTA_TS_B3` | `PRECO` | `Price` + `LogLinear` | `Business252` | — | `Disabled` / `Disabled` | 7 casas, `DOWN` (truncado) |
 | `DPL` | Cupom Limpo DI X IPCA | B3 (TaxaSwap) | `DPL` | `PRONTA_TS_B3` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Business252` / `Compounded` / `Annual` | `Disabled` / `FlatForward` | 2 casas, `HALF_UP` |
 | `INP` | IBOVESPA | B3 (TaxaSwap) | `INP` | `PRONTA_TS_B3` | `PONTOS` | `Price` + `LogLinear` | `Business252` | — | `Disabled` / `FlatValue` | 2 casas, `HALF_UP` (a conferir) |
-| `NTNB` | NTN-B | ANBIMA | `NTN-B` | `PRONTA_ANBIMA` (fora desta mudança) | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Business252` / `Compounded` / `Annual` | `Disabled` / `FlatForward` | 4 casas, `HALF_UP` |
-| `SOFR` | SOFR | Bloomberg | `SOFR_FUTUROS` | `SOFR_FUTUROS_BLOOMBERG` (fora desta mudança) | `TAXA` | `CompoundFactor` + `Linear` | `Actual360` | `Actual360` / `Simple` | `Disabled` / `FlatValue` | 3 casas, `HALF_UP` |
+| `NTNB` | NTN-B | ANBIMA | `NTN-B` | `NTNB_BOOTSTRAP_ANBIMA` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Business252` / `Compounded` / `Annual` | `Disabled` / `FlatForward` | 4 casas, `HALF_UP` |
+| `SOFR` | SOFR | Bloomberg | `S0490Z` | `SOFR_ZERO_BLOOMBERG` | `TAXA` | `CompoundFactor` + `Linear` | `Actual360` | `Actual360` / `Simple` | `Disabled` / `FlatValue` | 3 casas, `HALF_UP` |
 
-Calendário: `Brazil` / `Settlement` / `Following` para as curvas brasileiras; `UnitedStates` / `SOFR` / `ModifiedFollowing` para o SOFR. Horizonte de exemplo: `10Y`. O domínio da interpolação sempre vai pelo menos até o último ponto real, então o horizonte só importa quando passa dele.
+Calendário: `Brazil` / `Settlement` / `Following` para as curvas brasileiras; `UnitedStates` / `FederalReserve` / `ModifiedFollowing` para o SOFR. Horizonte de exemplo: `10Y`. O domínio da interpolação sempre vai pelo menos até o último ponto real, então o horizonte só importa quando passa dele.
 
 Origem das convenções:
 - **Curvas B3:** Manual de Curvas B3, itens 1.4.2/1.4.6 (PRE, DPL), 1.4.3/1.4.10 (DCL), 1.4.5/1.4.8 (INP). A PTX não tem função própria no manual e fica com extrapolação `Disabled`.
-- **SOFR:** convenção da curva zero cupom de SOFR do manual (ZUS, item 1.4.11 e Flat no fim).
-- **NTN-B:** convenção de taxa real ANBIMA em 252 dias úteis.
+- **SOFR:** convenção da curva zero cupom de SOFR do manual (ZUS, item 2.11: interpolação 360 linear do item 1.4.11 e Flat no fim).
+- **NTN-B:** convenção de taxa real ANBIMA em 252 dias úteis; pontos nos vencimentos dos títulos, obtidos por bootstrap.
 
 ## SQL de exemplo (SQL Server)
 
@@ -38,7 +39,7 @@ Origem das convenções:
 INSERT INTO tPrvdrDadoMercd (iPrvdrDados, cProdt, cInfoProdt) VALUES
  ('B3',        'TS', 'Taxas de Mercado para Swaps (TaxaSwap.txt)'),
  ('ANBIMA',    'TP', 'Taxas indicativas de títulos públicos'),
- ('BLOOMBERG', 'FT', 'Futuros de SOFR');
+ ('BLOOMBERG', 'ZR', 'Zero rates de SOFR (curve member S0490Z)');
 ```
 
 ### Curvas de mercado (`tCurvaMercd`)
@@ -69,7 +70,7 @@ INSERT INTO tCurvaPrvdr (cldtfdUnic, cTickerIndcd, iPrvdrDados, cPrvdrMercd, cTi
  (4, 'Cupom Limpo DI X IPCA', 'B3',        'TS', 'DPL',          1),
  (5, 'IBOVESPA',              'B3',        'TS', 'INP',          1),
  (6, 'NTN-B',                 'ANBIMA',    'TP', 'NTN-B',        1),
- (7, 'SOFR',                  'BLOOMBERG', 'FT', 'SOFR_FUTUROS', 1);
+ (7, 'SOFR',                  'BLOOMBERG', 'ZR', 'S0490Z',       1);
 ```
 
 ### Configuração (`tConfgCurva`)
@@ -83,8 +84,8 @@ INSERT INTO tConfgCurva (cTickerIndcd, cAtivoFincr, cMotorCalc, cRotnaCalc, cVrs
  ('PTAX - USD',            1, 'PRONTA_TS_B3',           'LogLinear', 1, '2026-01-01', NULL),
  ('Cupom Limpo DI X IPCA', 1, 'PRONTA_TS_B3',           'LogLinear', 1, '2026-01-01', NULL),
  ('IBOVESPA',              1, 'PRONTA_TS_B3',           'LogLinear', 1, '2026-01-01', NULL),
- ('NTN-B',                 1, 'PRONTA_ANBIMA',          'LogLinear', 1, '2026-01-01', NULL),
- ('SOFR',                  1, 'SOFR_FUTUROS_BLOOMBERG', 'Linear',    1, '2026-01-01', NULL);
+ ('NTN-B',                 1, 'NTNB_BOOTSTRAP_ANBIMA',  'LogLinear', 1, '2026-01-01', NULL),
+ ('SOFR',                  1, 'SOFR_ZERO_BLOOMBERG',    'Linear',    1, '2026-01-01', NULL);
 ```
 
 ### Parâmetros (`tParmConfgCurva`)
@@ -122,7 +123,7 @@ As demais curvas usam o mesmo `INSERT`, trocando o `WHERE` e os valores que dife
 | Cupom Limpo DI X IPCA | `Discount` | `Business252` | `Annual` | `Brazil` / `Settlement` | `Following` | `FlatForward` | 2 | `HALF_UP` |
 | IBOVESPA | `Price` | `Business252` | — | `Brazil` / `Settlement` | `Following` | `FlatValue` | 2 | `HALF_UP` |
 | NTN-B | `Discount` | `Business252` | `Annual` | `Brazil` / `Settlement` | `Following` | `FlatForward` | 4 | `HALF_UP` |
-| SOFR | `CompoundFactor` | `Actual360` | — | `UnitedStates` / `SOFR` | `ModifiedFollowing` | `FlatValue` | 3 | `HALF_UP` |
+| SOFR | `CompoundFactor` | `Actual360` | — | `UnitedStates` / `FederalReserve` | `ModifiedFollowing` | `FlatValue` | 3 | `HALF_UP` |
 
 Todas usam `EXTRAPOLACAO_INICIO = Disabled` e `HORIZONTE = 10Y`. `FREQUENCY` só se aplica à cotação `Compounded`; para `Simple` e para curvas de preço ou pontos, a linha é omitida.
 
@@ -132,4 +133,5 @@ Com esse cadastro e o `TaxaSwap.txt` de 14/09/2026 carregado em `tBtrsCurvaPrimr
 - `POST /api/v1/curvas/PRE/2026-09-14/construcao` grava 278 pontos da DIxPRE em `tDadoCurva`, o primeiro com taxa 13,900.
 - `GET /api/v1/curvas/PRE/2026-09-14/interpolacao?du=7406` devolve 14,167 (ponto publicado, 3 casas).
 - `GET /api/v1/curvas/por-nome/2026-09-14?nome=cupom limpo de dolar` devolve os pontos da DCL, com o código `DCL`.
-- `POST /api/v1/curvas/NTNB/2026-09-14/construcao` falha informando que o modelo `PRONTA_ANBIMA` não existe, até ele ser criado.
+- `POST /api/v1/curvas/NTNB/2026-09-14/construcao` grava um ponto por NTN-B com taxa na data, no vencimento de cada título.
+- `POST /api/v1/curvas/SOFR/2026-09-14/construcao` grava um ponto por tenor publicado do `S0490Z` (21 na lista atual).

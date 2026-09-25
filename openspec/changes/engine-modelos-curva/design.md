@@ -45,18 +45,17 @@ tBtrsCurvaPrimr ─ modelo de construção ─► tDadoCurva (pontos)
 
 O schema é mantido como está. Como nada é gravado em `tCurvaData`, a FK real `FK_tDadoCurva_tCurvaData` não interfere nesta fase. Gravar a curva diária em `tCurvaData` fica para o alvo ideal descrito em D6.
 
-**Conector:** o catálogo casa pela descrição via regex. Verificado com as linhas reais do `TaxaSwap.txt`: `DCL` e `DPL` viram `DOL`, e `PTX` e `INP` são descartados.
-
 ## Goals / Non-Goals
 
 **Goals:**
 - Núcleo de curvas em Java puro dentro do engine, com tipos e nomes do QuantLib, estendível por Groovy nos três tipos de modelo.
 - Cadastro como única fonte de variação entre curvas, reaproveitando as colunas oficiais.
 - PRE, DCL, DPL, INP e PTX construídas do TaxaSwap e conferidas contra os valores publicados.
+- NTN-B construída por bootstrap das taxas indicativas ANBIMA (D11–D14) e SOFR construída das zero rates Bloomberg (D15–D19).
 
 **Non-Goals:**
-- Metodologias de construção de SOFR (Bloomberg) e NTN-B (ANBIMA). Ficam só os pontos de extensão prontos.
-- Bootstrap a partir de contratos, validação estatística de curva e publicação em Kafka.
+- ETTJ IPCA paramétrica (Svensson) da ANBIMA e bootstrap de contratos futuros de SOFR.
+- Validação estatística de curva e publicação em Kafka.
 - Módulo Maven separado para o núcleo. Fica como pacote do engine; separar depois é mecânico, porque o pacote não depende de Spring.
 - **CRUD de cadastro de curva e provedor.** O engine é só leitor de `tCurvaMercd`/`tCurvaPrvdr`/`tConfgCurva`/`tParmConfgCurva`. No sistema real, quem cria e edita esse cadastro é `acts-srv-curvas`, um serviço à parte. No poc, esse equivalente ainda não existe (`services/curve-api`, renomeado `curve-api-legado`, também nunca escreveu cadastro) e fica para uma mudança futura (`services/curves`). Nesta mudança o cadastro é inserido por SQL direto (`cadastro-exemplo.md`), só para os testes do engine funcionarem — não é o desenho de produção. Dado (pontos em `tDadoCurva`) é diferente de cadastro: o engine continua dono da escrita dos pontos, inclusive por API (D6, D9).
 
@@ -70,8 +69,9 @@ domain/
                   Period, InterestRate, DayCounter (+ Business252, Actual360, Actual365Fixed, Thirty360)
   matematica/     DecimalMath (pow/ln/exp em BigDecimal), Arredondamento (casas + modo, truncamento incluso)
   calendario/     Calendar (contrato do QuantLib), brazil/ (Settlement = feriados ANBIMA; B3BusinessCalendar migra),
-                  unitedstates/ (depois)
-  construcao/     ModeloConstrucao, prontatsb3/
+                  unitedstates/ (FederalReserve, para o SOFR)
+  construcao/     ModeloConstrucao, pontosprontos/ (comum aos modelos sem bootstrap),
+                  prontatsb3/, ntnbbootstrapanbima/, sofrzerobloomberg/
   interpolacao/   Grandeza (Discount, ZeroYield, ForwardRate, CompoundFactor, Price),
                   Interpolator (linear/, loglinear/, backwardflat/, forwardflat/, cubic/),
                   extrapolacao/ (Disabled, FlatForward, FlatValue)
@@ -182,8 +182,79 @@ O catálogo (código, nome, unidade) é pequeno, então fica em cache e é inval
 
 **Edição de pontos** (`PUT .../pontos`): a lista recebida é validada inteira contra o calendário cadastrado. Em seguida, na mesma transação, os pontos da data são apagados e a lista é inserida (substituição total, sem merge). A resposta relê os pontos gravados, para devolver exatamente o que ficou no banco. É o mesmo caminho de gravação da construção (D6), com a origem registrada como manual no log. Assim, consultas repetidas não relêem o banco nem remontam a interpolação. O Redis que o engine já configura pode guardar esse cache entre réplicas.
 
-### D10. Conector
-`curveB3TypeCatalog` passa a ter uma entrada por código exato (`PRE`, `DCL`, `PTX`, `DPL`, `INP`, `ZUS`, `TIC`...). `normalizeCurveType` casa primeiro pelo código exato, e a descrição só é usada para código ausente do catálogo. O cálculo de fatores em `curveB3Factors.ts` não é alterado: o processor já descarta esses campos, e a fonte de verdade dos fatores passa a ser o engine.
+### D10. O engine só lê as tabelas brutas
+Este change é só do engine. Os modelos de construção leem as tabelas brutas e esperam delas o contrato abaixo; preencher essas tabelas é do conector e do processor, em changes próprios:
+
+| Tabela bruta | O engine espera | Situação hoje |
+|---|---|---|
+| `tBtrsCurvaPrimr` | uma linha por vértice, com `cTickerIndcd` = código exato da curva no `TaxaSwap.txt` (`PRE`, `DCL`, `PTX`, `DPL`, `INP`), `cDiaCorri`, `cDiaUtil`, `vPrecoTx` | o conector classifica pela descrição (`DCL`/`DPL` viram `DOL`, `PTX`/`INP` são descartados, verificado com o arquivo real) e o processor grava em `mkt.B3CurveRaw` |
+| `tAnbmaCurvaPrimr` | taxa indicativa por título, com o vencimento do título (`dVctoTitulo`, D11) | sem vencimento por título |
+| nós SOFR por tenor (D15) | um nó por tenor e data-base | tabela e ingestão inexistentes; feeder não localizado |
+
+Nos testes do engine, essas tabelas são carregadas por fixture.
+
+### NTN-B (ANBIMA): `NTNB_BOOTSTRAP_ANBIMA`
+
+**Contexto.** O `services/processor` já lê e grava `tAnbmaCurvaPrimr` (`AnbimaCurveRaw`, `AnbimaCurveRawEntity`, `AnbimaJpaRepository`, `AnbimaCurveRepositoryAdapter`, `AnbimaKafkaConsumer`, `ProcessAnbimaCurveService`). A tabela guarda `vPrecoTx` (taxa indicativa) e `vVertcCurva` por `cTickerIndcd`/`dBaseReft`, mas `cTickerIndcd` é o código da curva (`NTN-B`), não o título individual. Nenhuma referência do projeto tem bootstrap de título com cupom: o `curve-platform` tem `CdiRateHelper` e `Di1RateHelper` (instrumentos zero-cupom) e um `CurveBootstrapper.bootstrap()` que só ordena e monta pillars a partir de taxas já implícitas. O stripping da NTN-B é desenho novo. Fora de escopo: a ETTJ IPCA paramétrica (Svensson) da ANBIMA, a precificação do título (PU, VNA) e ajuste de opcionalidade (a NTN-B não tem opção embutida).
+
+### D11. `tAnbmaCurvaPrimr` identifica o vencimento do título
+Hoje toda linha de `tAnbmaCurvaPrimr` tem `cTickerIndcd` = `NTN-B`; sem o título individual, não há como montar N pontos de bootstrap. Duas opções:
+- **(a)** Adicionar `dVctoTitulo DATE` a `tAnbmaCurvaPrimr`. Tabelas de dado bruto por provedor já têm colunas próprias (`tBbergCurvaPrimr.dVctoContr`, `tLchCurvaPrimr.dVctoContr`).
+- **(b)** Um registro por título, com `cTickerIndcd` = código do título (ex.: `NTNB_270815`), e a curva `NTN-B` agregando os títulos via `tCurvaPrvdr`. Exige cadastrar N curvas primárias que surgem e somem conforme os títulos vencem: cadastro dinâmico, que caberia ao futuro `services/curves`.
+
+Escolhida **(a)**: segue o precedente das outras `*CurvaPrimr` e evita cadastro dinâmico. A coluna e o seu preenchimento são da ingestão ANBIMA (D10); o engine só a lê. **Alternativa rejeitada:** inferir o vencimento pelo nome ou descrição do papel, por ser frágil e não documentado.
+
+### D12. O helper da NTN-B resolve uma equação por título
+`CdiRateHelper`/`Di1RateHelper` entregam uma taxa implícita pronta. O helper da NTN-B precisa resolver: dado o YTM publicado e o fluxo de caixa do título (cupons + principal), qual a taxa zero no vencimento desse título, com os vencimentos anteriores já resolvidos. A solução é uma busca de raiz (bisseção ou Newton) por título.
+
+```
+CouponBondRateHelper(vencimento, taxaIndicativa, cupomTaxa, cupomFrequencia)
+  .impliedZeroRate(curvaParcial)  // curvaParcial = pontos já resolvidos, vencimentos < este
+```
+
+`curvaParcial` desconta cada cupom intermediário. Quando a data do cupom não é um vencimento já resolvido, interpola com o interpolador cadastrado da curva, aplicado sobre o domínio parcial em construção. **Alternativa rejeitada:** resolver todos os pontos de uma vez por mínimos quadrados (como a ETTJ). É mais lento e mais difícil de auditar ponto a ponto.
+
+### D13. Estrutura de cupom por série em `tSerieTituloNtnb`
+Frequência, taxa de cupom real e vencimento variam por série. Ficam numa tabela nova `tSerieTituloNtnb` (vencimento, taxa de cupom, frequência), e não em `tParmConfgCurva`: são N séries cuja composição muda com o tempo, o que o chave/valor por configuração vigente não modela bem.
+
+### D14. Título sem taxa na data
+É excluído do bootstrap daquela data. O dado curva pode ter menos pontos em dias de pouca liquidez, o que o pipeline já suporta: a interpolação sob demanda não supõe grade fixa de pontos entre datas. Se nenhum título tiver taxa, a construção falha como qualquer insumo ausente.
+
+### SOFR (Bloomberg): `SOFR_ZERO_BLOOMBERG`
+
+**Contexto.** O ticker `S0490Z <tenor> BLC2 Curncy` é a série de **zero rates do SOFR** do Bloomberg, segundo [A Smoother Path to SOFR Curve Construction](https://www.lucidogroup.io/smoother-path-to-sofr-curve-construction/). Não é par swap rate, então não há bootstrap: é leitura + interpolação, análogo ao `ZUS` do Manual de Curvas B3 (item 2.11: fator de desconto por prazo, interpolação 360 linear, fonte externa). O `BloombergCurveRaw`/`BloombergCurveRawEntity` do processor (`futLastTradeDate`, `settleDate`, `dayToMty`, `pxSettle`, `maturity`, `settle`, `pxMid`, `pxLast`) tem formato de **contrato futuro**; o `S0490Z` é uma lista de **tenores de um curve member**. São formatos diferentes. Fora de escopo: bootstrap de par rate, alteração do `BloombergCurveRaw` (continua servindo a contratos futuros) e o calendário `UnitedStates` completo (só o mercado necessário).
+
+### D15. Contrato de leitura dos nós SOFR
+O `SOFR_ZERO_BLOOMBERG` lê um formato próprio de nó por tenor, e não o `BloombergCurveRaw`. Criar a tabela e a ingestão é do processor (D10); o engine define só o que espera ler:
+
+```java
+public class SofrCurveNode {
+    String curveMember;   // "S0490Z"
+    String tenor;         // "1D", "1M", "15M", "10Y"...
+    LocalDate refDate;
+    Double valor;          // taxa zero, já pronta
+}
+```
+
+Tabela sugerida: `mkt.SofrCurveRaw` (`curve_member`, `tenor`, `ref_date`, `valor`), chave natural `(curve_member, tenor, ref_date)`. **Alternativa rejeitada:** reaproveitar `tBbergCurvaPrimr` com um campo `tenor` opcional. Misturaria contrato futuro e nó de curve member na mesma tabela, com metade das colunas nulas conforme a linha.
+
+### D16. Conversão de tenor por `Period`
+`Period.parse("15M")` (quantidade + `TimeUnit`, formato QuantLib) cobre qualquer tenor, incluindo os não padronizados (`9M`, `15M`) que aparecem na lista real. Uma tabela fixa de tenores válidos quebraria no primeiro tenor novo.
+
+```
+vertice = calendario.advance(dataBase, Period.parse(tenor), businessDayConvention)
+```
+
+### D17. Tenor `1D` duplicado
+A lista real mostrou `S0490Z 1D BLC2 Curncy` duas vezes. Hipóteses: artefato da captura (mais provável, as demais linhas não repetem) ou dois instrumentos distintos com o mesmo rótulo na tela (overnight vs. tomorrow/next). Sem acesso ao Terminal, a regra é determinística e registrada: descarta a duplicata idêntica e loga o descarte, sem travar a construção.
+
+### D18. `construcao/pontosprontos`: código comum com `PRONTA_TS_B3`, nome de modelo próprio
+`PRONTA_TS_B3` e `SOFR_ZERO_BLOOMBERG` não fazem bootstrap: leem um valor já calculado na fonte e o devolvem como ponto. A leitura do bruto (`tBtrsCurvaPrimr` vs. `SofrCurveRaw`) e a conversão de vértice (dias já publicados vs. tenor → data pelo calendário) são específicas de cada um. O comum vai para `construcao/pontosprontos`: recebe a lista `(data do vértice, valor)` já lida e devolve os pontos prontos para gravação. Cada modelo mantém o próprio nome e registro.
+
+**Alternativa rejeitada:** um único modelo genérico `PONTOS_PRONTOS` com o leitor da fonte injetado. A proveniência mostraria sempre `PONTOS_PRONTOS`, e a informação de qual leitor rodou sairia do nome do modelo, que é onde a proveniência (D8) espera encontrá-la.
+
+### D19. Calendário `UnitedStates`, mercado `FederalReserve`
+O SOFR é publicado pelo Fed de Nova York nos dias úteis do Federal Reserve, então o mercado é `FederalReserve`. Feriados federais dos EUA (New Year's, MLK, Presidents, Memorial, Juneteenth, Independence, Labor, Columbus, Veterans, Thanksgiving, Christmas), com a regra de fim de semana do calendário do Federal Reserve.
 
 ## Risks / Trade-offs
 
@@ -191,21 +262,34 @@ O catálogo (código, nome, unidade) é pequeno, então fica em cache e é inval
 - **Custo da interpolação em tempo de execução.** Cada consulta interpola na hora. → Cache do objeto de curva por versão (D9). O custo por prazo é constante após o cache, e uma curva de ~278 pontos cabe inteira em memória.
 - **Curva diária não persistida.** Consumidores que precisam da curva dia a dia, como a curve-api lendo `tCurvaData`, não a encontram gravada nesta fase. → A API de interpolação atende por prazo; a persistência diária entra com o alvo ideal (D6).
 - **As colunas de `tDadoCurva` divergem entre o schema e o engine.** O schema tem `dVertcReft` e `vPrecoTx`; a entidade do engine usa `dtVerticeReferencia`, `cDiaUtil`, `cQtdDiaReft`, `vDiaFator` e `vFatorCalc`. → A entidade se ajusta ao schema, que não é alterado. Dias úteis e dias corridos são recalculados pelo calendário cadastrado a partir da data do ponto. Um teste confere, para a data real do TaxaSwap, que o recálculo bate com os dias publicados.
-- **O processor grava o B3 em `mkt.B3CurveRaw`, não em `tBtrsCurvaPrimr`.** → Tarefa de alinhar a entidade B3 do processor com `tBtrsCurvaPrimr`, como já foi feito com a ANBIMA (`tAnbmaCurvaPrimr`).
+- **As tabelas brutas ainda não seguem o contrato de D10.** → O engine é testado com fixtures; o fluxo real depende dos changes do conector e do processor, que precisam entrar antes do deploy.
 - **`tBtrsCurvaPrimr.cTickerIndcd` tem FK para `tCurvaMercd`.** Guardar ali o código na fonte exige que esses códigos existam em `tCurvaMercd`. → Os códigos da fonte (`PRE`, `DCL`...) são cadastrados em `tCurvaMercd` como curvas primárias. A curva de mercado pode ter o mesmo código e apontar para eles via `tCurvaPrvdr`.
 - **Groovy pode sobrescrever um nativo usado por todas as curvas.** → Ativar exige validação. Fixar versão por curva permite testar antes, e a proveniência mostra qual versão gerou cada curva.
 - **`FlatForward` no início e `FlatValue` no fim não existem no QuantLib.** Um script "estilo QuantLib" não os conhece. → Os nomes ficam documentados como extensão, e o comportamento padrão continua sendo o do QuantLib (`Disabled`).
 - **Diferença de centésimo contra o TaxaSwap por convenção errada no cadastro.** → Testes de oráculo por curva (tarefas) com os valores publicados arredondados pela política da curva, comparação exata.
+- **Convergência do bootstrap da NTN-B.** A busca de raiz pode não convergir com dado inconsistente. → Limite de iterações e erro explícito nomeando o título, nunca resultado aproximado silencioso.
+- **`tSerieTituloNtnb` é tabela nova.** → Conferir com o schema de origem antes do apply.
+- **Taxa de cupom da NTN-B é dado histórico por série, não constante.** → `tSerieTituloNtnb` guarda a taxa por série; nada fixo no código.
+- **Natureza zero rate do SOFR confirmada por fonte de terceiro, não pela documentação Bloomberg nem pelo Terminal.** → Confirmar no Terminal antes do apply. Se for par rate, o modelo ganha um passo de bootstrap: mudança aditiva, D15 e D16 continuam valendo.
+- **Causa da duplicidade do `1D` não confirmada.** → Regra determinística (D17), revisitável.
+- **Mercado `FederalReserve` do calendário é inferência.** → Se estiver errado, o ajuste é de cadastro, não de código.
 
 ## Migration Plan
 
-1. Alterações no DDL do schema de curvas de mercado, acompanhadas de migração versionada: PK de `tParmConfgCurva`, criação de `tScriptModlCurva` e carga do cadastro das 5 curvas (`tCurvaMercd`, `tCurvaPrvdr`, `tConfgCurva`, `tParmConfgCurva`).
-2. Deploy do conector com o catálogo novo e do processor gravando `tBtrsCurvaPrimr`.
-3. Deploy do engine com os endpoints novos. Não há convivência com os antigos. Os clientes internos (curve-bff) migram no mesmo release.
-4. **Rollback:** voltar o deploy do engine e do conector. As migrações são aditivas, exceto a PK de `tParmConfgCurva`, que tem script reverso.
+1. Alterações no DDL do schema de curvas de mercado, acompanhadas de migração versionada: PK de `tParmConfgCurva`, criação de `tScriptModlCurva` e carga do cadastro das 7 curvas (`tCurvaMercd`, `tCurvaPrvdr`, `tConfgCurva`, `tParmConfgCurva`).
+2. Pré-requisito: os changes do conector e do processor que cumprem o contrato de D10.
+3. Deploy do engine com os endpoints novos. Não há convivência com os antigos: os clientes internos (curve-bff) precisam migrar no mesmo release, em change próprio.
+4. NTN-B: criação e carga de `tSerieTituloNtnb`, cadastro da curva `NTN-B` apontando para `NTNB_BOOTSTRAP_ANBIMA`.
+5. SOFR: cadastro da curva `SOFR` apontando para `SOFR_ZERO_BLOOMBERG`, com calendário `UnitedStates`/`FederalReserve`.
+6. **Rollback:** voltar o deploy do engine. As migrações são aditivas, exceto a PK de `tParmConfgCurva`, que tem script reverso.
 
 ## Open Questions
 
 - Quando alterar `FK_tDadoCurva_tCurvaData` no schema oficial para o alvo ideal (D6) e qual a política de expurgo da curva data diária: retenção por quantidade de datas-base ou por idade.
 
 - `cLingSist`, `cPreCalc`/`cPosCalc` e `cPreMotorCalc`/`cPosMotorCalc` existem em `tConfgCurva` e sugerem ganchos pré e pós cálculo no sistema original. Esta mudança não os usa. Dá para mapear para scripts Groovy de gancho numa mudança futura sem alterar o desenho.
+
+- Taxa de cupom real e data de reabertura de cada série de NTN-B em circulação, para carregar `tSerieTituloNtnb`. É dado de mercado, não decisão de arquitetura.
+
+- Confirmar no Bloomberg Terminal que `S0490Z ... BLC2 Curncy` é zero rate e esclarecer a duplicidade do tenor `1D`.
+

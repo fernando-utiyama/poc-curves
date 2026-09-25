@@ -1,6 +1,6 @@
 ## Purpose
 
-Constrói as curvas B3 do primeiro objetivo (PRE, DCL, PTX, DPL e INP) a partir dos vértices prontos do arquivo Taxas de Mercado para Swaps (`TaxaSwap.txt`), sem reimplementar a metodologia da B3. O vínculo entre cada curva e o seu código na fonte fica no cadastro, e o conector entrega cada curva com o seu próprio código.
+Constrói as curvas B3 do primeiro objetivo (PRE, DCL, PTX, DPL e INP) a partir dos vértices prontos do arquivo Taxas de Mercado para Swaps (`TaxaSwap.txt`), sem reimplementar a metodologia da B3. O vínculo entre cada curva e o seu código na fonte fica no cadastro.
 
 ## ADDED Requirements
 
@@ -44,21 +44,3 @@ A extrapolação de início SHALL ser `Disabled` para as cinco curvas: o primeir
 - **WHEN** a curva `PTX` é gravada
 - **THEN** os pontos trazem preço em R$/US$, sem fator diário nem acumulado
 
-### Requirement: Tipo de curva pelo código exato no conector
-O conector SHALL classificar cada linha do `TaxaSwap.txt` pelo código exato da curva (posições 22 a 26 do leiaute oficial). `PRE`, `DCL`, `PTX`, `DPL`, `INP`, `ZUS` e `TIC` SHALL ser publicados cada um com o seu próprio código. A descrição da linha MUST NOT ser usada para decidir o tipo quando o código for conhecido. As linhas de títulos públicos (códigos numéricos, como `076`) MUST continuar separadas das curvas de mesmo nome (como `TIC`, descrita "NTN-B").
-
-#### Scenario: DCL não vira DOL
-- **WHEN** o conector processa as linhas com código `DCL` e descrição `CUPOM LIMPO - S`
-- **THEN** as linhas são publicadas com o código `DCL`
-
-#### Scenario: Curvas de outros indexadores não viram PRE
-- **WHEN** o conector processa as linhas com código `SLP` (`SELICxPRE`) e `TFP` (`TBFxPRE`)
-- **THEN** nenhuma delas é publicada como `PRE`
-
-#### Scenario: PTX e INP publicados
-- **WHEN** o conector processa as linhas com código `PTX` e `INP`
-- **THEN** as linhas são publicadas com os códigos `PTX` e `INP`, e não descartadas como tipo desconhecido
-
-#### Scenario: Título e curva NTN-B separados
-- **WHEN** o conector processa linhas do título com código `076` e da curva `TIC`, ambas descritas `NTN-B`
-- **THEN** as duas são publicadas com códigos distintos, sem misturar seus vértices
