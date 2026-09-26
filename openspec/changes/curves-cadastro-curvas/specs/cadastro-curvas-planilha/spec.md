@@ -50,7 +50,7 @@ Todas as regras de campo, unicidade e vigência das specs `cadastro-curva-mercad
 - **THEN** a importação falha nessa linha, informando que versões existentes não se alteram e que é preciso incluir uma linha de versão nova
 
 ### Requirement: Simulação e aplicação
-Com `modo=SIMULACAO`, o serviço SHALL validar a planilha inteira e devolver, sem gravar nada, a lista de mudanças (aba, linha, curva, tipo `INCLUSAO`, `ALTERACAO` ou `EXCLUSAO`, e, nas alterações, cada campo com o valor atual e o novo), os erros (aba, linha, coluna, motivo) e os avisos. Com `modo=APLICACAO`, SHALL aplicar todas as mudanças numa única transação, com um `idLote` (UUID) comum a todos os registros de auditoria do lote. Se houver qualquer erro, MUST NOT aplicar nada e SHALL responder 422 com os mesmos erros da simulação.
+Com `modo=SIMULACAO`, o serviço SHALL validar a planilha inteira e devolver, sem gravar nada, a lista de mudanças (aba, linha, curva, tipo `INCLUSAO`, `ALTERACAO` ou `EXCLUSAO`, e, nas alterações, cada campo com o valor atual e o novo), os erros (aba, linha, coluna, motivo) e os avisos. Com `modo=APLICACAO`, SHALL aplicar todas as mudanças numa única transação, com um `idLote` (UUID) comum a todos os eventos `CADASTRO_ALTERADO` do lote. Se houver qualquer erro, MUST NOT aplicar nada e SHALL responder 422 com os mesmos erros da simulação.
 
 A concorrência SHALL ser conferida por curva: se o `Controle` de uma curva existente for diferente do `ETag` atual, a curva foi alterada depois da exportação, e isso MUST ser erro `ALTERADO_POR_OUTRO` naquela linha.
 

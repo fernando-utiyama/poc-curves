@@ -36,7 +36,7 @@ Para unidade `TAXA`, `cNormaDia` e `cTpoJuro` SHALL ser obrigatórios; para `PRE
 - a política `FlatForward` for usada com interpolador que não seja `Linear` ou `LogLinear`;
 - a fonte ou o produto da origem não forem os esperados pelo modelo de construção cadastrado.
 
-A situação (`cSitReg`) e a vigência da curva em `tCurvaMercd` (`dInicVgcia` a `dValidAte`) MUST NOT gerar `CADASTRO_INVALIDO`: elas só decidem se a carga constrói a curva automaticamente (spec `curve-load-trigger`). A construção pedida pelo usuário em `POST .../construcao` e a simulação SHALL construir mesmo com a curva `INATIVO` ou com a data-base fora da vigência, com o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA` na resposta, no log, na auditoria e na memória de cálculo. Consultar e interpolar pontos gravados não dependem da situação nem da vigência.
+A situação (`cSitReg`) e a vigência da curva em `tCurvaMercd` (`dInicVgcia` a `dValidAte`) MUST NOT gerar `CADASTRO_INVALIDO`: elas só decidem se a carga constrói a curva automaticamente (spec `curve-load-trigger`). A construção pedida pelo usuário em `POST .../construcao` e a simulação SHALL construir mesmo com a curva `INATIVO` ou com a data-base fora da vigência, com o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA` na resposta, no log (inclusive em `CURVA_GRAVADA`) e na memória de cálculo. Consultar e interpolar pontos gravados não dependem da situação nem da vigência.
 
 Nenhum valor padrão SHALL ser usado além dos dois marcados na tabela.
 
@@ -51,6 +51,24 @@ Nenhum valor padrão SHALL ser usado além dos dois marcados na tabela.
 #### Scenario: Chave desconhecida
 - **WHEN** a configuração vigente da `PRE` tem a chave `EXTRAPOLACAO_FINAL`
 - **THEN** a construção falha com `CADASTRO_INVALIDO` informando a chave `EXTRAPOLACAO_FINAL`
+
+### Requirement: Curva derivada de outras curvas
+Uma curva SHALL poder ser derivada de outras curvas de mercado já construídas (ex.: inflação implícita = PRE sobre a NTN-B bootstrapada), sem mudança de schema. Uma curva é **derivada** quando a sua ligação de menor `cPriorCsumo` em `tCurvaPrvdr` tem `iPrvdrDados` = `TCEN`, um provedor interno. Nesse caso, **todas** as ligações da curva com `iPrvdrDados` = `TCEN` são as **curvas mães**: `cTickerPrvdr` = nome da curva mãe (`tCurvaMercd.cTickerIndcd`) e `cPrvdrMercd` = papel da mãe no cálculo (ex.: `NUMERADOR`, `DENOMINADOR`), definido pelo modelo de construção. Ligações de outros provedores na mesma curva são ignoradas nesta fase.
+
+O cadastro de uma curva derivada MUST ser rejeitado com `CADASTRO_INVALIDO` quando:
+- uma curva mãe não existir;
+- a curva for mãe dela mesma, direta ou indiretamente (ciclo);
+- o modelo de construção não aceitar a fonte `TCEN`, ou os papéis cadastrados não forem exatamente os que o modelo declara.
+
+Nenhum modelo de construção nativo desta fase aceita a fonte `TCEN`: a estrutura existe para que um modelo derivado (Java numa mudança futura ou script Groovy) seja incluído só com cadastro e o modelo. O modelo derivado lê as mães pelo contexto de construção (spec `curve-extension-models`), nunca pelas tabelas brutas. A disparada em cadeia e a exigência de mães construídas estão na spec `curve-load-trigger`. A proveniência da construção de uma curva derivada SHALL trazer, para cada mãe, nome, papel e `hashPontos` dos pontos usados.
+
+#### Scenario: Inflação implícita cadastrada sem modelo
+- **WHEN** a curva `IPCA_IMPLICITA` é cadastrada com as ligações (`TCEN`, `NUMERADOR`, `DIxPRE`, 1) e (`TCEN`, `DENOMINADOR`, `NTN-B`, 2) e um modelo de construção que ainda não existe
+- **THEN** a construção falha com `CADASTRO_INVALIDO` informando o modelo, e nenhuma outra curva é afetada
+
+#### Scenario: Ciclo entre curvas
+- **WHEN** a curva `A` tem `B` como mãe, e `B` é cadastrada com `A` como mãe
+- **THEN** a construção de qualquer das duas falha com `CADASTRO_INVALIDO`, citando o ciclo `A` → `B` → `A`
 
 ### Requirement: Regras de curva no cadastro, regras de metodologia no modelo
 Todo comportamento que muda entre curvas que usam o mesmo modelo SHALL vir do cadastro. Uma regra que faz parte da metodologia de um modelo de construção e vale para toda curva que o usa (ex.: o cupom da NTN-B) SHALL ficar no próprio modelo. O pipeline MUST NOT conter regra específica de uma curva. Incluir uma nova curva que usa modelos existentes MUST exigir apenas cadastro.
@@ -189,7 +207,7 @@ Datas-base, datas de ponto e prazos SHALL ser datas puras, sem hora nem fuso. To
 - **THEN** o instante registrado é `...T22:30:00...-03:00`, com a data de Brasília
 
 ### Requirement: Construção grava apenas os pontos
-Construir uma curva numa data-base SHALL exigir a carga concluída e conferir a quantidade lida (spec `curve-load-trigger`), executar o modelo de construção cadastrado, arredondar cada ponto e gravar em `tDadoCurva` uma linha por ponto: `dBaseReft` = data-base, `cTickerIndcd` = nome da curva, `dVertcReft` = data do ponto, `vPrecoTx` = valor arredondado. Além dos pontos, SHALL ser gravados só a auditoria no Blob (antes do commit) e as colunas `dBaseReft` e `cUsuarCalc` de `tCurvaMercd`, conforme a spec `curve-audit-history`; nada é gravado em `tCurvaData`, `tDadoVertcCurva` ou `tMtrizCurva`, e o schema não é alterado. A leitura do cadastro, a execução do modelo, a remoção dos pontos anteriores (no recálculo) e a gravação SHALL ocorrer numa única transação, que trava a linha da curva em `tCurvaMercd` até o fim. Uma construção da mesma curva que não obtiver a trava em 30 segundos MUST falhar com `CONSTRUCAO_EM_ANDAMENTO`. A edição manual de pontos no `services/curves` usa a mesma trava (change `curves-dado-curva`), de modo que construção e edição nunca se misturam.
+Construir uma curva numa data-base SHALL exigir a carga concluída e conferir a quantidade lida (spec `curve-load-trigger`), executar o modelo de construção cadastrado, arredondar cada ponto e gravar em `tDadoCurva` uma linha por ponto: `dBaseReft` = data-base, `cTickerIndcd` = nome da curva, `dVertcReft` = data do ponto, `vPrecoTx` = valor arredondado. Além dos pontos, SHALL ser gravadas só as colunas `dBaseReft` e `cUsuarCalc` de `tCurvaMercd`, e emitido o log `CURVA_GRAVADA`, conforme a spec `curve-audit-history`; nada é gravado em `tCurvaData`, `tDadoVertcCurva` ou `tMtrizCurva`, e o schema não é alterado. A leitura do cadastro, a execução do modelo, a remoção dos pontos anteriores (no recálculo) e a gravação SHALL ocorrer numa única transação, que trava a linha da curva em `tCurvaMercd` até o fim. Uma construção da mesma curva que não obtiver a trava em 30 segundos MUST falhar com `CONSTRUCAO_EM_ANDAMENTO`. A edição manual de pontos no `services/curves` usa a mesma trava (change `curves-cadastro-curvas`), de modo que construção e edição nunca se misturam.
 
 #### Scenario: Construção da PRE
 - **WHEN** a `PRE` de `2026-09-14` é construída
@@ -241,7 +259,7 @@ Consultar e interpolar SHALL ler os pontos gravados em `tDadoCurva` e montar a c
 - **THEN** a consulta falha com `CURVA_NAO_CONSTRUIDA` informando `DPL` e a data
 
 ### Requirement: Proveniência e hash dos pontos
-Toda resposta de construção SHALL informar o modelo de construção, o interpolador e o calendário usados, cada um com nome, origem (`JAVA` ou `GROOVY`) e, para Groovy, versão e hash do script, a versão do engine (versão do artefato e commit, fixada no build), o `estadoScript` (`ATUAL`, `DESATUALIZADO` ou `DESCONHECIDO`, spec `curve-engine-resilience`), os avisos da construção (ex.: `CARGA_NAO_VERIFICADA`, `PONTOS_DE_CARGA_ANTERIOR`) e o `hashPontos`: SHA-256, em hexadecimal minúsculo, do texto formado pelas linhas `AAAA-MM-DD;valor` de cada ponto gravado, em ordem de data, separadas por `\n`, sem `\n` no fim. O valor SHALL ser escrito na forma canônica, independente da escala com que foi lido do banco (`DECIMAL(28,12)` devolve 12 casas): sem zeros à direita, sem expoente, com ponto decimal, sem ponto quando inteiro e `0` para zero (em Java, `stripTrailingZeros().toPlainString()`, com `0` para zero). Ex.: `13.9000000` e `13.900000000000` são escritos `13.9`; `-117.9600000`, `-117.96`. O mesmo vetor de teste SHALL ser usado pelo engine e pelo `services/curves`: os pontos `2026-09-15` = `13.9000000` e `2026-09-16` = `-117.9600000` formam o texto `2026-09-15;13.9\n2026-09-16;-117.96`. As respostas de consulta e de interpolação SHALL informar o interpolador e o calendário da mesma forma, e o `hashPontos` dos pontos lidos.
+Toda resposta de construção SHALL informar o modelo de construção, o interpolador e o calendário usados, cada um com nome, origem (`JAVA` ou `GROOVY`) e, para Groovy, versão e hash do script, a versão do engine (versão do artefato e commit, fixada no build), o `estadoScript` (`ATUAL`, `DESATUALIZADO` ou `DESCONHECIDO`, spec `curve-engine-resilience`), os avisos da construção (ex.: `PONTOS_DIFERENTES_DA_FONTE`, `CURVA_INATIVA`) e o `hashPontos`: SHA-256, em hexadecimal minúsculo, do texto formado pelas linhas `AAAA-MM-DD;valor` de cada ponto gravado, em ordem de data, separadas por `\n`, sem `\n` no fim. O valor SHALL ser escrito na forma canônica, independente da escala com que foi lido do banco (`DECIMAL(28,12)` devolve 12 casas): sem zeros à direita, sem expoente, com ponto decimal, sem ponto quando inteiro e `0` para zero (em Java, `stripTrailingZeros().toPlainString()`, com `0` para zero). Ex.: `13.9000000` e `13.900000000000` são escritos `13.9`; `-117.9600000`, `-117.96`. O mesmo vetor de teste SHALL ser usado pelo engine e pelo `services/curves`: os pontos `2026-09-15` = `13.9000000` e `2026-09-16` = `-117.9600000` formam o texto `2026-09-15;13.9\n2026-09-16;-117.96`. As respostas de consulta e de interpolação SHALL informar o interpolador e o calendário da mesma forma, e o `hashPontos` dos pontos lidos.
 
 #### Scenario: Interpolador sobrescrito por Groovy
 - **WHEN** a interpolação é pedida enquanto um script Groovy ativo sobrescreve `LogLinear`

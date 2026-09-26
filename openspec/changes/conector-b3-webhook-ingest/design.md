@@ -7,7 +7,7 @@ A motivação está no proposal e o comportamento nas specs. Estado atual verifi
 - **Codificação:** o download do `.txt` devolve texto (o arquivo local é lido como UTF-8), o do `.ex_` extrai texto, e o upload grava em Latin-1. O mesmo conteúdo pode chegar com bytes diferentes (fim de linha, codificação).
 - **Processor** (`B3KafkaConsumer`, tópico `tp-event-b3-curve`): lê a mensagem direto em `B3CurveRaw` sem desembrulhar `values`, guarda o valor em `Double` e grava em `mkt.B3CurveRaw` por *upsert* na chave (ticker, data). Como chega uma mensagem por vértice, cada vértice sobrescreve o anterior: sobra uma linha por curva e data, em vez de 278.
 - **Banco:** `tBtrsCurvaPrimr` tem FK de `cTickerIndcd` para `tCurvaMercd`; `tCurvaPrvdr` liga a curva de mercado ao provedor e ao ticker no provedor (`cTickerPrvdr`); a sequência `seq_tbtrscurvaprimr_cidtfdunic` já existe (V23), e a credencial do processor só tem `SELECT, REFERENCES` em `tCurvaMercd`.
-- **Engine** (`engine-modelos-curva`): lê `tBtrsCurvaPrimr` pelo nome da curva e só constrói depois de `POST /api/v1/cargas` com a quantidade de linhas por código (spec `curve-load-trigger`).
+- **Engine** (`engine-modelos-curva`): lê `tBtrsCurvaPrimr` pelo nome da curva e constrói automaticamente ao receber `POST /api/v1/cargas` com a quantidade de linhas por código (spec `curve-load-trigger`); não guarda registro da carga.
 
 ## Goals / Non-Goals
 
@@ -49,14 +49,14 @@ O campo posicional já é um decimal exato (sinal + 14 dígitos com 7 decimais).
 O processor usa o código das posições 22–26 como está. Quem decide o que gravar é o cadastro (`tCurvaPrvdr`), e quem decide o que construir é o engine.
 
 ### D6. `idCarga` determinístico
-`B3-TS-{AAAAMMDD}-{12 caracteres do SHA-256 do arquivo}`. O mesmo arquivo, por qualquer caminho e em qualquer repetição, gera o mesmo `idCarga`, e a cadeia inteira é idempotente. Um arquivo diferente para a mesma data (republicação pela B3) gera outro `idCarga`, que o engine trata como republicação.
+`B3-TS-{AAAAMMDD}-{12 caracteres do SHA-256 do arquivo}`. O mesmo arquivo, por qualquer caminho e em qualquer repetição, gera o mesmo `idCarga`, e a cadeia inteira é idempotente. Um arquivo diferente para a mesma data (republicação pela B3) gera outro `idCarga`; o engine não reconstrói as curvas que já têm pontos e avisa `PONTOS_DIFERENTES_DA_FONTE` nas que a fonte nova mudaria.
 
 ### D7. Validação: rejeitar o arquivo ou o código, nunca a linha
 Uma linha descartada deixaria uma curva com 277 vértices que parece normal. Por isso:
 - linha ilegível (tamanho errado, data divergente) rejeita o arquivo;
 - campo inválido numa linha de código legível rejeita aquele código inteiro, que fica no log da carga.
 
-O engine, sem aquele código na carga, responde `CARGA_NAO_CONCLUIDA` para a curva correspondente, de forma explícita.
+O engine, sem aquele código na carga, responde `INSUMO_AUSENTE` para a curva correspondente, de forma explícita.
 
 ### D8. Arquivamento imutável por `idCarga`
 `b3/{AAAAMMDD}/TaxaSwap.txt` é a cópia de trabalho da data, sobrescrita por qualquer download ou upload, e é a que a republicação lê. `{AAAAMMDD}` é sempre a data de geração do arquivo, nunca a do download. A cópia em `b3/{AAAAMMDD}/cargas/{idCarga}/TaxaSwap.txt` é imutável e é a que o processor lê. Toda curva construída pode ser rastreada até o arquivo exato.
@@ -71,7 +71,7 @@ As rotas do conector publicam dado de mercado usado em risco. Passam a exigir o 
 `tCurvaPrvdr` liga a curva de mercado ao provedor e ao ticker da curva no provedor. O processor a usa para saber quais curvas de mercado recebem os vértices de cada código, e grava `tBtrsCurvaPrimr.cTickerIndcd` com o nome da curva de mercado. A FK para `tCurvaMercd` fica satisfeita pela própria ligação, sem linhas de "curva da fonte" em `tCurvaMercd` e sem convenção de nome. O processor só lê `tCurvaPrvdr`. **Alternativa rejeitada:** uma linha em `tCurvaMercd` por código da fonte (como `B3_TAXA_SWAP_PRE`, criada à mão nas migrations V23 e V24 do poc), que duplica o cadastro e depende de uma convenção de nome.
 
 ### D12. Aviso ao engine por HTTP, com repetição curta e alerta cedo
-Não há tópico Kafka para o engine, então o aviso é o webhook `POST /api/v1/cargas`, chamado pelo endereço do serviço. O balanceador do Azure entrega cada chamada a uma instância pronta. Qual instância atende não importa, porque o estado está no banco e no Blob e a trava por curva serializa as construções.
+Não há tópico Kafka para o engine, então o aviso é o webhook `POST /api/v1/cargas`, chamado pelo endereço do serviço. O balanceador do Azure entrega cada chamada a uma instância pronta. Qual instância atende não importa, porque o estado está no banco e a trava por curva serializa as construções.
 
 As curvas devem estar construídas em minutos. O processor repete o aviso por até 10 minutos, com espera crescente até 1 minuto, o suficiente para sobreviver a um reinício ou a uma troca de instância do engine sem intervenção. Aos 2 minutos sem aviso aceito, emite `AVISO_ATRASADO` como alerta. Repetir é sempre seguro, inclusive depois de um tempo esgotado em que o engine continuou construindo: a repetição recebe 409 e depois `EXISTENTE`.
 
@@ -81,7 +81,7 @@ Tempos limite em cadeia: webhook do engine (120 s) < chamada do processor (150 s
 A chave `B3-TS-{AAAAMMDD}` põe todas as cargas de uma data (qualquer download, upload ou republicação) na mesma partição, processadas em ordem por uma instância do processor. Com a chave pelo `idCarga`, duas cargas da mesma data poderiam ser gravadas em paralelo nas mesmas curvas, com risco de deadlock ou de a carga mais antiga ganhar.
 
 ### D14. Curva ligada depois da carga
-Se o cadastro liga uma curva nova em `tCurvaPrvdr` depois que a carga do dia foi gravada, a curva não tem vértices, e o engine responde `CARGA_NAO_CONCLUIDA`. O procedimento é republicar a data: o mesmo arquivo gera o mesmo `idCarga`, o processor regrava todas as curvas mapeadas, incluindo a nova, e o engine constrói só as que ainda não têm pontos.
+Se o cadastro liga uma curva nova em `tCurvaPrvdr` depois que a carga do dia foi gravada, a curva não tem vértices, e o engine responde `INSUMO_AUSENTE`. O procedimento é republicar a data: o mesmo arquivo gera o mesmo `idCarga`, o processor regrava todas as curvas mapeadas, incluindo a nova, e o engine constrói só as que ainda não têm pontos.
 
 ### D15. Sem tópico novo e sem tópico de falhas
 Falha definitiva no processor não vai para uma fila de falhas: vira o evento `CARGA_FALHOU` (log de erro e métrica, para alerta), e a mensagem é confirmada. Guardar a mensagem não é necessário, porque o arquivo está arquivado no Blob por `idCarga`, e a rota de republicação do conector reproduz a carga com o mesmo `idCarga`, de forma idempotente em toda a cadeia.
@@ -101,7 +101,7 @@ Quem dispara os downloads é o orquestrador (`services/orchestrator`), que orque
 - **Processor passa a conhecer o leiaute da B3.** → É a função dele (normalizar dado de provedor); o parser fica num lugar só.
 - **A resposta HTTP do conector não diz quais códigos são inválidos.** → A informação fica no log da carga no processor, com o `idCarga`.
 - **Processor depende do Blob.** → O arquivo é imutável e conferido por hash. Se o Blob estiver fora, a leitura é repetida por até 5 minutos; depois, `CARGA_FALHOU` e republicação da data.
-- **Código com linha inválida não chega ao engine.** → É intencional; aparece no log do processor e como `CARGA_NAO_CONCLUIDA` no engine.
+- **Código com linha inválida não chega ao engine.** → É intencional; aparece no log do processor e como `INSUMO_AUSENTE` no engine.
 - **Republicação substitui os brutos da data.** → As versões anteriores ficam no Blob por `idCarga`, e o engine decide sobre recálculo.
 - **Linhas `B3_TAXA_SWAP_*` em `tCurvaMercd`** (V23 e V24) deixam de ser usadas. → Podem ficar no banco; apagá-las é decisão do cadastro.
 

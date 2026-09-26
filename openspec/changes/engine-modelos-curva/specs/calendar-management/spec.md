@@ -19,7 +19,7 @@ O engine SHALL ter uma base nativa `CalendarioPorLista`, que implementa o contra
 - uma data estiver fora de `anoInicial`..`anoFinal`;
 - `anoFinal` for menor que `anoInicial`, ou a cobertura passar de 150 anos.
 
-Aceita a planilha, o engine SHALL gerar o script Groovy de calendário: uma subclasse de `CalendarioPorLista` com o nome, o mercado, a cobertura e as datas em ordem crescente, por um modelo de texto fixo, de modo que a mesma planilha gere sempre o mesmo script e o mesmo hash. O script SHALL ser gravado como a próxima versão, em `RASCUNHO`, do tipo `calendario` e do nome `{nome}`, junto com a planilha original em `groovy-models/calendario/{nome}/v{versao}.xlsx`. Dali em diante, a versão segue o fluxo normal de validação e ativação. A resposta SHALL trazer nome, mercado, versão, hash, cobertura e quantidade de feriados.
+Aceita a planilha, o engine SHALL gerar o script Groovy de calendário: uma subclasse de `CalendarioPorLista` com o nome, o mercado, a cobertura e as datas em ordem crescente, por um modelo de texto fixo, de modo que a mesma planilha gere sempre o mesmo script e o mesmo hash. O script SHALL ser gravado como a próxima versão, em `RASCUNHO`, do tipo `calendario` e do nome `{nome}`. A planilha enviada MUST NOT ser guardada: no Blob fica só o script, e a exportação remonta a planilha a partir dele. Dali em diante, a versão segue o fluxo normal de validação e ativação. A resposta SHALL trazer nome, mercado, versão, hash, cobertura e quantidade de feriados.
 
 #### Scenario: Feriado decretado
 - **WHEN** o operador exporta o `Brazil`/`Settlement`, acrescenta um feriado decretado para a semana seguinte, importa a planilha, valida e ativa a versão

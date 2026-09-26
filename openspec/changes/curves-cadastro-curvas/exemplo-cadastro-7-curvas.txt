@@ -437,7 +437,27 @@ Combinações:
     NTNB_BOOTSTRAP_ANBIMA = ANBIMA/TP; SOFR_ZERO_BLOOMBERG = BLOOMBERG/ZR.
 
 
-7. PONTOS A CONFIRMAR
+7. EXEMPLO FUTURO: CURVA DERIVADA (não construída nesta fase)
+---------------------------------------------------------------
+
+A estrutura já aceita curvas derivadas de outras. A inflação implícita seria
+cadastrada assim, quando houver o modelo de construção derivado:
+
+POST /api/v1/curvas-mercado
+{ "codigo": "IPCA_IMPLICITA", "nome": "Inflação implícita", "unidade": "TAXA",
+  "dayCounterCotacao": "Business252", "compounding": "Compounded",
+  "moeda": "BRL", "pais": "BR", "inicioVigencia": "2026-01-01" }
+
+POST /api/v1/curvas-mercado/IPCA_IMPLICITA/ligacoes
+{ "provedor": "TCEN", "produto": "NUMERADOR",   "codigoNaFonte": "DIxPRE", "prioridade": 1 }
+{ "provedor": "TCEN", "produto": "DENOMINADOR", "codigoNaFonte": "NTN-B",  "prioridade": 2 }
+
+A configuração aponta para o modelo derivado (ex.: um script Groovy
+INFLACAO_IMPLICITA). O engine a constrói em cadeia, na carga que completar as
+duas mães.
+
+
+8. PONTOS A CONFIRMAR
 ---------------------
 
   - moeda da DCL: USD (cupom cambial) e da PTX: BRL (preço em R$ por US$).

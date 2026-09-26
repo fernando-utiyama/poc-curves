@@ -1,6 +1,6 @@
 ## Purpose
 
-Define como o engine se comporta diante de lentidão e falha das suas dependências (SQL Server, Blob Storage, scripts Groovy): tempo limite de cada chamada, quando repetir, como degradar, como sinalizar saúde e o que registrar em log para diagnosticar em produção.
+Define como o engine se comporta diante de lentidão e falha das suas dependências (SQL Server, Blob Storage, onde ficam só os scripts Groovy, e a execução dos scripts): tempo limite de cada chamada, quando repetir, como degradar, como sinalizar saúde e o que registrar em log para diagnosticar em produção.
 
 ## ADDED Requirements
 
@@ -16,15 +16,16 @@ Toda chamada a dependência SHALL ter tempo limite configurável, com estes padr
 | Script Groovy: cada chamada | `engine.groovy.timeout-segundos` | 5 |
 | Requisição HTTP inteira (exceto webhook de carga) | `engine.timeout.requisicao-segundos` | 60 |
 | Webhook de carga, requisição inteira | `engine.timeout.carga-segundos` | 120 |
+| Rota de situação, requisição inteira | `engine.timeout.situacao-segundos` | 60 |
 
-Estourar um tempo limite MUST encerrar a operação com erro explícito: `CONSTRUCAO_EM_ANDAMENTO` para a trava, `MODELO_FALHOU` para o Groovy e `ERRO_INTERNO` para banco e requisição. Tempo esgotado no Blob segue a regra de Blob fora (nunca bloqueia construção nem consulta). Uma transação encerrada por tempo limite MUST ser desfeita por inteiro.
+Estourar um tempo limite MUST encerrar a operação com erro explícito: `CONSTRUCAO_EM_ANDAMENTO` para a trava, `MODELO_FALHOU` para o Groovy e `ERRO_INTERNO` para banco e requisição. Tempo esgotado no Blob segue a regra de Blob fora (nunca bloqueia construção nem consulta). Na rota de situação, o tempo esgotado de uma curva vira `ERRO` só daquela curva. Uma transação encerrada por tempo limite MUST ser desfeita por inteiro.
 
 #### Scenario: Banco lento na construção
 - **WHEN** a gravação dos pontos passa de 30 segundos
 - **THEN** a transação é desfeita, nenhum ponto nem registro de auditoria fica confirmado, e a resposta é `ERRO_INTERNO` com o `correlationId`
 
 ### Requirement: Repetição só em operação idempotente
-O engine SHALL repetir automaticamente apenas leituras (banco e Blob) e gravações condicionais no Blob que são idempotentes por construção (`If-None-Match: *` com o mesmo conteúdo), no máximo 3 tentativas, com espera exponencial de 200 ms, 400 ms e 800 ms mais variação aleatória de até 100 ms. Gravação no banco, gravação de `estado.json` e de registro de carga MUST NOT ser repetidas automaticamente na mesma requisição. Depois de 5 falhas seguidas no Blob, o engine SHALL abrir o circuito e não chamar o Blob por `engine.blob.circuito-aberto-segundos` (padrão 60), tratando cada operação como Blob fora.
+O engine SHALL repetir automaticamente apenas leituras (banco e Blob) e a gravação de versão imutável de script no Blob, idempotente por construção (`If-None-Match: *` com o mesmo conteúdo), no máximo 3 tentativas, com espera exponencial de 200 ms, 400 ms e 800 ms mais variação aleatória de até 100 ms. Gravação no banco e gravação de `estado.json` MUST NOT ser repetidas automaticamente na mesma requisição. Depois de 5 falhas seguidas no Blob, o engine SHALL abrir o circuito e não chamar o Blob por `engine.blob.circuito-aberto-segundos` (padrão 60), tratando cada operação como Blob fora.
 
 #### Scenario: Circuito aberto
 - **WHEN** o Blob falha 5 vezes seguidas
@@ -50,11 +51,11 @@ Se o Blob estiver inacessível quando o cache de `estado.json` vencer, a instân
 - **THEN** a instância fica pronta, as curvas são construídas com os modelos nativos, `estadoScript` = `DESCONHECIDO`, e o log tem `ESTADO_SCRIPT_DESCONHECIDO`
 
 ### Requirement: Blob fora nunca bloqueia construção nem consulta
-Com o Blob inacessível, construção, reconstrução, webhook de carga, consulta, interpolação e simulação SHALL funcionar com o que houver: auditoria pendente no log (spec `curve-audit-history`), carga não registrada ou não verificada e registro de cargas pendente (spec `curve-load-trigger`) e estado de script desatualizado ou desconhecido. `GET /curvas/situacao` e `GET /valores-cadastro` SHALL responder com o que houver e com aviso (`REGISTRO_DE_CARGAS_INDISPONIVEL`; modelos Groovy do último estado conhecido). Só as operações que existem para ler ou escrever no Blob (gestão de scripts, consulta de histórico, importação de calendário) MAY falhar com `BLOB_INDISPONIVEL`.
+O Blob Storage guarda, para o engine, só os scripts Groovy (inclusive os calendários importados). Com o Blob inacessível, construção, reconstrução, webhook de carga, consulta, interpolação, simulação, situação e valores aceitos SHALL funcionar com o estado de script desatualizado ou desconhecido, definido abaixo. Só as operações que existem para ler ou escrever scripts (gestão de scripts e importação de calendário) MAY falhar com `BLOB_INDISPONIVEL`.
 
 #### Scenario: Construção com o Blob fora
 - **WHEN** o Blob está inacessível e o webhook da carga B3 chega
-- **THEN** as curvas são construídas, e o log tem `CARGA_NAO_REGISTRADA` e um `AUDITORIA_PENDENTE` por curva
+- **THEN** as curvas são construídas com as versões de script conhecidas, e o log tem um `CURVA_GRAVADA` por curva
 
 ### Requirement: Saúde e prontidão
 O engine SHALL expor pelo Actuator:
@@ -75,7 +76,7 @@ O engine SHALL registrar em log JSON, sempre com `correlationId`:
 - `DEPENDENCIA_FALHOU`, em nível `ERRO`: dependência, operação, tentativa, tipo de erro e mensagem, sem stack trace no campo de mensagem (o stack trace vai num campo próprio, só no log);
 - `TEMPO_ESGOTADO`: dependência ou operação e o limite configurado.
 
-O log MUST NOT conter token, connection string, conteúdo de script nem corpo de requisição inteiro. Listas de pontos só são permitidas no evento `AUDITORIA_PENDENTE`, que é a cópia de segurança da auditoria; nos demais eventos, só quantidades e `hashPontos`.
+O log MUST NOT conter token, connection string, conteúdo de script nem corpo de requisição inteiro. Listas de pontos só são permitidas no evento `CURVA_GRAVADA` (`pontosAnteriores`), que é a auditoria; nos demais eventos, só quantidades e `hashPontos`.
 
 #### Scenario: Blob lento
 - **WHEN** uma leitura do Blob leva 3 segundos, com limite de 5
@@ -87,7 +88,7 @@ O engine SHALL publicar pelo Micrometer, com as tags `codigo` e `codigoErro` qua
 - histograma de duração de construção, de interpolação e de cada dependência;
 - contador de tempos esgotados por dependência;
 - gauge da idade, em segundos, do estado de script em uso;
-- gauges de auditorias, registros de carga e atualizações de situação pendentes de gravação no Blob.
+- contador de curvas com `PONTOS_DIFERENTES_DA_FONTE` na carga, por `codigo`.
 
 #### Scenario: Alerta de falha de construção
 - **WHEN** a construção da `DCL` falha com `INSUMO_INCOMPLETO`

@@ -11,14 +11,13 @@ O engine SHALL expor exatamente estas rotas (prefixo `/api/v1`):
 |---|---|---|
 | `POST /cargas` | aviso de carga concluída (spec `curve-load-trigger`) | `Curvas.Processor` |
 | `GET /curvas?nome=` | catálogo | `Curvas.Leitura` |
-| `GET /curvas/situacao?dataBase=` | situação das construções de todas as curvas numa data-base, para o painel do `services/curves` | `Curvas.Leitura` |
+| `GET /curvas/situacao?dataBase=` | conferência de todas as curvas numa data-base contra a fonte atual, para o painel do `services/curves` | `Curvas.Leitura` |
 | `GET /valores-cadastro` | valores aceitos no cadastro, modelos ativos e regras de combinação | `Curvas.Leitura` |
 | `POST /curvas/{codigo}/{dataBase}/construcao?forcarRecalculo=` | construir | `Curvas.Operador` |
 | `GET /curvas/{codigo}/{dataBase}?formato=` | pontos gravados | `Curvas.Leitura` |
 | `GET /curvas/{codigo}/{dataBase}/interpolacao?du=&data=&formato=` | interpolar | `Curvas.Leitura` |
 | `GET /curvas/{codigo}/{dataBase}/simulacao?du=&data=&formato=` | simular construção sem gravar | `Curvas.Leitura` |
-| `GET /curvas/{codigo}/{dataBase}/historico` | histórico de auditoria (spec `curve-audit-history`) | `Curvas.Leitura` |
-| `GET /curvas/{codigo}/{dataBase}/historico/{idAuditoria}?formato=` | pontos substituídos numa operação | `Curvas.Leitura` |
+| `GET /curvas/{codigo}/{dataBase}/auditoria?formato=` | arquivo de auditoria montado na hora (spec `curve-audit-history`) | `Curvas.Leitura` |
 | `GET /curvas/por-nome/{dataBase}?nome=&formato=` | pontos gravados, pelo nome | `Curvas.Leitura` |
 | `GET /curvas/por-nome/{dataBase}/interpolacao?nome=&du=&data=&formato=` | interpolar, pelo nome | `Curvas.Leitura` |
 | `GET /curvas/por-nome/{dataBase}/simulacao?nome=&du=&data=&formato=` | simular, pelo nome | `Curvas.Leitura` |
@@ -30,7 +29,7 @@ O engine SHALL expor exatamente estas rotas (prefixo `/api/v1`):
 | `POST /calendarios/{nome}/importacao?mercado=&anoInicial=&anoFinal=` | importar planilha de feriados (spec `calendar-management`) | `Curvas.ModelosAutor` |
 | `GET /calendarios/{nome}?mercado=&anoInicial=&anoFinal=&versao=&formato=` | exportar feriados | `Curvas.Leitura` |
 
-As rotas antigas (`POST /api/v1/curvas/construir`, `POST /api/v1/calculo`, `POST /api/v1/modelos/upload`) MUST ser removidas. Construir MUST existir só pelo código. O engine não edita pontos: a edição manual é do `services/curves` (change `curves-dado-curva`).
+As rotas antigas (`POST /api/v1/curvas/construir`, `POST /api/v1/calculo`, `POST /api/v1/modelos/upload`) MUST ser removidas. Construir MUST existir só pelo código. O engine não edita pontos: a edição manual é do `services/curves` (change `curves-cadastro-curvas`).
 
 #### Scenario: Escrita pelo nome não existe
 - **WHEN** o cliente chama `POST /api/v1/curvas/por-nome/2026-09-14/construcao?nome=DIxPRE`
@@ -38,7 +37,7 @@ As rotas antigas (`POST /api/v1/curvas/construir`, `POST /api/v1/calculo`, `POST
 
 ### Requirement: Autenticação e papéis
 Toda rota de `/api/v1` MUST exigir um token JWT do Microsoft Entra ID (`Authorization: Bearer`), validado por emissor, audiência, assinatura e validade (propriedades `engine.seguranca.emissor` e `engine.seguranca.audiencia`). Só os endpoints de saúde do Actuator ficam sem autenticação. O acesso SHALL ser decidido pelos papéis de aplicação (`roles`) do token, conforme a tabela de rotas:
-- `Curvas.Leitura`: consultas, interpolação, simulação, histórico, catálogo e lista de scripts;
+- `Curvas.Leitura`: consultas, interpolação, simulação, auditoria, situação, valores aceitos, catálogo e lista de scripts;
 - `Curvas.Operador`: construir e recalcular; inclui `Curvas.Leitura`;
 - `Curvas.Processor`: webhook de carga; concedido só à identidade de serviço do processor (client credentials);
 - `Curvas.ModelosAutor`: enviar e validar scripts;
@@ -86,7 +85,7 @@ Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlatio
 | `CONSTRUCAO_EM_ANDAMENTO` | 409 | trava da curva não obtida em 30 segundos |
 | `ESTADO_SCRIPT_CONCORRENTE` | 409 | estado do script alterado por outra requisição entre a leitura e a gravação |
 | `CADASTRO_INVALIDO` | 422 | item do cadastro ausente, inválido ou incompatível |
-| `CARGA_NAO_CONCLUIDA` | 422 | construção sem carga registrada para a origem e a data |
+| `CURVA_MAE_NAO_CONSTRUIDA` | 422 | curva derivada com alguma mãe sem pontos gravados na data; `detalhes` lista as mães |
 | `INSUMO_INCOMPLETO` | 422 | quantidade de linhas lidas diferente da avisada na carga |
 | `INSUMO_AUSENTE` | 422 | origem sem dados na data |
 | `INSUMO_INVALIDO` | 422 | dado da origem viola regra do modelo |
@@ -95,7 +94,7 @@ Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlatio
 | `MODELO_FALHOU` | 422 | modelo não convergiu, estourou o tempo limite ou lançou erro |
 | `SCRIPT_INVALIDO` | 422 | script Groovy reprovado ou versão não validada |
 | `ERRO_INTERNO` | 500 | qualquer outro erro |
-| `BLOB_INDISPONIVEL` | 503 | Blob Storage inacessível em operação que só existe para o Blob: gestão de scripts, consulta de histórico, importação de calendário |
+| `BLOB_INDISPONIVEL` | 503 | Blob Storage inacessível em operação que só existe para os scripts Groovy: gestão de scripts e importação de calendário |
 
 #### Scenario: Código desconhecido
 - **WHEN** o cliente chama `GET /api/v1/curvas/XYZ/2026-09-14`
@@ -123,7 +122,7 @@ A rota por código SHALL buscar `tCurvaMercd.cTickerIdtfdUnic` igual ao código,
 - **THEN** a resposta lista `DCL` e `DPL`, com código, nome e unidade
 
 ### Requirement: Construir curva
-`POST .../construcao` SHALL executar a construção descrita na spec `curve-build-pipeline`. `forcarRecalculo=true` é acionado pelo usuário no front e não exige motivo. A resposta de sucesso SHALL ser 200 com: código, nome, data-base, situação (`CONSTRUIDA`, `RECONSTRUIDA` ou `EXISTENTE`), a proveniência completa da spec `curve-build-pipeline` (modelos com origem, versão e hash, versão do engine, `estadoScript` e avisos), quantidade de pontos, `hashPontos` e duração em milissegundos. A curva `INATIVO`, ou a data-base fora da vigência da curva, não impede a construção por esta rota: a resposta traz o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA`.
+`POST .../construcao` SHALL executar a construção descrita na spec `curve-build-pipeline`. `forcarRecalculo=true` é acionado pelo usuário no front e não exige motivo. A resposta de sucesso SHALL ser 200 com: código, nome, data-base, situação (`CONSTRUIDA`, `RECONSTRUIDA` ou `EXISTENTE`), a proveniência completa da spec `curve-build-pipeline` (modelos com origem, versão e hash, versão do engine, `estadoScript` e avisos), quantidade de pontos, `hashPontos` e duração em milissegundos. Na situação `EXISTENTE`, o engine SHALL comparar os pontos gravados com os que a fonte atual produz, como na carga (spec `curve-load-trigger`), e trazer o aviso `PONTOS_DIFERENTES_DA_FONTE` quando diferirem. A curva `INATIVO`, ou a data-base fora da vigência da curva, não impede a construção por esta rota: a resposta traz o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA`.
 
 #### Scenario: Construção bem-sucedida
 - **WHEN** o cliente chama `POST /api/v1/curvas/PRE/2026-09-14/construcao`
@@ -155,12 +154,22 @@ Com `formato=xlsx`, as rotas de consulta de pontos, de interpolação e de simul
 - **WHEN** o cliente chama `GET /api/v1/curvas/PRE/2026-09-14?formato=xlsx`
 - **THEN** a resposta é um arquivo `PRE_2026-09-14_GRAVADA_<horário>.xlsx` com a memória de cálculo dos pontos gravados
 
-### Requirement: Situação das construções numa data-base
-`GET /curvas/situacao?dataBase=` SHALL devolver, para cada curva com código não nulo, só o que o engine sabe e o banco não mostra, lido do registro de cargas (spec `curve-load-trigger`) da origem de cada curva: código, nome, origem, a carga registrada (`idCarga`, `recebidaEm`, linhas avisadas para o código na fonte e `republicada` = há carga anterior no `historico`), `ultimaTentativa` e `ultimaConstrucao`, nulos quando não houver. A rota MUST NOT construir nem gravar nada, e SHALL ler cada arquivo de carga uma vez por chamada. Se o registro de cargas não puder ser lido (Blob fora), a resposta SHALL ser 200 com as curvas sem essas informações e o aviso `REGISTRO_DE_CARGAS_INDISPONIVEL`. Quem monta o painel, com os pontos gravados e o cadastro, é o `services/curves` (spec `painel-curvas` do change `curves-cadastro-curvas`).
+### Requirement: Situação das curvas numa data-base
+`GET /curvas/situacao?dataBase=` SHALL devolver, para cada curva com código não nulo, o que o engine calcula na hora e o `services/curves` não consegue calcular, sem ler nem gravar nenhum registro próprio:
+- código, nome e origem;
+- `insumo`: para curva com origem de provedor, a quantidade de linhas brutas da origem na data (`linhasBrutas`); para curva derivada, cada mãe com nome, papel e se tem pontos gravados na data;
+- `pontosGravados`: quantidade e `hashPontos` em `tDadoCurva`;
+- `conferencia`: quando há insumo (linhas brutas, ou todas as mães com pontos), o resultado de executar o modelo como a simulação, sem gravar: `status` (`OK` ou `ERRO`), `codigoErro` e mensagem, `hashPontosFonte` e, se houver pontos gravados, `pontosDiferentes` (quantidade de pontos que diferem, que só existem de um lado ou do outro); nula sem insumo.
+
+A rota MUST NOT construir nem gravar nada. As curvas SHALL ser conferidas em paralelo, com até `engine.situacao.paralelismo` (padrão 8) ao mesmo tempo, e a falha ou o tempo esgotado de uma MUST NOT impedir as outras: a curva sai com `conferencia.status` = `ERRO` e o código correspondente. Quem monta o painel, com o cadastro e as regras de situação, é o `services/curves` (spec `painel-curvas` do change `curves-cadastro-curvas`).
 
 #### Scenario: Situação depois da carga B3
-- **WHEN** a carga B3 de `2026-09-14` construiu `PRE`, `DCL`, `INP` e `PTX`, e a `DPL` falhou
-- **THEN** a resposta traz, para as cinco, a carga com o `idCarga`; para as quatro, `ultimaTentativa` = `CONSTRUIDA` e `ultimaConstrucao` com o `hashPontos`; para a `DPL`, `ultimaTentativa` = `FALHOU` com `INSUMO_INVALIDO` e `ultimaConstrucao` nula; e, para `NTNB` e `SOFR`, carga nula
+- **WHEN** a carga B3 de `2026-09-14` construiu `PRE`, `DCL`, `INP` e `PTX`, a `DPL` falhou por `INSUMO_INVALIDO`, e a ANBIMA e a Bloomberg ainda não carregaram
+- **THEN** as quatro vêm com linhas brutas, pontos gravados e `conferencia` `OK` com 0 pontos diferentes; a `DPL`, com linhas brutas, sem pontos e `conferencia` `ERRO` com `INSUMO_INVALIDO`; `NTNB` e `SOFR`, com 0 linhas brutas e `conferencia` nula
+
+#### Scenario: Ponto editado à mão
+- **WHEN** um ponto da `PRE` de `2026-09-14` foi alterado no `services/curves`
+- **THEN** a `PRE` vem com `conferencia` `OK` e `pontosDiferentes` = 1
 
 ### Requirement: Valores aceitos no cadastro
 `GET /valores-cadastro` SHALL devolver tudo o que o engine aceita no cadastro de uma curva, gerado dos mesmos enums e da mesma tabela de parâmetros que o validador de `CADASTRO_INVALIDO` usa, e nunca de uma lista mantida à parte:
@@ -168,7 +177,7 @@ Com `formato=xlsx`, as rotas de consulta de pontos, de interpolação e de simul
 - cada chave de `cModDado`: tipo, obrigatoriedade (com a condição, ex.: `FREQUENCY` só com `Compounded`), valor padrão, e os valores aceitos ou o formato (ex.: `HORIZONTE` pela expressão do `Period`, `CASAS_DECIMAIS` de 0 a 12);
 - uma descrição curta em português de cada valor (ex.: `DOWN` = truncamento; `FlatForward` = taxa a termo constante);
 - as regras de combinação, cada uma com um código e o texto;
-- os modelos por tipo (construção, interpolação, calendário): nome, origem (`JAVA` ou `GROOVY`), versão `ATIVA` do script quando houver; para calendário, os mercados aceitos; para os modelos de construção nativos, a fonte e o produto de origem esperados;
+- os modelos por tipo (construção, interpolação, calendário): nome, origem (`JAVA` ou `GROOVY`), versão `ATIVA` do script quando houver; para calendário, os mercados aceitos; para os modelos de construção, a fonte e o produto de origem esperados e, nos modelos derivados (fonte `TCEN`), os papéis das mães;
 - `versaoValores`: SHA-256 do conteúdo, para o cliente saber quando atualizar o cache.
 
 O OpenAPI (Swagger) do engine SHALL declarar como `enum` todo campo de valor fechado nos corpos e respostas. Um teste SHALL garantir que todo valor aceito pelo validador aparece nesta rota, e vice-versa.

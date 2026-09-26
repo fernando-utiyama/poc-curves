@@ -1,6 +1,6 @@
 ## Purpose
 
-No `services/curves`, criar, consultar, alterar, inativar e reativar as curvas de mercado (`tCurvaMercd`), que são a base do cadastro lido pelo engine. Define também as regras comuns a todo o CRUD de cadastro do serviço: identificação, autenticação, erros, concorrência, auditoria e horário.
+No `services/curves`, criar, consultar, alterar, inativar e reativar as curvas de mercado (`tCurvaMercd`), que são a base do cadastro lido pelo engine. Define também as regras comuns a todo o CRUD de cadastro do serviço: identificação, autenticação, erros, concorrência, auditoria (log e arquivo montado na hora) e horário.
 
 ## ADDED Requirements
 
@@ -87,15 +87,21 @@ Toda resposta SHALL trazer `X-Correlation-Id` (o recebido ou um UUID gerado).
 - **THEN** a resposta é 403 com `SEM_PERMISSAO`
 
 ### Requirement: Auditoria do cadastro
-Toda alteração do cadastro (curva, ligação ou configuração, pela API ou pela planilha) SHALL gravar, antes do commit, um registro imutável no Blob Storage existente, em `auditoria-cadastro/{nome codificado em URL}/{AAAAMMDDTHHmmssSSS}_{idAuditoria}.json` (pelo nome, que é imutável, para que o histórico não se perca quando o código muda), com escrita condicional `If-None-Match: *`: `idAuditoria`, código, nome, tipo (`CURVA`, `LIGACAO` ou `CONFIGURACAO`), operação (`CRIACAO`, `ALTERACAO`, `INATIVACAO`, `REATIVACAO`, `EXCLUSAO`), usuário, instante (horário de Brasília), `correlationId`, `idLote` (quando vier da planilha), estado anterior e estado novo completos. Se o Blob falhar, a alteração SHALL ser gravada mesmo assim, com o registro completo no log (evento `AUDITORIA_PENDENTE`) e nova tentativa em segundo plano a cada 60 segundos, como no engine. `GET /api/v1/curvas-mercado/{codigo}/historico` SHALL resolver o nome da curva pelo código e listar os registros dela, do mais recente para o mais antigo, inclusive os de antes de uma troca de código.
+Nada do cadastro SHALL ser gravado no Blob Storage, que guarda só os arquivos originais dos feeders e os scripts Groovy. Toda alteração do cadastro (curva, ligação ou configuração, pela API ou pela planilha) SHALL emitir, depois do commit, o evento de log `CADASTRO_ALTERADO` com nível `AVISO`: `idAuditoria`, código, nome, tipo (`CURVA`, `LIGACAO` ou `CONFIGURACAO`), operação (`CRIACAO`, `ALTERACAO`, `INATIVACAO`, `REATIVACAO`, `EXCLUSAO`), usuário, instante (horário de Brasília), `correlationId`, `idLote` (quando vier da planilha), estado anterior e estado novo completos. O evento traz sempre o nome, que é imutável, para o histórico sobreviver a uma troca de código. O destino dos logs SHALL ter retenção definida pela área de risco.
+
+`GET /api/v1/curvas-mercado/{codigo}/auditoria?formato=xlsx|json` (papel `Curvas.Leitura`), pedido pelo front, SHALL montar na hora, sem guardar nada, o arquivo de auditoria do cadastro da curva: a curva com todos os campos, inclusive `cUsuarAtulz`, `dCriacReg`, `dUltAtulz`, `dBaseReft` e `cUsuarCalc`; todas as ligações; todas as versões de configuração, com vigência e parâmetros; e o `ETag` atual. O nome do arquivo SHALL ser `{codigo}_CADASTRO_AUDITORIA_{AAAAMMDDHHmmss}.xlsx`, no horário de Brasília. Quem alterou o quê antes está nos eventos `CADASTRO_ALTERADO` do log.
 
 #### Scenario: Quem mudou a unidade
 - **WHEN** a unidade de uma curva é alterada
-- **THEN** o histórico da curva tem um registro `ALTERACAO` com o usuário, a unidade anterior e a nova
+- **THEN** o log tem um `CADASTRO_ALTERADO` com o usuário, a unidade anterior e a nova, e nada é gravado no Blob
+
+#### Scenario: Arquivo de auditoria pedido pelo front
+- **WHEN** o gestor pede a auditoria do cadastro da `PRE`
+- **THEN** o arquivo é montado na hora, com a curva, as ligações e todas as versões de configuração, e `cUsuarAtulz` e `dUltAtulz` mostram quem fez a última alteração e quando
 
 ### Requirement: Horário e log
 Todo instante (respostas, auditoria, `dCriacReg`, `dUltAtulz`, logs) SHALL usar o fuso `America/Sao_Paulo`, sem depender do fuso do servidor. Toda requisição SHALL gerar log JSON com `correlationId`, usuário, rota, status, código de erro e duração.
 
 #### Scenario: Servidor em UTC
 - **WHEN** uma curva é alterada às 22h30 de Brasília com a JVM em UTC
-- **THEN** `dUltAtulz` e o registro de auditoria têm 22h30 de Brasília
+- **THEN** `dUltAtulz` e o evento `CADASTRO_ALTERADO` têm 22h30 de Brasília

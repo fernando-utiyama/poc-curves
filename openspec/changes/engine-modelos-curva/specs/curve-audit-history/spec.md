@@ -1,32 +1,43 @@
 ## Purpose
 
-Mantém uma trilha de auditoria persistente de toda construção e recálculo de curva, sem alterar o schema do banco: quem gravou, quando, a partir de qual carga, com quais modelos e cadastro, e quais pontos foram substituídos. O resumo da última construção fica nas colunas de cálculo de `tCurvaMercd`, e o histórico completo, em registros imutáveis no Blob Storage.
+Mantém a trilha de toda construção e recálculo de curva sem alterar o schema do banco e sem gravar nada de curva no Blob Storage: quem gravou, quando, a partir de qual carga, com quais modelos e cadastro, e quais pontos foram substituídos. O resumo da última construção fica nas colunas de cálculo de `tCurvaMercd`, o registro de cada gravação, no log estruturado, e o arquivo de auditoria é montado na hora, a pedido do front.
 
 ## ADDED Requirements
 
-### Requirement: Registro de auditoria antes do commit
-Toda construção e toda reconstrução por recálculo SHALL gravar, dentro da transação e antes do commit, um registro imutável no Blob Storage em `auditoria/{nome codificado em URL}/{dataBase}/{AAAAMMDDTHHmmssSSS}_{idAuditoria}.json` (instante no horário de Brasília; pasta pelo nome, que é imutável, para o histórico sobreviver a uma troca de código no cadastro), com escrita condicional `If-None-Match: *` e os campos:
+### Requirement: Registro de auditoria no log
+Toda construção e toda reconstrução por recálculo que gravar pontos SHALL emitir, depois do commit, o evento de log `CURVA_GRAVADA` com nível `AVISO` e os campos:
 - `idAuditoria` (UUID), `codigo`, `nome`, `dataBase`;
 - `operacao`: `CONSTRUCAO` ou `RECONSTRUCAO`;
-- `usuario` (usuário ou identidade de serviço autenticada), `instante` (horário de Brasília, com fuso), `correlationId`;
-- `idCarga`;
+- `acionadoPor`: `CARGA` (webhook) ou `API`, `usuario` (usuário ou identidade de serviço autenticada), `instante` (horário de Brasília, com fuso), `correlationId`;
+- `idCarga`, quando a construção veio do webhook;
 - `hashPontos` gravado e `hashPontosAnterior` (nulo na primeira construção), quantidade de pontos;
 - `pontosAnteriores`: lista completa (data e valor) dos pontos substituídos (vazia na primeira construção);
-- `proveniencia`: versão do engine, `estadoScript`, avisos, modelos (nome, origem, versão, hash) e todos os itens do cadastro vigente.
+- `proveniencia`: versão do engine, `estadoScript`, avisos, modelos (nome, origem, versão, hash), todos os itens do cadastro vigente e, para curva derivada, as mães (nome, papel e `hashPontos` usado).
 
-Se a gravação no Blob falhar, a operação MUST seguir e confirmar os pontos: o engine SHALL registrar no log o registro completo (inclusive `pontosAnteriores`) no evento `AUDITORIA_PENDENTE`, com nível `ERRO`, e SHALL tentar gravá-lo no Blob em segundo plano a cada 60 segundos até conseguir, registrando `AUDITORIA_GRAVADA`. Se o commit falhar depois da gravação no Blob, o engine SHALL gravar `{mesmo nome}.desfeita.json` com o motivo da falha e registrar o evento de log `AUDITORIA_DESFEITA`. A construção sem recálculo que devolve `EXISTENTE` e a simulação MUST NOT gerar registro. A edição manual de pontos é feita pelo `services/curves` (change `curves-dado-curva`), como operação de contingência, sem registro de auditoria no engine; ela aparece como diferença entre o `hashPontos` gravado e o do último registro de auditoria, e no log do `services/curves`. O engine MUST NOT alterar nem apagar registros de auditoria.
+Se o commit falhar, o evento MUST NOT ser emitido; o erro sai em `CONSTRUCAO_FALHOU`. A construção sem recálculo que devolve `EXISTENTE` e a simulação MUST NOT gerar `CURVA_GRAVADA`. A edição manual de pontos é feita pelo `services/curves` (change `curves-cadastro-curvas`), como operação de contingência, e registrada no log dele (`PONTOS_EDITADOS`). O engine MUST NOT gravar registro de auditoria no Blob Storage nem em tabela.
+
+O destino dos logs (Log Analytics ou equivalente) SHALL ter retenção definida pela área de risco e ser consultável por `nome`, `dataBase` e evento. Este é o histórico de construções da fase atual.
 
 #### Scenario: Construção auditada
 - **WHEN** a `PRE` de `2026-09-14` é construída pela carga `B3-TS-20260914-1`
-- **THEN** existe um registro `CONSTRUCAO` com a identidade de serviço do processor, o `idCarga`, o `hashPontos`, 278 pontos, `pontosAnteriores` vazia e a proveniência
+- **THEN** o log tem um `CURVA_GRAVADA` com operação `CONSTRUCAO`, a identidade de serviço do processor, o `idCarga`, o `hashPontos`, 278 pontos, `pontosAnteriores` vazia e a proveniência
 
-#### Scenario: Blob indisponível numa reconstrução
-- **WHEN** o Blob está inacessível durante uma reconstrução
-- **THEN** a reconstrução é concluída, o log tem `AUDITORIA_PENDENTE` com o registro completo, e o registro é gravado no Blob quando ele voltar
+#### Scenario: Recálculo depois de uma edição manual
+- **WHEN** um ponto da `PRE` de `2026-09-14` é editado à mão no `services/curves` de 14,1670000 para 14,2000000, e depois a data é recalculada
+- **THEN** o `CURVA_GRAVADA` do recálculo tem operação `RECONSTRUCAO` e `pontosAnteriores` com os pontos editados, incluindo 14,2000000
 
-#### Scenario: Edição manual sem auditoria
-- **WHEN** um ponto da `PRE` de `2026-09-14` é editado à mão no `services/curves` de 14,1670000 para 14,2000000
-- **THEN** o engine não grava registro de auditoria, e um recálculo posterior grava em `pontosAnteriores` os pontos editados, incluindo 14,2000000
+### Requirement: Arquivo de auditoria montado na hora
+`GET /api/v1/curvas/{codigo}/{dataBase}/auditoria?formato=xlsx|json` (papel `Curvas.Leitura`), pedido pelo front, SHALL montar o arquivo de auditoria da curva na data no momento do pedido, sem guardar nada, a partir do estado atual do banco e da fonte:
+- **`Resumo`**: código, nome, data-base, instante da geração (horário de Brasília), `correlationId`, versão do engine, última data-base construída e quem calculou (`dBaseReft` e `cUsuarCalc` de `tCurvaMercd`), cadastro vigente na data (curva, origem ou mães, configuração com todos os parâmetros) e os modelos que seriam usados hoje (nome, origem, versão, hash);
+- **`Pontos`**: os pontos gravados em `tDadoCurva` (data e valor), com o `hashPontos`;
+- **`Conferencia`**: os pontos que o modelo produz agora a partir da fonte, lado a lado com os gravados, com a diferença e a situação de cada ponto (`IGUAL`, `DIFERENTE`, `SO_GRAVADO`, `SO_FONTE`), como a comparação da simulação (spec `curve-calculation-memory`), ou o erro da fonte, se o modelo falhar;
+- **`Insumos`**: as linhas brutas da origem lidas na data (ou, para curva derivada, os pontos das mães), com as colunas da spec do modelo.
+
+O nome do arquivo SHALL ser `{codigo}_{dataBase}_AUDITORIA_{AAAAMMDDHHmmss}.xlsx`. Sem pontos gravados, o arquivo SHALL sair do mesmo jeito, com `Pontos` vazia. O arquivo mostra o estado de agora; quem gravou os pontos em cada momento anterior, e os pontos substituídos, estão nos eventos `CURVA_GRAVADA` do engine e `PONTOS_EDITADOS` do `services/curves`, no log.
+
+#### Scenario: Auditoria de uma curva editada
+- **WHEN** o gestor pede pelo front a auditoria da `PRE` de `2026-09-14`, que teve um ponto editado à mão depois da construção
+- **THEN** o arquivo é montado na hora, com os 278 pontos gravados, a aba `Conferencia` mostrando o ponto `DIFERENTE` entre o gravado e o que a fonte produz, e nada é gravado no Blob nem no banco
 
 ### Requirement: Resumo da última construção em tCurvaMercd
 Na mesma transação de uma construção ou reconstrução bem-sucedida, o engine SHALL atualizar, na linha da curva em `tCurvaMercd` (já travada pela construção):
@@ -38,18 +49,3 @@ O engine MUST NOT alterar nenhuma outra coluna de `tCurvaMercd`. A edição manu
 #### Scenario: Reconstrução de data antiga
 - **WHEN** a `PRE` tem `dBaseReft` = `2026-09-14` e a data `2026-09-10` é reconstruída
 - **THEN** `dBaseReft` continua `2026-09-14`, e `cUsuarCalc` passa a ser o usuário da reconstrução
-
-
-### Requirement: Consulta do histórico
-`GET /api/v1/curvas/{codigo}/{dataBase}/historico` SHALL resolver o nome da curva pelo código e listar os registros de auditoria gravados no Blob da curva e data-base, inclusive os de antes de uma troca de código (registros ainda pendentes só existem no log), do mais recente para o mais antigo, sem `pontosAnteriores`, cada um com a situação `CONFIRMADA` ou `DESFEITA` (quando existir o arquivo `.desfeita.json`). `GET /api/v1/curvas/{codigo}/{dataBase}/historico/{idAuditoria}` SHALL devolver o registro completo, também em `formato=xlsx` (aba `Pontos` com os pontos anteriores e `Resumo` com os demais campos).
-
-#### Scenario: Quem alterou a curva
-- **WHEN** o analista consulta o histórico da `PRE` de `2026-09-14` depois de uma construção e um recálculo
-- **THEN** a lista tem o registro `RECONSTRUCAO` com o usuário e os dois `hashPontos`, seguido do registro `CONSTRUCAO`
-
-### Requirement: Retenção imutável
-O container ou a pasta `auditoria/` SHALL ter política de imutabilidade do Azure Blob Storage (retenção por tempo), configurada na infraestrutura, com o prazo definido pela área de risco. O engine SHALL verificar na subida que tem permissão de escrita em `auditoria/` e, se não tiver, registrar `AUDITORIA_SEM_PERMISSAO` com nível `ERRO`, sem deixar de subir.
-
-#### Scenario: Tentativa de apagar um registro
-- **WHEN** alguém tenta apagar um registro de `auditoria/` dentro do prazo de retenção
-- **THEN** o Blob Storage recusa a exclusão

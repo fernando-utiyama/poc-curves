@@ -130,7 +130,7 @@ Depois do commit, o processor SHALL chamar `POST {processor.engine.url}/api/v1/c
 - **THEN** o processor registra `CARGA_FALHOU` com o estado `GRAVADA_SEM_AVISO`, os vértices continuam em `tBtrsCurvaPrimr`, e republicar a data pela rota do conector só repete a gravação (idêntica) e o aviso
 
 ### Requirement: Idempotência e republicação
-Reprocessar a mesma carga (mesmo `idCarga`) SHALL regravar as mesmas linhas e repetir o aviso, que o engine trata como repetido. Uma carga nova para a mesma data-base (`idCarga` diferente, arquivo republicado pela B3) SHALL substituir as linhas das curvas mapeadas; recalcular curvas já construídas continua sendo decisão do engine. A recuperação de qualquer falha definitiva SHALL ser republicar a data pela rota de republicação do conector (spec `b3-taxaswap-publicacao`).
+Reprocessar a mesma carga (mesmo `idCarga`) SHALL regravar as mesmas linhas e repetir o aviso, que o engine trata como repetido (curvas com pontos voltam como `EXISTENTE`). Uma carga nova para a mesma data-base (`idCarga` diferente, arquivo republicado pela B3) SHALL substituir as linhas das curvas mapeadas; recalcular curvas já construídas continua sendo decisão do engine. A recuperação de qualquer falha definitiva SHALL ser republicar a data pela rota de republicação do conector (spec `b3-taxaswap-publicacao`).
 
 #### Scenario: Curva ligada depois da carga
 - **WHEN** a carga de `2026-09-14` já foi gravada e avisada, e depois o cadastro liga o código `SLP` a uma curva nova em `tCurvaPrvdr`

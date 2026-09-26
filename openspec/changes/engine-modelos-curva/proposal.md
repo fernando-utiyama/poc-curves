@@ -21,7 +21,7 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
   - Calendários `Brazil`/`Settlement` e `UnitedStates`/`FederalReserve`, com os feriados listados na spec. Feriados também podem ser mantidos por planilha: a importação gera um script Groovy de calendário versionado, e a exportação devolve a planilha no mesmo formato.
   - Construção, interpolação e calendário podem ser criados ou sobrescritos por Groovy, com versões imutáveis no Blob Storage existente (`groovy-models/{tipo}/{nome}/`), propagadas a todas as instâncias em até 30 segundos, validação antes de ativar, sandbox por lista permitida e tempo limite.
 - **Tipos e enums com os nomes do QuantLib** (`Compounding`, `Frequency`, `BusinessDayConvention`, `TimeUnit`, `DayCounter`, calendários), em implementação própria, 100% Java e `BigDecimal`.
-- **Construção disparada pela carga concluída.** O processor avisa por webhook (`POST /api/v1/cargas`) que terminou de gravar uma carga, com a quantidade de linhas por código. O engine registra a carga no Blob e constrói as curvas daquela origem que ainda não têm pontos na data. A carga nunca recalcula: uma republicação da fonte só gera aviso, e recalcular exige `forcarRecalculo=true` na API. Nenhuma construção roda sem carga registrada (salvo com o Blob fora, quando segue com aviso), e o engine confere se leu exatamente a quantidade avisada: carga parcial não vira curva gravada.
+- **Construção disparada pela carga concluída.** O processor grava cada carga numa transação e, depois do commit, avisa por webhook (`POST /api/v1/cargas`) com a quantidade de linhas por código. O engine constrói na hora as curvas daquela origem que ainda não têm pontos na data, conferindo a quantidade lida contra a avisada. A carga nunca recalcula: para as curvas que já têm pontos, o engine roda o modelo sem gravar e avisa (`PONTOS_DIFERENTES_DA_FONTE`) se a fonte atual produz pontos diferentes; recalcular exige `forcarRecalculo=true` na API. O engine não guarda registro da carga.
 - **Simulação e memória de cálculo para investigar em produção.**
   - Uma rota de simulação executa a construção com o mesmo código, sem gravar nada, e compara ponto a ponto com o que está gravado.
   - As rotas de consulta, interpolação e simulação aceitam `formato=xlsx` e baixam uma planilha com a memória de cálculo:
@@ -32,18 +32,19 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
     - eventos.
   - `formato=zip` gera um pacote de depuração: planilha, JSON, código-fonte exato de cada script Groovy usado e manifesto com hashes. A proveniência inclui a versão do engine.
   - Logs estruturados e um `hashPontos` ligam cada consulta à construção ou edição que gravou aqueles pontos.
-- **Auditoria e histórico persistentes, sem mudar o banco.** Toda construção e todo recálculo gravam antes do commit um registro imutável no Blob, na pasta do nome da curva, (com o Blob fora, o registro vai para o log e é regravado depois): quem, quando, de qual carga, com quais modelos e cadastro, e os pontos substituídos. A construção atualiza `tCurvaMercd.dBaseReft` (última data-base) e `cUsuarCalc`. O histórico é consultável pela API. A edição manual de pontos sai do engine e vai para o `services/curves` (change `curves-dado-curva`), como contingência, sem auditoria.
+- **Auditoria sem mudar o banco e sem Blob.** Toda construção e todo recálculo emitem no log o evento `CURVA_GRAVADA`: quem, quando, de qual carga, com quais modelos e cadastro, e os pontos substituídos. A construção atualiza `tCurvaMercd.dBaseReft` (última data-base) e `cUsuarCalc`. O front pede o arquivo de auditoria de uma curva e data, que o engine monta na hora: pontos gravados, cadastro, modelos e a conferência ponto a ponto com o que a fonte produz agora. A edição manual de pontos sai do engine e vai para o `services/curves` (change `curves-cadastro-curvas`), como contingência.
 - **Leitura consistente e segurança de produção.**
   - Leituras só em `READ COMMITTED`, nunca `NOLOCK`: consulta nunca vê a data vazia no meio de uma reconstrução.
   - Todas as rotas exigem JWT do Entra ID, com papéis de leitura, operador, processor, autor e aprovador de scripts.
   - Tempo limite em toda dependência e repetição só do que é idempotente.
-  - O Blob fora nunca bloqueia construção nem consulta: o engine constrói com o que tem (auditoria pendente no log, último estado de script conhecido ou modelos nativos) e registra a degradação na proveniência e no log. Uma instância nova espera o Blob por até 5 minutos antes de ficar pronta.
+  - O Blob guarda, para o engine, só os scripts Groovy, e fora do ar nunca bloqueia construção nem consulta: o engine usa o último estado de script conhecido ou os modelos nativos e registra a degradação na proveniência e no log. Uma instância nova espera o Blob por até 5 minutos antes de ficar pronta.
   - Logs e métricas por dependência, e circuit breaker no Blob.
   - O Blob é acessado por Managed Identity.
 - **Datas e horários de Brasília.** Datas-base sem hora; "hoje" e todos os instantes (respostas, planilhas, auditoria, logs) em `America/Sao_Paulo`, independentemente do fuso do servidor.
 - **Mais testes.** Oráculo contra a B3 sobre pelo menos 12 meses de pregões (feriados móveis e virada de ano incluídos), testes de propriedade e teste de precisão decimal.
 - **Situação e vigência da curva só valem para a construção automática.** A carga não constrói curva inativa ou fora da vigência (devolve `IGNORADA`); a construção pedida pelo usuário constrói, com aviso.
 - **Interpolação tolerante a pontos gravados à mão.** Pontos em fim de semana, feriado ou até a data-base, que a edição manual grava com aviso, são tratados na base comum de interpolação: descarte com aviso, sem alterar o gravado.
+- **Estrutura para curvas derivadas de outras curvas** (ex.: inflação implícita = PRE sobre a NTN-B), sem nenhum modelo derivado nesta fase: as mães são ligações com o provedor interno `TCEN`, o modelo as lê já montadas pelo contexto de construção, e a carga constrói as derivadas em cadeia quando as mães ficam prontas, sem recálculo em cascata.
 - **Valores aceitos no cadastro por API.** `GET /api/v1/valores-cadastro` lista, gerado do próprio validador, tudo o que o cadastro aceita, inclusive os modelos Groovy ativos, para o front e a planilha do `services/curves`.
 - **Curva gravada é curva liberada.** Data quality (checagens e aprovação) fica para uma feature futura.
 - **BREAKING — API por código da curva + data-base.** Construir, consultar, interpolar e simular pelo código (ex.: `PRE`) e pela data na URL; leitura também pelo nome de exibição. Erros padronizados com código e `correlationId`. Substitui `POST /api/v1/curvas/construir`, `POST /api/v1/calculo` e `POST /api/v1/modelos/upload`.
@@ -58,10 +59,10 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
 ### New Capabilities
 - `curve-build-pipeline`: cadastro e itens obrigatórios, unidades, contagem de tempo, cotação, grandezas, interpoladores, extrapolação, domínio, arredondamento, gravação dos pontos com trava, reconstrução, interpolação sob demanda, proveniência, `hashPontos` e log.
 - `curve-extension-models`: contratos dos modelos, nomes QuantLib, modelos e calendários nativos, ordem de resolução, versões e estados de script, validação e contenção.
-- `curve-engine-api`: rotas, parâmetros, códigos de erro, correlação, resolução por código e nome, catálogo, construção, consulta, interpolação, saída `xlsx` e `zip`, rotas de histórico e de calendário, autenticação e papéis, e gestão de scripts.
+- `curve-engine-api`: rotas, parâmetros, códigos de erro, correlação, resolução por código e nome, catálogo, construção, consulta, interpolação, saída `xlsx` e `zip`, auditoria montada na hora, situação para o painel, valores aceitos, rotas de calendário, autenticação e papéis, e gestão de scripts.
 - `curve-calculation-memory`: simulação sem gravação, comparação com os pontos gravados e planilha de memória de cálculo com abas e colunas fixas.
-- `curve-load-trigger`: webhook de carga concluída, registro durável no Blob, construção disparada só para curvas sem pontos, republicação sem recálculo automático, trava de construção sem carga e conferência da quantidade lida.
-- `curve-audit-history`: auditoria imutável no Blob de construções e recálculos, antes do commit; resumo em `tCurvaMercd`; consulta do histórico.
+- `curve-load-trigger`: webhook de carga concluída, construção disparada só para curvas sem pontos, comparação com a fonte atual sem recálculo automático, construção em cadeia das derivadas e conferência da quantidade lida.
+- `curve-audit-history`: auditoria de construções e recálculos no log; resumo em `tCurvaMercd`; arquivo de auditoria montado na hora.
 - `calendar-management`: calendário por lista, importação de planilha de feriados gerando script Groovy versionado, validação e exportação no mesmo formato.
 - `curve-engine-resilience`: tempos limite, repetição, degradação com o Blob fora, saúde e prontidão, logs de requisição e de dependência, e métricas.
 - `b3-ready-curve-model`: `PRONTA_TS_B3`, validação das linhas do `TaxaSwap.txt`, cadastro das 5 curvas B3 e oráculo contra o arquivo.
@@ -81,7 +82,7 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
   - a entidade de `tDadoCurva` passa a ter só as quatro colunas do schema.
 - **Banco: sem alteração de schema.** Parâmetros da curva em JSON em `tConfgCurva.cModDado` (coluna existente); o engine escreve `tDadoCurva` e, em `tCurvaMercd`, só `dBaseReft` e `cUsuarCalc`; `tConfgCurva.cRotnaCalc` passa a ser usado.
 - **Entra ID:** registro da aplicação com os papéis `Curvas.Leitura`, `Curvas.Operador`, `Curvas.Processor`, `Curvas.ModelosAutor` e `Curvas.ModelosAprovador`. Todo cliente da API passa a precisar de token.
-- **Blob Storage:** pastas `groovy-models/`, `cargas/` e `auditoria/` (com política de imutabilidade) no container existente, acessadas por Managed Identity.
+- **Blob Storage:** só a pasta `groovy-models/` no container existente, acessada por Managed Identity. Nenhum dado de curva vai para o Blob, que fica com os originais dos feeders e os scripts.
 - **Dependências fora do engine (outros changes):**
   - B3: o processor precisa ler o `TaxaSwap.txt` pelo código exato e gravar em `tBtrsCurvaPrimr` (change `conector-b3-webhook-ingest`; hoje o conector transforma DCL/DPL em DOL e descarta PTX/INP);
   - a ingestão ANBIMA precisa confirmar a unidade de `vVertcCurva` e a escala de `vPrecoTx`;
@@ -89,4 +90,4 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
   - o processor precisa chamar o webhook de carga depois do commit de cada carga, com retry pelo mesmo `idCarga` (change `conector-b3-webhook-ingest`, para a B3);
   - o cadastro das 7 curvas vem do `services/curves` (change `curves-cadastro-curvas`, com o exemplo `exemplo-cadastro-7-curvas.txt`), com os valores das specs;
   - os clientes da API do engine (curve-bff) precisam migrar para as rotas novas (BREAKING).
-- **Fora de escopo:** CRUD de cadastro de curva (change `curves-cadastro-curvas`) e de provedor (outro dev); edição manual dos pontos (change `curves-dado-curva`); persistir a curva diária em `tCurvaData` (depende de alterar `FK_tDadoCurva_tCurvaData`); cache de curva; qualquer mudança de schema (alvos ideais registrados no design).
+- **Fora de escopo:** CRUD de cadastro de curva e edição manual dos pontos (change `curves-cadastro-curvas`) e CRUD de provedor (outro dev); persistir a curva diária em `tCurvaData` (depende de alterar `FK_tDadoCurva_tCurvaData`); cache de curva; qualquer mudança de schema (alvos ideais registrados no design).

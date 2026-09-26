@@ -43,7 +43,7 @@ tabela bruta ─ modelo de construção ─► tDadoCurva (pontos)
 - Data quality (validação estatística, checagens de sanidade, aprovação) e publicação em Kafka: data quality será uma feature futura. **Nesta fase, curva gravada é curva liberada para consumo**; não há estado de aprovação.
 - Cache de curva.
 - Módulo Maven separado para o núcleo.
-- CRUD de cadastro de curva e provedor e edição manual dos pontos: são do `services/curves` (`acts-srv-curvas` no sistema real), nos changes `curves-cadastro-curvas` e `curves-dado-curva`; o CRUD de provedores é de outro dev. O engine só lê o cadastro. Os testes usam fixtures com o cadastro definido nas specs.
+- CRUD de cadastro de curva e provedor e edição manual dos pontos: são do `services/curves` (`acts-srv-curvas` no sistema real), no change `curves-cadastro-curvas`; o CRUD de provedores é de outro dev. O engine só lê o cadastro. Os testes usam fixtures com o cadastro definido nas specs.
 - Preencher as tabelas brutas: é do conector e do processor (D10).
 
 ## Decisions
@@ -93,7 +93,7 @@ O contrato está na spec `curve-extension-models`. O modelo recebe um `ContextoC
 ### D6. Gravação: só os pontos, numa transação travada
 A construção grava em `tDadoCurva` só os pontos arredondados. A transação começa com um `SELECT` com trava de escrita (`PESSIMISTIC_WRITE`, tempo limite de 30 segundos) na linha da curva em `tCurvaMercd`, e a edição manual de pontos no `services/curves` usa a mesma trava. Isso serializa construções e edições da mesma curva entre réplicas sem tabela nova. Quem não obtém a trava recebe `CONSTRUCAO_EM_ANDAMENTO`. A simulação não trava nada.
 
-A proveniência vai na resposta, no log e no registro de auditoria do Blob (D23); o banco não tem tabela para ela, porque `tMtrizCurva` é de superfícies.
+A proveniência vai na resposta e no log `CURVA_GRAVADA` (D23); o banco não tem tabela para ela, porque `tMtrizCurva` é de superfícies.
 
 **Alvo ideal, fora desta mudança:** persistir a curva diária em `tCurvaData`, mantendo dado curva = pontos e curva data = curva diária. Exige remover `FK_tDadoCurva_tCurvaData` e ligar `tCurvaData` a `tCurvaMercd` (ou a uma futura tabela de cabeçalho de curva por data). A curva diária é o volume grande (≈ 12.600 linhas por curva e data em 50 anos) e precisa ser expurgável sem tocar nos pontos. Quando a FK mudar, a construção passa a gravar também `tCurvaData` até o fim do domínio, sem mudar os pontos.
 
@@ -127,9 +127,9 @@ Rotas, parâmetros, corpos e erros estão na spec `curve-engine-api`. Os control
 
 Toda consulta relê os pontos de `tDadoCurva` e monta a curva na hora: são no máximo algumas centenas de linhas por curva e data. **Alternativa rejeitada nesta fase:** cache do objeto de curva, que exigiria invalidação entre réplicas na edição e na reconstrução. É fonte de erro sem ganho medido; entra depois, se a latência pedir.
 
-**Código e nome.** A rota por código busca `cTickerIdtfdUnic`, e a rota por nome compara o nome normalizado com `cTickerIndcd`. As duas resolvem para `cTickerIndcd` e usam os mesmos serviços. O nome vai em query, não no path, porque tem espaço, acento e `/`. **Alternativa rejeitada:** escrita pelo nome. O nome tem espaço e acento e pode colidir depois de normalizado (`NOME_AMBIGUO`), então operações que alteram dados ficam presas ao código. O nome é imutável no cadastro, por ser a chave das FKs, e por isso é ele que indexa o que precisa sobreviver a uma troca de código (auditoria e registro de cargas).
+**Código e nome.** A rota por código busca `cTickerIdtfdUnic`, e a rota por nome compara o nome normalizado com `cTickerIndcd`. As duas resolvem para `cTickerIndcd` e usam os mesmos serviços. O nome vai em query, não no path, porque tem espaço, acento e `/`. **Alternativa rejeitada:** escrita pelo nome. O nome tem espaço e acento e pode colidir depois de normalizado (`NOME_AMBIGUO`), então operações que alteram dados ficam presas ao código. O nome é imutável no cadastro, por ser a chave das FKs, e por isso os eventos de log de auditoria trazem sempre o nome, além do código, para o histórico sobreviver a uma troca de código.
 
-**Edição de pontos:** não é do engine. A edição manual é do `services/curves` (change `curves-dado-curva`), que grava `tDadoCurva` com a mesma trava por curva de D6 e calcula o `hashPontos` pela mesma fórmula. O engine só percebe a edição pelos `hashPontos`.
+**Edição de pontos:** não é do engine. A edição manual é do `services/curves` (change `curves-cadastro-curvas`), que grava `tDadoCurva` com a mesma trava por curva de D6 e calcula o `hashPontos` pela mesma fórmula. O engine só percebe a edição pelos `hashPontos`.
 
 ### D10. O engine só lê as tabelas brutas
 Os modelos esperam das tabelas brutas o contrato abaixo. Preenchê-las é do conector e do processor, em changes próprios. Nos testes, as tabelas são carregadas por fixture.
@@ -186,47 +186,47 @@ O SOFR é publicado pelo Fed de Nova York nos dias úteis do Federal Reserve. Os
 - Números como células numéricas, para que a planilha possa ser recalculada, com a limitação de 15 dígitos significativos do Excel registrada no `Resumo`. A precisão completa está no JSON.
 
 ### D21. Observabilidade e roteiro de investigação
-Logs JSON (o engine já tem `logstash-logback-encoder`) com `correlationId`, código, nome e data-base nos eventos da spec `curve-build-pipeline`. O histórico persistente de quem gravou o quê está na auditoria do Blob (D23), e o log é o complemento operacional. O `hashPontos` liga uma consulta ou simulação à construção ou edição que gravou aqueles pontos.
+Logs JSON (o engine já tem `logstash-logback-encoder`) com `correlationId`, código, nome e data-base nos eventos da spec `curve-build-pipeline`. O histórico de quem gravou o quê está no log (`CURVA_GRAVADA` no engine, `PONTOS_EDITADOS` no `services/curves`), e o estado de agora, no arquivo de auditoria montado na hora (D23).
 
 Roteiro para "a curva X da data D está errada":
-1. Baixar `GET /curvas/X/D?formato=xlsx` e anotar o `hashPontos` gravado.
-2. Consultar `GET /curvas/X/D/historico`: o registro mais recente diz se os pontos vieram de construção ou reconstrução, com usuário, `idCarga` e `hashPontos`. Se o `hashPontos` gravado for diferente do desse registro, houve edição manual depois, no `services/curves`, cujo log traz o usuário. Os pontos substituídos por um recálculo estão em `historico/{idAuditoria}`.
-3. Baixar `GET /curvas/X/D/simulacao?formato=xlsx`. Se o `hashPontos` simulado for igual ao gravado, a construção fez o que o insumo e o cadastro atuais mandam, e o erro está no insumo (aba `Insumos`) ou no cadastro (aba `Resumo`). Se for diferente, a coluna `Diferenca` mostra quais pontos mudaram desde a construção, e o cadastro registrado na auditoria da construção pode ser comparado com o do `Resumo`.
-4. Se a simulação falhar, `Resumo` e `Eventos` dão o erro, e `Insumos` mostra a linha.
+1. Baixar `GET /curvas/X/D/auditoria?formato=xlsx`: pontos gravados, cadastro vigente, e a aba `Conferencia` com o que a fonte produz agora, ponto a ponto. Pontos `DIFERENTE` indicam edição manual, republicação da fonte ou cadastro alterado depois da construção.
+2. Buscar no log os eventos `CURVA_GRAVADA` e `PONTOS_EDITADOS` da curva e data: quem construiu, recalculou ou editou, quando, de qual carga, com quais modelos, e os pontos substituídos.
+3. Se a conferência bater e o valor ainda parecer errado, o erro está no insumo (aba `Insumos`) ou no cadastro (aba `Resumo`).
+4. Se o modelo falhar, a simulação (`GET /curvas/X/D/simulacao?formato=xlsx`) dá o erro em `Resumo` e `Eventos`, e a linha em `Insumos`.
 5. Para um prazo interpolado suspeito: `GET /curvas/X/D/interpolacao?du=N&formato=xlsx`, que mostra os vizinhos, o `W` e o `Y` de cada prazo.
 
 ### D22. Carga concluída por webhook do processor
 O processor é quem sabe que terminou de gravar o bruto, então é ele que avisa (`POST /api/v1/cargas`, spec `curve-load-trigger`). Decisões:
-- **O aviso é o gatilho e a trava.** Nenhuma construção roda sem carga registrada, e o modelo confere se leu exatamente a quantidade avisada. Com o Blob fora, o webhook usa a carga do próprio corpo e a construção manual segue com o aviso `CARGA_NAO_VERIFICADA` (D26). Isso cobre carga parcial, leitura antes do commit e réplica de banco atrasada.
-- **Construção síncrona na própria requisição.** São poucas curvas por carga (5 da B3, 1 da ANBIMA, 1 do SOFR), construídas em segundos. A durabilidade vem do retry do processor com o mesmo `idCarga` e da idempotência do engine, sem fila nem varredura agendada.
-- **Registro no Blob**, como os scripts Groovy: o webhook cai numa instância só, e o registro precisa ser visível às outras, sem tabela nova no schema oficial.
-- **A carga nunca recalcula.** Ela só constrói curvas que ainda não têm pontos na data. Uma republicação da fonte (`idCarga` novo) é registrada, a carga anterior vai para o `historico`, e cada curva que já tinha pontos é mantida com o aviso `PONTOS_DE_CARGA_ANTERIOR`. Recalcular é decisão de um operador, por `forcarRecalculo=true`, porque a curva gravada pode já ter sido consumida.
+- **O aviso é o gatilho; a transação do processor é a garantia.** O processor grava cada carga numa única transação e só avisa depois do commit, então dado bruto presente é carga completa. Na construção pelo webhook, o engine ainda confere a quantidade lida contra a avisada no corpo (`INSUMO_INCOMPLETO`). A construção pela API lê o que está gravado.
+- **Construção síncrona na própria requisição.** São poucas curvas por carga (5 da B3, 1 da ANBIMA, 1 do SOFR), construídas em segundos. A durabilidade vem do retry do processor com o mesmo `idCarga` e da idempotência do engine (curva com pontos → `EXISTENTE`), sem fila nem varredura agendada.
+- **Nenhum registro da carga.** O engine não guarda a carga em lugar nenhum: o Blob fica só com os originais dos feeders e os scripts Groovy, e o banco não pode mudar. O que se precisaria saber depois é calculado na hora a partir do banco: há dado bruto da origem na data, há pontos gravados, e os pontos gravados batem com o que a fonte atual produz.
+- **A carga nunca recalcula.** Ela só constrói curvas que ainda não têm pontos na data. Para as que já têm, o engine roda o modelo sem gravar e compara: se a fonte atual produz pontos diferentes (republicação, edição manual ou cadastro alterado), devolve o aviso `PONTOS_DIFERENTES_DA_FONTE`. Recalcular é decisão de um operador, por `forcarRecalculo=true`, porque a curva gravada pode já ter sido consumida.
 
 **Alternativas rejeitadas:**
+- Registro da carga no Blob ou em tabela: o Blob é só para originais e scripts, e o banco não pode mudar. A comparação com a fonte atual dá a mesma informação útil (a curva está coerente com a fonte?) sem estado guardado.
 - Engine consultar periodicamente se a carga terminou: exige que o engine saiba o que é "completo" para cada fonte, e isso é conhecimento do processor.
 - Fila (Kafka) em vez de webhook: o engine precisaria de um consumidor e de controle de offset para um evento por fonte e dia. O webhook com retry dá a mesma garantia com menos peças.
 - Construção assíncrona com resposta 202: exigiria fila interna e varredura de pendências para não perder o gatilho se a instância cair.
 
-### D23. Auditoria sem mudar o schema: Blob imutável + colunas de cálculo de `tCurvaMercd`
-O banco não pode ser alterado nesta fase. A trilha fica em dois lugares:
-- **Histórico completo no Blob:** um registro imutável por construção e por recálculo (a edição manual de pontos é contingência, feita no `services/curves`, e não é auditada), em `auditoria/{nome}/{dataBase}/` (pelo nome, que é imutável, porque o código pode mudar no cadastro), com usuário, carga, `hashPontos` antes e depois, proveniência e os pontos substituídos (spec `curve-audit-history`). A pasta tem política de imutabilidade do Azure (retenção por tempo), então nem o próprio engine consegue apagar.
+### D23. Auditoria sem mudar o schema e sem Blob: log, colunas de cálculo e arquivo montado na hora
+O banco não pode ser alterado, e o Blob é só para originais e scripts. A trilha fica em três lugares:
+- **Log:** cada construção e recálculo emite `CURVA_GRAVADA`, depois do commit, com usuário, carga, `hashPontos` antes e depois, proveniência e os pontos substituídos (spec `curve-audit-history`). O destino dos logs precisa de retenção definida pela área de risco.
 - **Resumo em `tCurvaMercd`:** a construção atualiza `dBaseReft` (maior data-base construída) e `cUsuarCalc` (quem calculou), colunas do schema oficial que não eram usadas por ninguém (o `curve-api-legado` só lê `cUsuarCalc`). É a mesma linha que a construção já trava (D6), então não há custo extra de concorrência.
+- **Arquivo de auditoria sob demanda:** o front pede, e o engine monta na hora, sem guardar: pontos gravados, cadastro vigente, modelos, e a conferência ponto a ponto com o que a fonte produz agora.
 
-**Consistência entre Blob e banco.** O Blob não participa da transação. O registro é gravado **antes** do commit. Se o Blob falhar, a gravação dos pontos segue (o Blob nunca bloqueia construção, D26): o registro completo vai para o log (`AUDITORIA_PENDENTE`), que passa a ser a cópia de segurança, e é regravado no Blob em segundo plano quando ele voltar. Se a instância cair antes disso, o registro fica só no log. Se o commit falhar depois da gravação no Blob, fica um registro órfão, marcado com `.desfeita.json` e mostrado como `DESFEITA` no histórico.
-
-**Alvo ideal, quando o banco puder mudar:** tabelas `tAuditCurva` e `tHistDadoCurva` na mesma transação dos pontos. **Alternativa rejeitada:** só log, que tem retenção limitada e não é consultável como histórico.
+**Alvo ideal, quando o banco puder mudar:** tabelas `tAuditCurva` e `tHistDadoCurva` na mesma transação dos pontos, com o histórico consultável pela API. **Alternativa rejeitada:** registros de auditoria no Blob (fora do que o Blob guarda) e histórico consultável sem tabela.
 
 ### D24. Leitura consistente sem opção nova no banco
 A reconstrução apaga e insere na mesma transação. No `READ COMMITTED` padrão do SQL Server, uma leitura concorrente espera o commit em vez de ver a data vazia, então a consistência já está garantida, desde que ninguém use `NOLOCK`. A espera é limitada ao tempo de uma construção (segundos). `READ_COMMITTED_SNAPSHOT` eliminaria a espera e fica como melhoria quando o banco puder mudar.
 
 ### D25. Autenticação e papéis pelo Entra ID
-Todas as rotas exigem JWT do Entra ID. O acesso é por papéis de aplicação: `Curvas.Leitura`, `Curvas.Operador`, `Curvas.Processor` (só a identidade de serviço do processor, por client credentials), `Curvas.ModelosAutor` e `Curvas.ModelosAprovador`. Quem ativa um script pode ser o próprio autor, porque muitas vezes há um só operador no horário; o `estado.json` e a auditoria registram quem ativou. A leitura também exige papel, porque a curva é dado de mercado usado em risco e precificação. O Blob é acessado por Managed Identity, sem chave em configuração. **Alternativa rejeitada:** chave de API por cliente, que não identifica o usuário para a auditoria e exige rotação manual.
+Todas as rotas exigem JWT do Entra ID. O acesso é por papéis de aplicação: `Curvas.Leitura`, `Curvas.Operador`, `Curvas.Processor` (só a identidade de serviço do processor, por client credentials), `Curvas.ModelosAutor` e `Curvas.ModelosAprovador`. Quem ativa um script pode ser o próprio autor, porque muitas vezes há um só operador no horário; o `estado.json` e o log registram quem ativou. A leitura também exige papel, porque a curva é dado de mercado usado em risco e precificação. O Blob é acessado por Managed Identity, sem chave em configuração. **Alternativa rejeitada:** chave de API por cliente, que não identifica o usuário para a auditoria e exige rotação manual.
 
 ### D26. Resiliência
 Os tempos limite, a política de repetição, a saúde, os logs de dependência e as métricas estão na spec `curve-engine-resilience`. Decisões:
 - **Só repete o que é idempotente:** leituras e gravação condicional de versão imutável. Gravação no banco e no `estado.json` devolvem o erro, para não duplicar efeito.
 - **Estado de script desatualizado mantido sem prazo, só com log.** Sem isso, uma queda do Blob derrubaria todas as consultas no fechamento, porque toda resolução de modelo lê o estado. Com o Blob fora, ninguém consegue ativar ou desativar script (essas operações também escrevem no Blob), então o último estado lido continua correto. A única exceção é uma queda parcial, em que uma instância enxerga o Blob e outra não; ela aparece no aviso de log e na métrica de idade do estado, que serve para alerta.
-- **Blob fora nunca bloqueia construção nem consulta.** No fechamento, construir com o que existe vale mais do que esperar o Blob. Cada dependência do Blob tem uma degradação definida: auditoria pendente no log, carga do corpo do webhook (ou não verificada na construção manual), estado de script desatualizado ou, na falta dele, modelos nativos. Toda degradação aparece na resposta, no log e na proveniência (`estadoScript`, avisos), e não em silêncio.
+- **Blob fora nunca bloqueia construção nem consulta.** No fechamento, construir com o que existe vale mais do que esperar o Blob. O engine só lê scripts Groovy do Blob, e a degradação é definida: estado de script desatualizado ou, na falta dele, modelos nativos. Toda degradação aparece na resposta, no log e na proveniência (`estadoScript`, avisos), e não em silêncio.
 - **Circuit breaker no Blob.** Depois de 5 falhas seguidas, o engine para de chamar o Blob por 60 segundos, para que uma queda não some um tempo limite a cada operação no meio do fechamento.
 - **Prontidão depende do banco e, na subida, espera o Blob por até 5 minutos.** Sem banco não há o que fazer. Uma instância nova espera o Blob para carregar os scripts ativos; se ele não voltar em 5 minutos, ela fica pronta com os modelos nativos, com erro no log, para não deixar o fechamento sem instância.
 
@@ -245,13 +245,22 @@ A proveniência diz quais modelos e versões rodaram, mas investigar exige o có
 Inativar a curva, ou deixar a data-base fora da vigência dela no cadastro, é uma decisão de não construí-la no dia a dia. A carga respeita isso e devolve a curva como `IGNORADA`, sem erro. A construção pedida por um usuário, porém, é uma ação consciente (reprocessar uma data antiga de uma curva já desativada, testar uma curva antes de ativá-la) e é executada, com o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA`. Consulta e interpolação nunca dependem disso. **Alternativa rejeitada:** `CADASTRO_INVALIDO` em toda construção, que impediria o reprocessamento histórico.
 
 ### D31. Interpolação tolerante a pontos gravados à mão
-A edição manual no `services/curves` só recusa inconsistência de banco; regra de negócio vira aviso (change `curves-dado-curva`). Por isso o engine precisa conviver com pontos que nenhum modelo geraria: em fim de semana ou feriado, na data-base ou antes dela. A base comum de interpolação, por onde passam todos os interpoladores, inclusive `Cubic` e Groovy, descarta com aviso os pontos de prazo não positivo e, no mesmo prazo do eixo, fica com o de menor data. Os pontos gravados nunca são alterados, e o aviso aparece em toda saída. O que não tem tratamento seguro (preço ou pontos não positivos no `LogLinear`) falha com `PONTOS_NAO_INTERPOLAVEIS`, citando os pontos. **Alternativa rejeitada:** recusar a consulta com qualquer ponto fora da regra, que deixaria a curva inutilizável até alguém corrigir, justamente quando a edição manual foi o recurso de contingência.
+A edição manual no `services/curves` só recusa inconsistência de banco; regra de negócio vira aviso (change `curves-cadastro-curvas`). Por isso o engine precisa conviver com pontos que nenhum modelo geraria: em fim de semana ou feriado, na data-base ou antes dela. A base comum de interpolação, por onde passam todos os interpoladores, inclusive `Cubic` e Groovy, descarta com aviso os pontos de prazo não positivo e, no mesmo prazo do eixo, fica com o de menor data. Os pontos gravados nunca são alterados, e o aviso aparece em toda saída. O que não tem tratamento seguro (preço ou pontos não positivos no `LogLinear`) falha com `PONTOS_NAO_INTERPOLAVEIS`, citando os pontos. **Alternativa rejeitada:** recusar a consulta com qualquer ponto fora da regra, que deixaria a curva inutilizável até alguém corrigir, justamente quando a edição manual foi o recurso de contingência.
 
 ### D32. Valores aceitos gerados do validador
 O front e a planilha do cadastro precisam das listas de valores aceitos, e os modelos crescem com Groovy sem deploy. `GET /api/v1/valores-cadastro` é gerado dos mesmos enums e da mesma tabela que o validador usa, com os modelos Groovy ativos, e um teste garante a ida e volta. O `services/curves` repassa essa rota ao front. **Alternativa rejeitada:** só `enum` no Swagger, que não mostra os modelos Groovy nem as regras de combinação.
 
-### D33. Situação das construções para o painel do gestor
-O painel de acompanhamento fica no `services/curves` (change `curves-cadastro-curvas`), que já tem o cadastro e os pontos. O que só o engine sabe (carga recebida, última tentativa, erro, `hashPontos` da última construção) sai por uma rota só de leitura, `GET /api/v1/curvas/situacao`, lida do registro de cargas, que passou a guardar a última tentativa e a última construção de cada curva, indexadas pelo nome. **Alternativa rejeitada:** o curves ler direto `cargas/` no Blob, que o prenderia ao formato interno do engine.
+### D33. Situação das curvas para o painel do gestor, calculada na hora
+O painel de acompanhamento fica no `services/curves` (change `curves-cadastro-curvas`), que já tem o cadastro e os pontos. O que só o engine sabe calcular (há insumo na data, o modelo roda, os pontos gravados batem com a fonte atual) sai por uma rota só de leitura, `GET /api/v1/curvas/situacao`, que confere todas as curvas na hora, em paralelo, sem nenhum estado guardado. Com cerca de 120 curvas de algumas centenas de pontos, a conferência cabe em segundos. **Alternativas rejeitadas:** guardar a última tentativa de cada curva (exigiria Blob ou tabela); o curves rodar os modelos (duplicaria o engine).
+
+### D34. Curva derivada de outras curvas, sem modelo nesta fase
+Curvas como a inflação implícita (PRE sobre a NTN-B bootstrapada) não vêm de fonte: vêm de outras curvas já construídas. A estrutura fica pronta agora, sem nenhum modelo derivado:
+- **Cadastro sem schema novo:** as mães são ligações em `tCurvaPrvdr` com o provedor interno `TCEN`, o nome da mãe em `cTickerPrvdr` e o papel (ex.: `NUMERADOR`, `DENOMINADOR`) em `cPrvdrMercd`.
+- **O modelo lê as mães pelo contexto**, já montadas para interpolar com o cadastro de cada uma, e nunca pelas tabelas brutas.
+- **Construção em cadeia na carga:** depois das curvas da carga, o engine constrói as derivadas cujas mães já estão prontas, em ordem de dependência. As mães de fontes diferentes se resolvem sozinhas: a derivada sai na carga que completa as mães.
+- **Nada é recalculado em cascata.** A mãe recalculada ou editada deixa a derivada diferente do que as mães atuais produzem, o que aparece na conferência do painel, e o recálculo é do usuário, como em toda curva.
+
+**Alternativas rejeitadas:** tabela de dependências entre curvas (muda o schema); o modelo derivado ler `tDadoCurva` direto (duplicaria a montagem da curva e escaparia da proveniência); recálculo em cascata (uma edição manual na PRE mudaria em silêncio todas as filhas já consumidas).
 
 ## Risks / Trade-offs
 
@@ -268,17 +277,18 @@ O painel de acompanhamento fica no `services/curves` (change `curves-cadastro-cu
 - **`FlatForward` no início e `FlatValue` no fim não existem no QuantLib.** → Documentados como extensão; o padrão é `Disabled`.
 - **Escala e unidade dos brutos ANBIMA e SOFR não confirmadas** (percentual, dias úteis). → A checagem do dia 15 (D11) pega a unidade da NTN-B. A escala aparece na primeira simulação com dado real (uma taxa de 0,06 em vez de 6 salta aos olhos na planilha).
 - **Natureza zero rate e convenção (`Actual360`/`Simple`) do SOFR vêm de fonte de terceiro.** → Confirmar no Terminal antes do apply. A convenção é cadastro. Se for par rate, o modelo ganha um passo de bootstrap sem mudar D15 e D16.
-- **Republicação da fonte deixa a curva gravada desatualizada até alguém recalcular.** → O webhook devolve o aviso `PONTOS_DE_CARGA_ANTERIOR`, o log registra `CARGA_REPUBLICADA` com nível `AVISO` (base para alerta), e a planilha mostra o `idCarga` da carga registrada ao lado do que gerou os pontos.
-- **Registro de cargas desatualizado depois de uma falha do Blob.** Se a instância cair antes de regravar a situação de uma curva, o painel do `services/curves` pode mostrar uma curva construída como `EDITADA_MANUALMENTE`. → A situação real está nos pontos e na auditoria; o log tem `REGISTRO_CARGA_PENDENTE`, e a próxima construção ou recálculo corrige o registro.
-- **Processor sem retry perde o gatilho.** → A curva não é construída; um alerta de curva não construída até o horário combinado pega o caso, e a construção manual continua possível depois que a carga é registrada.
-- **Auditoria no Blob fora da transação do banco.** → Gravada antes do commit; órfãos marcados como `DESFEITA`; com o Blob fora, a cópia fica no log até ser regravada (D23). Uma instância que cai antes de regravar deixa o registro só no log, que precisa ter retenção compatível.
+- **Republicação da fonte deixa a curva gravada diferente da fonte até alguém recalcular.** → O webhook devolve o aviso `PONTOS_DIFERENTES_DA_FONTE`, o log registra o evento com nível `AVISO` (base para alerta), e o painel mostra a curva como divergente da fonte.
+- **Sem histórico consultável pela API.** Quem gravou antes, e os pontos substituídos, estão só no log. → Retenção do log definida pela área de risco; o arquivo de auditoria sob demanda mostra o estado atual e a conferência com a fonte; tabelas de auditoria entram quando o banco puder mudar (D23).
+- **Conferência na hora custa leitura e CPU.** O webhook roda o modelo das curvas que já têm pontos, e a rota de situação roda o de todas. → Só leitura, sem trava, em paralelo limitado e com tempo limite por requisição; o volume é de centenas de curvas pequenas.
+- **Processor sem retry perde o gatilho.** → A curva não é construída; o painel mostra a curva com insumo e sem pontos, um alerta de curva não construída até o horário combinado pega o caso, e a construção manual continua possível.
+- **Evento `CURVA_GRAVADA` emitido depois do commit.** Se a instância cair entre o commit e o log, a gravação fica sem evento. → Janela de milissegundos; `dBaseReft`, `cUsuarCalc` e os pontos gravados continuam no banco, e o arquivo de auditoria mostra o estado atual.
 - **Instância nova com o Blob fora usa modelos nativos.** Se houver script Groovy ativo, a curva sai com a matemática nativa. → `estadoScript` = `DESCONHECIDO` na proveniência e erro no log; a simulação depois da volta do Blob mostra a diferença, e o recálculo corrige.
 - **Leitura espera o commit de uma reconstrução em andamento.** → Espera de segundos, limitada pelo tempo limite de comando; RCSI resolve quando o banco puder mudar.
 - **Simulação em produção gera carga de leitura.** → É só leitura e não trava nada; o limite de 5.000 prazos por chamada contém o custo.
 
 ## Migration Plan
 
-1. Sem migração de banco. No build: versão do artefato e commit gravados no pacote do engine. No Blob: pastas `groovy-models/`, `cargas/` e `auditoria/` (esta com política de imutabilidade) e acesso do engine por Managed Identity. No Entra ID: registro da aplicação com os cinco papéis e atribuição à identidade do processor. No cadastro: parâmetros de cada curva em `tConfgCurva.cModDado`.
+1. Sem migração de banco. No build: versão do artefato e commit gravados no pacote do engine. No Blob: só a pasta `groovy-models/` (scripts e calendários importados), com acesso do engine por Managed Identity; nenhum dado de curva vai para o Blob. No log: retenção dos eventos `CURVA_GRAVADA` definida pela área de risco. No Entra ID: registro da aplicação com os cinco papéis e atribuição à identidade do processor. No cadastro: parâmetros de cada curva em `tConfgCurva.cModDado`.
 2. Pré-requisitos, fora deste change: tabelas brutas no contrato de D10 (conector e processor), chamada do webhook de carga pelo processor (change `conector-b3-webhook-ingest`) e cadastro das 7 curvas pelo `services/curves` (change `curves-cadastro-curvas`, arquivo `exemplo-cadastro-7-curvas.txt`), com os valores das specs.
 3. Deploy do engine com as rotas novas, sem convivência com as antigas. Os clientes internos (curve-bff) migram no mesmo release, em change próprio.
 4. **Rollback:** voltar o deploy do engine. Não há migração de banco para reverter.
@@ -288,6 +298,6 @@ O painel de acompanhamento fica no `services/curves` (change `curves-cadastro-cu
 - Quando alterar `FK_tDadoCurva_tCurvaData` para o alvo ideal (D6) e qual a política de expurgo da curva diária.
 - `cLingSist`, `cPreCalc`/`cPosCalc` e `cPreMotorCalc`/`cPosMotorCalc` de `tConfgCurva` sugerem ganchos pré e pós cálculo. Não são usados; podem virar scripts Groovy de gancho numa mudança futura.
 - Unidade de `tAnbmaCurvaPrimr.vVertcCurva` e escala de `vPrecoTx`, a confirmar com a ingestão ANBIMA.
-- Prazo de retenção da pasta `auditoria/` (exigência regulatória ou interna).
+- Prazo de retenção dos logs com `CURVA_GRAVADA` (exigência regulatória ou interna).
 - Quando o banco puder mudar: `tParmConfgCurva` em chave/valor, tabelas de auditoria e `READ_COMMITTED_SNAPSHOT`.
 - Confirmar no Bloomberg Terminal que `S0490Z ... BLC2 Curncy` é zero rate, qual a convenção de cotação e a causa do `1D` duplicado.

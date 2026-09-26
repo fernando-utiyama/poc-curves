@@ -14,7 +14,7 @@ O serviço SHALL expor (prefixo `/api/v1`), identificando a curva pelo código (
 | `PUT /curvas-mercado/{codigo}/pontos/{dataBase}` | gravar a lista completa de pontos da data-base, substituindo a atual | `Curvas.Operador` |
 | `DELETE /curvas-mercado/{codigo}/pontos/{dataBase}` | apagar todos os pontos da data-base | `Curvas.Operador` |
 
-A consulta devolve só o dado gravado; dias úteis, fatores e interpolação são do engine. Os erros, a autenticação, o `X-Correlation-Id` e o horário seguem a spec `cadastro-curva-mercado` do change `curves-cadastro-curvas`, com o código de erro adicional `PONTOS_INVALIDOS` (422).
+A consulta devolve só o dado gravado; dias úteis, fatores e interpolação são do engine. Os erros, a autenticação, o `X-Correlation-Id` e o horário seguem a spec `cadastro-curva-mercado`, com o código de erro adicional `PONTOS_INVALIDOS` (422).
 
 #### Scenario: Consulta dos pontos
 - **WHEN** o cliente chama `GET /api/v1/curvas-mercado/PRE/pontos/2026-09-14` depois da construção pelo engine
@@ -98,7 +98,7 @@ O tratamento no engine é o do requisito "Pontos no mesmo prazo do eixo" da spec
 ### Requirement: Preferência da edição manual
 A edição manual é feita pelo gestor da curva, no front, e MUST NOT ser recusada por concorrência: não há `If-Match` nem conferência de versão, e a gravação sempre se aplica sobre os pontos atuais, registrando no log o `hashPontos` anterior. A preferência sobre o engine SHALL resultar de três regras, sem coordenação por API:
 - se o engine estiver construindo a mesma curva, a edição espera a transação dele e grava por cima;
-- se a edição acontecer antes, a construção automática do engine (webhook de carga ou construção sem recálculo) encontra pontos gravados e devolve `EXISTENTE`, sem sobrescrever;
+- se a edição acontecer antes, a construção automática do engine (webhook de carga ou construção sem recálculo) encontra pontos gravados e devolve `EXISTENTE`, sem sobrescrever, com o aviso `PONTOS_DIFERENTES_DA_FONTE` quando os pontos manuais diferem do que a fonte produz;
 - só um recálculo forçado por um usuário (`forcarRecalculo=true` no engine) substitui pontos existentes, inclusive manuais.
 
 O `hashPontos` SHALL ser calculado exatamente como na spec `curve-build-pipeline` do engine: SHA-256, em hexadecimal minúsculo, das linhas `AAAA-MM-DD;valor`, em ordem de data, separadas por `\n`, com o valor na forma canônica (sem zeros à direita, sem expoente, ponto decimal; `13.900000000000` lido do banco vira `13.9`), usando o mesmo vetor de teste do engine.
@@ -109,7 +109,7 @@ O `hashPontos` SHALL ser calculado exatamente como na spec `curve-build-pipeline
 
 #### Scenario: Carga chega depois da edição
 - **WHEN** o gestor gravou pontos da `PRE` de `2026-09-15`, e depois chega o webhook de carga dessa data no engine
-- **THEN** o engine devolve a `PRE` como `EXISTENTE`, e os pontos do gestor continuam gravados
+- **THEN** o engine devolve a `PRE` como `EXISTENTE`, com o aviso `PONTOS_DIFERENTES_DA_FONTE` se os pontos do gestor diferem da fonte, e os pontos do gestor continuam gravados
 
 ### Requirement: Sem auditoria, com log
 A edição manual é contingência e MUST NOT gerar registro de auditoria. Cada `PUT` e `DELETE` bem-sucedido que altere algum ponto SHALL registrar o evento de log `PONTOS_EDITADOS` (nível `AVISO`, para ser visível), com `correlationId`, usuário, código, nome, data-base, operação (`SUBSTITUICAO` ou `EXCLUSAO`), origem (`API` ou `PLANILHA`), `idLote` (quando vier da planilha), quantidade de pontos antes e depois e `hashPontos` antes e depois, no horário de Brasília.
