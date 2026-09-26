@@ -108,7 +108,7 @@ Toda resposta, inclusive de erro e de arquivo `xlsx`, SHALL trazer o cabeçalho 
 - **THEN** a resposta traz um `X-Correlation-Id` gerado, e os logs da requisição usam o mesmo valor
 
 ### Requirement: Resolução por código e por nome
-A rota por código SHALL buscar `tCurvaMercd.cTickerIdtfdUnic` igual ao código, com comparação exata. A rota por nome SHALL comparar o nome normalizado (sem acentos, minúsculo, sem espaços nas pontas) com `tCurvaMercd.cTickerIndcd` normalizado. Linhas de `tCurvaMercd` com `cTickerIdtfdUnic` nulo (curvas primárias da fonte) MUST NOT ser encontradas por nenhuma das rotas. Toda resposta por nome SHALL trazer também o código.
+A rota por código SHALL buscar `tCurvaMercd.cTickerIdtfdUnic` igual ao código, com comparação exata. A rota por nome SHALL comparar o nome normalizado (sem acentos, minúsculo, sem espaços nas pontas) com `tCurvaMercd.cTickerIndcd` normalizado. Linhas de `tCurvaMercd` com `cTickerIdtfdUnic` nulo MUST NOT ser encontradas por nenhuma das rotas. Toda resposta por nome SHALL trazer também o código.
 
 #### Scenario: Consulta pelo nome
 - **WHEN** a `DCL` tem o nome `Cupom limpo de dólar` e o cliente chama `GET /api/v1/curvas/por-nome/2026-09-14?nome=CUPOM LIMPO DE DOLAR`

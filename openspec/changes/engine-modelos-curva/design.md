@@ -136,11 +136,11 @@ Os modelos esperam das tabelas brutas o contrato abaixo. Preenchê-las é do con
 
 | Tabela bruta | O engine espera | Situação hoje |
 |---|---|---|
-| `tBtrsCurvaPrimr` | uma linha por vértice, `cTickerIndcd` = código exato da curva no `TaxaSwap.txt`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx` em percentual | o conector classifica pela descrição (`DCL`/`DPL` viram `DOL`, `PTX`/`INP` são descartados) e o processor grava em `mkt.B3CurveRaw` |
-| `tAnbmaCurvaPrimr` | uma linha por título: `vPrecoTx` = taxa indicativa em percentual, `vVertcCurva` = prazo em dias úteis | colunas existem; unidade de `vVertcCurva` e escala de `vPrecoTx` não confirmadas |
+| `tBtrsCurvaPrimr` | uma linha por vértice, `cTickerIndcd` = nome da curva de mercado ligada, em `tCurvaPrvdr`, ao código exato da curva no `TaxaSwap.txt`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx` em percentual | o conector classifica pela descrição (`DCL`/`DPL` viram `DOL`, `PTX`/`INP` são descartados) e o processor grava em `mkt.B3CurveRaw` |
+| `tAnbmaCurvaPrimr` | uma linha por título, `cTickerIndcd` = nome da curva de mercado: `vPrecoTx` = taxa indicativa em percentual, `vVertcCurva` = prazo em dias úteis | colunas existem; unidade de `vVertcCurva` e escala de `vPrecoTx` não confirmadas |
 | `mkt.SofrCurveRaw` | `curve_member`, `tenor`, `ref_date`, `valor DECIMAL(28,12)` em percentual | tabela e ingestão inexistentes; feeder não localizado |
 
-Além das tabelas, o processor chama o webhook `POST /api/v1/cargas` depois do commit de cada carga, com a quantidade de linhas por código na fonte, e repete com o mesmo `idCarga` até receber 2xx (D22).
+Além das tabelas, o processor chama o webhook `POST /api/v1/cargas` depois do commit de cada carga, com a quantidade de linhas por código na fonte, e repete com o mesmo `idCarga` até receber 2xx (D22). Para a B3, isso está especificado no change `conector-b3-webhook-ingest` (conector publica uma mensagem por carga; o processor grava `tBtrsCurvaPrimr` e avisa o engine).
 
 ### NTN-B (ANBIMA): `NTNB_BOOTSTRAP_ANBIMA`
 
@@ -248,7 +248,7 @@ A proveniência diz quais modelos e versões rodaram, mas investigar exige o có
 - **Curva diária não persistida.** Quem precisa da curva dia a dia (a curve-api lendo `tCurvaData`) não a encontra. → A interpolação atende por prazo; a persistência entra com o alvo ideal (D6).
 - **Entidade de `tDadoCurva` do engine diverge do schema** (`dtVerticeReferencia`, `cDiaUtil`, `vDiaFator`...). → A entidade passa a ter só as quatro colunas do schema; dias e fatores são calculados.
 - **Tabelas brutas ainda fora do contrato de D10.** → Testes com fixtures; os changes do conector e do processor precisam entrar antes do deploy.
-- **`tBtrsCurvaPrimr.cTickerIndcd` tem FK para `tCurvaMercd`.** → Os códigos da fonte (`PRE`, `DCL`...) existem em `tCurvaMercd` como curvas primárias, com `cTickerIdtfdUnic` nulo, e por isso não aparecem nas rotas.
+- **`tBtrsCurvaPrimr.cTickerIndcd` tem FK para `tCurvaMercd`.** → O processor grava os vértices sob o nome da curva de mercado, mapeada pelo `tCurvaPrvdr`; não há linhas de "curva da fonte" em `tCurvaMercd`.
 - **Calendário desatualizado bloqueia a construção B3** (checagem `DU` = `cDiaUtil`). → É intencional: é melhor falhar com o vértice nomeado do que gravar fatores errados. A correção é um feriado no calendário, inclusive via Groovy, sem deploy.
 - **Groovy pode sobrescrever um nativo usado por todas as curvas.** → Validação obrigatória, fixação por curva para testar antes, e proveniência em toda resposta.
 - **Janela de até 30 segundos após uma ativação em que instâncias diferentes usam versões diferentes.** → Cada resposta e cada log informam a versão usada; quem precisa de troca imediata numa curva fixa a versão no cadastro.

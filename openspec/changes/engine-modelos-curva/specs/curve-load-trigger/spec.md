@@ -71,7 +71,7 @@ Toda construção, disparada pelo webhook ou por `POST .../construcao`, MUST fal
 - **THEN** a construção falha com `CARGA_NAO_CONCLUIDA`, e nada é gravado
 
 ### Requirement: Conferência da quantidade lida
-Antes de executar o modelo, o pipeline SHALL contar as linhas brutas lidas para o código na fonte e a data-base. Se a contagem for diferente de `linhasPorCodigo[código na fonte]` da carga registrada, a construção MUST falhar com `INSUMO_INCOMPLETO`, informando a quantidade lida e a avisada. A contagem SHALL incluir as linhas que o modelo descarta depois.
+Antes de executar o modelo, o pipeline SHALL contar as linhas brutas lidas para a curva e a data-base. Se a contagem for diferente de `linhasPorCodigo[código na fonte]` da carga registrada, a construção MUST falhar com `INSUMO_INCOMPLETO`, informando a quantidade lida e a avisada. A contagem SHALL incluir as linhas que o modelo descarta depois.
 
 #### Scenario: Leitura parcial
 - **WHEN** a carga avisou 278 linhas da `PRE`, mas a leitura encontra 150

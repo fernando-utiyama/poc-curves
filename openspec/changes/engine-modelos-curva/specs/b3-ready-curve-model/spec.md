@@ -5,7 +5,7 @@ Constrói as curvas B3 do primeiro objetivo (PRE, DCL, PTX, DPL e INP) a partir 
 ## ADDED Requirements
 
 ### Requirement: Leitura dos vértices prontos
-O modelo `PRONTA_TS_B3` SHALL exigir origem com fonte `B3` e produto `TS`; outra origem MUST resultar em `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tBtrsCurvaPrimr` com `cTickerIndcd` = código na fonte e `dBaseReft` = data-base, e gerar um ponto por linha:
+O modelo `PRONTA_TS_B3` SHALL exigir origem com fonte `B3` e produto `TS`; outra origem MUST resultar em `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tBtrsCurvaPrimr` com `cTickerIndcd` = nome da curva (o processor grava os vértices sob a curva de mercado ligada ao código na fonte em `tCurvaPrvdr`) e `dBaseReft` = data-base, e gerar um ponto por linha:
 - data do ponto = data-base + `cDiaCorri` dias corridos;
 - valor = `vPrecoTx`, sem alteração de sinal nem de escala.
 
@@ -20,8 +20,8 @@ O modelo `PRONTA_TS_B3` SHALL exigir origem com fonte `B3` e produto `TS`; outra
 - **THEN** o primeiro ponto é `2026-09-15` com valor -117,9600000
 
 #### Scenario: Nome da curva diferente do código na fonte
-- **WHEN** uma curva `DI_MERCADO` é cadastrada com origem `B3`/`TS`/`PRE`
-- **THEN** `DI_MERCADO` é construída com os mesmos pontos do código `PRE`
+- **WHEN** uma curva `DI_MERCADO` é cadastrada com origem `B3`/`TS`/`PRE`, e o processor gravou os vértices do `PRE` também sob `DI_MERCADO`
+- **THEN** `DI_MERCADO` é construída com os mesmos pontos da `DIxPRE`
 
 ### Requirement: Validação das linhas lidas
 Nenhuma linha SHALL ser descartada. A construção MUST falhar com:
