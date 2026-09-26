@@ -36,6 +36,8 @@ Para unidade `TAXA`, `cNormaDia` e `cTpoJuro` SHALL ser obrigatórios; para `PRE
 - a política `FlatForward` for usada com interpolador que não seja `Linear` ou `LogLinear`;
 - a fonte ou o produto da origem não forem os esperados pelo modelo de construção cadastrado.
 
+A situação (`cSitReg`) e a vigência da curva em `tCurvaMercd` (`dInicVgcia` a `dValidAte`) MUST NOT gerar `CADASTRO_INVALIDO`: elas só decidem se a carga constrói a curva automaticamente (spec `curve-load-trigger`). A construção pedida pelo usuário em `POST .../construcao` e a simulação SHALL construir mesmo com a curva `INATIVO` ou com a data-base fora da vigência, com o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA` na resposta, no log, na auditoria e na memória de cálculo. Consultar e interpolar pontos gravados não dependem da situação nem da vigência.
+
 Nenhum valor padrão SHALL ser usado além dos dois marcados na tabela.
 
 #### Scenario: Cadastro completo da PRE
@@ -103,12 +105,12 @@ O valor de um prazo SHALL ser obtido pela conversão inversa do `y` calculado, u
 ### Requirement: Interpoladores
 Entre dois pontos consecutivos `(x_i, y_i)` e `(x_{i+1}, y_{i+1})`, com `w = (x − x_i)/(x_{i+1} − x_i)`, cada interpolador SHALL calcular:
 - `Linear`: `y = y_i + w·(y_{i+1} − y_i)`;
-- `LogLinear`: `y = y_i · (y_{i+1}/y_i)^w`; todos os `y` da curva MUST ser positivos, ou o cadastro é rejeitado na consulta com `CADASTRO_INVALIDO`;
+- `LogLinear`: `y = y_i · (y_{i+1}/y_i)^w`; todos os `y` da curva MUST ser positivos, ou a interpolação falha com `PONTOS_NAO_INTERPOLAVEIS`, citando os pontos (pode acontecer com preço ou pontos não positivos gravados à mão no `services/curves`); a consulta dos pontos gravados continua funcionando;
 - `BackwardFlat`: `y = y_{i+1}`;
 - `ForwardFlat`: `y = y_i`;
 - `Cubic`: spline cúbica natural (segunda derivada nula no primeiro e no último ponto) sobre todos os pontos.
 
-Os pontos SHALL ser ordenados por data, e dois pontos com a mesma data MUST NOT existir. As funções do Manual de Curvas B3 SHALL ser obtidas só por configuração:
+Os pontos SHALL ser ordenados por data, e dois pontos com a mesma data MUST NOT existir. Os interpoladores SHALL receber `x` estritamente crescentes (requisito "Pontos no mesmo prazo do eixo"). As funções do Manual de Curvas B3 SHALL ser obtidas só por configuração:
 
 | Função B3 | Grandeza + interpolador | Eixo | Cotação |
 |---|---|---|---|
@@ -187,7 +189,7 @@ Datas-base, datas de ponto e prazos SHALL ser datas puras, sem hora nem fuso. To
 - **THEN** o instante registrado é `...T22:30:00...-03:00`, com a data de Brasília
 
 ### Requirement: Construção grava apenas os pontos
-Construir uma curva numa data-base SHALL exigir a carga concluída e conferir a quantidade lida (spec `curve-load-trigger`), executar o modelo de construção cadastrado, arredondar cada ponto e gravar em `tDadoCurva` uma linha por ponto: `dBaseReft` = data-base, `cTickerIndcd` = nome da curva, `dVertcReft` = data do ponto, `vPrecoTx` = valor arredondado. Além dos pontos, SHALL ser gravados só a auditoria no Blob (antes do commit) e as colunas `dBaseReft` e `cUsuarCalc` de `tCurvaMercd`, conforme a spec `curve-audit-history`; nada é gravado em `tCurvaData`, `tDadoVertcCurva` ou `tMtrizCurva`, e o schema não é alterado. A leitura do cadastro, a execução do modelo, a remoção dos pontos anteriores (no recálculo) e a gravação SHALL ocorrer numa única transação, que trava a linha da curva em `tCurvaMercd` até o fim. Uma construção ou edição da mesma curva que não obtiver a trava em 30 segundos MUST falhar com `CONSTRUCAO_EM_ANDAMENTO`.
+Construir uma curva numa data-base SHALL exigir a carga concluída e conferir a quantidade lida (spec `curve-load-trigger`), executar o modelo de construção cadastrado, arredondar cada ponto e gravar em `tDadoCurva` uma linha por ponto: `dBaseReft` = data-base, `cTickerIndcd` = nome da curva, `dVertcReft` = data do ponto, `vPrecoTx` = valor arredondado. Além dos pontos, SHALL ser gravados só a auditoria no Blob (antes do commit) e as colunas `dBaseReft` e `cUsuarCalc` de `tCurvaMercd`, conforme a spec `curve-audit-history`; nada é gravado em `tCurvaData`, `tDadoVertcCurva` ou `tMtrizCurva`, e o schema não é alterado. A leitura do cadastro, a execução do modelo, a remoção dos pontos anteriores (no recálculo) e a gravação SHALL ocorrer numa única transação, que trava a linha da curva em `tCurvaMercd` até o fim. Uma construção da mesma curva que não obtiver a trava em 30 segundos MUST falhar com `CONSTRUCAO_EM_ANDAMENTO`. A edição manual de pontos no `services/curves` usa a mesma trava (change `curves-dado-curva`), de modo que construção e edição nunca se misturam.
 
 #### Scenario: Construção da PRE
 - **WHEN** a `PRE` de `2026-09-14` é construída
@@ -214,15 +216,32 @@ Construir uma curva e data que já tem pontos gravados, sem recálculo, SHALL de
 - **WHEN** a construção de `PRE` em `2026-09-14` é pedida de novo sem recálculo
 - **THEN** a resposta tem situação `EXISTENTE` e o modelo de construção não é executado
 
+### Requirement: Pontos no mesmo prazo do eixo
+Com o eixo `Business252`, um ponto gravado em dia não útil tem o mesmo `DU` do dia útil anterior (contagem `(B, d]`), e dois pontos com o mesmo `x` levariam a uma divisão por zero em `w`. Pontos assim, e pontos na data-base ou antes dela, só entram por edição manual no `services/curves`, que os grava com aviso: os modelos de construção nativos não geram datas em dia não útil. A base comum de interpolação, por onde passam todos os interpoladores (nativos e Groovy, locais e `Cubic`), SHALL tratar isso antes de chamar o interpolador:
+- um ponto com `x` menor ou igual a zero (data igual ou anterior à data-base, ou dia não útil logo depois dela) SHALL ser descartado da interpolação, com o aviso `PONTO_DESCARTADO_PRAZO_NAO_POSITIVO`;
+- um ponto em dia não útil sem outro ponto no mesmo `x` SHALL ser usado normalmente, no `x` do seu `DU`;
+- quando dois ou mais pontos têm o mesmo `x`, SHALL ficar só o de menor data, que é o dia útil quando ele existe; os demais SHALL ser descartados da interpolação;
+- cada ponto descartado por mesmo prazo SHALL gerar o aviso `PONTO_DESCARTADO_MESMO_PRAZO` (data descartada, data mantida, `x`) na resposta da consulta, da interpolação, da construção e da simulação, no log e na memória de cálculo, onde o ponto aparece marcado como descartado.
+
+Os pontos gravados em `tDadoCurva` MUST NOT ser alterados por esse tratamento: consultar os pontos devolve todos os gravados, com o aviso. Os avisos de descarte SHALL aparecer nas mesmas saídas. Com eixo de dias corridos (`Actual360`, `Actual365Fixed`, `Thirty360`), datas diferentes têm `x` diferentes e só o descarte de prazo não positivo se aplica. Se, depois dos descartes, não sobrar nenhum ponto, a consulta MUST falhar com `CURVA_NAO_CONSTRUIDA`.
+
+#### Scenario: Ponto manual em feriado junto do dia útil anterior
+- **WHEN** a `PRE` de `2026-12-21` tem pontos gravados em `2026-12-24` (quinta-feira) e em `2026-12-25` (feriado), ambos com `DU` = 3
+- **THEN** a interpolação usa o ponto de `2026-12-24`, descarta o de `2026-12-25` e traz o aviso `PONTO_DESCARTADO_MESMO_PRAZO` com as duas datas
+
+#### Scenario: Ponto manual em feriado sozinho
+- **WHEN** a `PRE` de `2026-12-21` tem ponto gravado em `2026-12-25` e nenhum em `2026-12-24`
+- **THEN** o ponto é usado com `DU` = 3, sem descarte e sem aviso
+
 ### Requirement: Interpolação sob demanda a partir dos pontos gravados
-Consultar e interpolar SHALL ler os pontos gravados em `tDadoCurva` e montar a curva a cada chamada, com o cadastro vigente na data-base. O engine MUST NOT manter cache de curva nesta fase. Se não houver pontos gravados na data, a consulta MUST falhar com `CURVA_NAO_CONSTRUIDA`.
+Consultar e interpolar SHALL ler os pontos gravados em `tDadoCurva` e montar a curva a cada chamada, com o cadastro vigente na data-base. O engine MUST NOT manter cache de curva nesta fase. Se não houver pontos gravados na data, a consulta MUST falhar com `CURVA_NAO_CONSTRUIDA`. Os pontos podem ter sido gravados à mão pelo `services/curves`, inclusive em dia não útil; o tratamento é o do requisito "Pontos no mesmo prazo do eixo".
 
 #### Scenario: Curva não construída
 - **WHEN** a interpolação da `DPL` é pedida para uma data sem pontos gravados
 - **THEN** a consulta falha com `CURVA_NAO_CONSTRUIDA` informando `DPL` e a data
 
 ### Requirement: Proveniência e hash dos pontos
-Toda resposta de construção SHALL informar o modelo de construção, o interpolador e o calendário usados, cada um com nome, origem (`JAVA` ou `GROOVY`) e, para Groovy, versão e hash do script, a versão do engine (versão do artefato e commit, fixada no build), o `estadoScript` (`ATUAL`, `DESATUALIZADO` ou `DESCONHECIDO`, spec `curve-engine-resilience`), os avisos da construção (ex.: `CARGA_NAO_VERIFICADA`, `PONTOS_DE_CARGA_ANTERIOR`) e o `hashPontos`: SHA-256, em hexadecimal minúsculo, do texto formado pelas linhas `AAAA-MM-DD;valor` de cada ponto gravado, em ordem de data, com o valor arredondado em notação simples (sem expoente) e ponto como separador decimal, separadas por `\n`. As respostas de consulta e de interpolação SHALL informar o interpolador e o calendário da mesma forma, e o `hashPontos` dos pontos lidos.
+Toda resposta de construção SHALL informar o modelo de construção, o interpolador e o calendário usados, cada um com nome, origem (`JAVA` ou `GROOVY`) e, para Groovy, versão e hash do script, a versão do engine (versão do artefato e commit, fixada no build), o `estadoScript` (`ATUAL`, `DESATUALIZADO` ou `DESCONHECIDO`, spec `curve-engine-resilience`), os avisos da construção (ex.: `CARGA_NAO_VERIFICADA`, `PONTOS_DE_CARGA_ANTERIOR`) e o `hashPontos`: SHA-256, em hexadecimal minúsculo, do texto formado pelas linhas `AAAA-MM-DD;valor` de cada ponto gravado, em ordem de data, separadas por `\n`, sem `\n` no fim. O valor SHALL ser escrito na forma canônica, independente da escala com que foi lido do banco (`DECIMAL(28,12)` devolve 12 casas): sem zeros à direita, sem expoente, com ponto decimal, sem ponto quando inteiro e `0` para zero (em Java, `stripTrailingZeros().toPlainString()`, com `0` para zero). Ex.: `13.9000000` e `13.900000000000` são escritos `13.9`; `-117.9600000`, `-117.96`. O mesmo vetor de teste SHALL ser usado pelo engine e pelo `services/curves`: os pontos `2026-09-15` = `13.9000000` e `2026-09-16` = `-117.9600000` formam o texto `2026-09-15;13.9\n2026-09-16;-117.96`. As respostas de consulta e de interpolação SHALL informar o interpolador e o calendário da mesma forma, e o `hashPontos` dos pontos lidos.
 
 #### Scenario: Interpolador sobrescrito por Groovy
 - **WHEN** a interpolação é pedida enquanto um script Groovy ativo sobrescreve `LogLinear`
@@ -232,17 +251,16 @@ Toda resposta de construção SHALL informar o modelo de construção, o interpo
 - **WHEN** a mesma curva e data é reconstruída sem mudança de insumo, cadastro ou modelo
 - **THEN** o `hashPontos` da reconstrução é igual ao da construção anterior
 
-### Requirement: Log estruturado da construção e da edição
+### Requirement: Log estruturado da construção
 O engine SHALL registrar em log estruturado (JSON), com `correlationId`, código, nome e data-base, os eventos:
 - `CONSTRUCAO_CONCLUIDA`: situação, modelos com origem, versão e hash, cadastro vigente (todos os itens), quantidade de pontos, `hashPontos`, duração em milissegundos;
 - `CONSTRUCAO_FALHOU`: código de erro e mensagem;
 - `INSUMO_DESCARTADO`: linha e motivo;
-- `PONTOS_EDITADOS`: usuário, quantidade de pontos antes e depois, `hashPontos` antes e depois;
 - `SIMULACAO_EXECUTADA`: status e `hashPontos`.
 
-#### Scenario: Edição rastreável
-- **WHEN** os pontos da `PRE` de `2026-09-14` são editados pela API
-- **THEN** o log tem um evento `PONTOS_EDITADOS` com o usuário e os dois `hashPontos`, que permite distinguir os pontos editados dos pontos construídos
+#### Scenario: Construção rastreável
+- **WHEN** a `PRE` de `2026-09-14` é construída
+- **THEN** o log tem um evento `CONSTRUCAO_CONCLUIDA` com os modelos, o cadastro vigente e o `hashPontos`, que permite distinguir os pontos construídos de pontos editados depois no `services/curves`
 
 ### Requirement: Determinismo
 Com os mesmos insumos, o mesmo cadastro e as mesmas versões de modelo, a construção MUST gravar exatamente os mesmos pontos, e a interpolação MUST devolver exatamente os mesmos valores.

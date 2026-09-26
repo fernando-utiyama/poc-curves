@@ -50,7 +50,7 @@ Se o Blob estiver inacessível quando o cache de `estado.json` vencer, a instân
 - **THEN** a instância fica pronta, as curvas são construídas com os modelos nativos, `estadoScript` = `DESCONHECIDO`, e o log tem `ESTADO_SCRIPT_DESCONHECIDO`
 
 ### Requirement: Blob fora nunca bloqueia construção nem consulta
-Com o Blob inacessível, construção, reconstrução, edição de pontos, webhook de carga, consulta, interpolação e simulação SHALL funcionar com o que houver: auditoria pendente no log (spec `curve-audit-history`), carga não registrada ou não verificada (spec `curve-load-trigger`) e estado de script desatualizado ou desconhecido. Só as operações que existem para ler ou escrever no Blob (gestão de scripts, consulta de histórico, importação de calendário) MAY falhar com `BLOB_INDISPONIVEL`.
+Com o Blob inacessível, construção, reconstrução, webhook de carga, consulta, interpolação e simulação SHALL funcionar com o que houver: auditoria pendente no log (spec `curve-audit-history`), carga não registrada ou não verificada e registro de cargas pendente (spec `curve-load-trigger`) e estado de script desatualizado ou desconhecido. `GET /curvas/situacao` e `GET /valores-cadastro` SHALL responder com o que houver e com aviso (`REGISTRO_DE_CARGAS_INDISPONIVEL`; modelos Groovy do último estado conhecido). Só as operações que existem para ler ou escrever no Blob (gestão de scripts, consulta de histórico, importação de calendário) MAY falhar com `BLOB_INDISPONIVEL`.
 
 #### Scenario: Construção com o Blob fora
 - **WHEN** o Blob está inacessível e o webhook da carga B3 chega
@@ -87,7 +87,7 @@ O engine SHALL publicar pelo Micrometer, com as tags `codigo` e `codigoErro` qua
 - histograma de duração de construção, de interpolação e de cada dependência;
 - contador de tempos esgotados por dependência;
 - gauge da idade, em segundos, do estado de script em uso;
-- gauges de auditorias e registros de carga pendentes de gravação no Blob.
+- gauges de auditorias, registros de carga e atualizações de situação pendentes de gravação no Blob.
 
 #### Scenario: Alerta de falha de construção
 - **WHEN** a construção da `DCL` falha com `INSUMO_INCOMPLETO`

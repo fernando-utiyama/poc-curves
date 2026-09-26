@@ -20,7 +20,7 @@ A motivação está no proposal e o comportamento normativo (fórmulas, regras, 
 | `tConfgCurva.cModDado` | parâmetros da curva em JSON (D4) |
 | `tBtrsCurvaPrimr` | bruto B3: `cDiaCorri`, `cDiaUtil`, `vPrecoTx` |
 | `tAnbmaCurvaPrimr` | bruto ANBIMA: `vVertcCurva`, `vPrecoTx` |
-| `tDadoCurva` | pontos gravados pelo engine: `dBaseReft`, `cTickerIndcd`, `dVertcReft`, `vPrecoTx` |
+| `tDadoCurva` | pontos gravados pelo engine e pela edição manual no `services/curves`: `dBaseReft`, `cTickerIndcd`, `dVertcReft`, `vPrecoTx` |
 
 **Modelo de dados.** `tDadoCurva` (dado curva) guarda os **pontos** da curva na data-base. `tCurvaData` (curva data) seria a curva interpolada diária e tem FK para `tDadoCurva` (`FK_tDadoCurva_tCurvaData`); não é gravada nesta fase. `tDadoVertcCurva` e `tMtrizCurva` (reservada a superfícies) também não são gravadas.
 
@@ -43,7 +43,7 @@ tabela bruta ─ modelo de construção ─► tDadoCurva (pontos)
 - Data quality (validação estatística, checagens de sanidade, aprovação) e publicação em Kafka: data quality será uma feature futura. **Nesta fase, curva gravada é curva liberada para consumo**; não há estado de aprovação.
 - Cache de curva.
 - Módulo Maven separado para o núcleo.
-- CRUD de cadastro de curva e provedor: é do serviço de cadastro (`acts-srv-curvas` no sistema real; `services/curves` no poc, mudança futura). O engine só lê o cadastro. Os testes usam fixtures com o cadastro definido nas specs.
+- CRUD de cadastro de curva e provedor e edição manual dos pontos: são do `services/curves` (`acts-srv-curvas` no sistema real), nos changes `curves-cadastro-curvas` e `curves-dado-curva`; o CRUD de provedores é de outro dev. O engine só lê o cadastro. Os testes usam fixtures com o cadastro definido nas specs.
 - Preencher as tabelas brutas: é do conector e do processor (D10).
 
 ## Decisions
@@ -91,7 +91,7 @@ Itens, colunas, valores aceitos e obrigatoriedade estão na spec `curve-build-pi
 O contrato está na spec `curve-extension-models`. O modelo recebe um `ContextoConstrucao` com o cadastro, a data-base, o calendário e o `LeitorInsumos`, que é o único acesso às tabelas brutas. Scripts Groovy não acessam o banco. Cada modelo declara a fonte e o produto que aceita (`PRONTA_TS_B3`: `B3`/`TS`; `NTNB_BOOTSTRAP_ANBIMA`: `ANBIMA`/`TP`; `SOFR_ZERO_BLOOMBERG`: `BLOOMBERG`/`ZR`), e o pipeline rejeita cadastro que aponte um modelo para outra fonte. O modelo devolve pontos sem arredondamento; o pipeline arredonda e grava.
 
 ### D6. Gravação: só os pontos, numa transação travada
-A construção grava em `tDadoCurva` só os pontos arredondados. A transação começa com um `SELECT` com trava de escrita (`PESSIMISTIC_WRITE`, tempo limite de 30 segundos) na linha da curva em `tCurvaMercd`, e a edição de pontos usa a mesma trava. Isso serializa construções e edições da mesma curva entre réplicas sem tabela nova. Quem não obtém a trava recebe `CONSTRUCAO_EM_ANDAMENTO`. A simulação não trava nada.
+A construção grava em `tDadoCurva` só os pontos arredondados. A transação começa com um `SELECT` com trava de escrita (`PESSIMISTIC_WRITE`, tempo limite de 30 segundos) na linha da curva em `tCurvaMercd`, e a edição manual de pontos no `services/curves` usa a mesma trava. Isso serializa construções e edições da mesma curva entre réplicas sem tabela nova. Quem não obtém a trava recebe `CONSTRUCAO_EM_ANDAMENTO`. A simulação não trava nada.
 
 A proveniência vai na resposta, no log e no registro de auditoria do Blob (D23); o banco não tem tabela para ela, porque `tMtrizCurva` é de superfícies.
 
@@ -127,16 +127,16 @@ Rotas, parâmetros, corpos e erros estão na spec `curve-engine-api`. Os control
 
 Toda consulta relê os pontos de `tDadoCurva` e monta a curva na hora: são no máximo algumas centenas de linhas por curva e data. **Alternativa rejeitada nesta fase:** cache do objeto de curva, que exigiria invalidação entre réplicas na edição e na reconstrução. É fonte de erro sem ganho medido; entra depois, se a latência pedir.
 
-**Código e nome.** A rota por código busca `cTickerIdtfdUnic`, e a rota por nome compara o nome normalizado com `cTickerIndcd`. As duas resolvem para `cTickerIndcd` e usam os mesmos serviços. O nome vai em query, não no path, porque tem espaço, acento e `/`. **Alternativa rejeitada:** escrita pelo nome. Nome é rótulo e pode mudar ou colidir, então operações que alteram dados ficam presas ao código.
+**Código e nome.** A rota por código busca `cTickerIdtfdUnic`, e a rota por nome compara o nome normalizado com `cTickerIndcd`. As duas resolvem para `cTickerIndcd` e usam os mesmos serviços. O nome vai em query, não no path, porque tem espaço, acento e `/`. **Alternativa rejeitada:** escrita pelo nome. O nome tem espaço e acento e pode colidir depois de normalizado (`NOME_AMBIGUO`), então operações que alteram dados ficam presas ao código. O nome é imutável no cadastro, por ser a chave das FKs, e por isso é ele que indexa o que precisa sobreviver a uma troca de código (auditoria e registro de cargas).
 
-**Edição de pontos:** valida a lista inteira, apaga e insere os pontos na transação travada (D6), relê o que ficou gravado e registra `PONTOS_EDITADOS`.
+**Edição de pontos:** não é do engine. A edição manual é do `services/curves` (change `curves-dado-curva`), que grava `tDadoCurva` com a mesma trava por curva de D6 e calcula o `hashPontos` pela mesma fórmula. O engine só percebe a edição pelos `hashPontos`.
 
 ### D10. O engine só lê as tabelas brutas
 Os modelos esperam das tabelas brutas o contrato abaixo. Preenchê-las é do conector e do processor, em changes próprios. Nos testes, as tabelas são carregadas por fixture.
 
 | Tabela bruta | O engine espera | Situação hoje |
 |---|---|---|
-| `tBtrsCurvaPrimr` | uma linha por vértice, `cTickerIndcd` = nome da curva de mercado ligada, em `tCurvaPrvdr`, ao código exato da curva no `TaxaSwap.txt`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx` em percentual | o conector classifica pela descrição (`DCL`/`DPL` viram `DOL`, `PTX`/`INP` são descartados) e o processor grava em `mkt.B3CurveRaw` |
+| `tBtrsCurvaPrimr` | uma linha por vértice, `cTickerIndcd` = nome da curva de mercado ligada, em `tCurvaPrvdr`, ao código exato da curva no `TaxaSwap.txt`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx` em percentual | na `develop`, o conector classifica pela descrição (`DCL`/`DPL` viram `DOL`, `PTX`/`INP` são descartados) e o processor grava em `mkt.B3CurveRaw`; corrigido no change `conector-b3-webhook-ingest` |
 | `tAnbmaCurvaPrimr` | uma linha por título, `cTickerIndcd` = nome da curva de mercado: `vPrecoTx` = taxa indicativa em percentual, `vVertcCurva` = prazo em dias úteis | colunas existem; unidade de `vVertcCurva` e escala de `vPrecoTx` não confirmadas |
 | `mkt.SofrCurveRaw` | `curve_member`, `tenor`, `ref_date`, `valor DECIMAL(28,12)` em percentual | tabela e ingestão inexistentes; feeder não localizado |
 
@@ -190,7 +190,7 @@ Logs JSON (o engine já tem `logstash-logback-encoder`) com `correlationId`, có
 
 Roteiro para "a curva X da data D está errada":
 1. Baixar `GET /curvas/X/D?formato=xlsx` e anotar o `hashPontos` gravado.
-2. Consultar `GET /curvas/X/D/historico`: a linha mais recente diz se os pontos vieram de construção, reconstrução ou edição, com usuário, motivo, `idCarga` e `hashPontos`. Os pontos substituídos estão em `historico/{idAuditoria}`.
+2. Consultar `GET /curvas/X/D/historico`: o registro mais recente diz se os pontos vieram de construção ou reconstrução, com usuário, `idCarga` e `hashPontos`. Se o `hashPontos` gravado for diferente do desse registro, houve edição manual depois, no `services/curves`, cujo log traz o usuário. Os pontos substituídos por um recálculo estão em `historico/{idAuditoria}`.
 3. Baixar `GET /curvas/X/D/simulacao?formato=xlsx`. Se o `hashPontos` simulado for igual ao gravado, a construção fez o que o insumo e o cadastro atuais mandam, e o erro está no insumo (aba `Insumos`) ou no cadastro (aba `Resumo`). Se for diferente, a coluna `Diferenca` mostra quais pontos mudaram desde a construção, e o cadastro registrado na auditoria da construção pode ser comparado com o do `Resumo`.
 4. Se a simulação falhar, `Resumo` e `Eventos` dão o erro, e `Insumos` mostra a linha.
 5. Para um prazo interpolado suspeito: `GET /curvas/X/D/interpolacao?du=N&formato=xlsx`, que mostra os vizinhos, o `W` e o `Y` de cada prazo.
@@ -209,7 +209,7 @@ O processor é quem sabe que terminou de gravar o bruto, então é ele que avisa
 
 ### D23. Auditoria sem mudar o schema: Blob imutável + colunas de cálculo de `tCurvaMercd`
 O banco não pode ser alterado nesta fase. A trilha fica em dois lugares:
-- **Histórico completo no Blob:** um registro imutável por gravação de pontos, em `auditoria/{codigo}/{dataBase}/`, com usuário, motivo, carga, `hashPontos` antes e depois, proveniência e os pontos substituídos (spec `curve-audit-history`). A pasta tem política de imutabilidade do Azure (retenção por tempo), então nem o próprio engine consegue apagar.
+- **Histórico completo no Blob:** um registro imutável por construção e por recálculo (a edição manual de pontos é contingência, feita no `services/curves`, e não é auditada), em `auditoria/{nome}/{dataBase}/` (pelo nome, que é imutável, porque o código pode mudar no cadastro), com usuário, carga, `hashPontos` antes e depois, proveniência e os pontos substituídos (spec `curve-audit-history`). A pasta tem política de imutabilidade do Azure (retenção por tempo), então nem o próprio engine consegue apagar.
 - **Resumo em `tCurvaMercd`:** a construção atualiza `dBaseReft` (maior data-base construída) e `cUsuarCalc` (quem calculou), colunas do schema oficial que não eram usadas por ninguém (o `curve-api-legado` só lê `cUsuarCalc`). É a mesma linha que a construção já trava (D6), então não há custo extra de concorrência.
 
 **Consistência entre Blob e banco.** O Blob não participa da transação. O registro é gravado **antes** do commit. Se o Blob falhar, a gravação dos pontos segue (o Blob nunca bloqueia construção, D26): o registro completo vai para o log (`AUDITORIA_PENDENTE`), que passa a ser a cópia de segurança, e é regravado no Blob em segundo plano quando ele voltar. Se a instância cair antes disso, o registro fica só no log. Se o commit falhar depois da gravação no Blob, fica um registro órfão, marcado com `.desfeita.json` e mostrado como `DESFEITA` no histórico.
@@ -241,6 +241,18 @@ A proveniência diz quais modelos e versões rodaram, mas investigar exige o có
 - **Regressão com muitos pregões:** o oráculo contra a B3 roda sobre pelo menos 12 meses de `TaxaSwap.txt`, cobrindo os feriados móveis e a virada de ano, onde erros de calendário aparecem. Somam-se testes de propriedade (ponto preservado, determinismo, ida e volta taxa↔fator em valores aleatórios) e um teste de precisão do `DecimalMath` contra uma referência de alta precisão.
 - **Sem contrato de API versionado nesta fase.**
 
+### D30. Situação e vigência da curva só valem para a construção automática
+Inativar a curva, ou deixar a data-base fora da vigência dela no cadastro, é uma decisão de não construí-la no dia a dia. A carga respeita isso e devolve a curva como `IGNORADA`, sem erro. A construção pedida por um usuário, porém, é uma ação consciente (reprocessar uma data antiga de uma curva já desativada, testar uma curva antes de ativá-la) e é executada, com o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA`. Consulta e interpolação nunca dependem disso. **Alternativa rejeitada:** `CADASTRO_INVALIDO` em toda construção, que impediria o reprocessamento histórico.
+
+### D31. Interpolação tolerante a pontos gravados à mão
+A edição manual no `services/curves` só recusa inconsistência de banco; regra de negócio vira aviso (change `curves-dado-curva`). Por isso o engine precisa conviver com pontos que nenhum modelo geraria: em fim de semana ou feriado, na data-base ou antes dela. A base comum de interpolação, por onde passam todos os interpoladores, inclusive `Cubic` e Groovy, descarta com aviso os pontos de prazo não positivo e, no mesmo prazo do eixo, fica com o de menor data. Os pontos gravados nunca são alterados, e o aviso aparece em toda saída. O que não tem tratamento seguro (preço ou pontos não positivos no `LogLinear`) falha com `PONTOS_NAO_INTERPOLAVEIS`, citando os pontos. **Alternativa rejeitada:** recusar a consulta com qualquer ponto fora da regra, que deixaria a curva inutilizável até alguém corrigir, justamente quando a edição manual foi o recurso de contingência.
+
+### D32. Valores aceitos gerados do validador
+O front e a planilha do cadastro precisam das listas de valores aceitos, e os modelos crescem com Groovy sem deploy. `GET /api/v1/valores-cadastro` é gerado dos mesmos enums e da mesma tabela que o validador usa, com os modelos Groovy ativos, e um teste garante a ida e volta. O `services/curves` repassa essa rota ao front. **Alternativa rejeitada:** só `enum` no Swagger, que não mostra os modelos Groovy nem as regras de combinação.
+
+### D33. Situação das construções para o painel do gestor
+O painel de acompanhamento fica no `services/curves` (change `curves-cadastro-curvas`), que já tem o cadastro e os pontos. O que só o engine sabe (carga recebida, última tentativa, erro, `hashPontos` da última construção) sai por uma rota só de leitura, `GET /api/v1/curvas/situacao`, lida do registro de cargas, que passou a guardar a última tentativa e a última construção de cada curva, indexadas pelo nome. **Alternativa rejeitada:** o curves ler direto `cargas/` no Blob, que o prenderia ao formato interno do engine.
+
 ## Risks / Trade-offs
 
 - **Parâmetros em JSON numa coluna legada (`cModDado`).** Outro sistema pode usar essa coluna com outro sentido. → Confirmar com o dono do schema antes do apply; o engine rejeita qualquer conteúdo que não seja o JSON esperado, então um uso diferente aparece como `CADASTRO_INVALIDO`, nunca como curva errada.
@@ -257,6 +269,7 @@ A proveniência diz quais modelos e versões rodaram, mas investigar exige o có
 - **Escala e unidade dos brutos ANBIMA e SOFR não confirmadas** (percentual, dias úteis). → A checagem do dia 15 (D11) pega a unidade da NTN-B. A escala aparece na primeira simulação com dado real (uma taxa de 0,06 em vez de 6 salta aos olhos na planilha).
 - **Natureza zero rate e convenção (`Actual360`/`Simple`) do SOFR vêm de fonte de terceiro.** → Confirmar no Terminal antes do apply. A convenção é cadastro. Se for par rate, o modelo ganha um passo de bootstrap sem mudar D15 e D16.
 - **Republicação da fonte deixa a curva gravada desatualizada até alguém recalcular.** → O webhook devolve o aviso `PONTOS_DE_CARGA_ANTERIOR`, o log registra `CARGA_REPUBLICADA` com nível `AVISO` (base para alerta), e a planilha mostra o `idCarga` da carga registrada ao lado do que gerou os pontos.
+- **Registro de cargas desatualizado depois de uma falha do Blob.** Se a instância cair antes de regravar a situação de uma curva, o painel do `services/curves` pode mostrar uma curva construída como `EDITADA_MANUALMENTE`. → A situação real está nos pontos e na auditoria; o log tem `REGISTRO_CARGA_PENDENTE`, e a próxima construção ou recálculo corrige o registro.
 - **Processor sem retry perde o gatilho.** → A curva não é construída; um alerta de curva não construída até o horário combinado pega o caso, e a construção manual continua possível depois que a carga é registrada.
 - **Auditoria no Blob fora da transação do banco.** → Gravada antes do commit; órfãos marcados como `DESFEITA`; com o Blob fora, a cópia fica no log até ser regravada (D23). Uma instância que cai antes de regravar deixa o registro só no log, que precisa ter retenção compatível.
 - **Instância nova com o Blob fora usa modelos nativos.** Se houver script Groovy ativo, a curva sai com a matemática nativa. → `estadoScript` = `DESCONHECIDO` na proveniência e erro no log; a simulação depois da volta do Blob mostra a diferença, e o recálculo corrige.
@@ -266,7 +279,7 @@ A proveniência diz quais modelos e versões rodaram, mas investigar exige o có
 ## Migration Plan
 
 1. Sem migração de banco. No build: versão do artefato e commit gravados no pacote do engine. No Blob: pastas `groovy-models/`, `cargas/` e `auditoria/` (esta com política de imutabilidade) e acesso do engine por Managed Identity. No Entra ID: registro da aplicação com os cinco papéis e atribuição à identidade do processor. No cadastro: parâmetros de cada curva em `tConfgCurva.cModDado`.
-2. Pré-requisitos, fora deste change: tabelas brutas no contrato de D10 (conector e processor), chamada do webhook de carga pelo processor e cadastro das 7 curvas pelo processo de cadastro do projeto, com os valores das specs.
+2. Pré-requisitos, fora deste change: tabelas brutas no contrato de D10 (conector e processor), chamada do webhook de carga pelo processor (change `conector-b3-webhook-ingest`) e cadastro das 7 curvas pelo `services/curves` (change `curves-cadastro-curvas`, arquivo `exemplo-cadastro-7-curvas.txt`), com os valores das specs.
 3. Deploy do engine com as rotas novas, sem convivência com as antigas. Os clientes internos (curve-bff) migram no mesmo release, em change próprio.
 4. **Rollback:** voltar o deploy do engine. Não há migração de banco para reverter.
 

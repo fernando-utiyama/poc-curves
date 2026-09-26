@@ -24,7 +24,9 @@ O engine SHALL expor `POST /api/v1/cargas`, com o corpo:
 - **THEN** o engine registra a carga e constrói as curvas cadastradas com origem `B3`/`TS` cujo código na fonte está na carga
 
 ### Requirement: Registro durável da carga
-Antes de construir, o engine SHALL gravar a carga no Blob Storage em `cargas/{fonte}/{produto}/{dataBase}.json`, com escrita condicional por ETag, no formato `{ "idCarga", "recebidaEm", "linhasPorCodigo", "curvas": { "{codigo}": { "idCarga", "situacao", "codigoErro", "hashPontos", "em" } }, "historico": [ { "idCarga", "recebidaEm" } ] }`. Uma carga com `idCarga` diferente para a mesma fonte, produto e data-base SHALL substituir `idCarga` e `linhasPorCodigo`, e SHALL acrescentar a anterior ao `historico`. O registro SHALL ser visível a todas as instâncias. Se o Blob estiver inacessível, o webhook MUST NOT falhar: o engine SHALL construir usando a carga recebida no corpo da requisição, registrar `CARGA_NAO_REGISTRADA` com nível `ERRO` e tentar gravar o registro no Blob em segundo plano a cada 60 segundos até conseguir.
+Antes de construir, o engine SHALL gravar a carga no Blob Storage em `cargas/{fonte}/{produto}/{dataBase}.json`, com escrita condicional por ETag, no formato `{ "idCarga", "recebidaEm", "linhasPorCodigo", "curvas": { "{nome da curva}": { "ultimaTentativa": { "situacao", "codigoErro", "mensagem", "avisos", "acionadoPor", "usuario", "em", "duracaoMs" }, "ultimaConstrucao": { "idCarga", "hashPontos", "em" } } }, "historico": [ { "idCarga", "recebidaEm" } ] }`. `curvas` é indexado pelo nome, que é imutável. `ultimaTentativa` SHALL ser atualizada a cada tentativa de construção da curva nessa data, pela carga (`acionadoPor` = `CARGA`) ou por `POST .../construcao` (`API`), com sucesso, `EXISTENTE`, `IGNORADA` ou falha; `ultimaConstrucao` SHALL ser atualizada só quando pontos são gravados (`CONSTRUIDA` ou `RECONSTRUIDA`), com o `idCarga` que os gerou e o `hashPontos` gravado. Uma carga com `idCarga` diferente para a mesma fonte, produto e data-base SHALL substituir `idCarga` e `linhasPorCodigo`, e SHALL acrescentar a anterior ao `historico`. O registro SHALL ser visível a todas as instâncias. Se o Blob estiver inacessível, o webhook MUST NOT falhar: o engine SHALL construir usando a carga recebida no corpo da requisição, registrar `CARGA_NAO_REGISTRADA` com nível `ERRO` e tentar gravar o registro no Blob em segundo plano a cada 60 segundos até conseguir, com os resultados das curvas.
+
+Toda atualização do registro (carga, `ultimaTentativa`, `ultimaConstrucao`) SHALL usar `If-Match` com o ETag lido. Num conflito de ETag (outra instância atualizou o mesmo arquivo), o engine SHALL reler o arquivo e reaplicar só a sua atualização, até 3 vezes; isso não é repetição cega, porque reaplica sobre o conteúdo novo. Se ainda assim não gravar, ou se o Blob estiver fora, a construção MUST NOT falhar: a atualização fica em memória, com o evento `REGISTRO_CARGA_PENDENTE` no log, e é regravada em segundo plano a cada 60 segundos, sem sobrescrever uma tentativa mais nova da mesma curva.
 
 #### Scenario: Blob fora ao receber a carga
 - **WHEN** o webhook da carga B3 chega com o Blob inacessível
@@ -36,12 +38,13 @@ Antes de construir, o engine SHALL gravar a carga no Blob Storage em `cargas/{fo
 
 ### Requirement: Construção disparada pela carga
 Ao receber uma carga, o engine SHALL processar, na própria requisição, cada curva com origem igual à fonte e ao produto da carga e com código na fonte presente em `linhasPorCodigo`:
+- **curva com `cSitReg` = `INATIVO`, ou com a data-base fora da vigência da curva** (`dInicVgcia` a `dValidAte` em `tCurvaMercd`): MUST NOT ser construída, e é devolvida como `IGNORADA`, com o motivo `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA`. Não é erro: o usuário ainda pode construí-la por `POST .../construcao`;
 - **curva sem pontos gravados na data**: é construída (`CONSTRUIDA`);
 - **curva com pontos gravados na data**: MUST NOT ser reconstruída, qualquer que seja o `idCarga`, e é devolvida como `EXISTENTE`.
 
-A carga nunca recalcula uma curva: recálculo só acontece por `POST .../construcao?forcarRecalculo=true`. Quando a carga tem `idCarga` diferente do que gerou os pontos gravados de uma curva (republicação), e o registro da carga pôde ser lido, o engine SHALL devolver essa curva como `EXISTENTE` com o aviso `PONTOS_DE_CARGA_ANTERIOR`, informando os dois `idCarga`, e SHALL registrar o evento `CARGA_REPUBLICADA` no log com nível `AVISO`. O `idCarga` que gerou os pontos de cada curva SHALL ser guardado em `curvas` no registro da carga, a cada construção bem-sucedida, inclusive as feitas pela API.
+A carga nunca recalcula uma curva: recálculo só acontece por `POST .../construcao?forcarRecalculo=true`. Quando a carga tem `idCarga` diferente do que gerou os pontos gravados de uma curva (republicação), e o registro da carga pôde ser lido, o engine SHALL devolver essa curva como `EXISTENTE` com o aviso `PONTOS_DE_CARGA_ANTERIOR`, informando os dois `idCarga`, e SHALL registrar o evento `CARGA_REPUBLICADA` no log com nível `AVISO`. O `idCarga` que gerou os pontos de cada curva SHALL ser guardado em `ultimaConstrucao`, no registro da carga, a cada construção que grava pontos, inclusive as feitas pela API.
 
-Cada curva SHALL ser construída de forma independente: a falha de uma MUST NOT impedir as outras. O resultado de cada curva SHALL ser gravado em `curvas` no registro da carga. A resposta SHALL ser 200 com o `idCarga` e, por curva, o código, a situação ou o `codigoErro` e a mensagem, e o `hashPontos`. Falha de construção de uma curva é resultado de negócio, não erro do webhook. Um código na fonte presente na carga sem nenhuma curva cadastrada SHALL gerar um evento `AVISO` no log, sem erro.
+Cada curva SHALL ser construída de forma independente: a falha de uma MUST NOT impedir as outras. O resultado de cada curva SHALL ser gravado em `ultimaTentativa`, no registro da carga. A resposta SHALL ser 200 com o `idCarga` e, por curva, o código, a situação ou o `codigoErro` e a mensagem, e o `hashPontos`. Falha de construção de uma curva é resultado de negócio, não erro do webhook. Um código na fonte presente na carga sem nenhuma curva cadastrada SHALL gerar um evento `AVISO` no log, sem erro.
 
 #### Scenario: Retry do processor
 - **WHEN** o processor repete o webhook com o mesmo `idCarga` depois de um tempo esgotado, e a `PRE` já tinha sido construída com sucesso para essa carga
@@ -54,6 +57,14 @@ Cada curva SHALL ser construída de forma independente: a falha de uma MUST NOT 
 #### Scenario: Recálculo forçado depois da republicação
 - **WHEN** depois da republicação o operador chama `POST /api/v1/curvas/PRE/2026-09-14/construcao?forcarRecalculo=true`
 - **THEN** a `PRE` é reconstruída com as linhas da carga nova, conferidas contra a quantidade da carga nova, e o registro passa a indicar o `idCarga` novo para a `PRE`
+
+#### Scenario: Curva inativa na carga
+- **WHEN** a carga B3 de `2026-10-11` traz o código `SLP`, e a curva `SLP` foi inativada no cadastro
+- **THEN** a `SLP` não é construída e é devolvida como `IGNORADA` com o motivo `CURVA_INATIVA`, e as outras curvas da carga são construídas
+
+#### Scenario: Usuário constrói a curva inativa
+- **WHEN** depois disso o operador chama `POST /api/v1/curvas/SLP/2026-10-11/construcao`
+- **THEN** a `SLP` é construída (`CONSTRUIDA`) com o aviso `CURVA_INATIVA`, e o registro da carga passa a ter `ultimaConstrucao` da `SLP` com o `idCarga` que gerou os pontos
 
 #### Scenario: Uma curva falha
 - **WHEN** a construção da `DPL` falha por `INSUMO_INVALIDO` durante o processamento de uma carga
@@ -78,7 +89,7 @@ Antes de executar o modelo, o pipeline SHALL contar as linhas brutas lidas para 
 - **THEN** a construção falha com `INSUMO_INCOMPLETO`, informando 150 lidas e 278 avisadas
 
 ### Requirement: Log da carga
-O engine SHALL registrar o evento `CARGA_RECEBIDA` (`idCarga`, fonte, produto, data-base, `linhasPorCodigo`, se é nova, repetida ou republicação), um `CARGA_REPUBLICADA` por curva mantida com pontos de carga anterior e, ao final, `CARGA_PROCESSADA` (`idCarga`, quantidade de curvas por situação, por aviso e por código de erro, duração).
+O engine SHALL registrar o evento `CARGA_RECEBIDA` (`idCarga`, fonte, produto, data-base, `linhasPorCodigo`, se é nova, repetida ou republicação), um `CARGA_REPUBLICADA` por curva mantida com pontos de carga anterior e, ao final, `CARGA_PROCESSADA` (`idCarga`, quantidade de curvas por situação, inclusive `IGNORADA`, por aviso e por código de erro, duração).
 
 #### Scenario: Carga com falha parcial
 - **WHEN** uma carga termina com 4 curvas construídas e 1 com erro

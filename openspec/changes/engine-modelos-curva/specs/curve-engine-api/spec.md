@@ -1,6 +1,6 @@
 ## Purpose
 
-Define a API HTTP do engine para construir, consultar, editar, interpolar e simular curvas, identificando a curva pelo código (ou, só para leitura, pelo nome) e pela data-base, e para gerir os scripts Groovy de modelo por tipo e nome. Fixa rotas, parâmetros, corpos, códigos HTTP e códigos de erro.
+Define a API HTTP do engine para construir, consultar, interpolar e simular curvas, identificando a curva pelo código (ou, só para leitura, pelo nome) e pela data-base, e para gerir os scripts Groovy de modelo por tipo e nome. Fixa rotas, parâmetros, corpos, códigos HTTP e códigos de erro.
 
 ## ADDED Requirements
 
@@ -11,9 +11,10 @@ O engine SHALL expor exatamente estas rotas (prefixo `/api/v1`):
 |---|---|---|
 | `POST /cargas` | aviso de carga concluída (spec `curve-load-trigger`) | `Curvas.Processor` |
 | `GET /curvas?nome=` | catálogo | `Curvas.Leitura` |
+| `GET /curvas/situacao?dataBase=` | situação das construções de todas as curvas numa data-base, para o painel do `services/curves` | `Curvas.Leitura` |
+| `GET /valores-cadastro` | valores aceitos no cadastro, modelos ativos e regras de combinação | `Curvas.Leitura` |
 | `POST /curvas/{codigo}/{dataBase}/construcao?forcarRecalculo=` | construir | `Curvas.Operador` |
 | `GET /curvas/{codigo}/{dataBase}?formato=` | pontos gravados | `Curvas.Leitura` |
-| `PUT /curvas/{codigo}/{dataBase}/pontos` | editar pontos | `Curvas.Operador` |
 | `GET /curvas/{codigo}/{dataBase}/interpolacao?du=&data=&formato=` | interpolar | `Curvas.Leitura` |
 | `GET /curvas/{codigo}/{dataBase}/simulacao?du=&data=&formato=` | simular construção sem gravar | `Curvas.Leitura` |
 | `GET /curvas/{codigo}/{dataBase}/historico` | histórico de auditoria (spec `curve-audit-history`) | `Curvas.Leitura` |
@@ -29,16 +30,16 @@ O engine SHALL expor exatamente estas rotas (prefixo `/api/v1`):
 | `POST /calendarios/{nome}/importacao?mercado=&anoInicial=&anoFinal=` | importar planilha de feriados (spec `calendar-management`) | `Curvas.ModelosAutor` |
 | `GET /calendarios/{nome}?mercado=&anoInicial=&anoFinal=&versao=&formato=` | exportar feriados | `Curvas.Leitura` |
 
-As rotas antigas (`POST /api/v1/curvas/construir`, `POST /api/v1/calculo`, `POST /api/v1/modelos/upload`) MUST ser removidas. Escrita (construir, editar pontos) MUST existir só pelo código.
+As rotas antigas (`POST /api/v1/curvas/construir`, `POST /api/v1/calculo`, `POST /api/v1/modelos/upload`) MUST ser removidas. Construir MUST existir só pelo código. O engine não edita pontos: a edição manual é do `services/curves` (change `curves-dado-curva`).
 
 #### Scenario: Escrita pelo nome não existe
-- **WHEN** o cliente chama `PUT /api/v1/curvas/por-nome/2026-09-14/pontos?nome=DIxPRE`
+- **WHEN** o cliente chama `POST /api/v1/curvas/por-nome/2026-09-14/construcao?nome=DIxPRE`
 - **THEN** a resposta é 404
 
 ### Requirement: Autenticação e papéis
 Toda rota de `/api/v1` MUST exigir um token JWT do Microsoft Entra ID (`Authorization: Bearer`), validado por emissor, audiência, assinatura e validade (propriedades `engine.seguranca.emissor` e `engine.seguranca.audiencia`). Só os endpoints de saúde do Actuator ficam sem autenticação. O acesso SHALL ser decidido pelos papéis de aplicação (`roles`) do token, conforme a tabela de rotas:
 - `Curvas.Leitura`: consultas, interpolação, simulação, histórico, catálogo e lista de scripts;
-- `Curvas.Operador`: construir, recalcular e editar pontos; inclui `Curvas.Leitura`;
+- `Curvas.Operador`: construir e recalcular; inclui `Curvas.Leitura`;
 - `Curvas.Processor`: webhook de carga; concedido só à identidade de serviço do processor (client credentials);
 - `Curvas.ModelosAutor`: enviar e validar scripts;
 - `Curvas.ModelosAprovador`: ativar e desativar scripts.
@@ -89,8 +90,8 @@ Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlatio
 | `INSUMO_INCOMPLETO` | 422 | quantidade de linhas lidas diferente da avisada na carga |
 | `INSUMO_AUSENTE` | 422 | origem sem dados na data |
 | `INSUMO_INVALIDO` | 422 | dado da origem viola regra do modelo |
+| `PONTOS_NAO_INTERPOLAVEIS` | 422 | pontos gravados que o interpolador não aceita (ex.: `y` não positivo no `LogLinear`); `detalhes` lista os pontos |
 | `PRAZO_FORA_DO_DOMINIO` | 422 | prazo fora do domínio, ou `data` não útil ou não posterior à data-base |
-| `PONTOS_INVALIDOS` | 422 | lista da edição de pontos inválida |
 | `MODELO_FALHOU` | 422 | modelo não convergiu, estourou o tempo limite ou lançou erro |
 | `SCRIPT_INVALIDO` | 422 | script Groovy reprovado ou versão não validada |
 | `ERRO_INTERNO` | 500 | qualquer outro erro |
@@ -122,7 +123,7 @@ A rota por código SHALL buscar `tCurvaMercd.cTickerIdtfdUnic` igual ao código,
 - **THEN** a resposta lista `DCL` e `DPL`, com código, nome e unidade
 
 ### Requirement: Construir curva
-`POST .../construcao` SHALL executar a construção descrita na spec `curve-build-pipeline`. Com `forcarRecalculo=true`, o corpo MUST trazer `{ "motivo": "..." }` (spec `curve-audit-history`). A resposta de sucesso SHALL ser 200 com: código, nome, data-base, situação (`CONSTRUIDA`, `RECONSTRUIDA` ou `EXISTENTE`), a proveniência completa da spec `curve-build-pipeline` (modelos com origem, versão e hash, versão do engine, `estadoScript` e avisos), quantidade de pontos, `hashPontos` e duração em milissegundos.
+`POST .../construcao` SHALL executar a construção descrita na spec `curve-build-pipeline`. `forcarRecalculo=true` é acionado pelo usuário no front e não exige motivo. A resposta de sucesso SHALL ser 200 com: código, nome, data-base, situação (`CONSTRUIDA`, `RECONSTRUIDA` ou `EXISTENTE`), a proveniência completa da spec `curve-build-pipeline` (modelos com origem, versão e hash, versão do engine, `estadoScript` e avisos), quantidade de pontos, `hashPontos` e duração em milissegundos. A curva `INATIVO`, ou a data-base fora da vigência da curva, não impede a construção por esta rota: a resposta traz o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA`.
 
 #### Scenario: Construção bem-sucedida
 - **WHEN** o cliente chama `POST /api/v1/curvas/PRE/2026-09-14/construcao`
@@ -133,34 +134,12 @@ A rota por código SHALL buscar `tCurvaMercd.cTickerIdtfdUnic` igual ao código,
 - **THEN** a resposta é 422 com `INSUMO_AUSENTE` informando `DPL` e a data
 
 ### Requirement: Consultar pontos gravados
-`GET /curvas/{codigo}/{dataBase}` SHALL devolver código, nome, data-base, unidade, interpolador e calendário com origem e versão, `estadoScript`, `hashPontos` e a lista de pontos gravados em ordem de data. Cada ponto SHALL trazer data, `DU`, `DC`, valor e, só para `TAXA`, fator acumulado e fator diário médio. Sem pontos gravados na data, a resposta MUST ser 404 com `CURVA_NAO_CONSTRUIDA`.
+`GET /curvas/{codigo}/{dataBase}` SHALL devolver código, nome, data-base, unidade, interpolador e calendário com origem e versão, `estadoScript`, `hashPontos` e a lista de pontos gravados em ordem de data. Cada ponto SHALL trazer data, `DU`, `DC`, valor e, só para `TAXA`, fator acumulado e fator diário médio. Sem pontos gravados na data, a resposta MUST ser 404 com `CURVA_NAO_CONSTRUIDA`. Os avisos de descarte `PONTO_DESCARTADO_MESMO_PRAZO` e `PONTO_DESCARTADO_PRAZO_NAO_POSITIVO` da spec `curve-build-pipeline` SHALL vir em `avisos`, aqui e na interpolação.
 
 #### Scenario: Curva ainda não construída
 - **WHEN** o cliente consulta `GET /api/v1/curvas/DCL/2026-09-14` antes de qualquer construção dessa data
 - **THEN** a resposta é 404 com `CURVA_NAO_CONSTRUIDA`
 
-### Requirement: Editar os pontos da curva
-`PUT .../pontos` SHALL receber `{ "motivo": "...", "pontos": [ { "data": "AAAA-MM-DD", "valor": número } ] }` com o motivo obrigatório (spec `curve-audit-history`) e a lista completa da data, e substituir numa única transação (a mesma trava da construção) todos os pontos gravados pela lista. A operação SHALL valer também para data sem pontos. A lista MUST ser rejeitada com 422 `PONTOS_INVALIDOS`, sem alterar nada, quando:
-- estiver vazia;
-- algum ponto não tiver data ou valor;
-- houver datas repetidas;
-- alguma data for igual ou anterior à data-base;
-- alguma data não for dia útil no calendário cadastrado;
-- algum valor não puder ser convertido na grandeza cadastrada (ex.: `FA <= 0`, ou `y <= 0` com `LogLinear`).
-
-`detalhes` SHALL listar cada ponto inválido com o motivo. A resposta de sucesso SHALL ser 200 com o mesmo corpo da consulta de pontos gravados, relido do banco. A operação SHALL gerar a auditoria `EDICAO` (spec `curve-audit-history`) e o evento de log `PONTOS_EDITADOS` com o usuário autenticado. Uma construção posterior com recálculo substitui os pontos editados.
-
-#### Scenario: Edição bem-sucedida
-- **WHEN** o cliente envia para `PUT /api/v1/curvas/PRE/2026-09-14/pontos` os 278 pontos com o valor de `2027-01-04` alterado
-- **THEN** a resposta é 200 com os 278 pontos gravados, e a interpolação seguinte usa o valor novo
-
-#### Scenario: Data não útil
-- **WHEN** a lista enviada contém um ponto em `2026-09-19` (sábado)
-- **THEN** a resposta é 422 com `PONTOS_INVALIDOS` citando `2026-09-19`, e os pontos gravados continuam os anteriores
-
-#### Scenario: Sem autenticação
-- **WHEN** um cliente sem token chama o endpoint de edição
-- **THEN** a resposta é 401 com `NAO_AUTENTICADO` e nada é alterado
 
 ### Requirement: Interpolar prazos
 `GET .../interpolacao` SHALL exigir ao menos um `du` ou `data` e devolver código, nome, data-base, interpolador, políticas de extrapolação e calendário com origem, `hashPontos` e, para cada prazo, na ordem recebida: prazo pedido, data, `DU`, `DC`, valor, classificação (`PONTO`, `INTERPOLADO`, `EXTRAPOLADO_INICIO`, `EXTRAPOLADO_FIM`) e, só para `TAXA`, os fatores. Se algum prazo estiver fora do domínio, a resposta inteira MUST ser 422 com `PRAZO_FORA_DO_DOMINIO`, listando em `detalhes` todos os prazos rejeitados.
@@ -175,6 +154,28 @@ Com `formato=xlsx`, as rotas de consulta de pontos, de interpolação e de simul
 #### Scenario: Download da consulta
 - **WHEN** o cliente chama `GET /api/v1/curvas/PRE/2026-09-14?formato=xlsx`
 - **THEN** a resposta é um arquivo `PRE_2026-09-14_GRAVADA_<horário>.xlsx` com a memória de cálculo dos pontos gravados
+
+### Requirement: Situação das construções numa data-base
+`GET /curvas/situacao?dataBase=` SHALL devolver, para cada curva com código não nulo, só o que o engine sabe e o banco não mostra, lido do registro de cargas (spec `curve-load-trigger`) da origem de cada curva: código, nome, origem, a carga registrada (`idCarga`, `recebidaEm`, linhas avisadas para o código na fonte e `republicada` = há carga anterior no `historico`), `ultimaTentativa` e `ultimaConstrucao`, nulos quando não houver. A rota MUST NOT construir nem gravar nada, e SHALL ler cada arquivo de carga uma vez por chamada. Se o registro de cargas não puder ser lido (Blob fora), a resposta SHALL ser 200 com as curvas sem essas informações e o aviso `REGISTRO_DE_CARGAS_INDISPONIVEL`. Quem monta o painel, com os pontos gravados e o cadastro, é o `services/curves` (spec `painel-curvas` do change `curves-cadastro-curvas`).
+
+#### Scenario: Situação depois da carga B3
+- **WHEN** a carga B3 de `2026-09-14` construiu `PRE`, `DCL`, `INP` e `PTX`, e a `DPL` falhou
+- **THEN** a resposta traz, para as cinco, a carga com o `idCarga`; para as quatro, `ultimaTentativa` = `CONSTRUIDA` e `ultimaConstrucao` com o `hashPontos`; para a `DPL`, `ultimaTentativa` = `FALHOU` com `INSUMO_INVALIDO` e `ultimaConstrucao` nula; e, para `NTNB` e `SOFR`, carga nula
+
+### Requirement: Valores aceitos no cadastro
+`GET /valores-cadastro` SHALL devolver tudo o que o engine aceita no cadastro de uma curva, gerado dos mesmos enums e da mesma tabela de parâmetros que o validador de `CADASTRO_INVALIDO` usa, e nunca de uma lista mantida à parte:
+- os campos de `tCurvaMercd` lidos pelo engine (`cTpoVlr`, `cNormaDia`, `cTpoJuro`), com os valores aceitos e em que unidade são obrigatórios;
+- cada chave de `cModDado`: tipo, obrigatoriedade (com a condição, ex.: `FREQUENCY` só com `Compounded`), valor padrão, e os valores aceitos ou o formato (ex.: `HORIZONTE` pela expressão do `Period`, `CASAS_DECIMAIS` de 0 a 12);
+- uma descrição curta em português de cada valor (ex.: `DOWN` = truncamento; `FlatForward` = taxa a termo constante);
+- as regras de combinação, cada uma com um código e o texto;
+- os modelos por tipo (construção, interpolação, calendário): nome, origem (`JAVA` ou `GROOVY`), versão `ATIVA` do script quando houver; para calendário, os mercados aceitos; para os modelos de construção nativos, a fonte e o produto de origem esperados;
+- `versaoValores`: SHA-256 do conteúdo, para o cliente saber quando atualizar o cache.
+
+O OpenAPI (Swagger) do engine SHALL declarar como `enum` todo campo de valor fechado nos corpos e respostas. Um teste SHALL garantir que todo valor aceito pelo validador aparece nesta rota, e vice-versa.
+
+#### Scenario: Interpolador Groovy ativado
+- **WHEN** um script de interpolação `LogCubicB3` é ativado
+- **THEN** a próxima chamada de `GET /api/v1/valores-cadastro` lista `LogCubicB3` com origem `GROOVY` e a versão ativa, e `versaoValores` muda
 
 ### Requirement: Gestão de scripts de modelo
 `{tipo}` SHALL ser `construcao`, `interpolacao` ou `calendario`. O envio SHALL receber o código do script como texto no corpo (`text/plain`) e criar uma versão em `RASCUNHO`. As respostas SHALL trazer tipo, nome, versão, status e hash. As mensagens de falha de validação SHALL trazer o motivo e a linha do script quando houver, sem stack trace.
