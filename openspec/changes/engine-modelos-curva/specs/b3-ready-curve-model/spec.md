@@ -1,46 +1,76 @@
 ## Purpose
 
-Constrói as curvas B3 do primeiro objetivo (PRE, DCL, PTX, DPL e INP) a partir dos vértices prontos do arquivo Taxas de Mercado para Swaps (`TaxaSwap.txt`), sem reimplementar a metodologia da B3. O vínculo entre cada curva e o seu código na fonte fica no cadastro.
+Constrói as curvas B3 do primeiro objetivo (PRE, DCL, PTX, DPL e INP) a partir dos vértices prontos do arquivo Taxas de Mercado para Swaps (`TaxaSwap.txt`), gravados em `tBtrsCurvaPrimr`, sem reimplementar a metodologia da B3. Os valores de referência desta spec vêm do `TaxaSwap.txt` de `2026-09-14`.
 
 ## ADDED Requirements
 
-### Requirement: Construção a partir dos vértices prontos, pela origem cadastrada
-O modelo de construção `PRONTA_TS_B3` SHALL montar a curva da data com os vértices publicados no `TaxaSwap.txt` para o **código na fonte cadastrado** na curva e para a data-base. Ele usa todos os vértices padronizados do arquivo, com os dias corridos e os dias úteis como publicados. O modelo MUST NOT conter código de curva fixo: o código a buscar vem sempre do cadastro. O valor de cada vértice MUST ser usado como publicado, respeitando o sinal, sem recalcular a partir de contratos, indicadores ou outras curvas.
+### Requirement: Leitura dos vértices prontos
+O modelo `PRONTA_TS_B3` SHALL exigir origem com fonte `B3` e produto `TS`; outra origem MUST resultar em `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tBtrsCurvaPrimr` com `cTickerIndcd` = código na fonte e `dBaseReft` = data-base, e gerar um ponto por linha:
+- data do ponto = data-base + `cDiaCorri` dias corridos;
+- valor = `vPrecoTx`, sem alteração de sinal nem de escala.
 
-#### Scenario: Curva de mercado vinculada ao DIxPRE
-- **WHEN** a curva `PRE` está cadastrada com origem `TS_B3` e código na fonte `PRE` (DIxPRE), e é construída para `2026-09-14`
-- **THEN** a curva da data tem os 278 vértices do código `PRE` do arquivo, o primeiro com 1 dia corrido, 1 dia útil e taxa 13,9000000
+`vFatorAcum` e `vFatorDia` MUST ser ignorados. O código da curva MUST NOT estar fixo no modelo: vem sempre da origem cadastrada.
 
-#### Scenario: Nome da curva diferente do código na fonte
-- **WHEN** uma curva `DI_MERCADO` é cadastrada com origem `TS_B3` e código na fonte `PRE`
-- **THEN** `DI_MERCADO` é construída com os mesmos vértices do código `PRE` do arquivo
+#### Scenario: Primeiro e último vértice da PRE
+- **WHEN** a `PRE` de `2026-09-14` é construída
+- **THEN** o primeiro ponto é `2026-09-15` com valor calculado 13,9000000, gravado como 13,9000000, e o último é `2060-08-16`, gravado como 14,1600000
 
 #### Scenario: Valor negativo preservado
-- **WHEN** a curva `DCL` de `2026-09-14` é construída e o primeiro vértice publicado vale -11,7960000
-- **THEN** o primeiro vértice da curva da data vale -11,7960000
+- **WHEN** a `DCL` de `2026-09-14` é construída
+- **THEN** o primeiro ponto é `2026-09-15` com valor -117,9600000
 
-#### Scenario: Código ausente no arquivo da data
-- **WHEN** a curva `DPL` é construída para uma data cujo arquivo não traz vértices do código cadastrado
-- **THEN** a construção falha informando `DPL`, a fonte `TS_B3`, o código na fonte e a data
+#### Scenario: Nome da curva diferente do código na fonte
+- **WHEN** uma curva `DI_MERCADO` é cadastrada com origem `B3`/`TS`/`PRE`
+- **THEN** `DI_MERCADO` é construída com os mesmos pontos do código `PRE`
 
-### Requirement: Cadastro inicial das curvas do primeiro objetivo
-As cinco curvas SHALL ser cadastradas com construção `PRONTA_TS_B3`, origem `TS_B3` e calendário `Brazil`/`Settlement`/`Following`, com a semântica abaixo, que reproduz o Manual de Curvas B3. A coluna "Curva" é o código usado nas rotas por código; o nome de exibição é usado nas rotas por nome:
+### Requirement: Validação das linhas lidas
+Nenhuma linha SHALL ser descartada. A construção MUST falhar com:
+- `INSUMO_AUSENTE`, se não houver nenhuma linha;
+- `INSUMO_INVALIDO`, informando a linha, se `cDiaCorri` for nulo ou menor que 1, se `vPrecoTx` for nulo, se duas linhas tiverem o mesmo `cDiaCorri`, se a data do ponto não for dia útil no calendário cadastrado, ou se o `DU` da data do ponto, contado pelo calendário cadastrado, for diferente de `cDiaUtil`.
 
-| Curva | Nome de exibição | Código na fonte | Unidade | Grandeza + interpolador | Tempo | Cotação | Extrap. fim | Função B3 |
-|---|---|---|---|---|---|---|---|---|
-| `PRE` | DIxPRE | `PRE` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Business252`, `Compounded`, `Annual` | `FlatForward` | 1.4.2 / 1.4.6 |
-| `DCL` | Cupom limpo de dólar | `DCL` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Actual360`, `Simple` | `FlatForward` | 1.4.3 / 1.4.10 |
-| `DPL` | Cupom Limpo DI X IPCA | `DPL` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Business252`, `Compounded`, `Annual` | `FlatForward` | 1.4.2 / 1.4.6 |
-| `INP` | IBOVESPA | `INP` | `PONTOS` | `Price` + `LogLinear` | `Business252` | — | `FlatValue` | 1.4.5 / 1.4.8 |
-| `PTX` | PTAX - USD | `PTX` | `PRECO` | `Price` + `LogLinear` | `Business252` | — | `Disabled` | sem função própria: no manual, cada vértice é derivado de PRE e DOL |
+A última regra detecta calendário desatualizado: um feriado ausente ou a mais muda a contagem de dias úteis.
 
-A extrapolação de início SHALL ser `Disabled` para as cinco curvas: o primeiro vértice publicado já está em 1 dia útil. O horizonte e o arredondamento SHALL ser definidos no cadastro de cada curva. Para a `PTX`, com fim `Disabled`, o horizonte MUST NOT passar do último vértice publicado.
+#### Scenario: Calendário divergente
+- **WHEN** o calendário `Brazil` não tem um feriado que a B3 considerou, e por isso o `DU` calculado de um vértice difere de `cDiaUtil`
+- **THEN** a construção falha com `INSUMO_INVALIDO`, informando o vértice, o `DU` calculado e o `cDiaUtil` publicado
+
+### Requirement: Memória de cálculo do modelo
+O modelo SHALL registrar na memória de cálculo: na aba `Insumos`, a tabela `tBtrsCurvaPrimr` e as colunas lidas `cTickerIndcd`, `dBaseReft`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx`; na aba `Pontos`, as colunas extras `DC publicado` e `DU publicado`. O modelo não registra fluxos.
+
+#### Scenario: Divergência visível na planilha
+- **WHEN** a simulação da `PRE` falha por calendário divergente
+- **THEN** a aba `Insumos` mostra a linha com o `cDiaUtil` publicado, e a aba `Eventos` mostra o `DU` calculado
+
+### Requirement: Cadastro das cinco curvas
+As cinco curvas SHALL ser cadastradas com construção `PRONTA_TS_B3`, origem `B3`/`TS`, calendário `Brazil`/`Settlement`/`Following`, extrapolação de início `Disabled` e horizonte `10Y`, com os demais itens abaixo. Eles reproduzem o Manual de Curvas B3. As casas decimais são as 7 do leiaute oficial do `TaxaSwap.txt` (campo "Taxa teórica", posições 53 a 66), e não as observadas num arquivo: o valor gravado é sempre idêntico ao publicado.
+
+| Código | Nome | Código na fonte | Unidade | Grandeza + interpolador | Eixo | Cotação | Extrap. fim | Casas | Modo |
+|---|---|---|---|---|---|---|---|---|---|
+| `PRE` | DIxPRE | `PRE` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Business252`/`Compounded`/`Annual` | `FlatForward` | 7 | `HALF_UP` |
+| `DCL` | Cupom limpo de dólar | `DCL` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Actual360`/`Simple` | `FlatForward` | 7 | `HALF_UP` |
+| `DPL` | Cupom Limpo DI X IPCA | `DPL` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Business252`/`Compounded`/`Annual` | `FlatForward` | 7 | `HALF_UP` |
+| `INP` | IBOVESPA | `INP` | `PONTOS` | `Price` + `LogLinear` | `Business252` | — | `FlatValue` | 7 | `HALF_UP` |
+| `PTX` | PTAX - USD | `PTX` | `PRECO` | `Price` + `LogLinear` | `Business252` | — | `Disabled` | 7 | `DOWN` |
 
 #### Scenario: Interpolação da DCL
-- **WHEN** a curva `DCL` é interpolada entre dois vértices publicados
-- **THEN** o valor é o da Interpolação Flat Forward 252 com Convenção Linear do manual (item 1.4.3)
+- **WHEN** a `DCL` é interpolada entre dois pontos
+- **THEN** o valor é o da fórmula 1.4.3 do manual (Flat Forward 252 com convenção linear)
 
-#### Scenario: PTX sem fatores de juros
-- **WHEN** a curva `PTX` é gravada
-- **THEN** os pontos trazem preço em R$/US$, sem fator diário nem acumulado
+#### Scenario: Ponto preservado
+- **WHEN** é pedido o prazo de 7.406 dias úteis da `PRE` de `2026-09-14`, que é o ponto `2056-04-10`, publicado com 14,1670000
+- **THEN** o valor devolvido é 14,1670000, com classificação `PONTO`
 
+#### Scenario: PTX além do último ponto
+- **WHEN** é pedido um prazo da `PTX` depois de `2060-08-16`
+- **THEN** a consulta falha com `PRAZO_FORA_DO_DOMINIO`, porque a extrapolação de fim é `Disabled`
+
+### Requirement: Oráculo contra o arquivo publicado
+Para cada uma das cinco curvas, cada vértice e cada arquivo da massa de regressão, a interpolação do prazo do vértice SHALL devolver exatamente `vPrecoTx`, e o `DU` e o `DC` calculados SHALL ser iguais a `cDiaUtil` e `cDiaCorri`. A massa de regressão SHALL ter o `TaxaSwap.txt` de todos os pregões de pelo menos 12 meses consecutivos, cobrindo obrigatoriamente Carnaval, Sexta-feira Santa, Corpus Christi, virada de ano e o 20 de novembro, além do arquivo de `2026-09-14`. Toda data que apresentar divergência em produção SHALL ser acrescentada à massa.
+
+#### Scenario: Pregão antes do Carnaval
+- **WHEN** o oráculo roda sobre o arquivo do último pregão antes do Carnaval
+- **THEN** o `DU` de todos os vértices bate com o publicado, contando segunda e terça de Carnaval como não úteis
+
+#### Scenario: Oráculo da PTX
+- **WHEN** os 278 vértices da `PTX` de `2026-09-14` são consultados pelos seus prazos
+- **THEN** cada valor devolvido é igual ao publicado, com 7 casas
