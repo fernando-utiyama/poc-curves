@@ -138,7 +138,7 @@ Os modelos esperam das tabelas brutas o contrato abaixo. Preenchê-las é do con
 |---|---|---|
 | `tBtrsCurvaPrimr` | uma linha por vértice, `cTickerIndcd` = nome da curva de mercado ligada, em `tCurvaPrvdr`, ao código exato da curva no `TaxaSwap.txt`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx` em percentual | na `develop`, o conector classifica pela descrição (`DCL`/`DPL` viram `DOL`, `PTX`/`INP` são descartados) e o processor grava em `mkt.B3CurveRaw`; corrigido no change `conector-b3-webhook-ingest` |
 | `tAnbmaCurvaPrimr` | uma linha por título, `cTickerIndcd` = nome da curva de mercado: `vPrecoTx` = taxa indicativa em percentual, `vVertcCurva` = prazo em dias úteis | colunas existem; unidade de `vVertcCurva` e escala de `vPrecoTx` não confirmadas |
-| `mkt.SofrCurveRaw` | `curve_member`, `tenor`, `ref_date`, `valor DECIMAL(28,12)` em percentual | tabela e ingestão inexistentes; feeder não localizado |
+| `tBbergCurvaPrimr` | uma linha por nó da SOFR, `cTickerIndcd` = nome da curva de mercado, `cTickerBberg` = `{membro} {tenor} ...`, `vPrecoUlt` = taxa zero em percentual | tabela existe; feeder não localizado; `cTickerBberg` `CHAR(20)` não cabe o ticker completo (change `banco-curvas-ajustes`) |
 
 Além das tabelas, o processor chama o webhook `POST /api/v1/cargas` depois do commit de cada carga, com a quantidade de linhas por código na fonte, e repete com o mesmo `idCarga` até receber 2xx (D22). Para a B3, isso está especificado no change `conector-b3-webhook-ingest` (conector publica uma mensagem por carga; o processor grava `tBtrsCurvaPrimr` e avisa o engine).
 
@@ -162,8 +162,8 @@ No primeiro título, todos os eventos são descontados pela própria incógnita,
 
 **Contexto.** `S0490Z <tenor> BLC2 Curncy` é a série de **zero rates** do SOFR do Bloomberg, segundo [A Smoother Path to SOFR Curve Construction](https://www.lucidogroup.io/smoother-path-to-sofr-curve-construction/). Não há bootstrap, e o caso é análogo à `ZUS` do Manual de Curvas B3 (item 2.11). O `BloombergCurveRaw` do processor tem formato de contrato futuro e não serve.
 
-### D15. Tabela de nós própria
-`mkt.SofrCurveRaw (curve_member, tenor, ref_date, valor DECIMAL(28,12))`, com chave natural `(curve_member, tenor, ref_date)`. O `valor` é decimal, não `double`, pela regra de precisão (D7). **Alternativa rejeitada:** reaproveitar `tBbergCurvaPrimr` com `tenor` opcional, que mistura contrato futuro e nó de curve member na mesma tabela.
+### D15. Nós na tabela Bloomberg existente
+Os nós ficam em `tBbergCurvaPrimr`: `cTickerIndcd` = curva de mercado, `cTickerBberg` = ticker (o tenor é o segundo termo), `vPrecoUlt` = taxa zero, decimal pela regra de precisão (D7). As linhas da SOFR se separam das de contrato futuro pelo `cTickerIndcd`. O modelo aceita o ticker completo, que precisa da coluna maior (change `banco-curvas-ajustes`), e a forma curta `{membro} {tenor}`, que cabe no schema atual. **Por ora não é preciso se preocupar com o tamanho:** a lista de tickers da SOFR está fixa no conector, que até a homologação grava a forma curta (ex.: `S0490Z 15M`); para produção, com o ALTER aplicado, o ticker fica livre e passa a ser gravado completo. Como o modelo lê as duas formas, a troca não exige mudança no engine. **Alternativa rejeitada:** tabela nova `mkt.SofrCurveRaw`, que mudaria o schema sem necessidade.
 
 ### D16. Tenor por `Period`
 Qualquer `nD`, `nW`, `nM`, `nY`, sem tabela fixa de tenores (a lista real tem `9M` e `15M`). `D` conta dias úteis, como o `advance` do QuantLib, porque `1D` é o overnight.
@@ -295,7 +295,7 @@ Curvas como a inflação implícita (PRE sobre a NTN-B bootstrapada) não vêm d
 
 ## Open Questions
 
-- Quando alterar `FK_tDadoCurva_tCurvaData` para o alvo ideal (D6) e qual a política de expurgo da curva diária.
+- A troca de `FK_tDadoCurva_tCurvaData` por uma FK para `tCurvaMercd` está proposta na change `banco-curvas-ajustes`; falta a política de expurgo da curva diária e a change do engine que passa a gravá-la.
 - `cLingSist`, `cPreCalc`/`cPosCalc` e `cPreMotorCalc`/`cPosMotorCalc` de `tConfgCurva` sugerem ganchos pré e pós cálculo. Não são usados; podem virar scripts Groovy de gancho numa mudança futura.
 - Unidade de `tAnbmaCurvaPrimr.vVertcCurva` e escala de `vPrecoTx`, a confirmar com a ingestão ANBIMA.
 - Prazo de retenção dos logs com `CURVA_GRAVADA` (exigência regulatória ou interna).

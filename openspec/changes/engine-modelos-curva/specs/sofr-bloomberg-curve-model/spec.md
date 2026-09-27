@@ -1,11 +1,15 @@
 ## Purpose
 
-Constrói a curva SOFR a partir das zero rates por tenor do curve member Bloomberg `S0490Z` (`S0490Z <tenor> BLC2 Curncy`), convertendo cada tenor numa data pelo calendário dos EUA, sem bootstrap e sem usar o formato de contrato futuro (`BloombergCurveRaw`).
+Constrói a curva SOFR a partir das zero rates por tenor do curve member Bloomberg `S0490Z` (`S0490Z <tenor> BLC2 Curncy`), convertendo cada tenor numa data pelo calendário dos EUA, sem bootstrap. Os nós ficam na tabela bruta da Bloomberg que já existe, `tBbergCurvaPrimr`, sem tabela nova.
 
 ## ADDED Requirements
 
 ### Requirement: Leitura dos nós por tenor
-O modelo `SOFR_ZERO_BLOOMBERG` SHALL exigir origem com fonte `BLOOMBERG` e produto `ZR`; caso contrário, `CADASTRO_INVALIDO`. O modelo SHALL ler a tabela `mkt.SofrCurveRaw` (colunas `curve_member`, `tenor`, `ref_date`, `valor DECIMAL(28,12)`) com `curve_member` = código na fonte e `ref_date` = data-base. Cada linha é um nó; o valor é a taxa zero em percentual ao ano, usada sem conversão. O modelo MUST NOT ler `BloombergCurveRaw` nem `tBbergCurvaPrimr`.
+O modelo `SOFR_ZERO_BLOOMBERG` SHALL exigir origem com fonte `BLOOMBERG` e produto `ZR`; caso contrário, `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tBbergCurvaPrimr` com `cTickerIndcd` = nome da curva (o feeder grava os nós sob a curva de mercado ligada ao membro em `tCurvaPrvdr`) e `dBaseReft` = data-base. Cada linha é um nó:
+- `cTickerBberg` = ticker da Bloomberg, no formato `{membro} {tenor}` seguido ou não da fonte e da yellow key (ex.: `S0490Z 15M BLC2 Curncy`, completo depois da change `banco-curvas-ajustes`, ou `S0490Z 15M`, que cabe no `CHAR(20)` atual e é a forma gravada até a homologação, com a lista de tickers fixa no conector); o primeiro termo MUST ser igual ao código na fonte da origem, e o segundo é o tenor;
+- `vPrecoUlt` = taxa zero em percentual ao ano, usada sem conversão.
+
+Ticker fora desse formato ou de outro membro MUST resultar em `INSUMO_INVALIDO`. As colunas de contrato futuro (`dVctoContr`, `vPrecoMed` e as demais) MUST NOT ser usadas. O modelo MUST NOT ler `BloombergCurveRaw`.
 
 #### Scenario: Construção da SOFR
 - **WHEN** a `SOFR` de uma data-base é construída e há nós para 21 tenores distintos
@@ -46,7 +50,7 @@ Se o mesmo tenor aparecer mais de uma vez com o mesmo valor, SHALL ficar um nó,
 - **THEN** a construção falha com `INSUMO_INVALIDO`, informando o tenor e os dois valores
 
 ### Requirement: Memória de cálculo do modelo
-O modelo SHALL registrar na memória de cálculo: na aba `Insumos`, a tabela `mkt.SofrCurveRaw` e as colunas lidas `curve_member`, `tenor`, `ref_date`, `valor`; na aba `Pontos`, as colunas extras `Tenor` e `Data nao ajustada`. O modelo não registra fluxos.
+O modelo SHALL registrar na memória de cálculo: na aba `Insumos`, a tabela `tBbergCurvaPrimr` e as colunas lidas `cldtfdUnic`, `cTickerIndcd`, `cTickerBberg`, `dBaseReft`, `vPrecoUlt`, mais o tenor extraído; na aba `Pontos`, as colunas extras `Tenor` e `Data nao ajustada`. O modelo não registra fluxos.
 
 #### Scenario: Ajuste visível
 - **WHEN** a data de um tenor é ajustada por feriado

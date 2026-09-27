@@ -86,7 +86,7 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
 - **Dependências fora do engine (outros changes):**
   - B3: o processor precisa ler o `TaxaSwap.txt` pelo código exato e gravar em `tBtrsCurvaPrimr` (change `conector-b3-webhook-ingest`; hoje o conector transforma DCL/DPL em DOL e descarta PTX/INP);
   - a ingestão ANBIMA precisa confirmar a unidade de `vVertcCurva` e a escala de `vPrecoTx`;
-  - a ingestão SOFR precisa criar `mkt.SofrCurveRaw` e o feeder;
+  - a ingestão SOFR precisa do feeder gravando os nós em `tBbergCurvaPrimr` (o ticker completo precisa da change `banco-curvas-ajustes`; a forma curta cabe no schema atual);
   - o processor precisa chamar o webhook de carga depois do commit de cada carga, com retry pelo mesmo `idCarga` (change `conector-b3-webhook-ingest`, para a B3);
   - o cadastro das 7 curvas vem do `services/curves` (change `curves-cadastro-curvas`, com o exemplo `exemplo-cadastro-7-curvas.txt`), com os valores das specs;
   - os clientes da API do engine (curve-bff) precisam migrar para as rotas novas (BREAKING).

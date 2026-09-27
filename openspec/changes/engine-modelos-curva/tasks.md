@@ -41,10 +41,10 @@
 
 ## 7. Modelos de construção
 
-- [ ] 7.1 Criar `ModeloConstrucao`, `ContextoConstrucao` e `LeitorInsumos` (único acesso a `tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr` e `mkt.SofrCurveRaw`), e `construcao/pontosprontos`; verificar com teste de datas repetidas rejeitadas
+- [ ] 7.1 Criar `ModeloConstrucao`, `ContextoConstrucao` e `LeitorInsumos` (único acesso a `tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr` e `tBbergCurvaPrimr`), e `construcao/pontosprontos`; verificar com teste de datas repetidas rejeitadas
 - [ ] 7.2 Criar `PRONTA_TS_B3` com as regras da spec `b3-ready-curve-model` (data = `B + cDiaCorri`, `DU` = `cDiaUtil`, sem descarte) e as colunas de memória; verificar com o `TaxaSwap.txt` de `2026-09-14` carregado por fixture: primeiro ponto da `PRE` 13,9000000, da `DCL` -117,9600000, último da `PRE` em `2060-08-16`, e falha `INSUMO_INVALIDO` com um feriado removido do calendário
 - [ ] 7.3 Criar `NTNB_BOOTSTRAP_ANBIMA`: leitura e regras da spec (`SEM_TAXA`, dia 15, duplicidade), fluxo com cupom fixo, cotação, bootstrap por bisseção com as origens de DF, colunas de memória e aba `Fluxos`; verificar com fixture sintética de 4+ títulos com cupons em datas resolvidas, entre títulos e antes do primeiro, `z_1 = y_1`, soma dos valores presentes = cotação a menos do resíduo, falha sem troca de sinal e falha de prazo inconsistente
-- [ ] 7.4 Criar `SOFR_ZERO_BLOOMBERG`: leitura de `mkt.SofrCurveRaw`, conversão de tenor (`D` em dias úteis; `W`, `M`, `Y` com ajuste), duplicidade (idêntico descarta, divergente falha), datas repetidas entre tenores e colunas de memória; verificar com fixture de 21 tenores mais um `1D` duplicado, `15M` → `2027-12-14`, e um tenor caindo em feriado americano
+- [ ] 7.4 Criar `SOFR_ZERO_BLOOMBERG`: leitura de `tBbergCurvaPrimr` (tenor pelo segundo termo de `cTickerBberg`, ticker completo e curto, membro diferente do código na fonte rejeitado), conversão de tenor (`D` em dias úteis; `W`, `M`, `Y` com ajuste), duplicidade (idêntico descarta, divergente falha), datas repetidas entre tenores e colunas de memória; verificar com fixture de 21 tenores mais um `1D` duplicado, `15M` → `2027-12-14`, e um tenor caindo em feriado americano
 
 ## 8. Pipeline
 
