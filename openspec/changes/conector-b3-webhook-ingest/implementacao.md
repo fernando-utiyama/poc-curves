@@ -254,7 +254,7 @@ Pacote base: `br.com.poc.starter.srv.hex`.
 
 ### 2.2 Dependências (`pom.xml`)
 
-Verificar se existem `com.azure:azure-storage-blob` e `com.azure:azure-identity` (versão pelo BOM `com.azure:azure-sdk-bom` em `dependencyManagement`); se faltarem, acrescentar só elas. `spring-boot-starter-data-jpa` já traz `JdbcTemplate`; `spring-boot-starter-actuator` já traz o Micrometer.
+Verificar se existem `com.azure:azure-storage-blob` e `com.azure:azure-identity` (versão pelo BOM `com.azure:azure-sdk-bom` **1.3.8** em `dependencyManagement`, a mesma do engine); se faltarem, acrescentar só elas. `spring-boot-starter-data-jpa` já traz `JdbcTemplate`; `spring-boot-starter-actuator` já traz o Micrometer.
 
 ### 2.3 Configuração (verificar em `application.yml`)
 
@@ -375,7 +375,7 @@ Qualquer `FalhaDefinitivaException` → log `CARGA_FALHOU` (nível `ERRO`, campo
 
 Métricas (Micrometer): `processor_b3_carga_total{resultado}` (`SUCESSO`, `SUCESSO_COM_CODIGOS_INVALIDOS`, `FALHOU`), `processor_b3_carga_falhou_total{etapa,estado}`, `processor_b3_aviso_atrasado_total`, `processor_b3_carga_duracao_segundos`.
 
-Casos de teste (escritos na seção 3; JUnit + Mockito; SQL Server de teste com Testcontainers para 2.7): um por cenário da spec `b3-carga-processor`, incluindo mensagem malformada, hash divergente, linha de 60 caracteres, `DPL` com taxa `0000ABC1859000`, 110 códigos com 5 mapeados (278 linhas por curva), `SLP` sem mapeamento, `PRE` ligado a duas curvas, engine fora 3 min (`AVISO_ATRASADO`), 409 seguido de 200, janela de aviso esgotada (`GRAVADA_SEM_AVISO`), mensagem duplicada, banco fora 5 min (`NAO_GRAVADA`), e nada gravado em `mkt.B3CurveRaw`.
+Casos de teste (escritos na seção 3; JUnit + Mockito, sem banco real; o que só o banco prova fica para a homologação, seção 4): um por cenário da spec `b3-carga-processor`, incluindo mensagem malformada, hash divergente, linha de 60 caracteres, `DPL` com taxa `0000ABC1859000`, 110 códigos com 5 mapeados (278 linhas por curva), `SLP` sem mapeamento, `PRE` ligado a duas curvas, engine fora 3 min (`AVISO_ATRASADO`), 409 seguido de 200, janela de aviso esgotada (`GRAVADA_SEM_AVISO`), mensagem duplicada, banco fora 5 min (`NAO_GRAVADA`), e nada gravado em `mkt.B3CurveRaw`.
 
 ---
 
@@ -426,7 +426,7 @@ Processor (mesmo pacote base, em `src/test/java`):
 - `application/service/ValidadorAvisoCargaB3Test.java`: um caso por regra de 2.4;
 - `application/service/LeiauteTaxaSwapTest.java`: linha da spec, `docs/TaxaSwap.txt` completo e um caso por regra de linha inválida de 2.6;
 - `adapter/out/blob/ArquivoCargaBlobAdapterTest.java`: 404 definitivo, 503 transitório;
-- `adapter/out/persistence/jdbc/CargaB3JdbcAdapterTest.java` (Testcontainers SQL Server, schema do `001_SCRIPT_INICIAL.sql`): gravação, troca de linhas numa carga nova da mesma data, `cldtfdUnic` sem colisão em duas cargas simultâneas, contagem divergente desfaz tudo;
+- `adapter/out/persistence/jdbc/CargaB3JdbcAdapterTest.java` (`JdbcTemplate` simulado): SQL e parâmetros enviados, ids `max+1, max+2...`, contagem divergente lança a falha que desfaz a transação;
 - `adapter/out/client/EngineCargaClientTest.java` (servidor HTTP simulado): 2xx, 409/429/5xx transitórios, 400 definitivo, cabeçalhos;
 - `application/service/ProcessarCargaB3ServiceTest.java`: cenários da spec `b3-carga-processor` listados em 2.9, com as janelas reduzidas por configuração.
 
@@ -437,9 +437,9 @@ Processor (mesmo pacote base, em `src/test/java`):
 3. As buscas de 3.1 item 3 não encontram nada.
 4. Se algo falhar, corrigir o código (não o teste) quando o teste reflete a spec; só mudar o teste quando ele contradiz a spec.
 
-## 4. Verificação ponta a ponta
+## 4. Verificação ponta a ponta (na homologação)
 
-Com Kafka, Blob (Azurite) e SQL Server de teste, e o schema do `001_SCRIPT_INICIAL.sql`:
+No ambiente de homologação, com Kafka, Blob e SQL Server do projeto (é aqui que se confere o que os testes simulados não provam: a transação no banco, `cldtfdUnic` sem colisão em duas cargas simultâneas e a troca de linhas numa carga nova da mesma data):
 1. cadastrar em `tCurvaMercd` e `tCurvaPrvdr` as curvas `DIxPRE`, `Cupom limpo de dólar`, `Cupom Limpo DI X IPCA`, `IBOVESPA`, `PTAX - USD` ligadas a `B3`/`TS`/`PRE`, `DCL`, `DPL`, `INP`, `PTX`;
 2. colocar `docs/TaxaSwap.txt` em `recebidos/TaxaSwap.txt` e chamar `POST /api/b3/taxa-swap/reprocessamento` sem data → `idCarga` `B3-TS-20260914-46a249c60bec`;
 3. conferir `b3/20260914/TaxaSwap.txt` e `b3/20260914/cargas/B3-TS-20260914-46a249c60bec/TaxaSwap.txt` (2.225.113 bytes);

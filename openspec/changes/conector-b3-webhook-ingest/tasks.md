@@ -3,7 +3,7 @@ Guia de implementação passo a passo (arquivos, assinaturas, SQL, configuraçã
 ## 1. Conector: identidade, arquivamento e aviso
 
 - [ ] 1.1 Converter o texto na forma canônica (linhas por `\r\n`, `\n` ou `\r`, sem linhas vazias, junção por `\n`, Latin-1, rejeitando caractere fora do Latin-1), calcular `hashArquivo` sobre ela, ler a data de geração (posições 12–19 da primeira linha não vazia) e gerar `idCarga`, interrompendo sem publicar se o arquivo for vazio ou a data inválida; verificar que o mesmo conteúdo com `\r\n` e com `\n` gera o mesmo `idCarga`, que um caractere diferente gera outro, e os casos de interrupção
-- [ ] 1.2 Arquivar o arquivo em `b3/{AAAAMMDD}/cargas/{idCarga}/TaxaSwap.txt` com `If-None-Match: *`, tratando arquivo existente como sucesso; verificar com Azurite a primeira gravação, a repetição e a falha do Blob interrompendo antes da publicação
+- [ ] 1.2 Arquivar o arquivo em `b3/{AAAAMMDD}/cargas/{idCarga}/TaxaSwap.txt` com `If-None-Match: *`, tratando arquivo existente como sucesso; verificar com o cliente do Blob simulado a primeira gravação, a repetição (409) e a falha do Blob interrompendo antes da publicação
 - [ ] 1.3 Publicar o aviso de carga em `tp-event-b3-curve` (`KAFKA_TOPIC`) com chave `B3-TS-{AAAAMMDD}`, produtor idempotente, `acks=all` e `geradoEm` no horário de Brasília; verificar o corpo contra a spec, que duas cargas da mesma data usam a mesma chave e que nenhuma mensagem por vértice é publicada
 
 ## 2. Conector: rotas
@@ -25,7 +25,7 @@ Guia de implementação passo a passo (arquivos, assinaturas, SQL, configuraçã
 
 ## 4. Processor: gravação e aviso
 
-- [ ] 4.1 Mapear cada código válido às curvas de mercado por `tCurvaPrvdr` (`B3`/`TS`/`cTickerPrvdr`) e gravar os vértices em `tBtrsCurvaPrimr` sob o nome de cada curva numa transação (apagar por curva e data, inserir com o `cldtfdUnic` gerado como no sistema real (a confirmar), conferir contagens antes do commit), com fatores nulos e sem escrever em `tCurvaMercd` nem `tCurvaPrvdr`; verificar com SQL Server de teste (Testcontainers) os cenários da spec (110 códigos e 5 mapeados, código sem mapeamento, um código para duas curvas) e a transação desfeita numa falha no meio
+- [ ] 4.1 Mapear cada código válido às curvas de mercado por `tCurvaPrvdr` (`B3`/`TS`/`cTickerPrvdr`) e gravar os vértices em `tBtrsCurvaPrimr` sob o nome de cada curva numa transação (apagar por curva e data, inserir com o `cldtfdUnic` gerado como no sistema real (a confirmar), conferir contagens antes do commit), com fatores nulos e sem escrever em `tCurvaMercd` nem `tCurvaPrvdr`; verificar com o acesso ao banco simulado os cenários da spec (110 códigos e 5 mapeados, código sem mapeamento, um código para duas curvas) e a falha no meio desfazendo a transação; a transação real é conferida na homologação
 - [ ] 4.2 Chamar `POST /api/v1/cargas` do engine depois do commit, pelo endereço do serviço, com token do Entra ID (client credentials, `Curvas.Processor`) e tempo limite de 150 segundos, com o corpo e os cabeçalhos da spec (`Authorization`, `X-Correlation-Id`), uma entrada por código gravado, sem chamada quando nenhum foi gravado e com o resultado de cada curva no log; verificar 2xx, engine fora por 3 minutos (`AVISO_ATRASADO` aos 2 minutos e aviso aceito ao voltar), tempo esgotado seguido de 409 e depois 200, e 4xx registrando `CARGA_FALHOU` sem repetir
 
 ## 5. Processor: robustez e limpeza
@@ -44,5 +44,5 @@ Guia de implementação passo a passo (arquivos, assinaturas, SQL, configuraçã
 
 ## 7. Verificação ponta a ponta
 
-- [ ] 7.1 Com Kafka, Blob (Azurite) e SQL Server de teste: obter o arquivo pelo `.ex_` (B3 simulada), depois forçar o processamento da mesma data pelo `b3/taxa-swap/reprocessamento` e enviar o mesmo conteúdo pelo upload; verificar um único `idCarga`, 278 linhas para cada uma das 5 curvas em `tBtrsCurvaPrimr`, valores iguais ao arquivo e três avisos idênticos ao engine simulado
+- [ ] 7.1 Na homologação, com Kafka, Blob e SQL Server do projeto: obter o arquivo pelo `.ex_` (B3 simulada), depois forçar o processamento da mesma data pelo `b3/taxa-swap/reprocessamento` e enviar o mesmo conteúdo pelo upload; verificar um único `idCarga`, 278 linhas para cada uma das 5 curvas em `tBtrsCurvaPrimr`, valores iguais ao arquivo e três avisos idênticos ao engine simulado
 - [ ] 7.2 Rodar `openspec validate conector-b3-webhook-ingest --strict` e as suítes do conector e do processor; verificar que tudo passa
