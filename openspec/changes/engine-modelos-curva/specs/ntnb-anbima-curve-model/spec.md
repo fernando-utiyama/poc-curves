@@ -1,6 +1,6 @@
 ## Purpose
 
-Constrói a curva NTN-B de taxa zero real a partir das taxas indicativas por título publicadas pela ANBIMA, gravadas em `tAnbmaCurvaPrimr`, por bootstrap sequencial. A fonte é o arquivo de Mercado Secundário de títulos públicos da ANBIMA (`https://www.anbima.com.br/informacoes/merc-sec/arqs/ms{AAMMDD}.txt`, produto `MS`): texto Latin-1, campos separados por `@`, vírgula decimal, uma linha por título, com `Titulo` (`NTN-B`), `Data Referencia`, `Data Vencimento` (sempre dia 15) e `Tx. Indicativas` em percentual ao ano (ex.: `5,4892`). No arquivo de `2026-09-25` há 14 NTN-B, de `2027-05-15` a `2060-08-15`. Fixa a leitura da tabela, o fluxo de caixa, a cotação, a regra de desconto dos cupons, a busca da raiz e os erros.
+Constrói a curva NTN-B de taxa zero real a partir das taxas indicativas por título publicadas pela ANBIMA, gravadas em `tAnbmaCurvaPrimr`, por bootstrap sequencial. A fonte é o arquivo de Mercado Secundário de títulos públicos da ANBIMA (`https://www.anbima.com.br/informacoes/merc-sec/arqs/ms{AAMMDD}.txt`, produto `MS`): texto Latin-1, campos separados por `@`, vírgula decimal, uma linha por título, com `Titulo` (`NTN-B`), `Data Referencia`, `Codigo SELIC`, `Data Vencimento` (sempre dia 15) e `Tx. Indicativas` em percentual ao ano (ex.: `5,4892`). No arquivo de `2026-09-25` há 14 NTN-B, todas com `Codigo SELIC` `760199`, de `2027-05-15` a `2060-08-15`. O código SELIC terminado em `99` é o **título inteiro** (com cupons); os desmembrados (ex.: `760198`, NTN-B Principal, só o principal) são outros títulos e não entram na curva: a ingestão ANBIMA SHALL gravar em `tAnbmaCurvaPrimr` só o título inteiro, e por isso a tabela tem no máximo um título por vencimento. Fixa a leitura da tabela, o fluxo de caixa, a cotação, a regra de desconto dos cupons, a busca da raiz e os erros.
 
 ## ADDED Requirements
 
@@ -9,7 +9,7 @@ O modelo `NTNB_BOOTSTRAP_ANBIMA` SHALL exigir origem com fonte `ANBIMA` e produt
 - `vPrecoTx`: taxa indicativa em percentual ao ano; `y = vPrecoTx / 100`;
 - `vVertcCurva`: prazo do título em dias úteis a partir de `B`.
 
-`tAnbmaCurvaPrimr` não guarda a data de vencimento, que o arquivo traz em `Data Vencimento`: a ingestão grava o prazo em dias úteis. O modelo reconstrói o vencimento a partir do prazo e da regra da NTN-B (todo título vence no dia 15). Para cada título:
+`tAnbmaCurvaPrimr` não guarda a data de vencimento, que o arquivo traz em `Data Vencimento`: a ingestão grava o prazo em dias úteis. O modelo reconstrói o vencimento a partir do prazo e da regra da NTN-B (todo título vence no dia 15). O que vem do arquivo é respeitado sem questionamento: não há tolerância nem conferência de mês. Para cada título:
 - data aproximada `A` = `B` avançada `vVertcCurva` dias úteis pelo calendário cadastrado;
 - vencimento nominal `V` = dia 15 do mês de `A`;
 - data de pagamento do vencimento `P` = `V` ajustado por `Following` no calendário cadastrado; é a data do ponto;
@@ -33,14 +33,12 @@ Para cada situação das linhas lidas de `tAnbmaCurvaPrimr`, o resultado SHALL s
 | nenhuma linha da curva na data, ou todas descartadas | falha: `INSUMO_AUSENTE` |
 | `vPrecoTx` nulo | descarta o título com o motivo `SEM_TAXA`, no log e na memória; a curva sai com os demais |
 | `vVertcCurva` nulo, menor que 1 ou fracionário (prazo em dias úteis é inteiro) | falha: `INSUMO_INVALIDO` (linha) |
-| `A` a mais de `engine.ntnb.tolerancia-vencimento-dias` (padrão 5) dias corridos de `P` | falha: `INSUMO_INVALIDO` (linha, `A` e `P`), motivo "prazo não corresponde a um vencimento de NTN-B (dia 15)"; é o sinal de prazo gravado em outra unidade (ex.: dias corridos) |
-| mês de `V` fora de `engine.ntnb.meses-vencimento` (padrão fevereiro, maio, agosto e novembro, os meses de cupom) | falha: `INSUMO_INVALIDO` (linha e `V`) |
-| dois títulos com o mesmo `V` | falha: `INSUMO_INVALIDO` (as duas linhas) |
-| `A` diferente de `P` dentro da tolerância, ou `vVertcCurva` diferente do `DU` de `P` pelo calendário | constrói com o `vVertcCurva` publicado e o aviso `CALENDARIO_DIVERGENTE` |
+| `A` diferente de `P`, ou `vVertcCurva` diferente do `DU` de `P` pelo calendário | constrói com o `vVertcCurva` publicado e o vencimento `P`, com o aviso `CALENDARIO_DIVERGENTE` |
+| dois títulos com o mesmo `V` | falha: `INSUMO_INVALIDO` (as duas linhas): não acontece com a ingestão gravando só o título inteiro, e dois pontos na mesma data não cabem na PK de `tDadoVertcCurva` |
 
-#### Scenario: Prazo inconsistente
-- **WHEN** `vVertcCurva` foi gravado em dias corridos, e `A` cai a 12 dias do dia 15 ajustado do mês
-- **THEN** a construção falha com `INSUMO_INVALIDO`, informando a linha, `A`, `P` e o motivo
+#### Scenario: Só o título inteiro
+- **WHEN** o arquivo traz a NTN-B `760199` e uma NTN-B Principal `760198` com o mesmo vencimento `2035-05-15`
+- **THEN** só a `760199` está em `tAnbmaCurvaPrimr`, e a curva tem um ponto em `2035-05-15`, com a taxa do título inteiro
 
 #### Scenario: Título sem taxa
 - **WHEN** um dos títulos da data tem `vPrecoTx` nulo

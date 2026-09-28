@@ -2,7 +2,7 @@
 
 - [x] 1.0 Verificar que `tAnbmaCurvaPrimr` aceita a curva zero da ANBIMA (`CurvaZero_25092026.txt`: 4 curvas, 113 linhas gravadas em SQL Server 2022 sobre o `001_SCRIPT_INICIAL.sql`)
 - [x] 1.1 Escrever `scripts/alter-banco-curvas.sql` (alterações numa transação e volta comentada) e testá-lo em SQL Server 2022 sobre o schema do `001_SCRIPT_INICIAL.sql`, inclusive a volta
-- [ ] 1.1b Retestar o script na versão com `DROP TABLE tCurvaData` em SQL Server 2022, inclusive a volta que recria a tabela
+- [x] 1.1b Retestar o script na versão com `DROP TABLE tCurvaData` em SQL Server 2022, inclusive a volta que recria a tabela (2026-09-28: aplicação, ticker de 22 caracteres, volta idêntica ao `001_SCRIPT_INICIAL.sql` e falha no meio sem aplicar nada)
 - [ ] 1.2 Pedir ao dono do schema a execução do script no banco ainda sem uso, com a confirmação de que nenhum outro sistema depende de `cTickerBberg` com `CHAR(20)` nem de `tCurvaData`; registrar a resposta no design
 
 ## 2. Schema de teste

@@ -88,7 +88,7 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
 - **Blob Storage:** só a pasta `groovy-models/` no container existente, acessada por Managed Identity. Nenhum dado de curva vai para o Blob, que fica com os originais dos feeders e os scripts.
 - **Dependências fora do engine (outros changes):**
   - B3: o processor precisa ler o `TaxaSwap.txt` pelo código exato e gravar em `tBtrsCurvaPrimr` (change `conector-b3-webhook-ingest`; hoje o conector transforma DCL/DPL em DOL e descarta PTX/INP);
-  - a ingestão ANBIMA (arquivo `ms{AAMMDD}.txt`, produto `MS`) precisa confirmar a unidade de `vVertcCurva`, calculado a partir de `Data Vencimento`; a escala de `vPrecoTx` (percentual) está confirmada pelo arquivo;
+  - a ingestão ANBIMA (arquivo `ms{AAMMDD}.txt`, produto `MS`) grava só o título inteiro (código SELIC terminado em `99`) e precisa confirmar a unidade de `vVertcCurva`, calculado a partir de `Data Vencimento`; a escala de `vPrecoTx` (percentual) está confirmada pelo arquivo;
   - a ingestão SOFR precisa do feeder gravando os nós em `tBbergCurvaPrimr` (o ticker completo precisa da change `banco-curvas-ajustes`; a forma curta cabe no schema atual);
   - o processor precisa chamar o webhook de carga depois do commit de cada carga, com retry pelo mesmo `idCarga` (change `conector-b3-webhook-ingest`, para a B3);
   - o cadastro das 7 curvas vem do `services/curves` (change `curves-cadastro-curvas`, com o exemplo `exemplo-cadastro-7-curvas.txt`), com os valores das specs;

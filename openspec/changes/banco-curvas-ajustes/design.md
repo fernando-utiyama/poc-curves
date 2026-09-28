@@ -39,7 +39,7 @@ Verificado com o arquivo real `CurvaZero_25092026.txt`, gravado em SQL Server 20
 
 ## Migration Plan
 
-1. Pedir ao dono do schema a execução de `scripts/alter-banco-curvas.sql` no banco ainda sem uso. O script foi testado em SQL Server 2022 sobre o schema do `001_SCRIPT_INICIAL.sql`: aplicação, ticker de 22 caracteres gravado, `tCurvaData` removida, e a volta comentada restaurando o schema anterior. **O teste precisa ser refeito com esta versão do script.**
+1. Pedir ao dono do schema a execução de `scripts/alter-banco-curvas.sql` no banco ainda sem uso. O script foi testado em SQL Server 2022 sobre o schema do `001_SCRIPT_INICIAL.sql`: aplicação, ticker de 22 caracteres gravado, `tCurvaData` removida com a FK, `tDadoCurva` e `tDadoVertcCurva` intactas (colunas, PKs e FKs), a volta comentada recriando `tCurvaData` como no `001_SCRIPT_INICIAL.sql` (colunas e PK nonclustered), e uma falha no `DROP TABLE` desfazendo também o `ALTER` do ticker. Retestado em 2026-09-28 com esta versão do script.
 2. Ajustar `db/h2/schema.sql` com as mesmas alterações.
 3. **Rollback:** a volta comentada no final do script.
 
