@@ -1,5 +1,5 @@
 -- ============================================================================
--- V22__legado_schema_curvas_mercado.sql
+-- 001_SCRIPT_INICIAL.sql
 -- Replicação do script 001_SCRIPT_INICIAL.sql (schema legado real de curvas de
 -- mercado, fonte: sistema com BloombergCurvaPrimr.java) — TRANSCRITO A PARTIR
 -- DE FOTOS DE TELA, não copiado byte a byte do arquivo original (o arquivo não
@@ -20,10 +20,6 @@
 -- curve-orchestrator/curve-engine) NÃO foram adaptadas para este schema — só
 -- a tabela física foi replicada aqui, a adaptação das aplicações é passo
 -- seguinte, separado.
---
--- As tabelas abaixo são inteiramente novas (nenhum nome colide com o schema
--- V1-V21 já existente: definicao_curva, versao_curva, ponto_dado_mercado etc.)
--- — migração puramente aditiva, não altera nem remove nada do schema atual.
 -- ============================================================================
 
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[tTesouCurvaPrimr]') AND type in (N'U'))
@@ -299,6 +295,40 @@ CREATE TABLE [tDadoVertcCurva]
     [cQtdDiaReft]       int             NULL ,
     [vPrecoTx]          DECIMAL(28,12)  NULL
 )
+GO
+
+-- Descrições de tDadoVertcCurva: NÃO existem no script original aplicado.
+-- Foram trazidas da ideia original do modelo (onde a data do vértice se chamava
+-- dtVerticeReferencia) só para documentar o significado das colunas no poc.
+EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'Informações detalhadas de cada vértice da curva.',
+    @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'tDadoVertcCurva'
+GO
+EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'Ticker que representa o ativo ou indicador.',
+    @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'tDadoVertcCurva', @level2type = N'COLUMN', @level2name = N'cTickerIndcd'
+GO
+EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'Quantidade de dias uteis considerados no calculo.',
+    @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'tDadoVertcCurva', @level2type = N'COLUMN', @level2name = N'cDiaUtil'
+GO
+EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'Fator diario de capitalizacao.',
+    @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'tDadoVertcCurva', @level2type = N'COLUMN', @level2name = N'vFatorDia'
+GO
+EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'Fator acumulado ate a data de referencia.',
+    @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'tDadoVertcCurva', @level2type = N'COLUMN', @level2name = N'vFatorAcum'
+GO
+EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'Valor da taxa ou preco associado ao ativo na data de referencia.',
+    @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'tDadoVertcCurva', @level2type = N'COLUMN', @level2name = N'vPrecoTx'
+GO
+EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'Quantidade de dias do período.',
+    @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'tDadoVertcCurva', @level2type = N'COLUMN', @level2name = N'cQtdDiaPer'
+GO
+EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'Quantidade de dias em convenção 30/360.',
+    @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'tDadoVertcCurva', @level2type = N'COLUMN', @level2name = N'cQtdDiaReft'
+GO
+EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'Data base das informações.',
+    @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'tDadoVertcCurva', @level2type = N'COLUMN', @level2name = N'dBaseReft'
+GO
+EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'Data de Referencia do Vértice',
+    @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'tDadoVertcCurva', @level2type = N'COLUMN', @level2name = N'dVertcReft'
 GO
 
 CREATE TABLE [tGradeMtrizData]

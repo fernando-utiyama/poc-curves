@@ -66,7 +66,7 @@ Toda resposta de consulta de uma curva SHALL trazer o cabeçalho `ETag` = SHA-25
 - **THEN** a primeira é gravada, e a segunda recebe 412 com `ALTERADO_POR_OUTRO`
 
 ### Requirement: Autenticação, papéis e erros
-Toda rota MUST exigir token JWT do Entra ID, no mesmo registro de aplicação do engine. Leitura exige `Curvas.Leitura`; escrita, o papel novo `Curvas.Cadastro`. Token ausente ou inválido: 401 `NAO_AUTENTICADO`; sem papel: 403 `SEM_PERMISSAO`. Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlationId", "detalhes": [ { "campo", "linha", "motivo" } ] }`, em português, sem stack trace, com os códigos:
+Toda rota MUST exigir token JWT do Entra ID, no mesmo registro de aplicação do engine. Leitura exige `Curvas.Leitura`; escrita, o papel novo `Curvas.Cadastro`. Token ausente ou inválido: 401 `NAO_AUTENTICADO`; sem papel: 403 `SEM_PERMISSAO`. Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlationId", "detalhes": [ { "campo", "linha", "valor", "motivo" } ] }`, o mesmo formato do engine, com nulo no que não se aplica, em português, sem stack trace, com os códigos:
 
 | `codigoErro` | HTTP | Quando |
 |---|---|---|
@@ -98,6 +98,61 @@ Nada do cadastro SHALL ser gravado no Blob Storage, que guarda só os arquivos o
 #### Scenario: Arquivo de auditoria pedido pelo front
 - **WHEN** o gestor pede a auditoria do cadastro da `PRE`
 - **THEN** o arquivo é montado na hora, com a curva, as ligações e todas as versões de configuração, e `cUsuarAtulz` e `dUltAtulz` mostram quem fez a última alteração e quando
+
+### Requirement: Contrato de tipos para o front
+Toda resposta JSON do serviço SHALL seguir o mesmo contrato de tipos do engine (spec `curve-engine-api` do change `engine-modelos-curva`): decimais como string em notação simples, datas `AAAA-MM-DD`, instantes em ISO-8601 com o deslocamento de Brasília, enums como string exatamente como nas specs, com diferença entre maiúsculas e minúsculas, e `avisos` como lista de `{ "codigo", "mensagem", "detalhes" }`, vazia quando não há aviso. O front é pt-BR: a API troca valores em formato de máquina e o front formata para pt-BR na tela (vírgula decimal, `dd/mm/aaaa`, horário de Brasília); mensagens de erro e de aviso, rótulos e descrições SHALL estar em pt-BR, com acentuação, em UTF-8; os códigos não são traduzidos. Na entrada, enum com caixa diferente (`taxa`, `business252`) MUST ser recusado com 422 `DADOS_INVALIDOS`, e decimal SHALL ser aceito como string.
+
+As colunas `CHAR` de `tCurvaMercd` (`cNormaDia`, `cTpoJuro`, `cSitReg`, `cTpoVlr`, `cPaisInstt`) são completadas com espaços pelo banco. O serviço SHALL gravar os valores sem espaços e SHALL aparar os espaços à direita de toda coluna de texto lida, antes de devolver, comparar ou calcular o `ETag`.
+
+Enums do serviço:
+
+| Campo | Valores |
+|---|---|
+| `unidade` | `TAXA`, `PRECO`, `PONTOS` |
+| `dayCounterCotacao` | `Business252`, `Actual360`, `Actual365Fixed`, `Thirty360` |
+| `compounding` | `Simple`, `Compounded`, `Continuous` |
+| `situacao` da curva | `ATIVO`, `INATIVO` |
+| `provedor` da ligação | os de `tPrvdrDadoMercd`; o engine e o processor reconhecem `B3`, `ANBIMA`, `BLOOMBERG` e o interno `TCEN` |
+| `produto` da ligação | `TS` (B3, arquivo Taxas de Mercado para Swaps), `MS` (ANBIMA, arquivo de Mercado Secundário de títulos públicos, `ms{AAMMDD}.txt`), `BLC2` (Bloomberg, fonte de preço do curve member no ticker); para `TCEN`, o papel da mãe declarado pelo modelo derivado (ex.: `NUMERADOR`, `DENOMINADOR`) |
+| situação no painel | `NAO_E_DIA_UTIL`, `IGNORADA`, `SITUACAO_INDISPONIVEL`, `CONSTRUIDA`, `DIVERGENTE_DA_FONTE`, `AGUARDANDO_MAES`, `AGUARDANDO_CARGA`, `COM_ERRO`, `NAO_CONSTRUIDA` |
+| `motivo` no painel | `PONTOS_DIFERENTES`, `FONTE_COM_ERRO`, `SEM_INSUMO` |
+| tipo no `CADASTRO_ALTERADO` | `CURVA`, `LIGACAO`, `CONFIGURACAO` |
+| operação no `CADASTRO_ALTERADO` | `CRIACAO`, `ALTERACAO`, `INATIVACAO`, `REATIVACAO`, `EXCLUSAO` |
+| operação no `PONTOS_EDITADOS` | `SUBSTITUICAO`, `EXCLUSAO` |
+| `origem` no `PONTOS_EDITADOS` | `API`, `PLANILHA` |
+| `modo` da importação | `SIMULACAO`, `APLICACAO` |
+| `Resultado` na planilha | `SEM_MUDANCA`, `INCLUSAO`, `ALTERACAO`, `EXCLUSAO` ou o código do erro |
+
+Os parâmetros de cálculo (`parametros`) seguem os valores da spec `curve-build-pipeline` do engine, repassados por `GET /api/v1/curvas-mercado/valores`.
+
+Avisos do serviço:
+
+| `codigo` | Onde | Significado |
+|---|---|---|
+| `CURVA_SEM_ORIGEM` | ligações, planilha | curva sem ligação: o engine não a constrói |
+| `ORIGEM_INCOMPATIVEL_COM_MODELO` | ligações, configuração | provedor ou produto diferente do esperado pelo modelo nativo |
+| `MODELO_NAO_NATIVO` | configuração | modelo, interpolador ou calendário que depende de script Groovy |
+| `CURVA_COM_FILHAS` | inativação | curva é mãe de curva derivada ativa |
+| `VALORES_SEM_ENGINE` | valores aceitos | engine fora: valores da cópia embutida, só com modelos nativos |
+| `ENGINE_INDISPONIVEL` | painel | engine fora: situação sem conferência |
+| `PONTO_ANTES_DA_DATA_BASE` | pontos | data do ponto igual ou anterior à data-base |
+| `PONTO_EM_FIM_DE_SEMANA` | pontos | ponto em sábado ou domingo |
+| `PONTO_EM_FERIADO` | pontos | ponto em feriado do calendário da curva |
+| `VALOR_NAO_POSITIVO` | pontos | preço ou pontos menor ou igual a zero |
+| `VALOR_ARREDONDADO` | pontos | valor arredondado pela configuração; `detalhes` traz o enviado e o gravado |
+| `SEM_CONFIGURACAO` | pontos | sem configuração vigente: gravado sem arredondar |
+| `CALENDARIO_NAO_VERIFICADO` | pontos | engine fora ou sem configuração: feriados não conferidos |
+| `SEM_MUDANCA` | pontos | lista igual à gravada: nada foi escrito |
+
+Um código de aviso ou de erro novo SHALL entrar nestas tabelas e na resposta de `GET /api/v1/curvas-mercado/valores` antes de ser usado.
+
+#### Scenario: Situação lida de coluna CHAR
+- **WHEN** a curva `PRE` tem `cSitReg` gravado como `ATIVO` numa coluna `CHAR(20)`
+- **THEN** a resposta traz `"situacao": "ATIVO"`, sem espaços, e o `ETag` é o mesmo de antes da leitura
+
+#### Scenario: Enum em caixa errada
+- **WHEN** o cliente cria uma curva com `unidade` = `taxa`
+- **THEN** a resposta é 422 com `DADOS_INVALIDOS` apontando o campo `unidade` e os valores aceitos
 
 ### Requirement: Horário e log
 Todo instante (respostas, auditoria, `dCriacReg`, `dUltAtulz`, logs) SHALL usar o fuso `America/Sao_Paulo`, sem depender do fuso do servidor. Toda requisição SHALL gerar log JSON com `correlationId`, usuário, rota, status, código de erro e duração.

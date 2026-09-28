@@ -7,7 +7,7 @@ No `services/curves`, exportar os pontos de várias curvas e datas-base para uma
 ### Requirement: Estrutura da planilha de pontos
 A planilha (`.xlsx`) SHALL ter uma única aba, `Pontos`, com o cabeçalho na primeira linha e exatamente quatro colunas, nesta ordem: `Curva`, `DataBase`, `DataPonto`, `Valor`. Cada linha é um ponto, e a exportação as ordena por curva, data-base e data do ponto. `Curva` SHALL ser o nome da curva (`tCurvaMercd.cTickerIndcd`), que é imutável, como na planilha de cadastro. Na importação, a ordem das linhas não importa, e colunas além das quatro (como a `Resultado` de uma simulação anterior) SHALL ser ignoradas.
 
-`DataBase` e `DataPonto` SHALL ser células de data (`aaaa-mm-dd`). `Valor` SHALL ser célula numérica quando o valor tiver até 15 dígitos significativos (limite do Excel), e texto caso contrário, para não perder precisão; na importação, os dois formatos são aceitos.
+`DataBase` e `DataPonto` SHALL ser células de data. Como o front e os usuários são pt-BR, as datas SHALL ser células de data com o formato de exibição `dd/mm/aaaa`, e os números, células numéricas (o Excel em pt-BR mostra a vírgula decimal). Na importação, uma data em texto SHALL ser aceita como `dd/mm/aaaa` ou `aaaa-mm-dd`, e um número em texto, com vírgula ou ponto decimal e sem separador de milhar (`13,9000000` ou `13.9000000`); texto com vírgula e ponto ao mesmo tempo MUST ser recusado, por ser ambíguo. Nomes de abas e de colunas ficam sem acento. `Valor` SHALL ser célula numérica quando o valor tiver até 15 dígitos significativos (limite do Excel), e texto caso contrário, com vírgula decimal (pt-BR), para não perder precisão; na importação, os dois formatos são aceitos.
 
 #### Scenario: Valor com 7 casas
 - **WHEN** os pontos da `PTX` são exportados

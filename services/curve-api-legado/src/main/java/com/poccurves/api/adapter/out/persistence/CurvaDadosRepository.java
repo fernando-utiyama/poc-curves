@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * Leitura JDBC de {@code tDadoCurva} (vértices construídos pelo engine) e {@code tCurvaData}
- * (curva construída/interpolada) — schema legado, db/migration/V22, grants em V28. Quem escreve
+ * (curva construída/interpolada) — schema legado, db/migration/001_SCRIPT_INICIAL.sql, grants do poc. Quem escreve
  * nessas tabelas é o curve-engine (ConstrucaoCurvaB3Service); curve-api só lê.
  */
 @Repository

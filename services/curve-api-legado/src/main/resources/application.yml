@@ -5,7 +5,7 @@ spring:
   application:
     name: curve-api
   datasource:
-    # Credencial restrita curve_api_app (db/migration/V12__curve_api_credencial_restrita.sql,
+    # Credencial restrita curve_api_app (credencial do poc,
     # tarefa 1.2 do backlog): SELECT/INSERT/UPDATE só em definicao_curva e
     # versao_definicao_curva, SELECT-only nas tabelas de outros serviços.
     url: jdbc:sqlserver://sqlserver:1433;databaseName=curvasdb;trustServerCertificate=true;encrypt=true

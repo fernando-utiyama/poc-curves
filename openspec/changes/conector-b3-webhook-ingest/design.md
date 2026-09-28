@@ -6,7 +6,7 @@ A motivação está no proposal e o comportamento nas specs. Estado atual verifi
 - **Conector, download do `.ex_`** (hoje `b3ContingencyHttpTrigger`, rota `swap-contingency`): baixa o `.ex_` (com busca de até 7 dias úteis anteriores), extrai o texto e grava em `b3/{AAAAMMDD}/TaxaSwap.txt` (`uploadSwapText`), com a data do download na pasta. Não publica nada.
 - **Codificação:** o download do `.txt` devolve texto (o arquivo local é lido como UTF-8), o do `.ex_` extrai texto, e o upload grava em Latin-1. O mesmo conteúdo pode chegar com bytes diferentes (fim de linha, codificação).
 - **Processor** (`B3KafkaConsumer`, tópico `tp-event-b3-curve`): lê a mensagem direto em `B3CurveRaw` sem desembrulhar `values`, guarda o valor em `Double` e grava em `mkt.B3CurveRaw` por *upsert* na chave (ticker, data). Como chega uma mensagem por vértice, cada vértice sobrescreve o anterior: sobra uma linha por curva e data, em vez de 278.
-- **Banco:** `tBtrsCurvaPrimr` tem FK de `cTickerIndcd` para `tCurvaMercd`; `tCurvaPrvdr` liga a curva de mercado ao provedor e ao ticker no provedor (`cTickerPrvdr`); a sequência `seq_tbtrscurvaprimr_cidtfdunic` já existe (V23), e a credencial do processor só tem `SELECT, REFERENCES` em `tCurvaMercd`.
+- **Banco:** `tBtrsCurvaPrimr` tem FK de `cTickerIndcd` para `tCurvaMercd`; `tCurvaPrvdr` liga a curva de mercado ao provedor e ao ticker no provedor (`cTickerPrvdr`); `cldtfdUnic` é `INT NOT NULL` sem identity nem sequência no `001_SCRIPT_INICIAL.sql`. O processor não escreve em `tCurvaMercd`.
 - **Engine** (`engine-modelos-curva`): lê `tBtrsCurvaPrimr` pelo nome da curva e constrói automaticamente ao receber `POST /api/v1/cargas` com a quantidade de linhas por código (spec `curve-load-trigger`); não guarda registro da carga.
 
 ## Goals / Non-Goals
@@ -68,7 +68,7 @@ O processor grava os vértices de todos os códigos mapeados numa transação e 
 As rotas do conector publicam dado de mercado usado em risco. Passam a exigir o Entra ID (autenticação do App Service), com o papel `Curvas.Operador` ou a identidade do orquestrador, no mesmo registro de aplicação do engine.
 
 ### D11. Mapeamento pelo `tCurvaPrvdr`, sob o nome da curva de mercado
-`tCurvaPrvdr` liga a curva de mercado ao provedor e ao ticker da curva no provedor. O processor a usa para saber quais curvas de mercado recebem os vértices de cada código, e grava `tBtrsCurvaPrimr.cTickerIndcd` com o nome da curva de mercado. A FK para `tCurvaMercd` fica satisfeita pela própria ligação, sem linhas de "curva da fonte" em `tCurvaMercd` e sem convenção de nome. O processor só lê `tCurvaPrvdr`. **Alternativa rejeitada:** uma linha em `tCurvaMercd` por código da fonte (como `B3_TAXA_SWAP_PRE`, criada à mão nas migrations V23 e V24 do poc), que duplica o cadastro e depende de uma convenção de nome.
+`tCurvaPrvdr` liga a curva de mercado ao provedor e ao ticker da curva no provedor. O processor a usa para saber quais curvas de mercado recebem os vértices de cada código, e grava `tBtrsCurvaPrimr.cTickerIndcd` com o nome da curva de mercado. A FK para `tCurvaMercd` fica satisfeita pela própria ligação, sem linhas de "curva da fonte" em `tCurvaMercd` e sem convenção de nome. O processor só lê `tCurvaPrvdr`. **Alternativa rejeitada:** uma linha em `tCurvaMercd` por código da fonte (ex.: `B3_TAXA_SWAP_PRE`), que duplica o cadastro e depende de uma convenção de nome.
 
 ### D12. Aviso ao engine por HTTP, com repetição curta e alerta cedo
 Não há tópico Kafka para o engine, então o aviso é o webhook `POST /api/v1/cargas`, chamado pelo endereço do serviço. O balanceador do Azure entrega cada chamada a uma instância pronta. Qual instância atende não importa, porque o estado está no banco e a trava por curva serializa as construções.
@@ -103,7 +103,6 @@ Quem dispara os downloads é o orquestrador (`services/orchestrator`), que orque
 - **Processor depende do Blob.** → O arquivo é imutável e conferido por hash. Se o Blob estiver fora, a leitura é repetida por até 5 minutos; depois, `CARGA_FALHOU` e republicação da data.
 - **Código com linha inválida não chega ao engine.** → É intencional; aparece no log do processor e como `INSUMO_AUSENTE` no engine.
 - **Republicação substitui os brutos da data.** → As versões anteriores ficam no Blob por `idCarga`, e o engine decide sobre recálculo.
-- **Linhas `B3_TAXA_SWAP_*` em `tCurvaMercd`** (V23 e V24) deixam de ser usadas. → Podem ficar no banco; apagá-las é decisão do cadastro.
 
 ## Migration Plan
 
@@ -115,4 +114,4 @@ Quem dispara os downloads é o orquestrador (`services/orchestrator`), que orque
 
 ## Open Questions
 
-Nenhuma.
+- Como o sistema real gera `tBtrsCurvaPrimr.cldtfdUnic` (`INT NOT NULL`, sem identity nem sequência no `001_SCRIPT_INICIAL.sql`). A spec do processor deixa a forma em aberto; ajustar quando for confirmada.

@@ -23,6 +23,7 @@
 ## 4. Cadastro
 
 - [ ] 4.1 Ler os parâmetros do JSON de `tConfgCurva.cModDado` (tipos da tabela da spec, chave desconhecida e JSON inválido rejeitados), sem ler `tParmConfgCurva`; verificar com JSON válido, inválido, com chave desconhecida e com tipo errado
+- [ ] 4.1b Aparar espaços à direita das colunas de texto do cadastro, comparar enums com diferença de caixa, tratar `cSitReg` diferente de `ATIVO` como inativa, e validar `FREQUENCY` (lista fechada, só com `Compounded`) e `MERCADO_CALENDARIO` (mercado do calendário); verificar `'ATIVO' + espaços` lido de `CHAR(20)`, `business252` recusado, `NoFrequency` recusado e `Brazil`/`FederalReserve` recusado
 - [ ] 4.2 Criar `CadastroCurva` e o adaptador que o monta de `tCurvaMercd`, `tCurvaPrvdr` (menor `cPriorCsumo`), `tConfgCurva` vigente e o JSON de `cModDado`, validando todas as regras de `CADASTRO_INVALIDO` da spec; verificar com um teste por regra (item ausente, valor inválido, chave desconhecida, zero e duas configurações vigentes, grandeza × unidade, `FlatForward` com `Cubic`, fonte errada para o modelo) e que curva inativa ou data-base fora da vigência da curva não geram `CADASTRO_INVALIDO`, mas os avisos `CURVA_INATIVA` e `FORA_DA_VIGENCIA_CURVA` na construção pela API e na simulação
 - [ ] 4.3 Criar as fixtures de teste com o cadastro das 7 curvas exatamente como nas specs `b3-ready-curve-model`, `ntnb-anbima-curve-model` e `sofr-bloomberg-curve-model`; verificar que as 7 carregam sem `CADASTRO_INVALIDO`
 
@@ -48,9 +49,10 @@
 
 ## 8. Pipeline
 
-- [ ] 8.1 Ajustar a entidade de `tDadoCurva` às quatro colunas do schema e reescrever `ConstruirCurvaService`: trava `PESSIMISTIC_WRITE` na linha de `tCurvaMercd` (30 segundos, `CONSTRUCAO_EM_ANDAMENTO`), cadastro, modelo, arredondamento, gravação, situações `CONSTRUIDA`/`RECONSTRUIDA`/`EXISTENTE`, proveniência e `hashPontos`; verificar que a `PRE` grava 278 linhas e nenhuma em `tCurvaData`, `tDadoVertcCurva` e `tMtrizCurva`, que duas construções simultâneas da mesma curva não misturam pontos, e o determinismo pelo `hashPontos`
+- [ ] 8.1 Ajustar a entidade de `tDadoCurva` às quatro colunas do schema e a de `tDadoVertcCurva` às colunas do `001_SCRIPT_INICIAL.sql` (`dVertcReft`, fatores com 16 casas), e reescrever `ConstruirCurvaService`: trava `PESSIMISTIC_WRITE` na linha de `tCurvaMercd` (30 segundos, `CONSTRUCAO_EM_ANDAMENTO`), cadastro, modelo, arredondamento, gravação dos pontos e do detalhe de cada vértice na mesma transação, situações `CONSTRUIDA`/`RECONSTRUIDA`/`EXISTENTE`, proveniência e `hashPontos`; verificar que a `PRE` grava 278 linhas em `tDadoCurva` e 278 em `tDadoVertcCurva` (dias úteis, corridos e 30/360 e fatores conferidos contra a fórmula), nenhuma em `tCurvaData` e `tMtrizCurva`, que o recálculo apaga e regrava as duas, que a interpolação ignora `tDadoVertcCurva`, que duas construções simultâneas da mesma curva não misturam pontos, e o determinismo pelo `hashPontos`
 - [ ] 8.2 Implementar a simulação no mesmo serviço, com a gravação desligada, sem trava, com `status` `OK`/`ERRO`, prazos `FORA_DO_DOMINIO` e comparação com os pontos gravados (`SO_SIMULADO`/`SO_GRAVADO`); verificar que simular e construir dão o mesmo `hashPontos`, que a simulação não grava nada, e a diferença de um ponto editado
 - [ ] 8.3 Reescrever `CalcularCurvaService` (consulta e interpolação lendo `tDadoCurva` a cada chamada, sem cache); verificar `CURVA_NAO_CONSTRUIDA`, o aviso `PONTO_DESCARTADO_MESMO_PRAZO` com pontos gravados em `2026-12-24` e `2026-12-25`, e o oráculo B3: para as 5 curvas, cada prazo de vértice devolve exatamente o `vPrecoTx` publicado
+- [ ] 8.3b Na consulta e na auditoria, mostrar o detalhe gravado ao lado do recalculado, com `CALCULO_GRAVADO_DIVERGENTE` e `SEM_CALCULO_GRAVADO`; verificar a divergência com um feriado acrescentado ao calendário depois da construção, e uma data com pontos editados à mão
 - [ ] 8.4 Emitir os eventos de log da spec (`CONSTRUCAO_CONCLUIDA`, `CONSTRUCAO_FALHOU`, `INSUMO_DESCARTADO`, `SIMULACAO_EXECUTADA`) em JSON com `correlationId`; verificar os campos de cada evento com um appender de teste
 - [ ] 8.5 Remover `ComposableCurveBuilder`, `DefaultInsumoNormalizer`, `CurveBuilderRegistry`, `CurveInterpolatorRegistry`, `CurveExtrapolatorRegistry`, os interpoladores e extrapoladores antigos, `MetodoInterpolacao`, `PoliticaExtrapolacao`, `ConvencaoDias` e `CurvaInterpolacaoDomainService`; verificar com `mvn compile` limpo e busca sem referências
 
@@ -83,6 +85,7 @@
 
 ## 12. API
 
+- [ ] 12.0 Aplicar o contrato de tipos das respostas (decimais como string, datas, instantes, enums e `avisos` no formato da spec `curve-engine-api`) com um serializador único e testes de contrato que conferem cada enum e cada código de aviso contra as tabelas da spec e contra `GET /valores-cadastro`; verificar um fator com 16 casas chegando inteiro, um enum em caixa diferente recusado, e mensagens, rótulos e descrições em pt-BR com acentuação em UTF-8
 - [ ] 12.1 Criar o tratamento de erros padronizado (tabela de `codigoErro` e HTTP da spec `curve-engine-api`) e o filtro de `X-Correlation-Id`; verificar um teste por código de erro e o cabeçalho em resposta de sucesso, de erro e de `xlsx`
 - [ ] 12.2 Criar as rotas de curva (catálogo, construção, consulta, interpolação, simulação; por código e por nome), com validação dos parâmetros comuns (400 para parâmetro desconhecido, limite de 5.000 prazos, `data` não útil), o papel exigido em cada rota; verificar com testes de controller para cada rota e os cenários da spec
 - [ ] 12.3 Criar as rotas `/api/v1/modelos/{tipo}/{nome}` sobre o Blob; verificar envio, validação, ativação, desativação, listagem, 401 e `ESTADO_SCRIPT_CONCORRENTE`
@@ -90,7 +93,7 @@
 
 ## 13. Planilha
 
-- [ ] 13.1 Criar `PlanilhaMemoriaCalculo` com Apache POI (`poi-ooxml`): as seis abas na ordem, cabeçalho congelado, datas `aaaa-mm-dd`, números como células numéricas, colunas extras do modelo, nota de precisão no `Resumo`; verificar lendo o arquivo gerado no teste e conferindo abas, cabeçalhos e tipos de célula
+- [ ] 13.1 Criar `PlanilhaMemoriaCalculo` com Apache POI (`poi-ooxml`): as seis abas na ordem, cabeçalho congelado, datas exibidas como `dd/mm/aaaa`, números como células numéricas, colunas extras do modelo, nota de precisão no `Resumo`; verificar lendo o arquivo gerado no teste e conferindo abas, cabeçalhos e tipos de célula
 - [ ] 13.2 Ligar `formato=xlsx` às rotas de consulta, interpolação e simulação, com `Content-Type`, `Content-Disposition` e nome de arquivo da spec; verificar os dois cenários de planilha da spec `curve-calculation-memory` (consulta gravada da `PRE` com `du=21`, e simulação da `NTN-B` com prazo inconsistente)
 
 ## 14. Calendário por planilha e pacote de depuração

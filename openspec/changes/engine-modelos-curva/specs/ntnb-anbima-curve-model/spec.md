@@ -1,11 +1,11 @@
 ## Purpose
 
-Constrói a curva NTN-B de taxa zero real a partir das taxas indicativas por título publicadas pela ANBIMA, gravadas em `tAnbmaCurvaPrimr`, por bootstrap sequencial. Fixa a leitura da tabela, o fluxo de caixa, a cotação, a regra de desconto dos cupons, a busca da raiz e os erros.
+Constrói a curva NTN-B de taxa zero real a partir das taxas indicativas por título publicadas pela ANBIMA, gravadas em `tAnbmaCurvaPrimr`, por bootstrap sequencial. A fonte é o arquivo de Mercado Secundário de títulos públicos da ANBIMA (`https://www.anbima.com.br/informacoes/merc-sec/arqs/ms{AAMMDD}.txt`, produto `MS`): texto Latin-1, campos separados por `@`, vírgula decimal, uma linha por título, com `Titulo` (`NTN-B`), `Data Referencia`, `Data Vencimento` (sempre dia 15) e `Tx. Indicativas` em percentual ao ano (ex.: `5,4892`). No arquivo de `2026-09-25` há 14 NTN-B, de `2027-05-15` a `2060-08-15`. Fixa a leitura da tabela, o fluxo de caixa, a cotação, a regra de desconto dos cupons, a busca da raiz e os erros.
 
 ## ADDED Requirements
 
 ### Requirement: Leitura dos títulos
-O modelo `NTNB_BOOTSTRAP_ANBIMA` SHALL exigir origem com fonte `ANBIMA` e produto `TP`, e interpolador `Linear` ou `LogLinear`; caso contrário, `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tAnbmaCurvaPrimr` com `cTickerIndcd` = nome da curva e `dBaseReft` = data-base `B`. Cada linha é um título:
+O modelo `NTNB_BOOTSTRAP_ANBIMA` SHALL exigir origem com fonte `ANBIMA` e produto `MS`, e interpolador `Linear` ou `LogLinear`; caso contrário, `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tAnbmaCurvaPrimr` com `cTickerIndcd` = nome da curva e `dBaseReft` = data-base `B`. Cada linha é um título:
 - `vPrecoTx`: taxa indicativa em percentual ao ano; `y = vPrecoTx / 100`;
 - `vVertcCurva`: prazo do título em dias úteis a partir de `B`.
 
@@ -87,7 +87,7 @@ O modelo SHALL registrar na memória de cálculo: na aba `Insumos`, a tabela `tA
 
 ### Requirement: Cadastro da NTN-B
 A curva SHALL ser cadastrada com:
-- código `NTNB`, nome `NTN-B`, origem `ANBIMA`/`TP`/`NTN-B`;
+- código `NTNB`, nome `NTN-B`, origem `ANBIMA`/`MS`/`NTN-B`;
 - construção `NTNB_BOOTSTRAP_ANBIMA`, unidade `TAXA`;
 - `Discount` + `LogLinear`, eixo `Business252`, cotação `Business252`/`Compounded`/`Annual`;
 - calendário `Brazil`/`Settlement`/`Following`;

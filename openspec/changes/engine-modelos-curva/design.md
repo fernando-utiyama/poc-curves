@@ -21,8 +21,9 @@ A motivação está no proposal e o comportamento normativo (fórmulas, regras, 
 | `tBtrsCurvaPrimr` | bruto B3: `cDiaCorri`, `cDiaUtil`, `vPrecoTx` |
 | `tAnbmaCurvaPrimr` | bruto ANBIMA: `vVertcCurva`, `vPrecoTx` |
 | `tDadoCurva` | pontos gravados pelo engine e pela edição manual no `services/curves`: `dBaseReft`, `cTickerIndcd`, `dVertcReft`, `vPrecoTx` |
+| `tDadoVertcCurva` | detalhe do cálculo de cada vértice, gravado só pelo engine e apagado pela edição manual (D36): `cDiaUtil`, `cQtdDiaPer`, `cQtdDiaReft`, `vFatorDia`, `vFatorAcum`, `vPrecoTx` |
 
-**Modelo de dados.** `tDadoCurva` (dado curva) guarda os **pontos** da curva na data-base. `tCurvaData` (curva data) seria a curva interpolada diária e tem FK para `tDadoCurva` (`FK_tDadoCurva_tCurvaData`); não é gravada nesta fase. `tDadoVertcCurva` e `tMtrizCurva` (reservada a superfícies) também não são gravadas.
+**Modelo de dados.** `tDadoCurva` (dado curva) guarda os **pontos** da curva na data-base. `tCurvaData` (curva data) seria a curva interpolada diária e tem FK para `tDadoCurva` (`FK_tDadoCurva_tCurvaData`); não é gravada nesta fase. `tDadoVertcCurva` guarda o detalhe do cálculo de cada vértice (D36), e `tMtrizCurva` (reservada a superfícies) não é gravada.
 
 ```
 tabela bruta ─ modelo de construção ─► tDadoCurva (pontos)
@@ -88,14 +89,14 @@ Itens, colunas, valores aceitos e obrigatoriedade estão na spec `curve-build-pi
 **Alternativas rejeitadas:** colunas novas em `tConfgCurva` (mudam o schema); parâmetros no Blob (separariam o cadastro do banco e da vigência).
 
 ### D5. Modelo de construção
-O contrato está na spec `curve-extension-models`. O modelo recebe um `ContextoConstrucao` com o cadastro, a data-base, o calendário e o `LeitorInsumos`, que é o único acesso às tabelas brutas. Scripts Groovy não acessam o banco. Cada modelo declara a fonte e o produto que aceita (`PRONTA_TS_B3`: `B3`/`TS`; `NTNB_BOOTSTRAP_ANBIMA`: `ANBIMA`/`TP`; `SOFR_ZERO_BLOOMBERG`: `BLOOMBERG`/`ZR`), e o pipeline rejeita cadastro que aponte um modelo para outra fonte. O modelo devolve pontos sem arredondamento; o pipeline arredonda e grava.
+O contrato está na spec `curve-extension-models`. O modelo recebe um `ContextoConstrucao` com o cadastro, a data-base, o calendário e o `LeitorInsumos`, que é o único acesso às tabelas brutas. Scripts Groovy não acessam o banco. Cada modelo declara a fonte e o produto que aceita (`PRONTA_TS_B3`: `B3`/`TS`; `NTNB_BOOTSTRAP_ANBIMA`: `ANBIMA`/`MS`; `SOFR_ZERO_BLOOMBERG`: `BLOOMBERG`/`BLC2`), e o pipeline rejeita cadastro que aponte um modelo para outra fonte. O modelo devolve pontos sem arredondamento; o pipeline arredonda e grava.
 
 ### D6. Gravação: só os pontos, numa transação travada
 A construção grava em `tDadoCurva` só os pontos arredondados. A transação começa com um `SELECT` com trava de escrita (`PESSIMISTIC_WRITE`, tempo limite de 30 segundos) na linha da curva em `tCurvaMercd`, e a edição manual de pontos no `services/curves` usa a mesma trava. Isso serializa construções e edições da mesma curva entre réplicas sem tabela nova. Quem não obtém a trava recebe `CONSTRUCAO_EM_ANDAMENTO`. A simulação não trava nada.
 
 A proveniência vai na resposta e no log `CURVA_GRAVADA` (D23); o banco não tem tabela para ela, porque `tMtrizCurva` é de superfícies.
 
-**Alvo ideal, fora desta mudança:** persistir a curva diária em `tCurvaData`, mantendo dado curva = pontos e curva data = curva diária. Exige remover `FK_tDadoCurva_tCurvaData` e ligar `tCurvaData` a `tCurvaMercd` (ou a uma futura tabela de cabeçalho de curva por data). A curva diária é o volume grande (≈ 12.600 linhas por curva e data em 50 anos) e precisa ser expurgável sem tocar nos pontos. Quando a FK mudar, a construção passa a gravar também `tCurvaData` até o fim do domínio, sem mudar os pontos.
+**Alvo ideal, fora desta mudança (o schema está proposto na change `banco-curvas-ajustes`):** persistir a curva diária em `tCurvaData`, mantendo dado curva = pontos e curva data = curva diária. Exige remover `FK_tDadoCurva_tCurvaData` e ligar `tCurvaData` a `tCurvaMercd` (ou a uma futura tabela de cabeçalho de curva por data). A curva diária é o volume grande (≈ 12.600 linhas por curva e data em 50 anos) e precisa ser expurgável sem tocar nos pontos. Quando a FK mudar, a construção passa a gravar também `tCurvaData` até o fim do domínio, sem mudar os pontos.
 
 ### D7. Precisão
 `BigDecimal` com `MathContext.DECIMAL128` e `DecimalMath.pow/ln/exp` para potências fracionárias, sem arredondamento intermediário. O arredondamento do cadastro vale só para o valor da curva, na gravação e na resposta. Os fatores saem do valor já arredondado, com 16 casas: quem lê a taxa publicada consegue reproduzir o fator. **Alternativa rejeitada:** `double` com arredondamento no fim, que já produz as diferenças que o oráculo B3 detecta.
@@ -262,6 +263,22 @@ Curvas como a inflação implícita (PRE sobre a NTN-B bootstrapada) não vêm d
 
 **Alternativas rejeitadas:** tabela de dependências entre curvas (muda o schema); o modelo derivado ler `tDadoCurva` direto (duplicaria a montagem da curva e escaparia da proveniência); recálculo em cascata (uma edição manual na PRE mudaria em silêncio todas as filhas já consumidas).
 
+### D35. Fontes ANBIMA: mercado secundário hoje, curva zero no futuro
+A NTN-B desta fase vem do bootstrap dos títulos do arquivo de Mercado Secundário (`ms{AAMMDD}.txt`, produto `MS`). No futuro, a ingestão ANBIMA também SHALL baixar a **curva zero** (Estrutura a Termo das Taxas de Juros Estimada), que a ANBIMA publica pronta:
+- **endereço:** `POST https://www.anbima.com.br/informacoes/est-termo/CZ-down.asp`, com `application/x-www-form-urlencoded`: `escolha=2`, `Idioma=PT`, `saida=txt` (ou `csv`, `xls`, `xml`), `Dt_Ref=dd/mm/aaaa` e `Dt_Ref_Ver=AAAAMMDD` (limite inferior que a página envia). A resposta é o anexo `CurvaZero_{DDMMAAAA}.txt`. Só há **5 dias úteis de histórico**: o download precisa ser diário;
+- **formato:** Latin-1, campos separados por `@`, vírgula decimal, ponto de milhar nos vértices (`1.008`) e betas em notação científica (`4,329E-03`). O primeiro campo de cada linha é o bloco: `0` cabeçalho e data; `1` parâmetros Svensson de PREFIXADOS e IPCA; `2` ETTJ por vértice em dias úteis (252 a 8.316, de 126 em 126) com ETTJ IPCA (taxa zero real), ETTJ PREF e Inflação Implícita (estas duas até 2.520); `3` PREFIXADOS da Circular 3.361 (21 a 2.520); `4` erro título a título. Célula vazia é ausência de vértice, não zero;
+- **gravação:** cabe em `tAnbmaCurvaPrimr` sem mudar colunas, uma curva de mercado por série (verificado, change `banco-curvas-ajustes`, D5), com produto `CZ` e o nome da série como código na fonte;
+- **uso:** a ETTJ IPCA é a curva zero real oficial, alternativa ao bootstrap da NTN-B; a Inflação Implícita vem pronta, sem precisar de curva derivada; a ETTJ PREF e a Circular 3.361 servem de conferência da PRE. Construí-las exige só um modelo de leitura de vértices prontos, como o `PRONTA_TS_B3`, numa change futura.
+
+### D36. Detalhe de cada vértice em `tDadoVertcCurva`, como na ideia original
+A ideia original do schema já previa uma tabela de "informações detalhadas de cada vértice da curva", com dias úteis, dias do período, dias em 30/360 e os fatores. O engine a grava junto com os pontos, na mesma transação, para que o usuário confira na tela o que foi calculado e entregue, sem puxar o log, e para que esse registro não mude se o calendário mudar depois.
+- **Uma só verdade:** os pontos estão em `tDadoCurva`; o detalhe é registro. Interpolação, consulta e `hashPontos` usam só `tDadoCurva`.
+- **Coerência com a edição manual:** o `services/curves` apaga o detalhe da data quando edita ou apaga pontos, sem calcular nada, então o detalhe nunca descreve pontos que não existem mais. A tela mostra `SEM_CALCULO_GRAVADO` até um recálculo.
+- **Conferência:** a consulta mostra o gravado ao lado do recalculado e avisa `CALCULO_GRAVADO_DIVERGENTE` quando diferem.
+- **Colunas:** os nomes são os do schema aplicado (`dVertcReft`); o significado vem das descrições da ideia original: `cDiaUtil` dias úteis, `cQtdDiaPer` dias do período, `cQtdDiaReft` dias em 30/360, `vFatorDia` fator diário de capitalização, `vFatorAcum` fator acumulado até o vértice.
+
+**Alternativa rejeitada:** colunas novas de dias em `tDadoCurva`, que exigiriam o calendário na edição manual e mudariam o schema, quando a tabela certa já existe.
+
 ## Risks / Trade-offs
 
 - **Parâmetros em JSON numa coluna legada (`cModDado`).** Outro sistema pode usar essa coluna com outro sentido. → Confirmar com o dono do schema antes do apply; o engine rejeita qualquer conteúdo que não seja o JSON esperado, então um uso diferente aparece como `CADASTRO_INVALIDO`, nunca como curva errada.
@@ -275,7 +292,7 @@ Curvas como a inflação implícita (PRE sobre a NTN-B bootstrapada) não vêm d
 - **Janela de até 30 segundos após uma ativação em que instâncias diferentes usam versões diferentes.** → Cada resposta e cada log informam a versão usada; quem precisa de troca imediata numa curva fixa a versão no cadastro.
 - **Dependência do Blob para resolver modelos.** → Cache de estado de 30 segundos, classes compiladas em memória e último estado mantido sem prazo com o Blob fora (D26).
 - **`FlatForward` no início e `FlatValue` no fim não existem no QuantLib.** → Documentados como extensão; o padrão é `Disabled`.
-- **Escala e unidade dos brutos ANBIMA e SOFR não confirmadas** (percentual, dias úteis). → A checagem do dia 15 (D11) pega a unidade da NTN-B. A escala aparece na primeira simulação com dado real (uma taxa de 0,06 em vez de 6 salta aos olhos na planilha).
+- **Unidade do prazo ANBIMA e escala do SOFR não confirmadas.** A escala da NTN-B está confirmada pelo arquivo `ms{AAMMDD}.txt` (`Tx. Indicativas` em percentual ao ano); o prazo `vVertcCurva` depende da ingestão ANBIMA, ainda não transcrita, que o calcula a partir de `Data Vencimento`. → A checagem do dia 15 (D11) pega a unidade da NTN-B. A escala aparece na primeira simulação com dado real (uma taxa de 0,06 em vez de 6 salta aos olhos na planilha).
 - **Natureza zero rate e convenção (`Actual360`/`Simple`) do SOFR vêm de fonte de terceiro.** → Confirmar no Terminal antes do apply. A convenção é cadastro. Se for par rate, o modelo ganha um passo de bootstrap sem mudar D15 e D16.
 - **Republicação da fonte deixa a curva gravada diferente da fonte até alguém recalcular.** → O webhook devolve o aviso `PONTOS_DIFERENTES_DA_FONTE`, o log registra o evento com nível `AVISO` (base para alerta), e o painel mostra a curva como divergente da fonte.
 - **Sem histórico consultável pela API.** Quem gravou antes, e os pontos substituídos, estão só no log. → Retenção do log definida pela área de risco; o arquivo de auditoria sob demanda mostra o estado atual e a conferência com a fonte; tabelas de auditoria entram quando o banco puder mudar (D23).
@@ -297,7 +314,8 @@ Curvas como a inflação implícita (PRE sobre a NTN-B bootstrapada) não vêm d
 
 - A troca de `FK_tDadoCurva_tCurvaData` por uma FK para `tCurvaMercd` está proposta na change `banco-curvas-ajustes`; falta a política de expurgo da curva diária e a change do engine que passa a gravá-la.
 - `cLingSist`, `cPreCalc`/`cPosCalc` e `cPreMotorCalc`/`cPosMotorCalc` de `tConfgCurva` sugerem ganchos pré e pós cálculo. Não são usados; podem virar scripts Groovy de gancho numa mudança futura.
-- Unidade de `tAnbmaCurvaPrimr.vVertcCurva` e escala de `vPrecoTx`, a confirmar com a ingestão ANBIMA.
+- Unidade de `tAnbmaCurvaPrimr.vVertcCurva`, a confirmar com a ingestão ANBIMA (não transcrita): o arquivo traz `Data Vencimento`, e a ingestão grava o prazo. A escala de `vPrecoTx` está confirmada: percentual ao ano, como `Tx. Indicativas` do arquivo.
 - Prazo de retenção dos logs com `CURVA_GRAVADA` (exigência regulatória ou interna).
+- Confirmar com o dono do schema que `cQtdDiaPer` ("quantidade de dias do período") é a contagem de dias corridos da data-base ao vértice, como assumido (com `cDiaUtil` em dias úteis e `cQtdDiaReft` em 30/360 no mesmo período), e não os dias entre um vértice e o anterior.
 - Quando o banco puder mudar: `tParmConfgCurva` em chave/valor, tabelas de auditoria e `READ_COMMITTED_SNAPSHOT`.
 - Confirmar no Bloomberg Terminal que `S0490Z ... BLC2 Curncy` é zero rate, qual a convenção de cotação e a causa do `1D` duplicado.

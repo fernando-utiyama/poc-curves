@@ -86,7 +86,7 @@ Numa **única transação** por carga, para cada curva de mercado mapeada, o pro
 
 | Coluna | Valor |
 |---|---|
-| `cldtfdUnic` | `NEXT VALUE FOR seq_tbtrscurvaprimr_cidtfdunic` |
+| `cldtfdUnic` | id único da linha, gerado pelo processor sem colisão entre cargas simultâneas; a forma de gerar segue a do sistema real, a confirmar (a coluna é `INT NOT NULL` sem identity nem sequência no `001_SCRIPT_INICIAL.sql`) |
 | `cTickerIndcd` | nome da curva de mercado (de `tCurvaPrvdr`) |
 | `dBaseReft` | data-base |
 | `cDiaCorri` | dias corridos |

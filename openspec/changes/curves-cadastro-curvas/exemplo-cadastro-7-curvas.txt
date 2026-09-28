@@ -26,8 +26,8 @@ DCL     Cupom limpo de dólar   TAXA     B3 / TS / DCL                     PRONT
 DPL     Cupom Limpo DI X IPCA  TAXA     B3 / TS / DPL                     PRONTA_TS_B3           LogLinear
 INP     IBOVESPA               PONTOS   B3 / TS / INP                     PRONTA_TS_B3           LogLinear
 PTX     PTAX - USD             PRECO    B3 / TS / PTX                     PRONTA_TS_B3           LogLinear
-NTNB    NTN-B                  TAXA     ANBIMA / TP / NTN-B               NTNB_BOOTSTRAP_ANBIMA  LogLinear
-SOFR    SOFR                   TAXA     BLOOMBERG / ZR / S0490Z           SOFR_ZERO_BLOOMBERG    Linear
+NTNB    NTN-B                  TAXA     ANBIMA / MS / NTN-B               NTNB_BOOTSTRAP_ANBIMA  LogLinear
+SOFR    SOFR                   TAXA     BLOOMBERG / BLC2 / S0490Z         SOFR_ZERO_BLOOMBERG    Linear
 
 Código  Grandeza        Eixo         Cotação (curva)                 Calendário                  Convenção          Extrap. início  Extrap. fim  Horiz.  Casas  Arred.
 ------  --------------  -----------  ------------------------------  --------------------------  -----------------  --------------  -----------  ------  -----  -------
@@ -264,7 +264,7 @@ POST /api/v1/curvas-mercado
 }
 
 POST /api/v1/curvas-mercado/NTNB/ligacoes
-{ "provedor": "ANBIMA", "produto": "TP", "codigoNaFonte": "NTN-B", "prioridade": 1 }
+{ "provedor": "ANBIMA", "produto": "MS", "codigoNaFonte": "NTN-B", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/NTNB/configuracoes
 {
@@ -300,7 +300,7 @@ POST /api/v1/curvas-mercado
 }
 
 POST /api/v1/curvas-mercado/SOFR/ligacoes
-{ "provedor": "BLOOMBERG", "produto": "ZR", "codigoNaFonte": "S0490Z", "prioridade": 1 }
+{ "provedor": "BLOOMBERG", "produto": "BLC2", "codigoNaFonte": "S0490Z", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/SOFR/configuracoes
 {
@@ -345,8 +345,8 @@ Cupom limpo de dólar   B3         TS       DCL            1
 Cupom Limpo DI X IPCA  B3         TS       DPL            1
 IBOVESPA               B3         TS       INP            1
 PTAX - USD             B3         TS       PTX            1
-NTN-B                  ANBIMA     TP       NTN-B          1
-SOFR                   BLOOMBERG  ZR       S0490Z         1
+NTN-B                  ANBIMA     MS       NTN-B          1
+SOFR                   BLOOMBERG  BLC2     S0490Z         1
 
 Aba Configuracoes (Versao vazia = versão nova; FimVigencia ignorada):
 
@@ -417,11 +417,15 @@ Configuração (tConfgCurva):
 Parâmetros (cModDado):
   GRANDEZA ................ Discount | CompoundFactor | ZeroYield | Price
   DAY_COUNTER_TEMPO ....... Business252 | Actual360 | Actual365Fixed | Thirty360
-  FREQUENCY ............... NoFrequency | Once | Annual | Semiannual | EveryFourthMonth |
-                            Quarterly | Bimonthly | Monthly | EveryFourthWeek | Biweekly |
-                            Weekly | Daily | OtherFrequency     (obrigatório só com Compounded)
+  FREQUENCY ............... Annual | Semiannual | EveryFourthMonth | Quarterly |
+                            Bimonthly | Monthly | EveryFourthWeek | Biweekly |
+                            Weekly | Daily           (só com Compounded; proibida nos demais)
   CALENDARIO .............. Brazil | UnitedStates                (+ Groovy ativos)
   MERCADO_CALENDARIO ...... Settlement (Brazil) | FederalReserve (UnitedStates)
+                            (tem de ser o mercado do CALENDARIO)
+
+Todos os valores com a caixa exata: "business252" ou "taxa" são recusados.
+Decimais vão como string ("13.9000000").
   BUSINESS_DAY_CONVENTION . Following | ModifiedFollowing | Preceding | ModifiedPreceding |
                             Unadjusted | HalfMonthModifiedFollowing | Nearest
   EXTRAPOLACAO_INICIO/FIM . Disabled | FlatForward | FlatValue   (padrão Disabled)
@@ -434,7 +438,7 @@ Combinações:
   - GRANDEZA Price só com unidade PRECO ou PONTOS; as outras grandezas só com TAXA.
   - FlatForward só com interpolador Linear ou LogLinear.
   - Origem esperada pelo modelo nativo: PRONTA_TS_B3 = B3/TS;
-    NTNB_BOOTSTRAP_ANBIMA = ANBIMA/TP; SOFR_ZERO_BLOOMBERG = BLOOMBERG/ZR.
+    NTNB_BOOTSTRAP_ANBIMA = ANBIMA/MS; SOFR_ZERO_BLOOMBERG = BLOOMBERG/BLC2.
 
 
 7. EXEMPLO FUTURO: CURVA DERIVADA (não construída nesta fase)

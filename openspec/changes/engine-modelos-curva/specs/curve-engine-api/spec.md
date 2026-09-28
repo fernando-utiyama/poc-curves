@@ -71,7 +71,7 @@ Token ausente ou inválido MUST resultar em 401 `NAO_AUTENTICADO`; token sem o p
 - **THEN** a resposta é 422 com `PRAZO_FORA_DO_DOMINIO`, informando que a data não é dia útil no calendário `Brazil`/`Settlement`
 
 ### Requirement: Erros padronizados
-Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlationId", "detalhes": [] }`, com a mensagem em português, sem stack trace. Os códigos e status SHALL ser:
+Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlationId", "detalhes": [ { "campo", "linha", "valor", "motivo" } ] }`, o mesmo formato do `services/curves`, com a mensagem em português, sem stack trace; em cada item de `detalhes`, o que não se aplica vem nulo. Os códigos e status SHALL ser:
 
 | `codigoErro` | HTTP | Quando |
 |---|---|---|
@@ -99,6 +99,51 @@ Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlatio
 #### Scenario: Código desconhecido
 - **WHEN** o cliente chama `GET /api/v1/curvas/XYZ/2026-09-14`
 - **THEN** a resposta é 404 com `CURVA_NAO_ENCONTRADA` informando `XYZ`
+
+### Requirement: Contrato de tipos das respostas
+Para o front receber os valores sem perda nem ambiguidade, toda resposta JSON do engine SHALL seguir:
+- **decimais** (valor da curva, fatores, taxas, `X`, `Y`, `W`, diferenças) como **string**, em notação simples, com ponto decimal e sem expoente, na escala em que foram calculados ou arredondados (ex.: `"13.9000000"`, `"1.1390000000000000"`). Números JSON perdem precisão em JavaScript acima de 15 dígitos significativos. Inteiros (`DU`, `DC`, quantidades, versões) como número;
+- **datas** como `AAAA-MM-DD`; **instantes** em ISO-8601 com o deslocamento de Brasília (ex.: `2026-09-14T21:30:00.000-03:00`);
+- **enums** como string, exatamente com os valores abaixo, com diferença entre maiúsculas e minúsculas;
+- **avisos** em `avisos`, lista de `{ "codigo", "mensagem", "detalhes" }`, com `detalhes` no formato dos erros; lista vazia quando não há aviso, nunca omitida;
+- **idioma pt-BR:** o front é em português do Brasil. A API troca valores em formato de máquina (ponto decimal, datas `AAAA-MM-DD`, códigos de enum), e o front formata para pt-BR na tela (vírgula decimal, ponto de milhar, `dd/mm/aaaa`, horário de Brasília). Todo texto para o usuário (mensagem de erro, mensagem de aviso, rótulo e descrição de catálogo) SHALL estar em pt-BR, com acentuação, em UTF-8. Os códigos (enums, `codigoErro`, códigos de aviso) não são traduzidos: o front mostra o rótulo do catálogo.
+
+Enums das respostas:
+
+| Campo | Valores |
+|---|---|
+| situação da construção | `CONSTRUIDA`, `RECONSTRUIDA`, `EXISTENTE`, `IGNORADA` (só na carga) |
+| motivo de `IGNORADA` | `CURVA_INATIVA`, `FORA_DA_VIGENCIA_CURVA` |
+| classificação do prazo | `PONTO`, `INTERPOLADO`, `EXTRAPOLADO_INICIO`, `EXTRAPOLADO_FIM`, `FORA_DO_DOMINIO` (só na simulação) |
+| situação do ponto na comparação (simulação e auditoria) | `IGUAL`, `DIFERENTE`, `SO_SIMULADO`, `SO_GRAVADO`, `DESCARTADO_MESMO_PRAZO`, `DESCARTADO_PRAZO_NAO_POSITIVO` |
+| `status` da simulação e da conferência | `OK`, `ERRO` |
+| `estadoScript` | `ATUAL`, `DESATUALIZADO`, `DESCONHECIDO` |
+| origem do modelo | `JAVA`, `GROOVY` |
+| tipo de modelo | `construcao`, `interpolacao`, `calendario` (os mesmos da rota `/modelos/{tipo}`) |
+| status do script | `RASCUNHO`, `VALIDADA`, `REPROVADA`, `ATIVA`, `INATIVA` |
+| operação na auditoria | `CONSTRUCAO`, `RECONSTRUCAO` |
+| `acionadoPor` | `CARGA`, `API` |
+| fonte da planilha | `GRAVADA`, `SIMULACAO` |
+
+Avisos do engine:
+
+| `codigo` | Onde | Significado |
+|---|---|---|
+| `CURVA_INATIVA` | construção pela API, simulação | curva inativa construída por pedido do usuário |
+| `FORA_DA_VIGENCIA_CURVA` | construção pela API, simulação | data-base fora da vigência da curva |
+| `PONTOS_DIFERENTES_DA_FONTE` | carga, construção pela API | pontos gravados diferentes do que a fonte atual produz; `detalhes` traz a quantidade |
+| `PONTO_DESCARTADO_MESMO_PRAZO` | consulta, interpolação, construção, simulação | ponto no mesmo prazo de outro, fora da interpolação |
+| `PONTO_DESCARTADO_PRAZO_NAO_POSITIVO` | consulta, interpolação, construção, simulação | ponto na data-base ou antes, fora da interpolação |
+| `CALCULO_GRAVADO_DIVERGENTE` | consulta, auditoria | dias ou fatores gravados em `tDadoVertcCurva` diferentes dos recalculados agora |
+| `SEM_CALCULO_GRAVADO` | consulta, auditoria | pontos sem detalhe gravado em `tDadoVertcCurva` (editados à mão, ainda sem recálculo) |
+| `ESTADO_SCRIPT_DESATUALIZADO` | toda resposta com proveniência | Blob fora: modelos pelo último estado conhecido (`estadoScript` = `DESATUALIZADO`) |
+| `ESTADO_SCRIPT_DESCONHECIDO` | toda resposta com proveniência | Blob fora sem estado conhecido: modelos nativos (`estadoScript` = `DESCONHECIDO`) |
+
+Um código de aviso ou de erro novo SHALL entrar nestas tabelas e em `GET /valores-cadastro` antes de ser usado.
+
+#### Scenario: Valor com 16 casas
+- **WHEN** o front consulta a `PRE` e um fator acumulado tem 16 casas decimais
+- **THEN** o fator chega como string com as 16 casas, sem arredondamento do JavaScript
 
 ### Requirement: Correlação de requisições
 Toda resposta, inclusive de erro e de arquivo `xlsx`, SHALL trazer o cabeçalho `X-Correlation-Id`: o recebido do cliente ou, se ausente, um UUID gerado. O mesmo valor SHALL estar em todos os eventos de log da requisição e no corpo de erro.
@@ -133,7 +178,7 @@ A rota por código SHALL buscar `tCurvaMercd.cTickerIdtfdUnic` igual ao código,
 - **THEN** a resposta é 422 com `INSUMO_AUSENTE` informando `DPL` e a data
 
 ### Requirement: Consultar pontos gravados
-`GET /curvas/{codigo}/{dataBase}` SHALL devolver código, nome, data-base, unidade, interpolador e calendário com origem e versão, `estadoScript`, `hashPontos` e a lista de pontos gravados em ordem de data. Cada ponto SHALL trazer data, `DU`, `DC`, valor e, só para `TAXA`, fator acumulado e fator diário médio. Sem pontos gravados na data, a resposta MUST ser 404 com `CURVA_NAO_CONSTRUIDA`. Os avisos de descarte `PONTO_DESCARTADO_MESMO_PRAZO` e `PONTO_DESCARTADO_PRAZO_NAO_POSITIVO` da spec `curve-build-pipeline` SHALL vir em `avisos`, aqui e na interpolação.
+`GET /curvas/{codigo}/{dataBase}` SHALL devolver código, nome, data-base, unidade, interpolador e calendário com origem e versão, `estadoScript`, `hashPontos` e a lista de pontos gravados em ordem de data. Cada ponto SHALL trazer data, `DU`, `DC`, dias 30/360, valor e, só para `TAXA`, fator acumulado e fator diário médio, todos recalculados agora. Sem pontos gravados na data, a resposta MUST ser 404 com `CURVA_NAO_CONSTRUIDA`. Os avisos de descarte `PONTO_DESCARTADO_MESMO_PRAZO` e `PONTO_DESCARTADO_PRAZO_NAO_POSITIVO` da spec `curve-build-pipeline` SHALL vir em `avisos`, aqui e na interpolação. Cada ponto SHALL trazer também o **detalhe gravado** em `tDadoVertcCurva` (dias úteis, dias corridos, dias 30/360 e fatores), ao lado dos valores recalculados agora, para o usuário conferir na tela o que foi calculado e entregue. Se algum valor gravado diferir do recalculado (por exemplo, porque o calendário mudou depois da construção), a resposta SHALL trazer o aviso `CALCULO_GRAVADO_DIVERGENTE` com os pontos; se não houver detalhe gravado (pontos editados à mão), o aviso `SEM_CALCULO_GRAVADO`.
 
 #### Scenario: Curva ainda não construída
 - **WHEN** o cliente consulta `GET /api/v1/curvas/DCL/2026-09-14` antes de qualquer construção dessa data
@@ -175,9 +220,10 @@ A rota MUST NOT construir nem gravar nada. As curvas SHALL ser conferidas em par
 `GET /valores-cadastro` SHALL devolver tudo o que o engine aceita no cadastro de uma curva, gerado dos mesmos enums e da mesma tabela de parâmetros que o validador de `CADASTRO_INVALIDO` usa, e nunca de uma lista mantida à parte:
 - os campos de `tCurvaMercd` lidos pelo engine (`cTpoVlr`, `cNormaDia`, `cTpoJuro`), com os valores aceitos e em que unidade são obrigatórios;
 - cada chave de `cModDado`: tipo, obrigatoriedade (com a condição, ex.: `FREQUENCY` só com `Compounded`), valor padrão, e os valores aceitos ou o formato (ex.: `HORIZONTE` pela expressão do `Period`, `CASAS_DECIMAIS` de 0 a 12);
-- uma descrição curta em português de cada valor (ex.: `DOWN` = truncamento; `FlatForward` = taxa a termo constante);
+- para cada valor, um `rotulo` curto em pt-BR, para listas e telas, e uma `descricao` em pt-BR (ex.: `DOWN`: rótulo "Truncar", descrição "Corta as casas excedentes, sem arredondar"; `FlatForward`: rótulo "Taxa a termo constante");
 - as regras de combinação, cada uma com um código e o texto;
 - os modelos por tipo (construção, interpolação, calendário): nome, origem (`JAVA` ou `GROOVY`), versão `ATIVA` do script quando houver; para calendário, os mercados aceitos; para os modelos de construção, a fonte e o produto de origem esperados e, nos modelos derivados (fonte `TCEN`), os papéis das mães;
+- os enums das respostas e os catálogos de avisos e de erros do engine, com `rotulo` e `descricao` em pt-BR de cada valor, para o front exibir rótulos sem manter lista própria;
 - `versaoValores`: SHA-256 do conteúdo, para o cliente saber quando atualizar o cache.
 
 O OpenAPI (Swagger) do engine SHALL declarar como `enum` todo campo de valor fechado nos corpos e respostas. Um teste SHALL garantir que todo valor aceito pelo validador aparece nesta rota, e vice-versa.

@@ -112,7 +112,7 @@ Em ambientes Bash/Linux/WSL, utilize `scripts/start-all-local.sh` e `scripts/sto
    background.
 2. Espera cada um responder de verdade — não apenas "container rodando".
 3. Cria o banco `curvasdb` se ainda não existir (`sqlserver-init-db`).
-4. Aplica as migrações Flyway (`db/migration/V1..V20`) contra `curvasdb`.
+4. Aplica as migrações Flyway (`db/migration`) contra `curvasdb`.
 5. Cria os tópicos do catálogo (`contracts/events/topics.yaml`) no Kafka —
    o broker sobe com `auto.create.topics.enable=false`, então nenhum tópico
    existe até este passo rodar.

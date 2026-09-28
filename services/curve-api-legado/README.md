@@ -1,8 +1,8 @@
 # curve-api
 
 Consulta somente-leitura do catálogo de curvas de mercado (`tCurvaMercd`) e dos vértices/curva
-construídos pelo curve-engine (`tDadoCurva`/`tCurvaData`) — schema legado (db/migration/V22,
-grants em V28). As 5 curvas TS B3 (PRE/DCL/PTX/INP/DPL) são hoje as únicas curvas reais no
+construídos pelo curve-engine (`tDadoCurva`/`tCurvaData`) — schema legado (db/migration/001_SCRIPT_INICIAL.sql,
+grants do poc). As 5 curvas TS B3 (PRE/DCL/PTX/INP/DPL) são hoje as únicas curvas reais no
 projeto; o domínio antigo (DefinicaoCurva/VersaoDefinicaoCurva com ciclo de vida
 RASCUNHO/ATIVA/APOSENTADA, versionamento, procedência, modelo de carga CSV/XLSX) não tem
 equivalente no schema novo e foi removido por completo — não adaptado.

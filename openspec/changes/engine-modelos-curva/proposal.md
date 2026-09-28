@@ -46,13 +46,15 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
 - **Interpolação tolerante a pontos gravados à mão.** Pontos em fim de semana, feriado ou até a data-base, que a edição manual grava com aviso, são tratados na base comum de interpolação: descarte com aviso, sem alterar o gravado.
 - **Estrutura para curvas derivadas de outras curvas** (ex.: inflação implícita = PRE sobre a NTN-B), sem nenhum modelo derivado nesta fase: as mães são ligações com o provedor interno `TCEN`, o modelo as lê já montadas pelo contexto de construção, e a carga constrói as derivadas em cadeia quando as mães ficam prontas, sem recálculo em cascata.
 - **Valores aceitos no cadastro por API.** `GET /api/v1/valores-cadastro` lista, gerado do próprio validador, tudo o que o cadastro aceita, inclusive os modelos Groovy ativos, para o front e a planilha do `services/curves`.
+- **Contrato de tipos para o front pt-BR.** Decimais como string (sem perda de precisão no JavaScript), datas ISO, enums com caixa exata, avisos e erros num formato único com o `services/curves` e o conector, textos em pt-BR, e catálogos de enums, avisos e erros com rótulo e descrição em `GET /api/v1/valores-cadastro`. Colunas `CHAR` do cadastro lidas sem os espaços de preenchimento.
+- **Detalhe de cada vértice gravado.** Junto com os pontos (`tDadoCurva`), o engine grava em `tDadoVertcCurva`, como na ideia original do schema, os dias úteis, os dias corridos, os dias 30/360 e os fatores de cada vértice. A tela mostra o gravado ao lado do recalculado; os pontos continuam sendo a única fonte da interpolação.
 - **Curva gravada é curva liberada.** Data quality (checagens e aprovação) fica para uma feature futura.
 - **BREAKING — API por código da curva + data-base.** Construir, consultar, interpolar e simular pelo código (ex.: `PRE`) e pela data na URL; leitura também pelo nome de exibição. Erros padronizados com código e `correlationId`. Substitui `POST /api/v1/curvas/construir`, `POST /api/v1/calculo` e `POST /api/v1/modelos/upload`.
 - **Removido do engine:**
   - enums: `MetodoInterpolacao`, `PoliticaExtrapolacao`;
   - parâmetros em texto: `CONVENCAO`, `MOD_DADO`;
   - classes: `ComposableCurveBuilder`, `CurveBuilderRegistry`, `CurveInterpolatorRegistry`, `CurveExtrapolatorRegistry`;
-  - gravação em `tDadoVertcCurva` e `tMtrizCurva`.
+  - gravação em `tMtrizCurva`, e o cabeçalho de versão que o engine antigo gravava junto com `tDadoVertcCurva`.
 
 ## Capabilities
 
@@ -80,12 +82,12 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
   - carregador Groovy com scripts no Blob Storage (`azure-storage-blob`, dependência nova no engine);
   - adaptador de planilha com Apache POI (`poi-ooxml`, dependência nova);
   - a entidade de `tDadoCurva` passa a ter só as quatro colunas do schema.
-- **Banco: sem alteração de schema.** Parâmetros da curva em JSON em `tConfgCurva.cModDado` (coluna existente); o engine escreve `tDadoCurva` e, em `tCurvaMercd`, só `dBaseReft` e `cUsuarCalc`; `tConfgCurva.cRotnaCalc` passa a ser usado.
+- **Banco: sem alteração de schema.** Parâmetros da curva em JSON em `tConfgCurva.cModDado` (coluna existente); o engine escreve `tDadoCurva`, `tDadoVertcCurva` e, em `tCurvaMercd`, só `dBaseReft` e `cUsuarCalc`; `tConfgCurva.cRotnaCalc` passa a ser usado.
 - **Entra ID:** registro da aplicação com os papéis `Curvas.Leitura`, `Curvas.Operador`, `Curvas.Processor`, `Curvas.ModelosAutor` e `Curvas.ModelosAprovador`. Todo cliente da API passa a precisar de token.
 - **Blob Storage:** só a pasta `groovy-models/` no container existente, acessada por Managed Identity. Nenhum dado de curva vai para o Blob, que fica com os originais dos feeders e os scripts.
 - **Dependências fora do engine (outros changes):**
   - B3: o processor precisa ler o `TaxaSwap.txt` pelo código exato e gravar em `tBtrsCurvaPrimr` (change `conector-b3-webhook-ingest`; hoje o conector transforma DCL/DPL em DOL e descarta PTX/INP);
-  - a ingestão ANBIMA precisa confirmar a unidade de `vVertcCurva` e a escala de `vPrecoTx`;
+  - a ingestão ANBIMA (arquivo `ms{AAMMDD}.txt`, produto `MS`) precisa confirmar a unidade de `vVertcCurva`, calculado a partir de `Data Vencimento`; a escala de `vPrecoTx` (percentual) está confirmada pelo arquivo;
   - a ingestão SOFR precisa do feeder gravando os nós em `tBbergCurvaPrimr` (o ticker completo precisa da change `banco-curvas-ajustes`; a forma curta cabe no schema atual);
   - o processor precisa chamar o webhook de carga depois do commit de cada carga, com retry pelo mesmo `idCarga` (change `conector-b3-webhook-ingest`, para a B3);
   - o cadastro das 7 curvas vem do `services/curves` (change `curves-cadastro-curvas`, com o exemplo `exemplo-cadastro-7-curvas.txt`), com os valores das specs;

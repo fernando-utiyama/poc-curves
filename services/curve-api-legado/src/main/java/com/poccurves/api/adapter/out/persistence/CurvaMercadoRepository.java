@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Leitura JDBC do catálogo {@code tCurvaMercd} (schema legado, db/migration/V22, grants em V28) —
+ * Leitura JDBC do catálogo {@code tCurvaMercd} (schema legado, db/migration/001_SCRIPT_INICIAL.sql, grants do poc) —
  * curve-api é só leitura aqui: novas curvas entram por migração + pipeline de aquisição/construção,
  * nunca por esta API.
  */

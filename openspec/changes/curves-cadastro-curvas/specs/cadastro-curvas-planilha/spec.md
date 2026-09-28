@@ -14,7 +14,7 @@ A planilha (`.xlsx`) SHALL ter as abas abaixo, nesta ordem, com o cabeçalho na 
 
 As colunas de valor fechado (`Unidade`, `DayCounterCotacao`, `Compounding`, `Situacao`, `Provedor` e as chaves de parâmetro com lista) SHALL ter validação de dados do Excel com lista suspensa restritiva, apontando para a aba `Valores`. `ModeloConstrucao`, `Interpolador` e `CALENDARIO` SHALL ter lista suspensa só com aviso, que aceita outro nome, porque um script Groovy pode criá-lo depois. A importação continua validando tudo, com ou sem a validação do Excel.
 
-Datas SHALL ser células de data (`aaaa-mm-dd`), números SHALL ser células numéricas, e célula vazia significa campo nulo. `Controle` guarda o `ETag` da curva no momento da exportação e MUST NOT ser editado.
+Datas SHALL ser células de data, números SHALL ser células numéricas, e célula vazia significa campo nulo. Como o front e os usuários são pt-BR, as datas SHALL ser células de data com o formato de exibição `dd/mm/aaaa`, e os números, células numéricas (o Excel em pt-BR mostra a vírgula decimal). Na importação, uma data em texto SHALL ser aceita como `dd/mm/aaaa` ou `aaaa-mm-dd`, e um número em texto, com vírgula ou ponto decimal e sem separador de milhar (`13,9000000` ou `13.9000000`); texto com vírgula e ponto ao mesmo tempo MUST ser recusado, por ser ambíguo. Nomes de abas e de colunas ficam sem acento. `Controle` guarda o `ETag` da curva no momento da exportação e MUST NOT ser editado.
 
 #### Scenario: Colunas da configuração
 - **WHEN** o cadastro é exportado

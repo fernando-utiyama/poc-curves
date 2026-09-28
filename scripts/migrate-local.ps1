@@ -3,7 +3,7 @@
     Aplica migrações Flyway diretamente contra o SQL Server local sem depender de Docker ou Podman.
 
 .DESCRIPTION
-    Executa os scripts em db/migration/ (V1 a V20) ordenados numericamente usando sqlcmd.
+    Executa os scripts em db/migration/ ordenados numericamente usando sqlcmd.
     Mantém histórico na tabela flyway_schema_history para garantir idempotência e
     compatibilidade com Flyway oficial.
 

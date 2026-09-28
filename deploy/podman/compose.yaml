@@ -93,7 +93,7 @@ services:
     ports:
       - "8083:8083"
     environment:
-      # Credencial restrita curve_engine_app (V18) — nunca sa.
+      # Credencial restrita curve_engine_app (poc) — nunca sa.
       CURVE_ENGINE_DB_PASSWORD: ${CURVE_ENGINE_DB_PASSWORD:-CurveEngineP0c!Local}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     healthcheck:
@@ -115,7 +115,7 @@ services:
     ports:
       - "8082:8082"
     environment:
-      # Credencial restrita curve_api_app (V12) — nunca sa, corrigido na
+      # Credencial restrita curve_api_app (poc) — nunca sa, corrigido na
       # auditoria desta sessão (o override aqui forçava sa mesmo com
       # application.yml já configurado com a credencial restrita).
       CURVE_API_DB_PASSWORD: ${CURVE_API_DB_PASSWORD:-CurveApiP0c!Local}

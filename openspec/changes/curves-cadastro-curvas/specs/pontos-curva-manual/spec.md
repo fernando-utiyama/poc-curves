@@ -1,6 +1,6 @@
 ## Purpose
 
-No `services/curves`, consultar, gravar, substituir e apagar à mão os pontos de uma curva numa data-base (`tDadoCurva`), como operação de contingência. O engine continua sendo quem constrói e recalcula as curvas e quem interpola; o `services/curves` é quem edita os pontos manualmente. Os dois só compartilham o banco: a mesma trava por curva e a mesma fórmula de `hashPontos`.
+No `services/curves`, consultar, gravar, substituir e apagar à mão os pontos de uma curva numa data-base (`tDadoCurva`), como operação de contingência. O engine continua sendo quem constrói e recalcula as curvas e quem interpola; o `services/curves` é quem edita os pontos manualmente. Os dois só compartilham o banco: a mesma trava por curva, a mesma fórmula de `hashPontos` e, ao editar ou apagar pontos, a exclusão do detalhe do cálculo que o engine grava em `tDadoVertcCurva`.
 
 ## ADDED Requirements
 
@@ -24,12 +24,12 @@ A consulta devolve só o dado gravado; dias úteis, fatores e interpolação sã
 `PUT .../pontos/{dataBase}` SHALL receber `{ "pontos": [ { "data": "AAAA-MM-DD", "valor": "13.9000000" } ] }`, com `valor` como string decimal (sem passar por ponto flutuante), e deixar os pontos da data-base exatamente iguais à lista: o que o gestor enviou é o que fica gravado e o que o engine usa, e pontos gravados ausentes da lista são apagados. Vale também para data-base sem pontos. Numa única transação, o serviço SHALL:
 1. travar a linha da curva em `tCurvaMercd` com `UPDLOCK, ROWLOCK` (a mesma trava que o engine usa na construção), esperando o tempo que for preciso dentro do tempo limite da requisição (60 segundos): a construção de uma curva pelo engine segura a trava por poucos segundos;
 2. ler os pontos gravados da data-base (já sob a trava) e comparar com a lista, depois do arredondamento;
-3. gravar só a diferença em `tDadoCurva` (`dBaseReft` = data-base, `cTickerIndcd` = nome, `dVertcReft` = data, `vPrecoTx` = valor arredondado): `UPDATE` dos pontos com valor diferente, `INSERT` dos pontos novos e `DELETE` dos pontos gravados ausentes da lista;
+3. apagar as linhas de `tDadoVertcCurva` da curva e data-base (o detalhe do cálculo do engine deixa de valer para pontos editados), e gravar só a diferença em `tDadoCurva` (`dBaseReft` = data-base, `cTickerIndcd` = nome, `dVertcReft` = data, `vPrecoTx` = valor arredondado): `UPDATE` dos pontos com valor diferente, `INSERT` dos pontos novos e `DELETE` dos pontos gravados ausentes da lista;
 4. reler os pontos da data-base e conferir que o `hashPontos` relido é igual ao `hashPontos` da lista enviada (depois do arredondamento). Se for diferente, MUST desfazer a transação e responder 500 `ERRO_INTERNO`, sem gravar nada.
 
 Se a lista for igual ao que está gravado, nada SHALL ser escrito nem registrado no log, e a resposta traz o aviso `SEM_MUDANCA`.
 
-O valor SHALL ser arredondado por `CASAS_DECIMAIS` e `MODO_ARREDONDAMENTO` da configuração vigente na data-base (spec `configuracao-calculo-curva`), porque é assim que o engine grava e usa os pontos; todo valor que mudar no arredondamento SHALL gerar o aviso `VALOR_ARREDONDADO`, com o valor enviado e o gravado. Sem configuração vigente, o valor SHALL ser gravado como enviado, com o aviso `SEM_CONFIGURACAO`. A resposta SHALL ser 200 com os pontos relidos do banco, em ordem de data, e o `hashPontos` novo. O serviço MUST NOT alterar `dBaseReft` nem `cUsuarCalc` de `tCurvaMercd`, e MUST NOT gravar outra tabela.
+O valor SHALL ser arredondado por `CASAS_DECIMAIS` e `MODO_ARREDONDAMENTO` da configuração vigente na data-base (spec `configuracao-calculo-curva`), porque é assim que o engine grava e usa os pontos; todo valor que mudar no arredondamento SHALL gerar o aviso `VALOR_ARREDONDADO`, com o valor enviado e o gravado. Sem configuração vigente, o valor SHALL ser gravado como enviado, com o aviso `SEM_CONFIGURACAO`. A resposta SHALL ser 200 com os pontos relidos do banco, em ordem de data, com o valor como string decimal na escala gravada (spec `cadastro-curva-mercado`, contrato de tipos), e o `hashPontos` novo. O serviço MUST NOT alterar `dBaseReft` nem `cUsuarCalc` de `tCurvaMercd`, MUST NOT gravar em `tDadoVertcCurva` (só apaga) e MUST NOT gravar outra tabela. Se a lista for igual à gravada (`SEM_MUDANCA`), nada é apagado.
 
 #### Scenario: Edição de um valor
 - **WHEN** o gestor envia os 278 pontos da `PRE` de `2026-09-14` com o valor de `2027-01-04` alterado
@@ -89,7 +89,7 @@ O tratamento no engine é o do requisito "Pontos no mesmo prazo do eixo" da spec
 - **THEN** os pontos são gravados com as demais validações, e a resposta traz o aviso `CALENDARIO_NAO_VERIFICADO`
 
 ### Requirement: Exclusão dos pontos de uma data
-`DELETE .../pontos/{dataBase}` SHALL apagar todos os pontos da curva na data-base, na mesma transação travada. Depois, a curva fica "não construída" naquela data para o engine, que pode construí-la de novo pela carga ou pela construção manual.
+`DELETE .../pontos/{dataBase}` SHALL apagar todos os pontos da curva na data-base e o detalhe do cálculo em `tDadoVertcCurva`, na mesma transação travada. Depois, a curva fica "não construída" naquela data para o engine, que pode construí-la de novo pela carga ou pela construção manual.
 
 #### Scenario: Desfazer uma curva digitada
 - **WHEN** o gestor apaga os pontos manuais da `PRE` de `2026-09-15`

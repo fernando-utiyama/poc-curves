@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Teste de integração real: exige o ambiente local Podman de pé (deploy/podman/up.sh --lite),
- * com o SQL Server já migrado até V28. Prova a leitura de {@code tCurvaMercd} com a credencial
+ * com o SQL Server já migrado. Prova a leitura de {@code tCurvaMercd} com a credencial
  * real e restrita `curve_api_app` (só SELECT) — mesmo padrão de
  * {@code ConstrucaoCurvaB3RepositoriesIT} (curve-engine).
  */

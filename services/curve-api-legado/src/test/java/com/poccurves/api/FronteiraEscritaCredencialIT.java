@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Teste de integração real: exige o ambiente local Podman de pé
- * (`deploy/podman/up.sh --lite`), com o SQL Server já migrado até V12.
+ * (`deploy/podman/up.sh --lite`), com o SQL Server já migrado.
  * Nomeado com sufixo "IT" — fora do build padrão (`mvn test` só coleta
  * `**&#47;*Test.java`).
  * <p>
@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * grep de string no código-fonte, nunca tocava o banco de dados real, e
  * teria passado mesmo com o serviço rodando com a credencial `sa` (que
  * também foi encontrada, real, nesta auditoria — corrigida em
- * `db/migration/V12__curve_api_credencial_restrita.sql`). Este teste prova
+ * o script de credencial do poc). Este teste prova
  * a fronteira com a credencial `curve_api_app` de verdade, contra o SQL
  * Server real — o mesmo padrão já usado em
  * `FronteiraEscritaCredencialIT` de curve-processor.

@@ -100,6 +100,8 @@ A importação segue o padrão da planilha de cadastro: cada par (curva, data-ba
 ### D18. O que o gestor envia é exatamente o que fica
 A edição manual existe para o gestor ter controle total, então o resultado não pode surpreender: para cada curva e data-base enviada, os pontos gravados ficam exatamente iguais à lista, inclusive com exclusão dos ausentes. A gravação é pela diferença (só as linhas que mudaram), o que diminui o tempo de trava e deixa o log só com mudanças reais, e termina relendo os pontos e conferindo o `hashPontos` contra o da lista antes do commit. Qualquer diferença desfaz tudo. A única transformação é o arredondamento pela configuração vigente, porque é assim que o engine grava e usa os pontos, e ela é avisada (`VALOR_ARREDONDADO`) e mostrada na simulação, linha a linha, em `ValorGravado`.
 
+Ao gravar ou apagar pontos, o serviço apaga também o detalhe do cálculo do engine em `tDadoVertcCurva` para a data (D36 do change `engine-modelos-curva`), sem calcular nada: o detalhe nunca descreve pontos que não existem mais, e a edição continua sem depender do engine.
+
 **Alternativa rejeitada:** apagar e inserir tudo a cada gravação. Chega ao mesmo estado, mas reescreve pontos que não mudaram, segura a trava por mais tempo e gera log de edição sem edição.
 
 ### D19. Curvas derivadas pelo mesmo cadastro de ligações
@@ -123,7 +125,7 @@ Uma curva derivada de outras (ex.: inflação implícita = PRE sobre a NTN-B boo
 
 1. Entra ID: criar o papel `Curvas.Cadastro` e atribuí-lo a quem cadastra; atribuir `Curvas.Leitura` do engine à identidade gerenciada do curves, que chama o engine para os valores aceitos, a situação do painel e os calendários.
 2. Log: retenção dos eventos `CADASTRO_ALTERADO` e `PONTOS_EDITADOS` definida pela área de risco. O serviço não usa o Blob.
-3. Deploy do serviço junto com o engine sem a edição de pontos. As curvas do poc criadas por SQL passam a ser mantidas pela API. As linhas sem código (`B3_TAXA_SWAP_*`) ficam invisíveis nas rotas.
+3. Deploy do serviço junto com o engine sem a edição de pontos. O banco começa vazio: o cadastro entra pela API ou pela planilha (ex.: `exemplo-cadastro-7-curvas.txt`). Linhas de `tCurvaMercd` sem código, se existirem, ficam invisíveis nas rotas.
 4. **Rollback:** voltar os deploys do curves e do engine; os dados gravados continuam válidos para o engine.
 
 ## Open Questions

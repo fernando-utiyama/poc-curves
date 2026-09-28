@@ -107,7 +107,7 @@ As quatro rotas SHALL responder:
 - 502 se o download da B3 falhar;
 - 503 se o Blob ou o Kafka estiverem indisponíveis.
 
-Toda resposta SHALL trazer o cabeçalho `X-Correlation-Id`. Erros MUST NOT expor stack trace.
+Toda resposta SHALL trazer o cabeçalho `X-Correlation-Id`. Erros MUST NOT expor stack trace. Como o front chama estas rotas (upload e republicação), elas SHALL seguir o mesmo contrato do engine e do `services/curves`: `origem` é um de `TXT`, `EX`, `UPLOAD` e `REPUBLICACAO`; `dataBase` em `AAAA-MM-DD`; e todo erro tem o corpo `{ "codigoErro", "mensagem", "correlationId", "detalhes": [ { "campo", "linha", "valor", "motivo" } ] }`, com a mensagem em pt-BR, com acentuação, e os códigos `PARAMETRO_INVALIDO` (400), `NAO_AUTENTICADO` (401), `SEM_PERMISSAO` (403), `ARQUIVO_NAO_ENCONTRADO` (404), `ARQUIVO_INVALIDO` (422: sem linhas, sem data de geração válida ou fora do Latin-1), `DATA_BASE_DIVERGENTE` (422: data de geração diferente da pedida, com as duas datas em `detalhes`), `B3_INDISPONIVEL` (502) e `DEPENDENCIA_INDISPONIVEL` (503: Blob ou Kafka).
 
 #### Scenario: B3 indisponível
 - **WHEN** o download do `TaxaSwap.txt` falha na B3

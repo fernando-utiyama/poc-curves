@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Teste de integração real: exige o ambiente local Podman de pé (deploy/podman/up.sh --lite),
- * com o SQL Server já migrado até V28. Smoke test só-leitura sobre a curva real
+ * com o SQL Server já migrado. Smoke test só-leitura sobre a curva real
  * B3_TAXA_SWAP_DCL em dBaseReft = 2026-09-14 (278 vértices já gravados pelo curve-engine em
  * tDadoCurva/tCurvaData) — não semeia nem apaga nada, então não precisa de @AfterEach.
  */

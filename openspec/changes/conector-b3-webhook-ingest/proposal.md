@@ -45,6 +45,6 @@ Os dois downloads são caminhos equivalentes de obter o mesmo arquivo; o do `.ex
 - **services/processor:** consumo do aviso em `tp-event-b3-curve`, leitura do Blob, parser do leiaute B3 em Java, gravação em `tBtrsCurvaPrimr`, cliente HTTP do engine com token do Entra ID; substituição de `B3KafkaConsumer`, `B3CurveRaw`, `B3CurveRawEntity` e do repositório e adaptador de `mkt.B3CurveRaw`.
 - **Kafka:** sem tópico novo; muda o formato da mensagem em `tp-event-b3-curve`.
 - **Blob:** pasta `b3/{AAAAMMDD}/cargas/{idCarga}/`, escrita pelo conector e lida pelo processor.
-- **Banco:** sem mudança de schema; o processor lê `tCurvaPrvdr` e grava `tBtrsCurvaPrimr` sob o nome da curva de mercado, com a sequência `seq_tbtrscurvaprimr_cidtfdunic` (V23).
+- **Banco:** sem mudança de schema; o processor lê `tCurvaPrvdr` e grava `tBtrsCurvaPrimr` sob o nome da curva de mercado; a geração de `cldtfdUnic` no banco real está em aberto (ver design).
 - **Engine:** o aviso segue o contrato da spec `curve-load-trigger` do change `engine-modelos-curva`.
 - **Orquestrador:** é quem dispara os downloads (qual rota, horário, novas tentativas e alerta de carga não recebida); configurar essas tarefas é do change do orquestrador.

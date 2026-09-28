@@ -15,10 +15,10 @@ O engine SHALL montar o cadastro de uma curva na data-base a partir das tabelas 
 |---|---|---|---|
 | `GRANDEZA` | string | sim | `Discount`, `CompoundFactor`, `ZeroYield`, `Price` |
 | `DAY_COUNTER_TEMPO` | string | sim | `Business252`, `Actual360`, `Actual365Fixed`, `Thirty360` |
-| `FREQUENCY` | string | só se `cTpoJuro` = `Compounded` | nomes de `Frequency` do QuantLib (ex.: `Annual`) |
+| `FREQUENCY` | string | só se `cTpoJuro` = `Compounded` | `Annual` (1), `Semiannual` (2), `EveryFourthMonth` (3), `Quarterly` (4), `Bimonthly` (6), `Monthly` (12), `EveryFourthWeek` (13), `Biweekly` (26), `Weekly` (52), `Daily` (365); o número é o `f` da fórmula de cotação |
 | `CALENDARIO` | string | sim | `Brazil`, `UnitedStates` ou nome de calendário Groovy |
-| `MERCADO_CALENDARIO` | string | sim | ex.: `Settlement`, `FederalReserve` |
-| `BUSINESS_DAY_CONVENTION` | string | sim | nomes de `BusinessDayConvention` do QuantLib |
+| `MERCADO_CALENDARIO` | string | sim | o mercado do calendário: `Settlement` para `Brazil`, `FederalReserve` para `UnitedStates`, e o mercado declarado pelo script para calendário Groovy |
+| `BUSINESS_DAY_CONVENTION` | string | sim | `Following`, `ModifiedFollowing`, `Preceding`, `ModifiedPreceding`, `Unadjusted`, `HalfMonthModifiedFollowing`, `Nearest` |
 | `EXTRAPOLACAO_INICIO` | string | não (padrão `Disabled`) | `Disabled`, `FlatForward`, `FlatValue` |
 | `EXTRAPOLACAO_FIM` | string | não (padrão `Disabled`) | `Disabled`, `FlatForward`, `FlatValue` |
 | `HORIZONTE` | string | sim | `Period` do QuantLib: inteiro positivo + `D`, `W`, `M` ou `Y` (ex.: `10Y`) |
@@ -34,11 +34,15 @@ Para unidade `TAXA`, `cNormaDia` e `cTpoJuro` SHALL ser obrigatórios; para `PRE
 - `GRANDEZA` = `Price` com unidade `TAXA`, ou `GRANDEZA` diferente de `Price` com unidade `PRECO` ou `PONTOS`;
 - `cTpoJuro` for `SimpleThenCompounded` ou `CompoundedThenSimple` (não suportados nesta fase);
 - a política `FlatForward` for usada com interpolador que não seja `Linear` ou `LogLinear`;
-- a fonte ou o produto da origem não forem os esperados pelo modelo de construção cadastrado.
+- a fonte ou o produto da origem não forem os esperados pelo modelo de construção cadastrado;
+- `FREQUENCY` for informada sem `cTpoJuro` = `Compounded`, ou for `NoFrequency`, `Once` ou `OtherFrequency`, que não definem `f`;
+- `MERCADO_CALENDARIO` não for o mercado do `CALENDARIO`.
 
 A situação (`cSitReg`) e a vigência da curva em `tCurvaMercd` (`dInicVgcia` a `dValidAte`) MUST NOT gerar `CADASTRO_INVALIDO`: elas só decidem se a carga constrói a curva automaticamente (spec `curve-load-trigger`). A construção pedida pelo usuário em `POST .../construcao` e a simulação SHALL construir mesmo com a curva `INATIVO` ou com a data-base fora da vigência, com o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA` na resposta, no log (inclusive em `CURVA_GRAVADA`) e na memória de cálculo. Consultar e interpolar pontos gravados não dependem da situação nem da vigência.
 
 Nenhum valor padrão SHALL ser usado além dos dois marcados na tabela.
+
+Os valores de enum SHALL ser comparados exatamente como escritos nesta spec, com diferença entre maiúsculas e minúsculas (`business252` é inválido). As colunas `CHAR` de `tCurvaMercd` (`cNormaDia`, `cTpoJuro`, `cSitReg`, `cTpoVlr`, `cPaisInstt`) devolvem o valor completado com espaços à direita; o engine SHALL aparar os espaços à direita de toda coluna de texto do cadastro antes de interpretá-la. `cSitReg` diferente de `ATIVO`, inclusive nulo, SHALL ser tratado como curva inativa.
 
 #### Scenario: Cadastro completo da PRE
 - **WHEN** a curva `PRE` tem origem `B3`/`TS`/`PRE`, construção `PRONTA_TS_B3`, interpolador `LogLinear`, unidade `TAXA`, `cNormaDia` = `Business252`, `cTpoJuro` = `Compounded` e os parâmetros `GRANDEZA` = `Discount`, `DAY_COUNTER_TEMPO` = `Business252`, `FREQUENCY` = `Annual`, `CALENDARIO` = `Brazil`, `MERCADO_CALENDARIO` = `Settlement`, `BUSINESS_DAY_CONVENTION` = `Following`, `EXTRAPOLACAO_FIM` = `FlatForward`, `HORIZONTE` = `10Y`, `CASAS_DECIMAIS` = 7, `MODO_ARREDONDAMENTO` = `HALF_UP`
@@ -206,12 +210,20 @@ Datas-base, datas de ponto e prazos SHALL ser datas puras, sem hora nem fuso. To
 - **WHEN** o engine roda com a JVM em UTC e uma construção é concluída às 22h30 de Brasília (01h30 UTC do dia seguinte)
 - **THEN** o instante registrado é `...T22:30:00...-03:00`, com a data de Brasília
 
-### Requirement: Construção grava apenas os pontos
-Construir uma curva numa data-base SHALL exigir a carga concluída e conferir a quantidade lida (spec `curve-load-trigger`), executar o modelo de construção cadastrado, arredondar cada ponto e gravar em `tDadoCurva` uma linha por ponto: `dBaseReft` = data-base, `cTickerIndcd` = nome da curva, `dVertcReft` = data do ponto, `vPrecoTx` = valor arredondado. Além dos pontos, SHALL ser gravadas só as colunas `dBaseReft` e `cUsuarCalc` de `tCurvaMercd`, e emitido o log `CURVA_GRAVADA`, conforme a spec `curve-audit-history`; nada é gravado em `tCurvaData`, `tDadoVertcCurva` ou `tMtrizCurva`, e o schema não é alterado. A leitura do cadastro, a execução do modelo, a remoção dos pontos anteriores (no recálculo) e a gravação SHALL ocorrer numa única transação, que trava a linha da curva em `tCurvaMercd` até o fim. Uma construção da mesma curva que não obtiver a trava em 30 segundos MUST falhar com `CONSTRUCAO_EM_ANDAMENTO`. A edição manual de pontos no `services/curves` usa a mesma trava (change `curves-cadastro-curvas`), de modo que construção e edição nunca se misturam.
+### Requirement: Construção grava os pontos e o detalhe de cada vértice
+Construir uma curva numa data-base SHALL exigir a carga concluída e conferir a quantidade lida (spec `curve-load-trigger`), executar o modelo de construção cadastrado, arredondar cada ponto e gravar, na mesma transação:
+- em `tDadoCurva`, uma linha por ponto: `dBaseReft` = data-base, `cTickerIndcd` = nome da curva, `dVertcReft` = data do ponto, `vPrecoTx` = valor arredondado. São **os pontos da curva**;
+- em `tDadoVertcCurva` ("informações detalhadas de cada vértice da curva"), uma linha por ponto com **o detalhe do cálculo**, como o engine o fez com o calendário daquele momento: `dBaseReft`, `cTickerIndcd` e `dVertcReft` iguais aos do ponto; `cDiaUtil` = `DU(d)`, dias úteis considerados no cálculo; `cQtdDiaPer` = `DC(d)`, dias corridos do período da data-base ao vértice; `cQtdDiaReft` = dias da data-base ao vértice na convenção 30/360 (`Thirty360`); `vPrecoTx` = valor arredondado; e, só para unidade `TAXA`, `vFatorAcum` = fator acumulado até o vértice e `vFatorDia` = fator diário de capitalização `FA^(1/DU)`, com 16 casas `HALF_UP` (nulos para `PRECO` e `PONTOS`).
+
+`tDadoVertcCurva` é registro do cálculo, não insumo: a interpolação, a consulta dos pontos e o `hashPontos` MUST usar só `tDadoCurva`. Além disso, SHALL ser gravadas só as colunas `dBaseReft` e `cUsuarCalc` de `tCurvaMercd`, e emitido o log `CURVA_GRAVADA`, conforme a spec `curve-audit-history`; nada é gravado em `tCurvaData` ou `tMtrizCurva`, e o schema não é alterado. No recálculo, as linhas da data nas duas tabelas SHALL ser apagadas e regravadas juntas. A leitura do cadastro, a execução do modelo, a remoção dos pontos anteriores (no recálculo) e a gravação SHALL ocorrer numa única transação, que trava a linha da curva em `tCurvaMercd` até o fim. Uma construção da mesma curva que não obtiver a trava em 30 segundos MUST falhar com `CONSTRUCAO_EM_ANDAMENTO`. A edição manual de pontos no `services/curves` usa a mesma trava (change `curves-cadastro-curvas`), de modo que construção e edição nunca se misturam.
 
 #### Scenario: Construção da PRE
 - **WHEN** a `PRE` de `2026-09-14` é construída
-- **THEN** `tDadoCurva` tem 278 linhas para `DIxPRE` em `2026-09-14`, e nenhuma linha é gravada nas outras três tabelas
+- **THEN** `tDadoCurva` e `tDadoVertcCurva` têm 278 linhas cada para `DIxPRE` em `2026-09-14`; a primeira linha de `tDadoVertcCurva` tem `cDiaUtil` = 1, `cQtdDiaPer` = 1, o fator acumulado e o diário; e nada é gravado em `tCurvaData` nem em `tMtrizCurva`
+
+#### Scenario: Detalhe gravado não entra na interpolação
+- **WHEN** a `PRE` de uma data é interpolada
+- **THEN** a interpolação usa só os pontos de `tDadoCurva`, mesmo que `tDadoVertcCurva` tenha sido apagada pela edição manual
 
 ### Requirement: Leitura consistente durante gravações
 Todas as leituras SHALL usar o nível `READ COMMITTED` do SQL Server; `READ UNCOMMITTED`, `NOLOCK` e equivalentes MUST NOT ser usados. Uma consulta, interpolação ou simulação feita durante uma construção, reconstrução ou edição da mesma curva e data SHALL ver os pontos anteriores inteiros ou os novos inteiros, nunca a data vazia ou parcial. Sem `READ_COMMITTED_SNAPSHOT` no banco, a leitura pode esperar o commit da gravação, limitada ao tempo limite de comando da spec `curve-engine-resilience`.

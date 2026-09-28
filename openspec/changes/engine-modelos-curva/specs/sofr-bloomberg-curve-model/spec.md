@@ -5,7 +5,7 @@ Constrói a curva SOFR a partir das zero rates por tenor do curve member Bloombe
 ## ADDED Requirements
 
 ### Requirement: Leitura dos nós por tenor
-O modelo `SOFR_ZERO_BLOOMBERG` SHALL exigir origem com fonte `BLOOMBERG` e produto `ZR`; caso contrário, `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tBbergCurvaPrimr` com `cTickerIndcd` = nome da curva (o feeder grava os nós sob a curva de mercado ligada ao membro em `tCurvaPrvdr`) e `dBaseReft` = data-base. Cada linha é um nó:
+O modelo `SOFR_ZERO_BLOOMBERG` SHALL exigir origem com fonte `BLOOMBERG` e produto `BLC2`; caso contrário, `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tBbergCurvaPrimr` com `cTickerIndcd` = nome da curva (o feeder grava os nós sob a curva de mercado ligada ao membro em `tCurvaPrvdr`) e `dBaseReft` = data-base. Cada linha é um nó:
 - `cTickerBberg` = ticker da Bloomberg, no formato `{membro} {tenor}` seguido ou não da fonte e da yellow key (ex.: `S0490Z 15M BLC2 Curncy`, completo depois da change `banco-curvas-ajustes`, ou `S0490Z 15M`, que cabe no `CHAR(20)` atual e é a forma gravada até a homologação, com a lista de tickers fixa no conector); o primeiro termo MUST ser igual ao código na fonte da origem, e o segundo é o tenor;
 - `vPrecoUlt` = taxa zero em percentual ao ano, usada sem conversão.
 
@@ -58,7 +58,7 @@ O modelo SHALL registrar na memória de cálculo: na aba `Insumos`, a tabela `tB
 
 ### Requirement: Cadastro da SOFR
 A curva SHALL ser cadastrada com:
-- código `SOFR`, nome `SOFR`, origem `BLOOMBERG`/`ZR`/`S0490Z`;
+- código `SOFR`, nome `SOFR`, origem `BLOOMBERG`/`BLC2`/`S0490Z`;
 - construção `SOFR_ZERO_BLOOMBERG`, unidade `TAXA`;
 - `CompoundFactor` + `Linear`, eixo `Actual360`, cotação `Actual360`/`Simple` (como a `ZUS` do Manual de Curvas B3, item 2.11, com a interpolação 1.4.11);
 - calendário `UnitedStates`/`FederalReserve`/`ModifiedFollowing`;

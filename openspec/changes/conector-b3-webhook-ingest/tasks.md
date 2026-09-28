@@ -11,6 +11,7 @@
 - [ ] 2.3 Criar `POST /api/b3/taxaswap/publicacao` (400, 404, 422, 503 e 200 da spec), com `origem` = `REPUBLICACAO`; verificar republicação depois de uma carga pelo caminho `TXT`, arquivo inexistente e data divergente
 - [ ] 2.4 Criar `POST /api/b3/taxaswap/upload` (`multipart/form-data`, campo `arquivo`, até 20 MB, `.txt` lido como Latin-1 ou `.ex_` extraído, `dataBase` opcional), com `origem` = `UPLOAD` e o usuário na mensagem; verificar upload de `.txt`, de `.ex_`, extensão inválida, arquivo acima do limite, data divergente e que o mesmo arquivo gera o mesmo `idCarga` pelo upload e pelo download
 - [ ] 2.5 Trocar `authLevel: "anonymous"` pela autenticação do Entra ID nas quatro rotas B3; verificar 401 sem token e 403 sem papel
+- [ ] 2.5b Aplicar o corpo de erro comum (`codigoErro`, mensagem em pt-BR, `correlationId`, `detalhes`) com os códigos da spec nas quatro rotas; verificar um teste por código, inclusive `DATA_BASE_DIVERGENTE` com as duas datas em `detalhes`
 - [ ] 2.6 Registrar o log de execução com `correlationId`, `idCarga`, origem, usuário, data-base, hash, tamanho, caminho e duração no horário de Brasília; verificar os campos
 - [ ] 2.7 Configurar `coverageThreshold` do Jest em 90% para os arquivos novos e alterados; verificar que `npm test -- --coverage` passa
 
@@ -23,7 +24,7 @@
 
 ## 4. Processor: gravação e aviso
 
-- [ ] 4.1 Mapear cada código válido às curvas de mercado por `tCurvaPrvdr` (`B3`/`TS`/`cTickerPrvdr`) e gravar os vértices em `tBtrsCurvaPrimr` sob o nome de cada curva numa transação (apagar por curva e data, inserir com `seq_tbtrscurvaprimr_cidtfdunic`, conferir contagens antes do commit), com fatores nulos e sem escrever em `tCurvaMercd` nem `tCurvaPrvdr`; verificar com SQL Server de teste (Testcontainers) os cenários da spec (110 códigos e 5 mapeados, código sem mapeamento, um código para duas curvas) e a transação desfeita numa falha no meio
+- [ ] 4.1 Mapear cada código válido às curvas de mercado por `tCurvaPrvdr` (`B3`/`TS`/`cTickerPrvdr`) e gravar os vértices em `tBtrsCurvaPrimr` sob o nome de cada curva numa transação (apagar por curva e data, inserir com o `cldtfdUnic` gerado como no sistema real (a confirmar), conferir contagens antes do commit), com fatores nulos e sem escrever em `tCurvaMercd` nem `tCurvaPrvdr`; verificar com SQL Server de teste (Testcontainers) os cenários da spec (110 códigos e 5 mapeados, código sem mapeamento, um código para duas curvas) e a transação desfeita numa falha no meio
 - [ ] 4.2 Chamar `POST /api/v1/cargas` do engine depois do commit, pelo endereço do serviço, com token do Entra ID (client credentials, `Curvas.Processor`) e tempo limite de 150 segundos, com o corpo e os cabeçalhos da spec (`Authorization`, `X-Correlation-Id`), uma entrada por código gravado, sem chamada quando nenhum foi gravado e com o resultado de cada curva no log; verificar 2xx, engine fora por 3 minutos (`AVISO_ATRASADO` aos 2 minutos e aviso aceito ao voltar), tempo esgotado seguido de 409 e depois 200, e 4xx registrando `CARGA_FALHOU` sem repetir
 
 ## 5. Processor: robustez e limpeza

@@ -12,7 +12,7 @@ Cada ligação SHALL gravar uma linha em `tCurvaPrvdr`:
 | `idLigacao` | `cldtfdUnic` | gerado pelo serviço (ver abaixo); só leitura |
 | curva | `cTickerIndcd` | o nome da curva da rota |
 | `provedor` | `iPrvdrDados` | obrigatório; MUST existir em `tPrvdrDadoMercd` (mantida pelo CRUD de provedores, fora desta change). O engine e o processor reconhecem as fontes pelos identificadores `B3`, `ANBIMA` e `BLOOMBERG` |
-| `produto` | `cPrvdrMercd` | obrigatório; 1 a 50 caracteres (ex.: `TS`, `TP`, `ZR`) |
+| `produto` | `cPrvdrMercd` | obrigatório; 1 a 50 caracteres (ex.: `TS`, `MS`, `BLC2`): o identificador da publicação na fonte |
 | `codigoNaFonte` | `cTickerPrvdr` | obrigatório; 1 a 1.024 caracteres, sem espaços nas pontas (ex.: `PRE`, `S0490Z`) |
 | `prioridade` | `cPriorCsumo` | obrigatório; inteiro maior ou igual a 1 |
 
@@ -66,7 +66,7 @@ As alterações seguem a concorrência otimista da curva (`If-Match` com o `ETag
 ### Requirement: Avisos de coerência com o engine
 Sem bloquear a operação, a resposta SHALL trazer `avisos` quando, depois da alteração:
 - a curva ficar sem nenhuma ligação (`CURVA_SEM_ORIGEM`): o engine não consegue construí-la;
-- o provedor e o produto da ligação de menor prioridade não forem os esperados pelo modelo de construção da configuração vigente, para os modelos nativos (`PRONTA_TS_B3`: `B3`/`TS`; `NTNB_BOOTSTRAP_ANBIMA`: `ANBIMA`/`TP`; `SOFR_ZERO_BLOOMBERG`: `BLOOMBERG`/`ZR`) (`ORIGEM_INCOMPATIVEL_COM_MODELO`): o engine responde `CADASTRO_INVALIDO` na construção.
+- o provedor e o produto da ligação de menor prioridade não forem os esperados pelo modelo de construção da configuração vigente, para os modelos nativos (`PRONTA_TS_B3`: `B3`/`TS`; `NTNB_BOOTSTRAP_ANBIMA`: `ANBIMA`/`MS`; `SOFR_ZERO_BLOOMBERG`: `BLOOMBERG`/`BLC2`) (`ORIGEM_INCOMPATIVEL_COM_MODELO`): o engine responde `CADASTRO_INVALIDO` na construção.
 
 #### Scenario: Última ligação excluída
 - **WHEN** a única ligação da curva `SLP` é excluída
