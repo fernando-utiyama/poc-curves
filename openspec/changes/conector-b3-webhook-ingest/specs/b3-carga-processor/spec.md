@@ -16,7 +16,7 @@ A mensagem SHALL ter o formato da spec `b3-taxaswap-publicacao` e ser rejeitada 
 - `idCarga` não casar com `^B3-TS-\d{8}-[0-9a-f]{12}$`, ou a data do `idCarga` for diferente de `dataBase`;
 - `arquivo.caminho` for diferente de `b3/{AAAAMMDD}/cargas/{idCarga}/TaxaSwap.txt`;
 - `arquivo.sha256` não tiver 64 caracteres hexadecimais minúsculos;
-- `origem` não for `TXT`, `EX`, `UPLOAD` ou `REPUBLICACAO`.
+- `origem` não for `DOWNLOAD`, `REPROCESSAMENTO` ou `UPLOAD`.
 
 Mensagens no formato antigo, por vértice, caem nessas regras. O cabeçalho `X-Correlation-Id` da mensagem SHALL ser usado em todos os logs da carga e repassado ao engine; na falta dele, o processor SHALL gerar um UUID.
 
@@ -86,7 +86,7 @@ Numa **única transação** por carga, para cada curva de mercado mapeada, o pro
 
 | Coluna | Valor |
 |---|---|
-| `cldtfdUnic` | id único da linha, gerado pelo processor sem colisão entre cargas simultâneas; a forma de gerar segue a do sistema real, a confirmar (a coluna é `INT NOT NULL` sem identity nem sequência no `001_SCRIPT_INICIAL.sql`) |
+| `cldtfdUnic` | id único da linha, gerado pelo processor sem colisão entre cargas simultâneas; a coluna é `INT NOT NULL` sem identity nem sequência no `001_SCRIPT_INICIAL.sql`; até o sistema real confirmar outra forma, o valor é `MAX(cldtfdUnic) + 1` lido com `UPDLOCK, HOLDLOCK` dentro da mesma transação da gravação, sem criar objeto no banco |
 | `cTickerIndcd` | nome da curva de mercado (de `tCurvaPrvdr`) |
 | `dBaseReft` | data-base |
 | `cDiaCorri` | dias corridos |
@@ -127,14 +127,14 @@ Depois do commit, o processor SHALL chamar `POST {processor.engine.url}/api/v1/c
 
 #### Scenario: Janela de aviso esgotada
 - **WHEN** o engine continua fora depois de 10 minutos de repetição
-- **THEN** o processor registra `CARGA_FALHOU` com o estado `GRAVADA_SEM_AVISO`, os vértices continuam em `tBtrsCurvaPrimr`, e republicar a data pela rota do conector só repete a gravação (idêntica) e o aviso
+- **THEN** o processor registra `CARGA_FALHOU` com o estado `GRAVADA_SEM_AVISO`, os vértices continuam em `tBtrsCurvaPrimr`, e reprocessar a data pelo `b3/taxa-swap/reprocessamento` do conector só repete a gravação (idêntica) e o aviso
 
-### Requirement: Idempotência e republicação
-Reprocessar a mesma carga (mesmo `idCarga`) SHALL regravar as mesmas linhas e repetir o aviso, que o engine trata como repetido (curvas com pontos voltam como `EXISTENTE`). Uma carga nova para a mesma data-base (`idCarga` diferente, arquivo republicado pela B3) SHALL substituir as linhas das curvas mapeadas; recalcular curvas já construídas continua sendo decisão do engine. A recuperação de qualquer falha definitiva SHALL ser republicar a data pela rota de republicação do conector (spec `b3-taxaswap-publicacao`).
+### Requirement: Idempotência e reprocessamento
+Reprocessar a mesma carga (mesmo `idCarga`) SHALL regravar as mesmas linhas e repetir o aviso, que o engine trata como repetido (curvas com pontos voltam como `EXISTENTE`). Uma carga nova para a mesma data-base (`idCarga` diferente, arquivo republicado pela B3) SHALL substituir as linhas das curvas mapeadas; recalcular curvas já construídas continua sendo decisão do engine. A recuperação de qualquer falha definitiva SHALL ser reprocessar a data pelo `b3/taxa-swap/reprocessamento` do conector (spec `b3-taxaswap-publicacao`).
 
 #### Scenario: Curva ligada depois da carga
 - **WHEN** a carga de `2026-09-14` já foi gravada e avisada, e depois o cadastro liga o código `SLP` a uma curva nova em `tCurvaPrvdr`
-- **THEN** republicar a data pela rota do conector gera o mesmo `idCarga`, o processor grava também a curva nova, e o engine constrói só as curvas que ainda não têm pontos
+- **THEN** reprocessar a data pelo `b3/taxa-swap/reprocessamento` do conector gera o mesmo `idCarga`, o processor grava também a curva nova, e o engine constrói só as curvas que ainda não têm pontos
 
 #### Scenario: Mensagem entregue duas vezes
 - **WHEN** o Kafka entrega a mesma mensagem duas vezes
@@ -149,11 +149,11 @@ Falhas transitórias SHALL ser repetidas por janela de tempo, com espera exponen
 
 As curvas devem estar construídas em minutos depois da carga. Por isso, se o aviso não for aceito em `processor.repeticao.alerta-aviso-minutos` (padrão 2) desde o commit, o processor SHALL registrar `AVISO_ATRASADO` com nível `ERRO` e métrica, para alerta, e continuar repetindo até o fim da janela. Como há uma carga B3 por dia, segurar o consumidor durante a janela não atrasa outras cargas. Cada repetição SHALL gerar log de nível `AVISO`.
 
-Esgotada a janela, ou numa falha definitiva, o processor SHALL registrar o evento `CARGA_FALHOU` com nível `ERRO` e métrica, contendo `idCarga`, data-base, motivo, etapa (`LEITURA`, `VALIDACAO`, `GRAVACAO` ou `AVISO`), estado (`NAO_GRAVADA` ou `GRAVADA_SEM_AVISO`), quantidade de tentativas e horário de Brasília, e então confirmar a mensagem. Nenhum tópico novo SHALL ser criado: a mensagem não precisa ser guardada, porque a carga está arquivada no Blob e pode ser republicada pela rota do conector com o mesmo `idCarga`.
+Esgotada a janela, ou numa falha definitiva, o processor SHALL registrar o evento `CARGA_FALHOU` com nível `ERRO` e métrica, contendo `idCarga`, data-base, motivo, etapa (`LEITURA`, `VALIDACAO`, `GRAVACAO` ou `AVISO`), estado (`NAO_GRAVADA` ou `GRAVADA_SEM_AVISO`), quantidade de tentativas e horário de Brasília, e então confirmar a mensagem. Nenhum tópico novo SHALL ser criado: a mensagem não precisa ser guardada, porque a carga está arquivada no Blob e pode ser reprocessada pela rota `b3/taxa-swap/reprocessamento` do conector, informando a data-base, o que gera o mesmo `idCarga`.
 
 #### Scenario: Banco indisponível
 - **WHEN** o banco não responde durante a gravação por 5 minutos
-- **THEN** nada fica gravado, o processor registra `CARGA_FALHOU` com etapa `GRAVACAO` e estado `NAO_GRAVADA`, e a carga é recuperada republicando a data pela rota do conector
+- **THEN** nada fica gravado, o processor registra `CARGA_FALHOU` com etapa `GRAVACAO` e estado `NAO_GRAVADA`, e a carga é recuperada reprocessando a data pelo `b3/taxa-swap/reprocessamento` do conector
 
 ### Requirement: Substituição do caminho antigo
 O tratamento atual do tópico `tp-event-b3-curve` (`B3KafkaConsumer` lendo uma mensagem por vértice em `B3CurveRaw`), a entidade `B3CurveRawEntity` (tabela `mkt.B3CurveRaw`), o repositório e o adaptador correspondentes MUST ser substituídos pelo consumo desta spec no mesmo tópico. Nenhum componente do processor SHALL gravar vértices da B3 em outra tabela que não `tBtrsCurvaPrimr`.
