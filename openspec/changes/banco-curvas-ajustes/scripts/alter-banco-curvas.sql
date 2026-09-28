@@ -5,9 +5,8 @@
 --
 -- 1. tBbergCurvaPrimr.cTickerBberg: CHAR(20) -> VARCHAR(50)
 --    (ticker Bloomberg completo, ex.: 'S0490Z 15M BLC2 Curncy', 22 caracteres)
--- 2. tCurvaData: sai FK_tDadoCurva_tCurvaData (curva diária presa aos pontos),
---    entra FK_tCurvaMercd_tCurvaData (curva diária ligada à curva de mercado)
--- 3. tCurvaData: PK XPKtCurvaData nas mesmas colunas, agora CLUSTERED
+-- 2. tCurvaData: tabela removida, com a FK_tDadoCurva_tCurvaData
+--    (a curva interpolada fica em tDadoCurva, e a construída em tDadoVertcCurva)
 -- ============================================================================
 
 SET XACT_ABORT ON;
@@ -16,28 +15,28 @@ BEGIN TRANSACTION;
 -- 1. Ticker Bloomberg completo
 ALTER TABLE dbo.tBbergCurvaPrimr ALTER COLUMN cTickerBberg VARCHAR(50) NULL;
 
--- 2. Curva diária ligada à curva de mercado, não aos pontos
+-- 2. tCurvaData sai (a FK dela para tDadoCurva sai junto)
 ALTER TABLE dbo.tCurvaData DROP CONSTRAINT FK_tDadoCurva_tCurvaData;
-ALTER TABLE dbo.tCurvaData ADD CONSTRAINT FK_tCurvaMercd_tCurvaData
-    FOREIGN KEY (cTickerIndcd) REFERENCES dbo.tCurvaMercd (cTickerIndcd);
-
--- 3. PK da curva diária clustered, mesmas colunas
-ALTER TABLE dbo.tCurvaData DROP CONSTRAINT XPKtCurvaData;
-ALTER TABLE dbo.tCurvaData ADD CONSTRAINT XPKtCurvaData
-    PRIMARY KEY CLUSTERED (dBaseReft ASC, cTickerIndcd ASC, dVertcReft ASC);
+DROP TABLE dbo.tCurvaData;
 
 COMMIT TRANSACTION;
 GO
 
 -- ============================================================================
 -- Volta (só se precisar desfazer; descomentar e executar)
+-- Recria tCurvaData exatamente como no 001_SCRIPT_INICIAL.sql.
 -- ============================================================================
 -- SET XACT_ABORT ON;
 -- BEGIN TRANSACTION;
--- ALTER TABLE dbo.tCurvaData DROP CONSTRAINT XPKtCurvaData;
+-- CREATE TABLE dbo.tCurvaData
+-- (
+--     dBaseReft     date           NOT NULL,
+--     cTickerIndcd  varchar(50)    NOT NULL,
+--     dVertcReft    date           NOT NULL,
+--     vPrecoTx      DECIMAL(28,12) NULL
+-- );
 -- ALTER TABLE dbo.tCurvaData ADD CONSTRAINT XPKtCurvaData
 --     PRIMARY KEY NONCLUSTERED (dBaseReft ASC, cTickerIndcd ASC, dVertcReft ASC);
--- ALTER TABLE dbo.tCurvaData DROP CONSTRAINT FK_tCurvaMercd_tCurvaData;
 -- ALTER TABLE dbo.tCurvaData ADD CONSTRAINT FK_tDadoCurva_tCurvaData
 --     FOREIGN KEY (dBaseReft, cTickerIndcd, dVertcReft)
 --     REFERENCES dbo.tDadoCurva (dBaseReft, cTickerIndcd, dVertcReft);

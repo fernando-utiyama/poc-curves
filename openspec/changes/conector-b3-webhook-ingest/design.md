@@ -95,6 +95,9 @@ O upload (`.txt` ou `.ex_`, até 20 MB) cobre o caso de a B3 estar inacessível 
 ### D18. O orquestrador dispara
 Quem dispara os downloads é o orquestrador (`services/orchestrator`), que orquestra todo o processo: ele chama o download (`b3/taxa-swap/download`) e, quando preciso, força o processamento de uma data (`b3/taxa-swap/reprocessamento`), em que horário, as novas tentativas quando a B3 ainda não publicou, e o alerta de "carga não recebida". O conector só executa o que é chamado e responde com o `idCarga`. O upload e o `b3/taxa-swap/reprocessamento` também podem ser chamados pelo front, por um operador, que informa a data. Configurar essas tarefas no orquestrador é do change dele.
 
+### D19. No mínimo duas instâncias
+O conector (Azure Functions) e o processor rodam em no mínimo duas instâncias no Azure. Nada depende de estado em memória: a identidade da carga é o hash do arquivo, a cópia imutável é gravada com `If-None-Match`, e a pasta `recebidos/` é criada de forma idempotente. No processor, as instâncias ficam no mesmo consumer group: cada aviso é processado por uma só, e a chave `B3-TS-{AAAAMMDD}` põe as cargas da mesma data na mesma partição, em ordem; cargas de datas diferentes podem ser gravadas em paralelo sem conflito. Um aviso repetido (rebalanceamento entre instâncias) regrava as mesmas linhas e repete o aviso ao engine, que é idempotente.
+
 ## Risks / Trade-offs
 
 - **Conector e processor mudam juntos (BREAKING).** → Deploy coordenado; o formato antigo deixa de ser publicado e consumido no mesmo release.

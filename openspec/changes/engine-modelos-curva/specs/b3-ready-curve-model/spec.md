@@ -7,7 +7,8 @@ Constrói as curvas B3 do primeiro objetivo (PRE, DCL, PTX, DPL e INP) a partir 
 ### Requirement: Leitura dos vértices prontos
 O modelo `PRONTA_TS_B3` SHALL exigir origem com fonte `B3` e produto `TS`; outra origem MUST resultar em `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tBtrsCurvaPrimr` com `cTickerIndcd` = nome da curva (o processor grava os vértices sob a curva de mercado ligada ao código na fonte em `tCurvaPrvdr`) e `dBaseReft` = data-base, e gerar um ponto por linha:
 - data do ponto = data-base + `cDiaCorri` dias corridos;
-- valor = `vPrecoTx`, sem alteração de sinal nem de escala.
+- valor = `vPrecoTx`, sem alteração de sinal nem de escala;
+- dias úteis publicados = `cDiaUtil`, obedecidos (spec `curve-build-pipeline`, requisito "Dias úteis publicados pela fonte ou informados pelo usuário").
 
 `vFatorAcum` e `vFatorDia` MUST ser ignorados. O código da curva MUST NOT estar fixo no modelo: vem sempre da origem cadastrada.
 
@@ -23,23 +24,29 @@ O modelo `PRONTA_TS_B3` SHALL exigir origem com fonte `B3` e produto `TS`; outra
 - **WHEN** uma curva `DI_MERCADO` é cadastrada com origem `B3`/`TS`/`PRE`, e o processor gravou os vértices do `PRE` também sob `DI_MERCADO`
 - **THEN** `DI_MERCADO` é construída com os mesmos pontos da `DIxPRE`
 
-### Requirement: Validação das linhas lidas
-Nenhuma linha SHALL ser descartada. A construção MUST falhar com:
-- `INSUMO_AUSENTE`, se não houver nenhuma linha;
-- `INSUMO_INVALIDO`, informando a linha, se `cDiaCorri` for nulo ou menor que 1, se `vPrecoTx` for nulo, se duas linhas tiverem o mesmo `cDiaCorri`, se a data do ponto não for dia útil no calendário cadastrado, ou se o `DU` da data do ponto, contado pelo calendário cadastrado, for diferente de `cDiaUtil`.
+### Requirement: Regras do arquivo
+O `TaxaSwap.txt` já chega validado pelo leiaute no processor (change `conector-b3-webhook-ingest`), que não grava o código com linha inválida; as regras abaixo protegem contra dado alterado depois da gravação. Nenhuma linha SHALL ser descartada. Para cada situação das linhas lidas de `tBtrsCurvaPrimr`, o resultado SHALL ser:
 
-A última regra detecta calendário desatualizado: um feriado ausente ou a mais muda a contagem de dias úteis.
+| Situação | Resultado |
+|---|---|
+| nenhuma linha da curva na data | falha: `INSUMO_AUSENTE` |
+| `cDiaCorri` nulo ou menor que 1 | falha: `INSUMO_INVALIDO` (linha) |
+| `cDiaUtil` nulo, menor que 1 ou maior que `cDiaCorri` | falha: `INSUMO_INVALIDO` (linha) |
+| `vPrecoTx` nulo | falha: `INSUMO_INVALIDO` (linha) |
+| duas linhas com o mesmo `cDiaCorri` (duas taxas para a mesma data) | falha: `INSUMO_INVALIDO` (as duas linhas) |
+| `cDiaUtil` diferente do `DU` do calendário, ou data do ponto em dia não útil | constrói com os dias publicados e o aviso `CALENDARIO_DIVERGENTE` (calendário desatualizado: um feriado ausente ou a mais muda a contagem) |
+| taxa negativa | constrói, sem aviso (cupons têm taxa negativa) |
 
 #### Scenario: Calendário divergente
 - **WHEN** o calendário `Brazil` não tem um feriado que a B3 considerou, e por isso o `DU` calculado de um vértice difere de `cDiaUtil`
-- **THEN** a construção falha com `INSUMO_INVALIDO`, informando o vértice, o `DU` calculado e o `cDiaUtil` publicado
+- **THEN** a curva é construída com o `cDiaUtil` publicado, com o aviso `CALENDARIO_DIVERGENTE` informando o vértice, o `DU` calculado e o `cDiaUtil` publicado
 
 ### Requirement: Memória de cálculo do modelo
 O modelo SHALL registrar na memória de cálculo: na aba `Insumos`, a tabela `tBtrsCurvaPrimr` e as colunas lidas `cTickerIndcd`, `dBaseReft`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx`; na aba `Pontos`, as colunas extras `DC publicado` e `DU publicado`. O modelo não registra fluxos.
 
 #### Scenario: Divergência visível na planilha
-- **WHEN** a simulação da `PRE` falha por calendário divergente
-- **THEN** a aba `Insumos` mostra a linha com o `cDiaUtil` publicado, e a aba `Eventos` mostra o `DU` calculado
+- **WHEN** a simulação da `PRE` tem calendário divergente
+- **THEN** a aba `Insumos` mostra a linha com o `cDiaUtil` publicado, e a aba `Eventos` mostra o aviso com o `DU` calculado
 
 ### Requirement: Cadastro das cinco curvas
 As cinco curvas SHALL ser cadastradas com construção `PRONTA_TS_B3`, origem `B3`/`TS`, calendário `Brazil`/`Settlement`/`Following`, extrapolação de início `Disabled` e horizonte `10Y`, com os demais itens abaixo. Eles reproduzem o Manual de Curvas B3. As casas decimais são as 7 do leiaute oficial do `TaxaSwap.txt` (campo "Taxa teórica", posições 53 a 66), e não as observadas num arquivo: o valor gravado é sempre idêntico ao publicado.
@@ -65,7 +72,7 @@ As cinco curvas SHALL ser cadastradas com construção `PRONTA_TS_B3`, origem `B
 - **THEN** a consulta falha com `PRAZO_FORA_DO_DOMINIO`, porque a extrapolação de fim é `Disabled`
 
 ### Requirement: Oráculo contra o arquivo publicado
-Para cada uma das cinco curvas, cada vértice e cada arquivo da massa de regressão, a interpolação do prazo do vértice SHALL devolver exatamente `vPrecoTx`, e o `DU` e o `DC` calculados SHALL ser iguais a `cDiaUtil` e `cDiaCorri`. A massa de regressão SHALL ter o `TaxaSwap.txt` de todos os pregões de pelo menos 12 meses consecutivos, cobrindo obrigatoriamente Carnaval, Sexta-feira Santa, Corpus Christi, virada de ano e o 20 de novembro, além do arquivo de `2026-09-14`. Toda data que apresentar divergência em produção SHALL ser acrescentada à massa.
+Para cada uma das cinco curvas, cada vértice e cada arquivo da massa de regressão, a interpolação do prazo do vértice SHALL devolver exatamente `vPrecoTx`, e a construção MUST NOT trazer `CALENDARIO_DIVERGENTE`: o calendário `Brazil` SHALL contar exatamente o `cDiaUtil` publicado. O oráculo é o teste do calendário; em produção, a divergência vira aviso. A massa de regressão SHALL ter o `TaxaSwap.txt` de todos os pregões de pelo menos 12 meses consecutivos, cobrindo obrigatoriamente Carnaval, Sexta-feira Santa, Corpus Christi, virada de ano e o 20 de novembro, além do arquivo de `2026-09-14`. Toda data que apresentar divergência em produção SHALL ser acrescentada à massa.
 
 #### Scenario: Pregão antes do Carnaval
 - **WHEN** o oráculo roda sobre o arquivo do último pregão antes do Carnaval

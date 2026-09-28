@@ -19,7 +19,7 @@ Cada versão SHALL gravar uma linha em `tConfgCurva`:
 
 As demais colunas de `tConfgCurva` (`cAtivoFincr`, `cPosCalc`, `cPreCalc`, `cLingSist`, `cPosMotorCalc`, `cPreMotorCalc`, `cTpoInstt`) SHALL ficar nulas.
 
-`parametros` SHALL seguir exatamente a tabela de chaves, tipos, valores aceitos e obrigatoriedade da spec `curve-build-pipeline` do change `engine-modelos-curva` (`GRANDEZA`, `DAY_COUNTER_TEMPO`, `FREQUENCY`, `CALENDARIO`, `MERCADO_CALENDARIO`, `BUSINESS_DAY_CONVENTION`, `EXTRAPOLACAO_INICIO`, `EXTRAPOLACAO_FIM`, `HORIZONTE`, `CASAS_DECIMAIS`, `MODO_ARREDONDAMENTO`, `VERSAO_SCRIPT_*`), com as mesmas regras de combinação: `FREQUENCY` obrigatório com `Compounded` e proibido nos demais, sem `NoFrequency`, `Once` e `OtherFrequency`; `MERCADO_CALENDARIO` igual ao mercado do `CALENDARIO`; `GRANDEZA` = `Price` só para unidade `PRECO` ou `PONTOS`; `FlatForward` só com interpolador `Linear` ou `LogLinear`. Chave desconhecida, tipo errado, valor fora da lista ou item obrigatório ausente MUST resultar em 422 `DADOS_INVALIDOS`, com um item em `detalhes` por problema. O serviço SHALL gravar `cModDado` como JSON compacto, com as chaves na ordem da tabela; se passar de 1.024 caracteres, 422.
+`parametros` SHALL seguir exatamente a tabela de chaves, tipos, valores aceitos e obrigatoriedade da spec `curve-build-pipeline` do change `engine-modelos-curva` (`GRANDEZA`, `DAY_COUNTER_TEMPO`, `FREQUENCY`, `CALENDARIO`, `MERCADO_CALENDARIO`, `BUSINESS_DAY_CONVENTION`, `EXTRAPOLACAO_INICIO`, `EXTRAPOLACAO_FIM`, `HORIZONTE`, `CASAS_DECIMAIS`, `MODO_ARREDONDAMENTO`, `VERSAO_SCRIPT_*`, `MODELOS_POR_ORIGEM`), com as mesmas regras de combinação: `FREQUENCY` obrigatório com `Compounded` e proibido nos demais, sem `NoFrequency`, `Once` e `OtherFrequency`; `MERCADO_CALENDARIO` igual ao mercado do `CALENDARIO`; `GRANDEZA` = `Price` só para unidade `PRECO` ou `PONTOS`; `FlatForward` só com interpolador `Linear` ou `LogLinear`. Chave desconhecida, tipo errado, valor fora da lista ou item obrigatório ausente MUST resultar em 422 `DADOS_INVALIDOS`, com um item em `detalhes` por problema. O serviço SHALL gravar `cModDado` como JSON compacto, com as chaves na ordem da tabela; se passar de 1.024 caracteres, 422.
 
 #### Scenario: Configuração da DIxPRE
 - **WHEN** o cliente cria a versão da `PRE` com `modeloConstrucao` = `PRONTA_TS_B3`, `interpolador` = `LogLinear` e os parâmetros da spec `b3-ready-curve-model` do engine
@@ -83,6 +83,22 @@ Um teste de contrato SHALL comparar a tabela embutida no serviço com a parte fi
 #### Scenario: Engine fora
 - **WHEN** o engine não responde e o front pede os valores
 - **THEN** a resposta é 200 com os valores fixos e os modelos nativos, e o aviso `VALORES_SEM_ENGINE`
+
+### Requirement: Modelo de construção por origem secundária
+`parametros` MAY ter `MODELOS_POR_ORIGEM`: um objeto em que cada chave é `{provedor}/{produto}` de uma ligação da curva (spec `ligacao-curva-provedor`) e o valor é o modelo de construção que lê aquela origem quando o usuário constrói a curva por ela no engine (spec `curve-build-pipeline` do change `engine-modelos-curva`, requisito "Construção por uma origem secundária"). O serviço SHALL recusar com 422 `DADOS_INVALIDOS` a chave fora do formato `{provedor}/{produto}` e o valor que não seja texto de 1 a 100 caracteres. Sem bloquear, SHALL trazer os avisos:
+- `MODELO_POR_ORIGEM_SEM_LIGACAO`: a chave não corresponde a nenhuma ligação atual da curva, ou corresponde à origem principal (a entrada é ignorada pelo engine);
+- `ORIGEM_INCOMPATIVEL_COM_MODELO`: o modelo nativo informado não aceita aquela origem;
+- `MODELO_NAO_NATIVO`: o modelo informado não é nativo.
+
+A ausência de `MODELOS_POR_ORIGEM` não é aviso: sem ela, o engine usa `modeloConstrucao` também para a origem secundária, se ele aceitar a origem.
+
+#### Scenario: Reserva da B3 para uma curva ANBIMA
+- **WHEN** a curva `DI_BACKUP` tem as ligações `ANBIMA`/`CZ` (prioridade 1) e `B3`/`TS` (prioridade 2), e a versão nova traz `MODELOS_POR_ORIGEM` = `{"B3/TS":"PRONTA_TS_B3"}`
+- **THEN** a versão é criada sem aviso, e `cModDado` guarda o objeto no JSON compacto
+
+#### Scenario: Ligação excluída depois
+- **WHEN** a ligação `B3`/`TS` da `DI_BACKUP` é excluída, e a versão vigente ainda tem a chave `B3/TS`
+- **THEN** a exclusão é feita com o aviso `MODELO_POR_ORIGEM_SEM_LIGACAO`, e a construção da `DI_BACKUP` pela origem principal continua funcionando
 
 ### Requirement: Coerência entre curva e configuração
 Uma alteração da curva (`unidade`, `dayCounterCotacao`, `compounding`) que torne inválida a versão vigente ou uma versão futura, pelas regras de combinação dos parâmetros, MUST ser rejeitada com 422 `DADOS_INVALIDOS`, citando a versão. Sem bloquear, a resposta de criação ou validação de versão SHALL trazer o aviso `MODELO_NAO_NATIVO` para `modeloConstrucao`, `interpolador` ou `CALENDARIO` fora dos modelos nativos do engine (construção `PRONTA_TS_B3`, `NTNB_BOOTSTRAP_ANBIMA`, `SOFR_ZERO_BLOOMBERG`; interpoladores `Linear`, `LogLinear`, `BackwardFlat`, `ForwardFlat`, `Cubic`; calendários `Brazil`, `UnitedStates`): o engine só constrói se houver script Groovy ativo com esse nome. Também SHALL trazer o aviso `ORIGEM_INCOMPATIVEL_COM_MODELO` da spec `ligacao-curva-provedor`, quando aplicável.

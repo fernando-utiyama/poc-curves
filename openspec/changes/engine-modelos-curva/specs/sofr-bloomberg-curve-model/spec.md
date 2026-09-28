@@ -26,6 +26,8 @@ O tenor SHALL casar com a expressão `^([1-9][0-9]*)([DWMY])$`; outro formato MU
 - `M`: `B + n` meses (último dia do mês quando o dia não existe), ajustada pela convenção;
 - `Y`: `B + n` anos (mesma regra), ajustada pela convenção.
 
+A fonte não publica dias úteis: `diasUteisPublicados` é nulo, e os dias úteis gravados em `tDadoVertcCurva` são os do calendário `UnitedStates` na construção.
+
 #### Scenario: Tenor não padronizado
 - **WHEN** o tenor `15M` é convertido a partir de `B` = `2026-09-14`
 - **THEN** a data é `2027-12-14`, que já é dia útil
@@ -34,12 +36,21 @@ O tenor SHALL casar com a expressão `^([1-9][0-9]*)([DWMY])$`; outro formato MU
 - **WHEN** a data de um tenor cai num feriado do `UnitedStates`/`FederalReserve` que não é feriado no Brasil
 - **THEN** a data é ajustada pelo calendário `UnitedStates`, não pelo `Brazil`
 
-### Requirement: Validação e duplicidade
-A construção MUST falhar com:
-- `INSUMO_AUSENTE`, se não houver nenhum nó;
-- `INSUMO_INVALIDO`, informando os nós envolvidos, se um valor for nulo, se o mesmo tenor aparecer com valores diferentes ou se dois tenores diferentes resultarem na mesma data.
+### Requirement: Regras do arquivo
+Para cada situação dos nós lidos de `tBbergCurvaPrimr`, o resultado SHALL ser:
 
-Se o mesmo tenor aparecer mais de uma vez com o mesmo valor, SHALL ficar um nó, e os demais SHALL ser descartados com o motivo `DUPLICADO`, registrado no log e na memória.
+| Situação | Resultado |
+|---|---|
+| nenhum nó da curva na data | falha: `INSUMO_AUSENTE` |
+| `cTickerBberg` fora do formato `{membro} {tenor}...`, ou de outro membro | falha: `INSUMO_INVALIDO` (nó) |
+| tenor fora de `^([1-9][0-9]*)([DWMY])$` | falha: `INSUMO_INVALIDO` (nó) |
+| `vPrecoUlt` nulo | falha: `INSUMO_INVALIDO` (nó) |
+| o mesmo tenor mais de uma vez com o mesmo valor | fica um nó; os demais são descartados com o motivo `DUPLICADO`, no log e na memória |
+| o mesmo tenor com valores diferentes | falha: `INSUMO_INVALIDO` (o tenor e os valores) |
+| dois tenores diferentes que resultam na mesma data | falha: `INSUMO_INVALIDO` (os dois nós) |
+| taxa negativa | constrói, sem aviso |
+
+A fonte não publica dias úteis, então não há `CALENDARIO_DIVERGENTE` para a SOFR.
 
 #### Scenario: Dois nós 1D idênticos
 - **WHEN** a fonte tem dois nós `1D` com o mesmo valor

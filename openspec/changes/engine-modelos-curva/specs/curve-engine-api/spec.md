@@ -10,13 +10,15 @@ O engine SHALL expor exatamente estas rotas (prefixo `/api/v1`):
 | Método e rota | Uso | Papel exigido |
 |---|---|---|
 | `POST /cargas` | aviso de carga concluída (spec `curve-load-trigger`) | `Curvas.Processor` |
+| `POST /construcoes/{dataBase}` | construção automática de todas as curvas da data (spec `curve-load-trigger`) | `Curvas.Orquestrador` |
 | `GET /curvas?nome=` | catálogo | `Curvas.Leitura` |
 | `GET /curvas/situacao?dataBase=` | conferência de todas as curvas numa data-base contra a fonte atual, para o painel do `services/curves` | `Curvas.Leitura` |
 | `GET /valores-cadastro` | valores aceitos no cadastro, modelos ativos e regras de combinação | `Curvas.Leitura` |
-| `POST /curvas/{codigo}/{dataBase}/construcao?forcarRecalculo=` | construir | `Curvas.Operador` |
+| `POST /curvas/{codigo}/{dataBase}/construcao?forcarRecalculo=&fonte=&produto=` | construir, pela origem principal ou por uma secundária | `Curvas.Operador` |
 | `GET /curvas/{codigo}/{dataBase}?formato=` | pontos gravados | `Curvas.Leitura` |
 | `GET /curvas/{codigo}/{dataBase}/interpolacao?du=&data=&formato=` | interpolar | `Curvas.Leitura` |
-| `GET /curvas/{codigo}/{dataBase}/simulacao?du=&data=&formato=` | simular construção sem gravar | `Curvas.Leitura` |
+| `GET /curvas/{codigo}/{dataBase}/simulacao?du=&data=&formato=&fonte=&produto=` | simular construção sem gravar, pela origem principal ou por uma secundária | `Curvas.Leitura` |
+| `POST /curvas/{codigo}/{dataBase}/interpolada` | regravar a curva interpolada a partir dos pontos atuais, depois de uma edição manual | `Curvas.Operador` |
 | `GET /curvas/{codigo}/{dataBase}/auditoria?formato=` | arquivo de auditoria montado na hora (spec `curve-audit-history`) | `Curvas.Leitura` |
 | `GET /curvas/por-nome/{dataBase}?nome=&formato=` | pontos gravados, pelo nome | `Curvas.Leitura` |
 | `GET /curvas/por-nome/{dataBase}/interpolacao?nome=&du=&data=&formato=` | interpolar, pelo nome | `Curvas.Leitura` |
@@ -40,6 +42,7 @@ Toda rota de `/api/v1` MUST exigir um token JWT do Microsoft Entra ID (`Authoriz
 - `Curvas.Leitura`: consultas, interpolação, simulação, auditoria, situação, valores aceitos, catálogo e lista de scripts;
 - `Curvas.Operador`: construir e recalcular; inclui `Curvas.Leitura`;
 - `Curvas.Processor`: webhook de carga; concedido só à identidade de serviço do processor (client credentials);
+- `Curvas.Orquestrador`: construção automática da data; concedido só à identidade de serviço do orquestrador (client credentials);
 - `Curvas.ModelosAutor`: enviar e validar scripts;
 - `Curvas.ModelosAprovador`: ativar e desativar scripts.
 
@@ -55,11 +58,12 @@ Token ausente ou inválido MUST resultar em 401 `NAO_AUTENTICADO`; token sem o p
 
 ### Requirement: Parâmetros comuns
 - `{dataBase}` e `data` SHALL estar no formato `AAAA-MM-DD`.
-- `du` SHALL ser inteiro maior ou igual a 1 e representa a data de `du` dias úteis após a data-base, no calendário cadastrado da curva.
-- `data` SHALL ser dia útil no calendário cadastrado e posterior à data-base.
+- `du` SHALL ser inteiro maior ou igual a 1 e representa o prazo de `du` dias úteis após a data-base; a data correspondente segue o requisito "Dias úteis publicados pela fonte ou informados pelo usuário" da spec `curve-build-pipeline` (vértice com esses dias úteis publicados, senão o calendário ancorado no ponto anterior).
+- `data` SHALL ser posterior à data-base; pode ser qualquer dia corrido, e o dia não útil tem o valor da curva interpolada nesse dia (spec `curve-build-pipeline`, requisito "Curva interpolada gravada").
 - `du` e `data` MAY se repetir e se combinar, até 5.000 prazos por requisição; a resposta segue a ordem recebida.
 - `formato` SHALL aceitar `json` (padrão), `xlsx` ou, nas rotas de consulta de pontos, interpolação e simulação, `zip` (spec `curve-calculation-memory`).
 - `forcarRecalculo` SHALL aceitar `true` ou `false` (padrão).
+- `fonte` e `produto` (construção e simulação por código) SHALL vir juntos ou nenhum dos dois; só um deles é 400 `PARAMETRO_INVALIDO`. Sem eles, vale a origem principal; com eles, a origem secundária (spec `curve-build-pipeline`). A comparação é exata, com diferença de caixa.
 - Qualquer outro parâmetro de query MUST resultar em 400.
 
 #### Scenario: Cliente tenta escolher o método
@@ -67,8 +71,8 @@ Token ausente ou inválido MUST resultar em 401 `NAO_AUTENTICADO`; token sem o p
 - **THEN** a resposta é 400 com `PARAMETRO_INVALIDO`, informando que a interpolação vem do cadastro
 
 #### Scenario: Data de prazo não útil
-- **WHEN** o cliente pede `data=2026-09-19` (sábado) na interpolação da `PRE`
-- **THEN** a resposta é 422 com `PRAZO_FORA_DO_DOMINIO`, informando que a data não é dia útil no calendário `Brazil`/`Settlement`
+- **WHEN** o cliente pede `data=2026-09-19` (sábado) na interpolação da `PRE` de `2026-09-14`
+- **THEN** a resposta traz o mesmo valor de `2026-09-18` (sexta-feira), igual à linha de `2026-09-19` em `tDadoCurva`
 
 ### Requirement: Erros padronizados
 Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlationId", "detalhes": [ { "campo", "linha", "valor", "motivo" } ] }`, o mesmo formato do `services/curves`, com a mensagem em português, sem stack trace; em cada item de `detalhes`, o que não se aplica vem nulo. Os códigos e status SHALL ser:
@@ -90,7 +94,7 @@ Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlatio
 | `INSUMO_AUSENTE` | 422 | origem sem dados na data |
 | `INSUMO_INVALIDO` | 422 | dado da origem viola regra do modelo |
 | `PONTOS_NAO_INTERPOLAVEIS` | 422 | pontos gravados que o interpolador não aceita (ex.: `y` não positivo no `LogLinear`); `detalhes` lista os pontos |
-| `PRAZO_FORA_DO_DOMINIO` | 422 | prazo fora do domínio, ou `data` não útil ou não posterior à data-base |
+| `PRAZO_FORA_DO_DOMINIO` | 422 | prazo fora do domínio, ou `data` não posterior à data-base |
 | `MODELO_FALHOU` | 422 | modelo não convergiu, estourou o tempo limite ou lançou erro |
 | `SCRIPT_INVALIDO` | 422 | script Groovy reprovado ou versão não validada |
 | `ERRO_INTERNO` | 500 | qualquer outro erro |
@@ -112,7 +116,7 @@ Enums das respostas:
 
 | Campo | Valores |
 |---|---|
-| situação da construção | `CONSTRUIDA`, `RECONSTRUIDA`, `EXISTENTE`, `IGNORADA` (só na carga) |
+| situação da construção | `CONSTRUIDA`, `RECONSTRUIDA`, `EXISTENTE`, `IGNORADA` (só na carga e na construção da data), `SEM_INSUMO` (só na construção da data) |
 | motivo de `IGNORADA` | `CURVA_INATIVA`, `FORA_DA_VIGENCIA_CURVA` |
 | classificação do prazo | `PONTO`, `INTERPOLADO`, `EXTRAPOLADO_INICIO`, `EXTRAPOLADO_FIM`, `FORA_DO_DOMINIO` (só na simulação) |
 | situação do ponto na comparação (simulação e auditoria) | `IGUAL`, `DIFERENTE`, `SO_SIMULADO`, `SO_GRAVADO`, `DESCARTADO_MESMO_PRAZO`, `DESCARTADO_PRAZO_NAO_POSITIVO` |
@@ -122,7 +126,7 @@ Enums das respostas:
 | tipo de modelo | `construcao`, `interpolacao`, `calendario` (os mesmos da rota `/modelos/{tipo}`) |
 | status do script | `RASCUNHO`, `VALIDADA`, `REPROVADA`, `ATIVA`, `INATIVA` |
 | operação na auditoria | `CONSTRUCAO`, `RECONSTRUCAO` |
-| `acionadoPor` | `CARGA`, `API` |
+| `acionadoPor` | `CARGA`, `ORQUESTRADOR`, `API` |
 | fonte da planilha | `GRAVADA`, `SIMULACAO` |
 
 Avisos do engine:
@@ -130,12 +134,15 @@ Avisos do engine:
 | `codigo` | Onde | Significado |
 |---|---|---|
 | `CURVA_INATIVA` | construção pela API, simulação | curva inativa construída por pedido do usuário |
+| `ORIGEM_SECUNDARIA` | construção pela API, simulação | pontos construídos ou simulados a partir de uma origem secundária; `detalhes` traz fonte, produto, código na fonte e prioridade |
 | `FORA_DA_VIGENCIA_CURVA` | construção pela API, simulação | data-base fora da vigência da curva |
-| `PONTOS_DIFERENTES_DA_FONTE` | carga, construção pela API | pontos gravados diferentes do que a fonte atual produz; `detalhes` traz a quantidade |
+| `PONTOS_DIFERENTES_DA_FONTE` | carga, construção da data, construção pela API | pontos gravados diferentes do que a fonte atual produz; `detalhes` traz a quantidade |
 | `PONTO_DESCARTADO_MESMO_PRAZO` | consulta, interpolação, construção, simulação | ponto no mesmo prazo de outro, fora da interpolação |
 | `PONTO_DESCARTADO_PRAZO_NAO_POSITIVO` | consulta, interpolação, construção, simulação | ponto na data-base ou antes, fora da interpolação |
-| `CALCULO_GRAVADO_DIVERGENTE` | consulta, auditoria | dias ou fatores gravados em `tDadoVertcCurva` diferentes dos recalculados agora |
-| `SEM_CALCULO_GRAVADO` | consulta, auditoria | pontos sem detalhe gravado em `tDadoVertcCurva` (editados à mão, ainda sem recálculo) |
+| `CALENDARIO_DIVERGENTE` | construção, simulação, consulta, auditoria | dias úteis publicados pela fonte ou informados pelo usuário diferentes do calendário, ou ponto da fonte em dia não útil; a curva segue os dias publicados; `detalhes` traz a data, os dias do ponto e os do calendário |
+| `CALCULO_GRAVADO_DIVERGENTE` | consulta, auditoria | fatores gravados em `tDadoVertcCurva` diferentes dos recalculados com os mesmos dias úteis |
+| `SEM_CALCULO_GRAVADO` | consulta, auditoria | pontos sem fatores gravados em `tDadoVertcCurva` (editados à mão, ainda sem recálculo) |
+| `INTERPOLADA_DESATUALIZADA` | consulta, auditoria, situação | a curva interpolada em `tDadoCurva` não confere com a interpolação dos pontos atuais (edição manual sem regravação); `detalhes` traz a quantidade de dias diferentes |
 | `ESTADO_SCRIPT_DESATUALIZADO` | toda resposta com proveniência | Blob fora: modelos pelo último estado conhecido (`estadoScript` = `DESATUALIZADO`) |
 | `ESTADO_SCRIPT_DESCONHECIDO` | toda resposta com proveniência | Blob fora sem estado conhecido: modelos nativos (`estadoScript` = `DESCONHECIDO`) |
 
@@ -167,7 +174,15 @@ A rota por código SHALL buscar `tCurvaMercd.cTickerIdtfdUnic` igual ao código,
 - **THEN** a resposta lista `DCL` e `DPL`, com código, nome e unidade
 
 ### Requirement: Construir curva
-`POST .../construcao` SHALL executar a construção descrita na spec `curve-build-pipeline`. `forcarRecalculo=true` é acionado pelo usuário no front e não exige motivo. A resposta de sucesso SHALL ser 200 com: código, nome, data-base, situação (`CONSTRUIDA`, `RECONSTRUIDA` ou `EXISTENTE`), a proveniência completa da spec `curve-build-pipeline` (modelos com origem, versão e hash, versão do engine, `estadoScript` e avisos), quantidade de pontos, `hashPontos` e duração em milissegundos. Na situação `EXISTENTE`, o engine SHALL comparar os pontos gravados com os que a fonte atual produz, como na carga (spec `curve-load-trigger`), e trazer o aviso `PONTOS_DIFERENTES_DA_FONTE` quando diferirem. A curva `INATIVO`, ou a data-base fora da vigência da curva, não impede a construção por esta rota: a resposta traz o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA`.
+`POST .../construcao` SHALL executar a construção descrita na spec `curve-build-pipeline`. `forcarRecalculo=true` é acionado pelo usuário no front e não exige motivo. A resposta de sucesso SHALL ser 200 com: código, nome, data-base, situação (`CONSTRUIDA`, `RECONSTRUIDA` ou `EXISTENTE`), a proveniência completa da spec `curve-build-pipeline` (modelos com origem, versão e hash, versão do engine, `estadoScript` e avisos), quantidade de pontos, `hashPontos` e duração em milissegundos. Na situação `EXISTENTE`, o engine SHALL comparar os pontos gravados com os que a fonte atual produz, como na carga (spec `curve-load-trigger`), e trazer o aviso `PONTOS_DIFERENTES_DA_FONTE` quando diferirem. A curva `INATIVO`, ou a data-base fora da vigência da curva, não impede a construção por esta rota: a resposta traz o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA`. Com `fonte` e `produto`, a construção usa a origem secundária informada, com as regras do requisito "Construção por uma origem secundária" da spec `curve-build-pipeline`, e a resposta informa a origem usada e o aviso `ORIGEM_SECUNDARIA`.
+
+#### Scenario: Reconstrução pela fonte secundária
+- **WHEN** o cliente chama `POST /api/v1/curvas/DI_BACKUP/2026-09-14/construcao?forcarRecalculo=true&fonte=B3&produto=TS`
+- **THEN** a resposta é 200 com situação `RECONSTRUIDA`, a origem `B3`/`TS`/`PRE` com a prioridade, o modelo `PRONTA_TS_B3` e o aviso `ORIGEM_SECUNDARIA`
+
+#### Scenario: Só a fonte informada
+- **WHEN** o cliente chama a construção com `fonte=B3` e sem `produto`
+- **THEN** a resposta é 400 com `PARAMETRO_INVALIDO`
 
 #### Scenario: Construção bem-sucedida
 - **WHEN** o cliente chama `POST /api/v1/curvas/PRE/2026-09-14/construcao`
@@ -178,12 +193,19 @@ A rota por código SHALL buscar `tCurvaMercd.cTickerIdtfdUnic` igual ao código,
 - **THEN** a resposta é 422 com `INSUMO_AUSENTE` informando `DPL` e a data
 
 ### Requirement: Consultar pontos gravados
-`GET /curvas/{codigo}/{dataBase}` SHALL devolver código, nome, data-base, unidade, interpolador e calendário com origem e versão, `estadoScript`, `hashPontos` e a lista de pontos gravados em ordem de data. Cada ponto SHALL trazer data, `DU`, `DC`, dias 30/360, valor e, só para `TAXA`, fator acumulado e fator diário médio, todos recalculados agora. Sem pontos gravados na data, a resposta MUST ser 404 com `CURVA_NAO_CONSTRUIDA`. Os avisos de descarte `PONTO_DESCARTADO_MESMO_PRAZO` e `PONTO_DESCARTADO_PRAZO_NAO_POSITIVO` da spec `curve-build-pipeline` SHALL vir em `avisos`, aqui e na interpolação. Cada ponto SHALL trazer também o **detalhe gravado** em `tDadoVertcCurva` (dias úteis, dias corridos, dias 30/360 e fatores), ao lado dos valores recalculados agora, para o usuário conferir na tela o que foi calculado e entregue. Se algum valor gravado diferir do recalculado (por exemplo, porque o calendário mudou depois da construção), a resposta SHALL trazer o aviso `CALCULO_GRAVADO_DIVERGENTE` com os pontos; se não houver detalhe gravado (pontos editados à mão), o aviso `SEM_CALCULO_GRAVADO`.
+`GET /curvas/{codigo}/{dataBase}` SHALL devolver código, nome, data-base, unidade, interpolador e calendário com origem e versão, `estadoScript`, `hashPontos`, a quantidade de linhas da curva interpolada em `tDadoCurva` e a lista de pontos da curva construída em `tDadoVertcCurva`, em ordem de data. Cada ponto SHALL trazer o que está gravado (data, valor, dias úteis, dias corridos, dias 30/360 e, só para `TAXA`, fator acumulado e fator diário) e, ao lado, os mesmos dias e fatores recalculados agora, para o usuário conferir na tela o que foi calculado e entregue. Sem pontos gravados na data, a resposta MUST ser 404 com `CURVA_NAO_CONSTRUIDA`. Os avisos de descarte `PONTO_DESCARTADO_MESMO_PRAZO` e `PONTO_DESCARTADO_PRAZO_NAO_POSITIVO` da spec `curve-build-pipeline` SHALL vir em `avisos`, aqui e na interpolação. Se os dias úteis de algum ponto diferirem do calendário de agora, a resposta SHALL trazer o aviso `CALENDARIO_DIVERGENTE` com os pontos; se os fatores gravados diferirem dos recalculados com os mesmos dias úteis (por exemplo, cotação alterada no cadastro depois da construção), `CALCULO_GRAVADO_DIVERGENTE`; se um ponto não tiver fatores gravados (ponto editado à mão), `SEM_CALCULO_GRAVADO`; e se a curva interpolada gravada não conferir com a interpolação dos pontos atuais, `INTERPOLADA_DESATUALIZADA`.
 
 #### Scenario: Curva ainda não construída
 - **WHEN** o cliente consulta `GET /api/v1/curvas/DCL/2026-09-14` antes de qualquer construção dessa data
 - **THEN** a resposta é 404 com `CURVA_NAO_CONSTRUIDA`
 
+
+### Requirement: Regravar a curva interpolada
+`POST /curvas/{codigo}/{dataBase}/interpolada` SHALL regravar a curva interpolada (`tDadoCurva`) da curva e data a partir dos pontos atuais de `tDadoVertcCurva`, sem executar o modelo de construção e sem alterar os pontos, na mesma transação travada da construção (trava da curva em `tCurvaMercd`, 30 segundos, `CONSTRUCAO_EM_ANDAMENTO`). É chamada pelo `services/curves` depois de uma edição manual de pontos, com a identidade de serviço dele (que tem o papel `Curvas.Operador`), e pode ser chamada por um operador. A resposta SHALL ser 200 com a quantidade de linhas gravadas, o `hashPontos` dos pontos usados e os avisos da interpolação. Sem pontos na data, SHALL apagar a curva interpolada da data, se houver, e responder 404 `CURVA_NAO_CONSTRUIDA`. Se a interpolação falhar, nada é alterado, e a resposta é o erro (ex.: 422 `PONTOS_NAO_INTERPOLAVEIS`). O engine SHALL registrar `INTERPOLADA_REGRAVADA` (código, nome, data-base, usuário, `hashPontos`, quantidade de linhas).
+
+#### Scenario: Depois de uma edição manual
+- **WHEN** o gestor altera um ponto da `PRE` de `2026-09-14` no `services/curves`, e ele chama a regravação
+- **THEN** `tDadoCurva` da `PRE` em `2026-09-14` é regravada com a interpolação dos pontos editados, e a consulta deixa de trazer `INTERPOLADA_DESATUALIZADA`
 
 ### Requirement: Interpolar prazos
 `GET .../interpolacao` SHALL exigir ao menos um `du` ou `data` e devolver código, nome, data-base, interpolador, políticas de extrapolação e calendário com origem, `hashPontos` e, para cada prazo, na ordem recebida: prazo pedido, data, `DU`, `DC`, valor, classificação (`PONTO`, `INTERPOLADO`, `EXTRAPOLADO_INICIO`, `EXTRAPOLADO_FIM`) e, só para `TAXA`, os fatores. Se algum prazo estiver fora do domínio, a resposta inteira MUST ser 422 com `PRAZO_FORA_DO_DOMINIO`, listando em `detalhes` todos os prazos rejeitados.
@@ -203,7 +225,8 @@ Com `formato=xlsx`, as rotas de consulta de pontos, de interpolação e de simul
 `GET /curvas/situacao?dataBase=` SHALL devolver, para cada curva com código não nulo, o que o engine calcula na hora e o `services/curves` não consegue calcular, sem ler nem gravar nenhum registro próprio:
 - código, nome e origem;
 - `insumo`: para curva com origem de provedor, a quantidade de linhas brutas da origem na data (`linhasBrutas`); para curva derivada, cada mãe com nome, papel e se tem pontos gravados na data;
-- `pontosGravados`: quantidade e `hashPontos` em `tDadoCurva`;
+- `pontosGravados`: quantidade e `hashPontos` em `tDadoVertcCurva`;
+- `interpolada`: quantidade de linhas em `tDadoCurva` na data e `atualizada` (`true` quando todo dia da grade confere com a interpolação dos pontos atuais; `false` com a quantidade de dias diferentes; nulo sem pontos);
 - `conferencia`: quando há insumo (linhas brutas, ou todas as mães com pontos), o resultado de executar o modelo como a simulação, sem gravar: `status` (`OK` ou `ERRO`), `codigoErro` e mensagem, `hashPontosFonte` e, se houver pontos gravados, `pontosDiferentes` (quantidade de pontos que diferem, que só existem de um lado ou do outro); nula sem insumo.
 
 A rota MUST NOT construir nem gravar nada. As curvas SHALL ser conferidas em paralelo, com até `engine.situacao.paralelismo` (padrão 8) ao mesmo tempo, e a falha ou o tempo esgotado de uma MUST NOT impedir as outras: a curva sai com `conferencia.status` = `ERRO` e o código correspondente. Quem monta o painel, com o cadastro e as regras de situação, é o `services/curves` (spec `painel-curvas` do change `curves-cadastro-curvas`).

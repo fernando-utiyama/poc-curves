@@ -20,14 +20,14 @@ A motivação está no proposal e o comportamento normativo (fórmulas, regras, 
 | `tConfgCurva.cModDado` | parâmetros da curva em JSON (D4) |
 | `tBtrsCurvaPrimr` | bruto B3: `cDiaCorri`, `cDiaUtil`, `vPrecoTx` |
 | `tAnbmaCurvaPrimr` | bruto ANBIMA: `vVertcCurva`, `vPrecoTx` |
-| `tDadoCurva` | pontos gravados pelo engine e pela edição manual no `services/curves`: `dBaseReft`, `cTickerIndcd`, `dVertcReft`, `vPrecoTx` |
-| `tDadoVertcCurva` | detalhe do cálculo de cada vértice, gravado só pelo engine e apagado pela edição manual (D36): `cDiaUtil`, `cQtdDiaPer`, `cQtdDiaReft`, `vFatorDia`, `vFatorAcum`, `vPrecoTx` |
+| `tDadoVertcCurva` | **curva construída**: os pontos (vértices), gravados pelo engine e pela edição manual no `services/curves` (D36, D39): `dVertcReft`, `vPrecoTx`, `cDiaUtil`, `cQtdDiaPer`, `cQtdDiaReft`, `vFatorDia`, `vFatorAcum` |
+| `tDadoCurva` | **curva interpolada**: um valor por dia corrido até o fim do domínio, gravada só pelo engine a partir dos pontos (D6): `dBaseReft`, `cTickerIndcd`, `dVertcReft`, `vPrecoTx` |
 
-**Modelo de dados.** `tDadoCurva` (dado curva) guarda os **pontos** da curva na data-base. `tCurvaData` (curva data) seria a curva interpolada diária e tem FK para `tDadoCurva` (`FK_tDadoCurva_tCurvaData`); não é gravada nesta fase. `tDadoVertcCurva` guarda o detalhe do cálculo de cada vértice (D36), e `tMtrizCurva` (reservada a superfícies) não é gravada.
+**Modelo de dados.** `tDadoVertcCurva` guarda a **curva construída**: os pontos (vértices) da curva na data-base, com dias e fatores (D36). `tDadoCurva` guarda a **curva interpolada**: um valor por dia corrido, calculado dos pontos (D6). `tCurvaData` não é usada e sai do schema (change `banco-curvas-ajustes`), e `tMtrizCurva` (reservada a superfícies) não é gravada.
 
 ```
-tabela bruta ─ modelo de construção ─► tDadoCurva (pontos)
-                  consulta pela API ─► interpolação em tempo de execução a partir de tDadoCurva
+tabela bruta ─ modelo de construção ─► tDadoVertcCurva (pontos) ─ interpolação ─► tDadoCurva (dia a dia)
+                  consulta pela API ─► interpolação em tempo de execução a partir de tDadoVertcCurva
                   simulação ──────────► modelo de construção + interpolação em memória, sem gravar
 ```
 
@@ -83,7 +83,7 @@ Itens, colunas, valores aceitos e obrigatoriedade estão na spec `curve-build-pi
 - Chave desconhecida é erro: um nome digitado errado (`EXTRAPOLACAO_FINAL`) cairia silenciosamente no padrão `Disabled`.
 - Só dois padrões existem: `Disabled` para as extrapolações. Todo o resto é obrigatório.
 - A vigência de `tConfgCurva` torna reprodutível o reprocessamento de uma data antiga.
-- Origem: só a linha de menor `cPriorCsumo`; troca automática de fonte fica fora.
+- Origem: a construção automática usa só a linha de menor `cPriorCsumo`; troca automática de fonte fica fora. O usuário pode construir por uma origem secundária (D38).
 - Os parâmetros em texto antigos (`CONVENCAO`, `MOD_DADO`, `HORIZONTE_MAX_ANOS`) deixam de ser lidos.
 
 **Alternativas rejeitadas:** colunas novas em `tConfgCurva` (mudam o schema); parâmetros no Blob (separariam o cadastro do banco e da vigência).
@@ -91,12 +91,12 @@ Itens, colunas, valores aceitos e obrigatoriedade estão na spec `curve-build-pi
 ### D5. Modelo de construção
 O contrato está na spec `curve-extension-models`. O modelo recebe um `ContextoConstrucao` com o cadastro, a data-base, o calendário e o `LeitorInsumos`, que é o único acesso às tabelas brutas. Scripts Groovy não acessam o banco. Cada modelo declara a fonte e o produto que aceita (`PRONTA_TS_B3`: `B3`/`TS`; `NTNB_BOOTSTRAP_ANBIMA`: `ANBIMA`/`MS`; `SOFR_ZERO_BLOOMBERG`: `BLOOMBERG`/`BLC2`), e o pipeline rejeita cadastro que aponte um modelo para outra fonte. O modelo devolve pontos sem arredondamento; o pipeline arredonda e grava.
 
-### D6. Gravação: só os pontos, numa transação travada
-A construção grava em `tDadoCurva` só os pontos arredondados. A transação começa com um `SELECT` com trava de escrita (`PESSIMISTIC_WRITE`, tempo limite de 30 segundos) na linha da curva em `tCurvaMercd`, e a edição manual de pontos no `services/curves` usa a mesma trava. Isso serializa construções e edições da mesma curva entre réplicas sem tabela nova. Quem não obtém a trava recebe `CONSTRUCAO_EM_ANDAMENTO`. A simulação não trava nada.
+### D6. Gravação: pontos e curva interpolada, numa transação travada
+A construção grava os pontos arredondados em `tDadoVertcCurva` e, na mesma transação, a curva interpolada em `tDadoCurva`: um valor por dia corrido, do início ao fim do domínio (cerca de 12.400 linhas na PRE, com o último vértice em 2060). Dia corrido, e não útil, para quem consome achar uma linha em qualquer data sem depender do calendário: com eixo em dias úteis, o fim de semana e o feriado repetem o valor do dia útil anterior. A interpolada é saída: o engine nunca a lê para calcular, e ela sai idêntica ao que a rota de interpolação devolve para a mesma data. Depois de uma edição manual, o `services/curves` pede ao engine a regravação da interpolada (rota própria); com o engine fora, a edição fica gravada, e a interpolada, desatualizada (`INTERPOLADA_DESATUALIZADA`) até a regravação. A transação começa com um `SELECT` com trava de escrita (`PESSIMISTIC_WRITE`, tempo limite de 30 segundos) na linha da curva em `tCurvaMercd`, e a edição manual de pontos no `services/curves` usa a mesma trava. Isso serializa construções e edições da mesma curva entre réplicas sem tabela nova. Quem não obtém a trava recebe `CONSTRUCAO_EM_ANDAMENTO`. A simulação não trava nada.
 
 A proveniência vai na resposta e no log `CURVA_GRAVADA` (D23); o banco não tem tabela para ela, porque `tMtrizCurva` é de superfícies.
 
-**Alvo ideal, fora desta mudança (o schema está proposto na change `banco-curvas-ajustes`):** persistir a curva diária em `tCurvaData`, mantendo dado curva = pontos e curva data = curva diária. Exige remover `FK_tDadoCurva_tCurvaData` e ligar `tCurvaData` a `tCurvaMercd` (ou a uma futura tabela de cabeçalho de curva por data). A curva diária é o volume grande (≈ 12.600 linhas por curva e data em 50 anos) e precisa ser expurgável sem tocar nos pontos. Quando a FK mudar, a construção passa a gravar também `tCurvaData` até o fim do domínio, sem mudar os pontos.
+**Alternativa rejeitada:** gravar a curva diária em `tCurvaData`, como numa versão anterior deste design. `tDadoCurva` já é a tabela da curva interpolada, e `tCurvaData` sai do schema.
 
 ### D7. Precisão
 `BigDecimal` com `MathContext.DECIMAL128` e `DecimalMath.pow/ln/exp` para potências fracionárias, sem arredondamento intermediário. O arredondamento do cadastro vale só para o valor da curva, na gravação e na resposta. Os fatores saem do valor já arredondado, com 16 casas: quem lê a taxa publicada consegue reproduzir o fator. **Alternativa rejeitada:** `double` com arredondamento no fim, que já produz as diferenças que o oráculo B3 detecta.
@@ -104,7 +104,7 @@ A proveniência vai na resposta e no log `CURVA_GRAVADA` (D23); o banco não tem
 ### D8. Registro genérico e Groovy
 `RegistroModelos<T>` é um só para os três tipos, com a resolução: versão fixada → `ATIVA` → Java nativo → erro. Os nativos se registram na subida (`@Component` por modelo).
 
-**Scripts no Blob Storage, não no banco.** O engine roda em duas ou mais instâncias no Azure, e um script ativado numa instância precisa chegar às outras. Os scripts ficam no Blob já usado pelo projeto, em `groovy-models/{tipo}/{nome}/`: um arquivo imutável por versão (`v{n}.groovy`) e um `estado.json` com a versão ativa e o status, o hash e o autor de cada versão (formato na spec `curve-extension-models`).
+**Scripts no Blob Storage, não no banco.** O engine roda em no mínimo duas instâncias no Azure, e um script ativado numa instância precisa chegar às outras. Os scripts ficam no Blob já usado pelo projeto, em `groovy-models/{tipo}/{nome}/`: um arquivo imutável por versão (`v{n}.groovy`) e um `estado.json` com a versão ativa e o status, o hash e o autor de cada versão (formato na spec `curve-extension-models`).
 - **Propagação:** toda resolução lê o `estado.json` antes do nativo, com cache local de 30 segundos. Uma ativação chega a todas as instâncias em até 30 segundos, sem mensagem entre elas e sem reinício.
 - **Cache sem invalidação:** versões são imutáveis (gravadas com `If-None-Match: *`), então a classe compilada fica em memória por (tipo, nome, versão, hash) para sempre. Só o ponteiro de versão ativa expira.
 - **Concorrência:** o `estado.json` é gravado com `If-Match` do ETag lido. Duas ativações simultâneas não se sobrescrevem; a segunda recebe `ESTADO_SCRIPT_CONCORRENTE`.
@@ -126,11 +126,11 @@ Isso substitui o `GroovyDynamicModelCompiler` e resolve o débito de segurança 
 ### D9. API por código + data, sem cache
 Rotas, parâmetros, corpos e erros estão na spec `curve-engine-api`. Os controllers antigos são removidos, sem convivência.
 
-Toda consulta relê os pontos de `tDadoCurva` e monta a curva na hora: são no máximo algumas centenas de linhas por curva e data. **Alternativa rejeitada nesta fase:** cache do objeto de curva, que exigiria invalidação entre réplicas na edição e na reconstrução. É fonte de erro sem ganho medido; entra depois, se a latência pedir.
+Toda consulta relê os pontos de `tDadoVertcCurva` e monta a curva na hora: são no máximo algumas centenas de linhas por curva e data. **Alternativa rejeitada nesta fase:** cache do objeto de curva, que exigiria invalidação entre réplicas na edição e na reconstrução. É fonte de erro sem ganho medido; entra depois, se a latência pedir.
 
 **Código e nome.** A rota por código busca `cTickerIdtfdUnic`, e a rota por nome compara o nome normalizado com `cTickerIndcd`. As duas resolvem para `cTickerIndcd` e usam os mesmos serviços. O nome vai em query, não no path, porque tem espaço, acento e `/`. **Alternativa rejeitada:** escrita pelo nome. O nome tem espaço e acento e pode colidir depois de normalizado (`NOME_AMBIGUO`), então operações que alteram dados ficam presas ao código. O nome é imutável no cadastro, por ser a chave das FKs, e por isso os eventos de log de auditoria trazem sempre o nome, além do código, para o histórico sobreviver a uma troca de código.
 
-**Edição de pontos:** não é do engine. A edição manual é do `services/curves` (change `curves-cadastro-curvas`), que grava `tDadoCurva` com a mesma trava por curva de D6 e calcula o `hashPontos` pela mesma fórmula. O engine só percebe a edição pelos `hashPontos`.
+**Edição de pontos:** não é do engine. A edição manual é do `services/curves` (change `curves-cadastro-curvas`), que grava os pontos em `tDadoVertcCurva` com a mesma trava por curva de D6, calcula o `hashPontos` pela mesma fórmula e pede ao engine a regravação da curva interpolada. O engine percebe a edição pelos `hashPontos`.
 
 ### D10. O engine só lê as tabelas brutas
 Os modelos esperam das tabelas brutas o contrato abaixo. Preenchê-las é do conector e do processor, em changes próprios. Nos testes, as tabelas são carregadas por fixture.
@@ -138,7 +138,7 @@ Os modelos esperam das tabelas brutas o contrato abaixo. Preenchê-las é do con
 | Tabela bruta | O engine espera | Situação hoje |
 |---|---|---|
 | `tBtrsCurvaPrimr` | uma linha por vértice, `cTickerIndcd` = nome da curva de mercado ligada, em `tCurvaPrvdr`, ao código exato da curva no `TaxaSwap.txt`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx` em percentual | na `develop`, o conector classifica pela descrição (`DCL`/`DPL` viram `DOL`, `PTX`/`INP` são descartados) e o processor grava em `mkt.B3CurveRaw`; corrigido no change `conector-b3-webhook-ingest` |
-| `tAnbmaCurvaPrimr` | uma linha por título, `cTickerIndcd` = nome da curva de mercado: `vPrecoTx` = taxa indicativa em percentual, `vVertcCurva` = prazo em dias úteis | colunas existem; unidade de `vVertcCurva` e escala de `vPrecoTx` não confirmadas |
+| `tAnbmaCurvaPrimr` | uma linha por título, `cTickerIndcd` = nome da curva de mercado: `vPrecoTx` = taxa indicativa em percentual, `vVertcCurva` = prazo em dias úteis | colunas existem; escala de `vPrecoTx` confirmada pelo arquivo `ms{AAMMDD}.txt` (percentual ao ano); unidade de `vVertcCurva` a confirmar com a ingestão ANBIMA |
 | `tBbergCurvaPrimr` | uma linha por nó da SOFR, `cTickerIndcd` = nome da curva de mercado, `cTickerBberg` = `{membro} {tenor} ...`, `vPrecoUlt` = taxa zero em percentual | tabela existe; feeder não localizado; `cTickerBberg` `CHAR(20)` não cabe o ticker completo (change `banco-curvas-ajustes`) |
 
 Além das tabelas, o processor chama o webhook `POST /api/v1/cargas` depois do commit de cada carga, com a quantidade de linhas por código na fonte, e repete com o mesmo `idCarga` até receber 2xx (D22). Para a B3, isso está especificado no change `conector-b3-webhook-ingest` (conector publica uma mensagem por carga; o processor grava `tBtrsCurvaPrimr` e avisa o engine).
@@ -148,7 +148,7 @@ Além das tabelas, o processor chama o webhook `POST /api/v1/cargas` depois do c
 **Contexto.** Nenhuma referência do projeto faz bootstrap de título com cupom. O `curve-platform` tem `CdiRateHelper` e `Di1RateHelper` (instrumentos zero-cupom) e um `CurveBootstrapper` que só ordena taxas já implícitas. O algoritmo completo está na spec `ntnb-anbima-curve-model`.
 
 ### D11. Leitura de `tAnbmaCurvaPrimr` como está
-O vencimento vem do prazo: `P = B + vVertcCurva dias úteis`, e o vencimento nominal é o dia 15 do mês de `P`. A checagem "dia 15 ajustado = `P`" confirma a hipótese de dias úteis a cada construção: se a unidade estiver errada, a construção falha com `INSUMO_INVALIDO` em vez de gerar uma curva errada. **Alternativa rejeitada:** coluna nova de vencimento (`dVctoTitulo`), que mudaria o schema oficial e a ingestão sem necessidade.
+O vencimento vem do prazo e da regra do título: o prazo em dias úteis leva a uma data aproximada `A`, o vencimento nominal é o dia 15 do mês de `A`, e a data do ponto é esse dia 15 ajustado. Os dias úteis do ponto são o `vVertcCurva` publicado (D39). Um calendário com um feriado a mais ou a menos move `A` um ou dois dias, sem mudar o mês: a curva sai certa, com `CALENDARIO_DIVERGENTE`. Prazo em outra unidade (dias corridos) cai longe do dia 15 ou num mês sem vencimento, e a construção falha com `INSUMO_INVALIDO` em vez de gerar uma curva errada. A tolerância (5 dias) e os meses de vencimento (fevereiro, maio, agosto e novembro) são configuráveis. **Alternativa rejeitada:** coluna nova de vencimento (`dVctoTitulo`), que mudaria o schema oficial e a ingestão sem necessidade.
 
 ### D12. Bisseção, não Newton
 Cada título resolve `f(z) = 0` com uma incógnita, mas os cupons entre o último título resolvido e o vencimento dependem de `z` pela interpolação. A bisseção em `[−0,99; 1,00]` é determinística, não precisa de derivada e sempre termina (≈ 48 iterações até `10^−14`). O "sem troca de sinal" vira um erro claro. **Alternativa rejeitada:** Newton, que é mais rápido mas pode divergir e exige derivada da interpolação. Também foi rejeitado resolver todos os títulos de uma vez por mínimos quadrados (como a ETTJ), que é mais difícil de auditar ponto a ponto.
@@ -221,7 +221,7 @@ O banco não pode ser alterado, e o Blob é só para originais e scripts. A tril
 A reconstrução apaga e insere na mesma transação. No `READ COMMITTED` padrão do SQL Server, uma leitura concorrente espera o commit em vez de ver a data vazia, então a consistência já está garantida, desde que ninguém use `NOLOCK`. A espera é limitada ao tempo de uma construção (segundos). `READ_COMMITTED_SNAPSHOT` eliminaria a espera e fica como melhoria quando o banco puder mudar.
 
 ### D25. Autenticação e papéis pelo Entra ID
-Todas as rotas exigem JWT do Entra ID. O acesso é por papéis de aplicação: `Curvas.Leitura`, `Curvas.Operador`, `Curvas.Processor` (só a identidade de serviço do processor, por client credentials), `Curvas.ModelosAutor` e `Curvas.ModelosAprovador`. Quem ativa um script pode ser o próprio autor, porque muitas vezes há um só operador no horário; o `estado.json` e o log registram quem ativou. A leitura também exige papel, porque a curva é dado de mercado usado em risco e precificação. O Blob é acessado por Managed Identity, sem chave em configuração. **Alternativa rejeitada:** chave de API por cliente, que não identifica o usuário para a auditoria e exige rotação manual.
+Todas as rotas exigem JWT do Entra ID. O acesso é por papéis de aplicação: `Curvas.Leitura`, `Curvas.Operador`, `Curvas.Processor` (só a identidade de serviço do processor, por client credentials), `Curvas.Orquestrador` (só a identidade de serviço do orquestrador, por client credentials; ela também recebe `Curvas.Leitura` para o calendário), e a identidade do `services/curves` recebe `Curvas.Leitura` e `Curvas.Operador` (para regravar a curva interpolada depois de uma edição manual), `Curvas.ModelosAutor` e `Curvas.ModelosAprovador`. Quem ativa um script pode ser o próprio autor, porque muitas vezes há um só operador no horário; o `estado.json` e o log registram quem ativou. A leitura também exige papel, porque a curva é dado de mercado usado em risco e precificação. O Blob é acessado por Managed Identity, sem chave em configuração. **Alternativa rejeitada:** chave de API por cliente, que não identifica o usuário para a auditoria e exige rotação manual.
 
 ### D26. Resiliência
 Os tempos limite, a política de repetição, a saúde, os logs de dependência e as métricas estão na spec `curve-engine-resilience`. Decisões:
@@ -243,7 +243,7 @@ A proveniência diz quais modelos e versões rodaram, mas investigar exige o có
 - **Sem contrato de API versionado nesta fase.**
 
 ### D30. Situação e vigência da curva só valem para a construção automática
-Inativar a curva, ou deixar a data-base fora da vigência dela no cadastro, é uma decisão de não construí-la no dia a dia. A carga respeita isso e devolve a curva como `IGNORADA`, sem erro. A construção pedida por um usuário, porém, é uma ação consciente (reprocessar uma data antiga de uma curva já desativada, testar uma curva antes de ativá-la) e é executada, com o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA`. Consulta e interpolação nunca dependem disso. **Alternativa rejeitada:** `CADASTRO_INVALIDO` em toda construção, que impediria o reprocessamento histórico.
+Inativar a curva, ou deixar a data-base fora da vigência dela no cadastro, é uma decisão de não construí-la no dia a dia. A construção automática (carga e construção da data pelo orquestrador) respeita isso e devolve a curva como `IGNORADA`, sem erro. A construção pedida por um usuário, porém, é uma ação consciente (reprocessar uma data antiga de uma curva já desativada, testar uma curva antes de ativá-la) e é executada, com o aviso `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA`. Consulta e interpolação nunca dependem disso. **Alternativa rejeitada:** `CADASTRO_INVALIDO` em toda construção, que impediria o reprocessamento histórico.
 
 ### D31. Interpolação tolerante a pontos gravados à mão
 A edição manual no `services/curves` só recusa inconsistência de banco; regra de negócio vira aviso (change `curves-cadastro-curvas`). Por isso o engine precisa conviver com pontos que nenhum modelo geraria: em fim de semana ou feriado, na data-base ou antes dela. A base comum de interpolação, por onde passam todos os interpoladores, inclusive `Cubic` e Groovy, descarta com aviso os pontos de prazo não positivo e, no mesmo prazo do eixo, fica com o de menor data. Os pontos gravados nunca são alterados, e o aviso aparece em toda saída. O que não tem tratamento seguro (preço ou pontos não positivos no `LogLinear`) falha com `PONTOS_NAO_INTERPOLAVEIS`, citando os pontos. **Alternativa rejeitada:** recusar a consulta com qualquer ponto fora da regra, que deixaria a curva inutilizável até alguém corrigir, justamente quando a edição manual foi o recurso de contingência.
@@ -261,7 +261,7 @@ Curvas como a inflação implícita (PRE sobre a NTN-B bootstrapada) não vêm d
 - **Construção em cadeia na carga:** depois das curvas da carga, o engine constrói as derivadas cujas mães já estão prontas, em ordem de dependência. As mães de fontes diferentes se resolvem sozinhas: a derivada sai na carga que completa as mães.
 - **Nada é recalculado em cascata.** A mãe recalculada ou editada deixa a derivada diferente do que as mães atuais produzem, o que aparece na conferência do painel, e o recálculo é do usuário, como em toda curva.
 
-**Alternativas rejeitadas:** tabela de dependências entre curvas (muda o schema); o modelo derivado ler `tDadoCurva` direto (duplicaria a montagem da curva e escaparia da proveniência); recálculo em cascata (uma edição manual na PRE mudaria em silêncio todas as filhas já consumidas).
+**Alternativas rejeitadas:** tabela de dependências entre curvas (muda o schema); o modelo derivado ler `tDadoVertcCurva` direto (duplicaria a montagem da curva e escaparia da proveniência); recálculo em cascata (uma edição manual na PRE mudaria em silêncio todas as filhas já consumidas).
 
 ### D35. Fontes ANBIMA: mercado secundário hoje, curva zero no futuro
 A NTN-B desta fase vem do bootstrap dos títulos do arquivo de Mercado Secundário (`ms{AAMMDD}.txt`, produto `MS`). No futuro, a ingestão ANBIMA também SHALL baixar a **curva zero** (Estrutura a Termo das Taxas de Juros Estimada), que a ANBIMA publica pronta:
@@ -270,34 +270,69 @@ A NTN-B desta fase vem do bootstrap dos títulos do arquivo de Mercado Secundár
 - **gravação:** cabe em `tAnbmaCurvaPrimr` sem mudar colunas, uma curva de mercado por série (verificado, change `banco-curvas-ajustes`, D5), com produto `CZ` e o nome da série como código na fonte;
 - **uso:** a ETTJ IPCA é a curva zero real oficial, alternativa ao bootstrap da NTN-B; a Inflação Implícita vem pronta, sem precisar de curva derivada; a ETTJ PREF e a Circular 3.361 servem de conferência da PRE. Construí-las exige só um modelo de leitura de vértices prontos, como o `PRONTA_TS_B3`, numa change futura.
 
-### D36. Detalhe de cada vértice em `tDadoVertcCurva`, como na ideia original
-A ideia original do schema já previa uma tabela de "informações detalhadas de cada vértice da curva", com dias úteis, dias do período, dias em 30/360 e os fatores. O engine a grava junto com os pontos, na mesma transação, para que o usuário confira na tela o que foi calculado e entregue, sem puxar o log, e para que esse registro não mude se o calendário mudar depois.
-- **Uma só verdade:** os pontos estão em `tDadoCurva`; o detalhe é registro. Interpolação, consulta e `hashPontos` usam só `tDadoCurva`.
-- **Coerência com a edição manual:** o `services/curves` apaga o detalhe da data quando edita ou apaga pontos, sem calcular nada, então o detalhe nunca descreve pontos que não existem mais. A tela mostra `SEM_CALCULO_GRAVADO` até um recálculo.
-- **Conferência:** a consulta mostra o gravado ao lado do recalculado e avisa `CALCULO_GRAVADO_DIVERGENTE` quando diferem.
+### D36. Curva construída em `tDadoVertcCurva`
+`tDadoVertcCurva` ("informações detalhadas de cada vértice da curva") é a curva construída: cada ponto com data, valor, dias úteis, dias do período, dias em 30/360 e os fatores. O usuário confere na tela o que foi calculado e entregue, sem puxar o log, e o registro não muda se o calendário mudar depois.
+- **Uma fonte para os pontos:** data, valor, dias úteis e `hashPontos` vêm de `tDadoVertcCurva`; a curva interpolada em `tDadoCurva` é derivada deles (D6).
+- **Coerência com a edição manual:** o `services/curves` regrava só os pontos que mudaram, com os dias úteis informados pelo usuário e sem fatores, e apaga os excluídos; os pontos que não mudaram mantêm os fatores do engine. A tela mostra `SEM_CALCULO_GRAVADO` para os pontos sem fatores até um recálculo.
+- **Conferência:** a consulta mostra o gravado ao lado do recalculado; `CALENDARIO_DIVERGENTE` quando os dias úteis do ponto diferem do calendário, `CALCULO_GRAVADO_DIVERGENTE` quando os fatores diferem com os mesmos dias úteis.
 - **Colunas:** os nomes são os do schema aplicado (`dVertcReft`); o significado vem das descrições da ideia original: `cDiaUtil` dias úteis, `cQtdDiaPer` dias do período, `cQtdDiaReft` dias em 30/360, `vFatorDia` fator diário de capitalização, `vFatorAcum` fator acumulado até o vértice.
+- **Período = da data-base ao vértice.** O sistema real não preenche `tDadoVertcCurva`; esta spec define o conteúdo. As três contagens usam o mesmo intervalo `(B, d]`: `cDiaUtil` em dias úteis, `cQtdDiaPer` em dias corridos e `cQtdDiaReft` em 30/360, e `vFatorDia` é o fator médio por dia útil desde a data-base (`FA^(1/DU)`). Assim, `cDiaUtil` e `cQtdDiaPer` se conferem direto contra `cDiaUtil` e `cDiaCorri` do `TaxaSwap.txt`. **Alternativa rejeitada:** período entre um vértice e o anterior, que mudaria também o sentido de `vFatorDia` (fator a termo do trecho) e não se confere contra a fonte.
 
-**Alternativa rejeitada:** colunas novas de dias em `tDadoCurva`, que exigiriam o calendário na edição manual e mudariam o schema, quando a tabela certa já existe.
+**Alternativa rejeitada:** pontos em `tDadoCurva` e só o detalhe em `tDadoVertcCurva` (versão anterior deste design): `tDadoCurva` é a curva interpolada, e dividir o ponto entre as duas tabelas obrigava a manter as duas em sincronia na edição manual.
+
+### D37. Dois gatilhos automáticos: processor e orquestrador
+O processor sabe quando o dado de mercado puro terminou de ser gravado, então ele dispara as curvas da carga (D22). Mas nem toda construção automática nasce de uma carga: a derivada cuja mãe foi construída ou recalculada à mão pela API não entra em nenhuma cadeia, e um aviso de carga perdido deixa a curva sem pontos. Por isso o orquestrador também dispara, por `POST /api/v1/construcoes/{dataBase}`, com o papel próprio `Curvas.Orquestrador`:
+- **Todas as curvas da data, com as regras automáticas:** constrói o que tem insumo e não tem pontos, nunca recalcula, ignora curva inativa ou fora da vigência, e devolve `SEM_INSUMO` para o que ainda não tem dado. Primeiro as curvas de provedor, em paralelo; depois as derivadas, em cadeia.
+- **Não usa a rota de construção por curva**, que é a do usuário e constrói até curva inativa.
+- **Papel próprio**, para a auditoria distinguir `acionadoPor` = `ORQUESTRADOR` de `CARGA` e `API`.
+- **Sem filtro por curva nesta fase.** Uma curva só, com as regras do usuário, continua pela rota de construção por curva.
+- **Concorrência com o webhook:** a trava por curva (D6) serializa as duas, e a existência de pontos é conferida depois da trava.
+
+**Alternativa rejeitada:** agendador dentro do engine. Com duas ou mais instâncias, todas disparariam juntas, e evitar isso exigiria trava distribuída; agendar é papel do orquestrador.
+
+### D38. Construção por origem secundária, escolhida pelo usuário
+Uma curva pode ter fontes de reserva em `tCurvaPrvdr` (prioridades 2, 3...). Os feeders gravam o bruto para toda curva ligada ao código, principal ou não, então o dado da reserva já está no banco quando a principal falha. A construção automática continua só pela principal; a troca é decisão do usuário, por `fonte` e `produto` na rota de construção existente (e na simulação, para ver antes):
+- **Mesma rota, não uma nova.** Construir pela secundária é construir a mesma curva, com as mesmas regras de trava, recálculo e situação; muda só de onde vêm os pontos.
+- **Modelo por origem no `cModDado`.** Cada modelo de construção aceita uma fonte e um produto, e o cadastro tem um `cMotorCalc` só. `MODELOS_POR_ORIGEM` diz qual modelo lê cada origem secundária, sem mudar o schema; sem a chave, vale o `cMotorCalc`, se ele aceitar a origem.
+- **O resto do cadastro é o da curva.** Interpolador, cotação, calendário e arredondamento não mudam com a fonte, para os consumidores não verem outra curva.
+- **Rastro só no log.** O banco não guarda a origem dos pontos. `CURVA_GRAVADA` e o aviso `ORIGEM_SECUNDARIA` dizem qual origem foi usada; a conferência automática compara com a principal e mostra a data como diferente, o que é o sinal para recalcular pela principal quando ela chegar.
+
+**Alternativas rejeitadas:** trocar a prioridade em `tCurvaPrvdr` para construir (mudaria o cadastro de todas as datas e a construção automática); rota nova só para a secundária (duplicaria as regras da construção).
+
+### D40. Regras por arquivo
+Cada arquivo de origem tem a sua forma de estar errado: na B3, uma linha contradiz outra; na ANBIMA, o prazo não leva a um vencimento de NTN-B; na Bloomberg, um tenor repete com outro valor. Por isso não há regra de insumo genérica no pipeline: cada modelo traz a tabela "Regras do arquivo" na sua spec, com o resultado de cada situação (constrói, constrói com aviso, descarta com aviso ou falha). O critério comum é só este: tolerar quando o dado tem uma leitura única, e falhar quando qualquer escolha seria um chute. Fora dessas regras, que só impedem gravar um dado que se contradiz, não há checagem de qualidade nesta fase: variação anormal, comparação entre fontes e aprovação são do módulo de data quality, que será implantado no futuro. A validação do leiaute do arquivo continua na ingestão de cada fonte (processor da B3; a da ANBIMA e a da Bloomberg nas changes delas).
+
+### D39. Dias úteis da fonte e do usuário obedecidos
+Quando a fonte publica os dias úteis de um ponto (B3: `cDiaUtil`; ANBIMA: `vVertcCurva`) ou o usuário os informa na edição manual, eles são obedecidos sem discussão. A data do ponto é exata (data-base + dias corridos), então o que pode divergir é o nosso calendário, e ele passa a importar só onde ninguém informou nada: as datas entre os pontos e a conversão de `du` em data.
+- **Construção nunca falha por calendário:** grava os dias publicados em `tDadoVertcCurva.cDiaUtil`, calcula os fatores com eles e avisa `CALENDARIO_DIVERGENTE` para alguém corrigir o feriado.
+- **Ancoragem:** o prazo de um ponto é o `cDiaUtil` gravado; o de uma data entre dois pontos é o do ponto anterior mais os dias úteis que o calendário conta no trecho, sem passar do seguinte. Com o calendário certo, o resultado é idêntico ao de antes.
+- **Cada modelo declara o que a fonte publica** (`diasUteisPublicados`): a B3 e a ANBIMA publicam; a SOFR da Bloomberg publica só o tenor, e os dias úteis dela vêm do calendário `UnitedStates` na construção. Uma fonte nova só muda a spec do seu modelo.
+- **Usuário:** a edição manual e a planilha de pontos do `services/curves` aceitam dias úteis opcionais por ponto, gravados em `tDadoVertcCurva` e obedecidos da mesma forma; sem eles, o calendário.
+
+**Alternativa rejeitada:** falhar a construção com `INSUMO_INVALIDO` quando o calendário diverge da fonte (decisão anterior): deixava o fechamento sem curva por um feriado, quando a fonte já diz os dias certos.
 
 ## Risks / Trade-offs
 
 - **Parâmetros em JSON numa coluna legada (`cModDado`).** Outro sistema pode usar essa coluna com outro sentido. → Confirmar com o dono do schema antes do apply; o engine rejeita qualquer conteúdo que não seja o JSON esperado, então um uso diferente aparece como `CADASTRO_INVALIDO`, nunca como curva errada.
 - **Engine passa a escrever em `tCurvaMercd`** (`dBaseReft`, `cUsuarCalc`), tabela do cadastro. → Só essas duas colunas, na linha já travada; confirmar com o dono do cadastro que elas são de cálculo.
-- **Curva diária não persistida.** Quem precisa da curva dia a dia (a curve-api lendo `tCurvaData`) não a encontra. → A interpolação atende por prazo; a persistência entra com o alvo ideal (D6).
-- **Entidade de `tDadoCurva` do engine diverge do schema** (`dtVerticeReferencia`, `cDiaUtil`, `vDiaFator`...). → A entidade passa a ter só as quatro colunas do schema; dias e fatores são calculados.
+- **Curva interpolada é o maior volume** (cerca de 12.400 linhas por curva e data na PRE). → Gravada na mesma transação dos pontos, com `INSERT` em lote; a PK de `tDadoCurva` clustered fica como pergunta na change `banco-curvas-ajustes`.
+- **Interpolada desatualizada depois de uma edição manual com o engine fora.** → A edição fica gravada, a consulta, a auditoria e o painel mostram `INTERPOLADA_DESATUALIZADA`, e a regravação pelo `services/curves` ou por um operador corrige.
+- **Entidade de `tDadoCurva` do engine diverge do schema** (`dtVerticeReferencia`, `cDiaUtil`, `vDiaFator`...). → A entidade passa a ter só as quatro colunas do schema, e os pontos com dias e fatores ficam na entidade de `tDadoVertcCurva`.
 - **Tabelas brutas ainda fora do contrato de D10.** → Testes com fixtures; os changes do conector e do processor precisam entrar antes do deploy.
 - **`tBtrsCurvaPrimr.cTickerIndcd` tem FK para `tCurvaMercd`.** → O processor grava os vértices sob o nome da curva de mercado, mapeada pelo `tCurvaPrvdr`; não há linhas de "curva da fonte" em `tCurvaMercd`.
-- **Calendário desatualizado bloqueia a construção B3** (checagem `DU` = `cDiaUtil`). → É intencional: é melhor falhar com o vértice nomeado do que gravar fatores errados. A correção é um feriado no calendário, inclusive via Groovy, sem deploy.
+- **Calendário desatualizado com dias úteis publicados.** → A curva segue a fonte (D39), e só as datas entre vértices usam o calendário, ancoradas no vértice anterior; o aviso `CALENDARIO_DIVERGENTE` aponta o feriado a corrigir, inclusive por planilha, sem deploy.
 - **Groovy pode sobrescrever um nativo usado por todas as curvas.** → Validação obrigatória, fixação por curva para testar antes, e proveniência em toda resposta.
 - **Janela de até 30 segundos após uma ativação em que instâncias diferentes usam versões diferentes.** → Cada resposta e cada log informam a versão usada; quem precisa de troca imediata numa curva fixa a versão no cadastro.
 - **Dependência do Blob para resolver modelos.** → Cache de estado de 30 segundos, classes compiladas em memória e último estado mantido sem prazo com o Blob fora (D26).
 - **`FlatForward` no início e `FlatValue` no fim não existem no QuantLib.** → Documentados como extensão; o padrão é `Disabled`.
 - **Unidade do prazo ANBIMA e escala do SOFR não confirmadas.** A escala da NTN-B está confirmada pelo arquivo `ms{AAMMDD}.txt` (`Tx. Indicativas` em percentual ao ano); o prazo `vVertcCurva` depende da ingestão ANBIMA, ainda não transcrita, que o calcula a partir de `Data Vencimento`. → A checagem do dia 15 (D11) pega a unidade da NTN-B. A escala aparece na primeira simulação com dado real (uma taxa de 0,06 em vez de 6 salta aos olhos na planilha).
 - **Natureza zero rate e convenção (`Actual360`/`Simple`) do SOFR vêm de fonte de terceiro.** → Confirmar no Terminal antes do apply. A convenção é cadastro. Se for par rate, o modelo ganha um passo de bootstrap sem mudar D15 e D16.
+- **Data construída pela origem secundária aparece como diferente da fonte** na situação e na auditoria, que comparam com a principal. → É o sinal esperado para recalcular pela principal quando ela chegar; a origem usada está no `CURVA_GRAVADA`.
 - **Republicação da fonte deixa a curva gravada diferente da fonte até alguém recalcular.** → O webhook devolve o aviso `PONTOS_DIFERENTES_DA_FONTE`, o log registra o evento com nível `AVISO` (base para alerta), e o painel mostra a curva como divergente da fonte.
 - **Sem histórico consultável pela API.** Quem gravou antes, e os pontos substituídos, estão só no log. → Retenção do log definida pela área de risco; o arquivo de auditoria sob demanda mostra o estado atual e a conferência com a fonte; tabelas de auditoria entram quando o banco puder mudar (D23).
+- **No mínimo duas instâncias.** Toda coordenação entre elas é pelo banco (trava por curva) e pelo Blob (`estado.json` com ETag), nunca por memória local, e nada depende de a mesma instância atender duas chamadas seguidas. Cada requisição roda inteira numa instância: as instâncias dividem as requisições, não o trabalho de uma requisição (a rota de situação e a construção da data usam o paralelismo da própria instância).
 - **Conferência na hora custa leitura e CPU.** O webhook roda o modelo das curvas que já têm pontos, e a rota de situação roda o de todas. → Só leitura, sem trava, em paralelo limitado e com tempo limite por requisição; o volume é de centenas de curvas pequenas.
-- **Processor sem retry perde o gatilho.** → A curva não é construída; o painel mostra a curva com insumo e sem pontos, um alerta de curva não construída até o horário combinado pega o caso, e a construção manual continua possível.
+- **Processor sem retry perde o gatilho.** → A construção da data pelo orquestrador constrói a curva na chamada seguinte; o painel mostra a curva com insumo e sem pontos até lá, e a construção manual continua possível.
 - **Evento `CURVA_GRAVADA` emitido depois do commit.** Se a instância cair entre o commit e o log, a gravação fica sem evento. → Janela de milissegundos; `dBaseReft`, `cUsuarCalc` e os pontos gravados continuam no banco, e o arquivo de auditoria mostra o estado atual.
 - **Instância nova com o Blob fora usa modelos nativos.** Se houver script Groovy ativo, a curva sai com a matemática nativa. → `estadoScript` = `DESCONHECIDO` na proveniência e erro no log; a simulação depois da volta do Blob mostra a diferença, e o recálculo corrige.
 - **Leitura espera o commit de uma reconstrução em andamento.** → Espera de segundos, limitada pelo tempo limite de comando; RCSI resolve quando o banco puder mudar.
@@ -312,10 +347,9 @@ A ideia original do schema já previa uma tabela de "informações detalhadas de
 
 ## Open Questions
 
-- A troca de `FK_tDadoCurva_tCurvaData` por uma FK para `tCurvaMercd` está proposta na change `banco-curvas-ajustes`; falta a política de expurgo da curva diária e a change do engine que passa a gravá-la.
+- Política de expurgo da curva interpolada em `tDadoCurva` (o maior volume), se houver.
 - `cLingSist`, `cPreCalc`/`cPosCalc` e `cPreMotorCalc`/`cPosMotorCalc` de `tConfgCurva` sugerem ganchos pré e pós cálculo. Não são usados; podem virar scripts Groovy de gancho numa mudança futura.
 - Unidade de `tAnbmaCurvaPrimr.vVertcCurva`, a confirmar com a ingestão ANBIMA (não transcrita): o arquivo traz `Data Vencimento`, e a ingestão grava o prazo. A escala de `vPrecoTx` está confirmada: percentual ao ano, como `Tx. Indicativas` do arquivo.
 - Prazo de retenção dos logs com `CURVA_GRAVADA` (exigência regulatória ou interna).
-- Confirmar com o dono do schema que `cQtdDiaPer` ("quantidade de dias do período") é a contagem de dias corridos da data-base ao vértice, como assumido (com `cDiaUtil` em dias úteis e `cQtdDiaReft` em 30/360 no mesmo período), e não os dias entre um vértice e o anterior.
 - Quando o banco puder mudar: `tParmConfgCurva` em chave/valor, tabelas de auditoria e `READ_COMMITTED_SNAPSHOT`.
 - Confirmar no Bloomberg Terminal que `S0490Z ... BLC2 Curncy` é zero rate, qual a convenção de cotação e a causa do `1D` duplicado.

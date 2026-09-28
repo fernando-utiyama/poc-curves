@@ -9,24 +9,38 @@ O modelo `NTNB_BOOTSTRAP_ANBIMA` SHALL exigir origem com fonte `ANBIMA` e produt
 - `vPrecoTx`: taxa indicativa em percentual ao ano; `y = vPrecoTx / 100`;
 - `vVertcCurva`: prazo do título em dias úteis a partir de `B`.
 
-Para cada título:
-- data de pagamento do vencimento `P` = `B` avançada `vVertcCurva` dias úteis pelo calendário cadastrado;
-- vencimento nominal `V` = dia 15 do mês de `P`.
+`tAnbmaCurvaPrimr` não guarda a data de vencimento, que o arquivo traz em `Data Vencimento`: a ingestão grava o prazo em dias úteis. O modelo reconstrói o vencimento a partir do prazo e da regra da NTN-B (todo título vence no dia 15). Para cada título:
+- data aproximada `A` = `B` avançada `vVertcCurva` dias úteis pelo calendário cadastrado;
+- vencimento nominal `V` = dia 15 do mês de `A`;
+- data de pagamento do vencimento `P` = `V` ajustado por `Following` no calendário cadastrado; é a data do ponto;
+- dias úteis do ponto = `vVertcCurva`, obedecidos (spec `curve-build-pipeline`); os eventos de cupom, que a fonte não publica, usam o calendário.
 
-Regras:
-- linha com `vPrecoTx` nulo SHALL ser descartada com o motivo `SEM_TAXA`;
-- se não houver linhas, ou todas forem descartadas: `INSUMO_AUSENTE`;
-- `vVertcCurva` nulo, menor que 1 ou fracionário: `INSUMO_INVALIDO`;
-- se `V` ajustado por `Following` for diferente de `P`: `INSUMO_INVALIDO`, com o motivo "prazo não corresponde a um vencimento de NTN-B (dia 15)";
-- dois títulos com o mesmo `V`: `INSUMO_INVALIDO`.
+Um erro de um ou dois dias no calendário muda `A`, mas não o mês, porque o dia 15 fica no meio dele: o vencimento continua certo.
 
 #### Scenario: Vencimento derivado do prazo
 - **WHEN** uma linha tem `vVertcCurva` igual à quantidade de dias úteis entre `B` e `2035-05-15` (dia útil)
 - **THEN** o título tem `P` = `V` = `2035-05-15`
 
+#### Scenario: Calendário com um feriado a menos
+- **WHEN** falta no calendário um feriado anterior a `2035-05-15`, e por isso `A` cai em `2035-05-14`
+- **THEN** o vencimento continua `2035-05-15`, o ponto usa o `vVertcCurva` publicado, e a construção traz `CALENDARIO_DIVERGENTE`
+
+### Requirement: Regras do arquivo
+Para cada situação das linhas lidas de `tAnbmaCurvaPrimr`, o resultado SHALL ser:
+
+| Situação | Resultado |
+|---|---|
+| nenhuma linha da curva na data, ou todas descartadas | falha: `INSUMO_AUSENTE` |
+| `vPrecoTx` nulo | descarta o título com o motivo `SEM_TAXA`, no log e na memória; a curva sai com os demais |
+| `vVertcCurva` nulo, menor que 1 ou fracionário (prazo em dias úteis é inteiro) | falha: `INSUMO_INVALIDO` (linha) |
+| `A` a mais de `engine.ntnb.tolerancia-vencimento-dias` (padrão 5) dias corridos de `P` | falha: `INSUMO_INVALIDO` (linha, `A` e `P`), motivo "prazo não corresponde a um vencimento de NTN-B (dia 15)"; é o sinal de prazo gravado em outra unidade (ex.: dias corridos) |
+| mês de `V` fora de `engine.ntnb.meses-vencimento` (padrão fevereiro, maio, agosto e novembro, os meses de cupom) | falha: `INSUMO_INVALIDO` (linha e `V`) |
+| dois títulos com o mesmo `V` | falha: `INSUMO_INVALIDO` (as duas linhas) |
+| `A` diferente de `P` dentro da tolerância, ou `vVertcCurva` diferente do `DU` de `P` pelo calendário | constrói com o `vVertcCurva` publicado e o aviso `CALENDARIO_DIVERGENTE` |
+
 #### Scenario: Prazo inconsistente
-- **WHEN** `vVertcCurva` leva a uma data `P` em que o dia 15 do mês, ajustado, não é `P` (por exemplo, prazo em dias corridos em vez de úteis)
-- **THEN** a construção falha com `INSUMO_INVALIDO`, informando a linha, `P` e o motivo
+- **WHEN** `vVertcCurva` foi gravado em dias corridos, e `A` cai a 12 dias do dia 15 ajustado do mês
+- **THEN** a construção falha com `INSUMO_INVALIDO`, informando a linha, `A`, `P` e o motivo
 
 #### Scenario: Título sem taxa
 - **WHEN** um dos títulos da data tem `vPrecoTx` nulo
@@ -53,7 +67,7 @@ Os títulos SHALL ser resolvidos em ordem crescente de `V`. Resolver o título `
 - **`RESOLVIDO`**: se a data do evento for igual à de um título resolvido `k`, `DF_i = (1 + z_k)^(−DU_i/252)`;
 - **`INTERPOLADO`**: nos demais casos, o `DF` interpolado pela grandeza, pelo interpolador e pelo eixo cadastrados, entre os dois pontos vizinhos no conjunto formado pelos títulos já resolvidos e pelo ponto do próprio título `(P_n, z)`.
 
-Durante o bootstrap, as taxas `z_k` SHALL ser usadas sem arredondamento. A raiz SHALL ser encontrada por bisseção no intervalo `[−0,99; 1,00]`. Se `f` não trocar de sinal nos extremos, a construção falha com `MODELO_FALHOU`, informando o título. Senão, a bisseção repete até a largura do intervalo ser menor que `10^−14` ou até 200 iterações, e `z_n` é o ponto médio do intervalo final. Cada título gera um ponto: data = `P_n`, valor = `z_n × 100`.
+Durante o bootstrap, as taxas `z_k` SHALL ser usadas sem arredondamento. A raiz SHALL ser encontrada por bisseção no intervalo `[−0,99; 1,00]`. Se `f` não trocar de sinal nos extremos, a construção falha com `MODELO_FALHOU`, informando o título. Senão, a bisseção repete até a largura do intervalo ser menor que `10^−14` ou até 200 iterações, e `z_n` é o ponto médio do intervalo final. Cada título gera um ponto: data = `P_n`, valor = `z_n × 100`, dias úteis publicados = `vVertcCurva`. `DU_n` do vencimento, no bootstrap, é o `vVertcCurva`.
 
 #### Scenario: Primeiro título
 - **WHEN** o título de menor vencimento é resolvido

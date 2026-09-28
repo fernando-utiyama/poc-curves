@@ -114,7 +114,7 @@ Enums do serviço:
 | `situacao` da curva | `ATIVO`, `INATIVO` |
 | `provedor` da ligação | os de `tPrvdrDadoMercd`; o engine e o processor reconhecem `B3`, `ANBIMA`, `BLOOMBERG` e o interno `TCEN` |
 | `produto` da ligação | `TS` (B3, arquivo Taxas de Mercado para Swaps), `MS` (ANBIMA, arquivo de Mercado Secundário de títulos públicos, `ms{AAMMDD}.txt`), `BLC2` (Bloomberg, fonte de preço do curve member no ticker); para `TCEN`, o papel da mãe declarado pelo modelo derivado (ex.: `NUMERADOR`, `DENOMINADOR`) |
-| situação no painel | `NAO_E_DIA_UTIL`, `IGNORADA`, `SITUACAO_INDISPONIVEL`, `CONSTRUIDA`, `DIVERGENTE_DA_FONTE`, `AGUARDANDO_MAES`, `AGUARDANDO_CARGA`, `COM_ERRO`, `NAO_CONSTRUIDA` |
+| situação no painel | `NAO_E_DIA_UTIL`, `IGNORADA`, `SITUACAO_INDISPONIVEL`, `INTERPOLADA_DESATUALIZADA`, `CONSTRUIDA`, `DIVERGENTE_DA_FONTE`, `AGUARDANDO_MAES`, `AGUARDANDO_CARGA`, `COM_ERRO`, `NAO_CONSTRUIDA` |
 | `motivo` no painel | `PONTOS_DIFERENTES`, `FONTE_COM_ERRO`, `SEM_INSUMO` |
 | tipo no `CADASTRO_ALTERADO` | `CURVA`, `LIGACAO`, `CONFIGURACAO` |
 | operação no `CADASTRO_ALTERADO` | `CRIACAO`, `ALTERACAO`, `INATIVACAO`, `REATIVACAO`, `EXCLUSAO` |
@@ -132,12 +132,17 @@ Avisos do serviço:
 | `CURVA_SEM_ORIGEM` | ligações, planilha | curva sem ligação: o engine não a constrói |
 | `ORIGEM_INCOMPATIVEL_COM_MODELO` | ligações, configuração | provedor ou produto diferente do esperado pelo modelo nativo |
 | `MODELO_NAO_NATIVO` | configuração | modelo, interpolador ou calendário que depende de script Groovy |
+| `MODELO_POR_ORIGEM_SEM_LIGACAO` | ligações, configuração, planilha | chave de `MODELOS_POR_ORIGEM` sem ligação correspondente, ou da origem principal: ignorada pelo engine |
 | `CURVA_COM_FILHAS` | inativação | curva é mãe de curva derivada ativa |
 | `VALORES_SEM_ENGINE` | valores aceitos | engine fora: valores da cópia embutida, só com modelos nativos |
 | `ENGINE_INDISPONIVEL` | painel | engine fora: situação sem conferência |
+| `INTERPOLADA_DESATUALIZADA` | pontos, planilha de pontos | pontos gravados, mas a regravação da curva interpolada no engine falhou; ela fica com a interpolação anterior até ser regravada |
 | `PONTO_ANTES_DA_DATA_BASE` | pontos | data do ponto igual ou anterior à data-base |
 | `PONTO_EM_FIM_DE_SEMANA` | pontos | ponto em sábado ou domingo |
 | `PONTO_EM_FERIADO` | pontos | ponto em feriado do calendário da curva |
+| `DIAS_UTEIS_DIFERENTES_DO_CALENDARIO` | pontos | dias úteis informados diferentes do calendário da curva; o engine usa os informados |
+| `DIAS_UTEIS_INCOERENTES` | pontos | dias úteis menores que 1 ou maiores que os dias corridos |
+| `DIAS_UTEIS_FORA_DE_ORDEM` | pontos | dias úteis iguais ou menores que os de um ponto de data anterior |
 | `VALOR_NAO_POSITIVO` | pontos | preço ou pontos menor ou igual a zero |
 | `VALOR_ARREDONDADO` | pontos | valor arredondado pela configuração; `detalhes` traz o enviado e o gravado |
 | `SEM_CONFIGURACAO` | pontos | sem configuração vigente: gravado sem arredondar |

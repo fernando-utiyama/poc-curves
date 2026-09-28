@@ -9,12 +9,16 @@ A planilha (`.xlsx`) SHALL ter as abas abaixo, nesta ordem, com o cabeçalho na 
 
 1. **`Curvas`**: `Curva`, `Codigo`, `Unidade`, `DayCounterCotacao`, `Compounding`, `Moeda`, `Pais`, `Classificacao`, `ClasseAtivo`, `Situacao`, `InicioVigencia`, `FimVigencia`, `Controle`.
 2. **`Ligacoes`**: `Curva`, `Provedor`, `Produto`, `CodigoNaFonte`, `Prioridade`.
-3. **`Configuracoes`**: `Curva`, `Versao`, `InicioVigencia`, `FimVigencia`, `ModeloConstrucao`, `Interpolador` e uma coluna por chave de parâmetro da spec `configuracao-calculo-curva`, com o nome exato da chave (`GRANDEZA`, `DAY_COUNTER_TEMPO` e as demais).
+3. **`Configuracoes`**: `Curva`, `Versao`, `InicioVigencia`, `FimVigencia`, `ModeloConstrucao`, `Interpolador` e uma coluna por chave de parâmetro da spec `configuracao-calculo-curva`, com o nome exato da chave (`GRANDEZA`, `DAY_COUNTER_TEMPO` e as demais). `MODELOS_POR_ORIGEM` é uma célula de texto no formato `{provedor}/{produto}={modelo}`, com as entradas separadas por `;` e sem espaços (ex.: `B3/TS=PRONTA_TS_B3;BLOOMBERG/BLC2=SOFR_ZERO_BLOOMBERG`); célula vazia significa sem a chave. Na exportação, as entradas saem em ordem alfabética da chave, para que a planilha exportada e reimportada não gere alteração.
 4. **`Valores`**: só informativa, gerada de `GET /api/v1/curvas-mercado/valores` (spec `configuracao-calculo-curva`), com os valores aceitos de cada campo e a descrição de cada um; ignorada na importação.
 
 As colunas de valor fechado (`Unidade`, `DayCounterCotacao`, `Compounding`, `Situacao`, `Provedor` e as chaves de parâmetro com lista) SHALL ter validação de dados do Excel com lista suspensa restritiva, apontando para a aba `Valores`. `ModeloConstrucao`, `Interpolador` e `CALENDARIO` SHALL ter lista suspensa só com aviso, que aceita outro nome, porque um script Groovy pode criá-lo depois. A importação continua validando tudo, com ou sem a validação do Excel.
 
 Datas SHALL ser células de data, números SHALL ser células numéricas, e célula vazia significa campo nulo. Como o front e os usuários são pt-BR, as datas SHALL ser células de data com o formato de exibição `dd/mm/aaaa`, e os números, células numéricas (o Excel em pt-BR mostra a vírgula decimal). Na importação, uma data em texto SHALL ser aceita como `dd/mm/aaaa` ou `aaaa-mm-dd`, e um número em texto, com vírgula ou ponto decimal e sem separador de milhar (`13,9000000` ou `13.9000000`); texto com vírgula e ponto ao mesmo tempo MUST ser recusado, por ser ambíguo. Nomes de abas e de colunas ficam sem acento. `Controle` guarda o `ETag` da curva no momento da exportação e MUST NOT ser editado.
+
+#### Scenario: Modelo por origem na planilha
+- **WHEN** a linha de uma versão nova da `DI_BACKUP` tem `MODELOS_POR_ORIGEM` = `B3/TS=PRONTA_TS_B3`
+- **THEN** a versão é criada com `{"B3/TS":"PRONTA_TS_B3"}` em `cModDado`; uma célula `B3/TS` sem `=` é erro na linha e na coluna
 
 #### Scenario: Colunas da configuração
 - **WHEN** o cadastro é exportado

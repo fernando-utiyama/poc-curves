@@ -66,7 +66,10 @@ As alterações seguem a concorrência otimista da curva (`If-Match` com o `ETag
 ### Requirement: Avisos de coerência com o engine
 Sem bloquear a operação, a resposta SHALL trazer `avisos` quando, depois da alteração:
 - a curva ficar sem nenhuma ligação (`CURVA_SEM_ORIGEM`): o engine não consegue construí-la;
-- o provedor e o produto da ligação de menor prioridade não forem os esperados pelo modelo de construção da configuração vigente, para os modelos nativos (`PRONTA_TS_B3`: `B3`/`TS`; `NTNB_BOOTSTRAP_ANBIMA`: `ANBIMA`/`MS`; `SOFR_ZERO_BLOOMBERG`: `BLOOMBERG`/`BLC2`) (`ORIGEM_INCOMPATIVEL_COM_MODELO`): o engine responde `CADASTRO_INVALIDO` na construção.
+- o provedor e o produto da ligação de menor prioridade não forem os esperados pelo modelo de construção da configuração vigente, para os modelos nativos (`PRONTA_TS_B3`: `B3`/`TS`; `NTNB_BOOTSTRAP_ANBIMA`: `ANBIMA`/`MS`; `SOFR_ZERO_BLOOMBERG`: `BLOOMBERG`/`BLC2`) (`ORIGEM_INCOMPATIVEL_COM_MODELO`): o engine responde `CADASTRO_INVALIDO` na construção;
+- a configuração vigente ou uma futura tiver em `MODELOS_POR_ORIGEM` uma chave de ligação que deixou de existir (`MODELO_POR_ORIGEM_SEM_LIGACAO`): a entrada fica sem uso.
+
+As ligações de prioridade maior que a menor são as **origens secundárias**: o processor grava para elas o dado bruto do mesmo jeito que para a principal, e o usuário pode construir a curva por uma delas no engine (rota de construção com `fonte` e `produto`, spec `curve-engine-api` do change `engine-modelos-curva`). A construção automática usa só a principal.
 
 #### Scenario: Última ligação excluída
 - **WHEN** a única ligação da curva `SLP` é excluída

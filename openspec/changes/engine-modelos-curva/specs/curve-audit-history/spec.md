@@ -8,10 +8,11 @@ Mantém a trilha de toda construção e recálculo de curva sem alterar o schema
 Toda construção e toda reconstrução por recálculo que gravar pontos SHALL emitir, depois do commit, o evento de log `CURVA_GRAVADA` com nível `AVISO` e os campos:
 - `idAuditoria` (UUID), `codigo`, `nome`, `dataBase`;
 - `operacao`: `CONSTRUCAO` ou `RECONSTRUCAO`;
-- `acionadoPor`: `CARGA` (webhook) ou `API`, `usuario` (usuário ou identidade de serviço autenticada), `instante` (horário de Brasília, com fuso), `correlationId`;
-- `idCarga`, quando a construção veio do webhook;
+- `acionadoPor`: `CARGA` (webhook do processor), `ORQUESTRADOR` (construção automática da data) ou `API`, `usuario` (usuário ou identidade de serviço autenticada), `instante` (horário de Brasília, com fuso), `correlationId`;
+- `idCarga`, quando a construção veio do webhook (nulo nas demais);
 - `hashPontos` gravado e `hashPontosAnterior` (nulo na primeira construção), quantidade de pontos;
 - `pontosAnteriores`: lista completa (data e valor) dos pontos substituídos (vazia na primeira construção);
+- `origem`: fonte, produto, código na fonte e prioridade da ligação usada, e se é a principal ou uma secundária;
 - `proveniencia`: versão do engine, `estadoScript`, avisos, modelos (nome, origem, versão, hash), todos os itens do cadastro vigente e, para curva derivada, as mães (nome, papel e `hashPontos` usado).
 
 Se o commit falhar, o evento MUST NOT ser emitido; o erro sai em `CONSTRUCAO_FALHOU`. A construção sem recálculo que devolve `EXISTENTE` e a simulação MUST NOT gerar `CURVA_GRAVADA`. A edição manual de pontos é feita pelo `services/curves` (change `curves-cadastro-curvas`), como operação de contingência, e registrada no log dele (`PONTOS_EDITADOS`). O engine MUST NOT gravar registro de auditoria no Blob Storage nem em tabela.
@@ -19,7 +20,7 @@ Se o commit falhar, o evento MUST NOT ser emitido; o erro sai em `CONSTRUCAO_FAL
 O destino dos logs (Log Analytics ou equivalente) SHALL ter retenção definida pela área de risco e ser consultável por `nome`, `dataBase` e evento. Este é o histórico de construções da fase atual.
 
 #### Scenario: Construção auditada
-- **WHEN** a `PRE` de `2026-09-14` é construída pela carga `B3-TS-20260914-1`
+- **WHEN** a `PRE` de `2026-09-14` é construída pela carga `B3-TS-20260914-46a249c60bec`
 - **THEN** o log tem um `CURVA_GRAVADA` com operação `CONSTRUCAO`, a identidade de serviço do processor, o `idCarga`, o `hashPontos`, 278 pontos, `pontosAnteriores` vazia e a proveniência
 
 #### Scenario: Recálculo depois de uma edição manual
@@ -29,7 +30,7 @@ O destino dos logs (Log Analytics ou equivalente) SHALL ter retenção definida 
 ### Requirement: Arquivo de auditoria montado na hora
 `GET /api/v1/curvas/{codigo}/{dataBase}/auditoria?formato=xlsx|json` (papel `Curvas.Leitura`), pedido pelo front, SHALL montar o arquivo de auditoria da curva na data no momento do pedido, sem guardar nada, a partir do estado atual do banco e da fonte:
 - **`Resumo`**: código, nome, data-base, instante da geração (horário de Brasília), `correlationId`, versão do engine, última data-base construída e quem calculou (`dBaseReft` e `cUsuarCalc` de `tCurvaMercd`), cadastro vigente na data (curva, origem ou mães, configuração com todos os parâmetros) e os modelos que seriam usados hoje (nome, origem, versão, hash);
-- **`Pontos`**: os pontos gravados em `tDadoCurva` (data e valor), com o `hashPontos`, e, ao lado, o detalhe gravado em `tDadoVertcCurva` (dias úteis, dias corridos, dias 30/360, fator diário e acumulado) e os mesmos valores recalculados agora, marcando as diferenças;
+- **`Pontos`**: os pontos gravados em `tDadoVertcCurva` (data, valor, dias úteis, dias corridos, dias 30/360, fator diário e acumulado), com o `hashPontos`, e, ao lado, os mesmos valores recalculados agora, marcando as diferenças; e a quantidade de linhas da curva interpolada em `tDadoCurva`, com a indicação se ela confere com a interpolação dos pontos atuais;
 - **`Conferencia`**: os pontos que o modelo produz agora a partir da fonte, lado a lado com os gravados, com a diferença e a situação de cada ponto (`IGUAL`, `DIFERENTE`, `SO_SIMULADO`, `SO_GRAVADO`, os mesmos da simulação), como a comparação da simulação (spec `curve-calculation-memory`), ou o erro da fonte, se o modelo falhar;
 - **`Insumos`**: as linhas brutas da origem lidas na data (ou, para curva derivada, os pontos das mães), com as colunas da spec do modelo.
 

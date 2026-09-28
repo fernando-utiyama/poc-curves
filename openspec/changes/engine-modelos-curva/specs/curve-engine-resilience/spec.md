@@ -14,11 +14,12 @@ Toda chamada a dependência SHALL ter tempo limite configurável, com estes padr
 | SQL Server: trava da curva (construção e edição) | `engine.timeout.trava-curva-segundos` | 30 |
 | Blob Storage: cada operação | `engine.timeout.blob-ms` | 5.000 |
 | Script Groovy: cada chamada | `engine.groovy.timeout-segundos` | 5 |
-| Requisição HTTP inteira (exceto webhook de carga) | `engine.timeout.requisicao-segundos` | 60 |
+| Requisição HTTP inteira (exceto webhook de carga e construção da data) | `engine.timeout.requisicao-segundos` | 60 |
 | Webhook de carga, requisição inteira | `engine.timeout.carga-segundos` | 120 |
+| Construção automática da data, requisição inteira | `engine.timeout.construcao-data-segundos` | 300 |
 | Rota de situação, requisição inteira | `engine.timeout.situacao-segundos` | 60 |
 
-Estourar um tempo limite MUST encerrar a operação com erro explícito: `CONSTRUCAO_EM_ANDAMENTO` para a trava, `MODELO_FALHOU` para o Groovy e `ERRO_INTERNO` para banco e requisição. Tempo esgotado no Blob segue a regra de Blob fora (nunca bloqueia construção nem consulta). Na rota de situação, o tempo esgotado de uma curva vira `ERRO` só daquela curva. Uma transação encerrada por tempo limite MUST ser desfeita por inteiro.
+Estourar um tempo limite MUST encerrar a operação com erro explícito: `CONSTRUCAO_EM_ANDAMENTO` para a trava, `MODELO_FALHOU` para o Groovy e `ERRO_INTERNO` para banco e requisição. Tempo esgotado no Blob segue a regra de Blob fora (nunca bloqueia construção nem consulta). Na rota de situação, o tempo esgotado de uma curva vira `ERRO` só daquela curva. Na construção da data, esgotado o tempo da requisição, as curvas já gravadas ficam gravadas (cada uma tem a sua transação), as que faltavam não são iniciadas, e a resposta é `ERRO_INTERNO`; uma nova chamada completa o que faltou. Uma transação encerrada por tempo limite MUST ser desfeita por inteiro.
 
 #### Scenario: Banco lento na construção
 - **WHEN** a gravação dos pontos passa de 30 segundos

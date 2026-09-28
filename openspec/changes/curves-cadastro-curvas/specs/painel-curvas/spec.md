@@ -24,15 +24,17 @@ Cada linha SHALL trazer:
 | Campo | Fonte |
 |---|---|
 | `codigo`, `nome`, `unidade`, `situacaoCadastro` (`ATIVO`/`INATIVO`) | `tCurvaMercd` |
-| `origem` (provedor, produto, código na fonte; ou as mães, para curva derivada) | `tCurvaPrvdr` |
+| `origem` (provedor, produto, código na fonte; ou as mães, para curva derivada) | `tCurvaPrvdr`, ligação de menor prioridade |
+| `origensSecundarias` (provedor, produto, código na fonte, prioridade e o modelo que a lê, de `MODELOS_POR_ORIGEM` ou `modeloConstrucao`), lista vazia quando não há | `tCurvaPrvdr` e configuração vigente |
 | `modeloConstrucao`, `interpolador`, `versaoConfiguracao` | configuração vigente na data-base em `tConfgCurva` |
 | `ultimaDataPublicada`, `calculadoPor` | `tCurvaMercd.dBaseReft` e `cUsuarCalc` |
 | `situacao`, `motivo`, `atencao`, `atrasada` | regra abaixo |
-| `quantidadePontos`, `hashPontos` | pontos gravados em `tDadoCurva` na data-base, com o `hashPontos` da spec `pontos-curva-manual` |
+| `quantidadePontos`, `hashPontos` | pontos gravados em `tDadoVertcCurva` na data-base, com o `hashPontos` da spec `pontos-curva-manual` |
+| `interpolada` (quantidade de linhas em `tDadoCurva` e se confere com os pontos atuais) | engine |
 | `insumo` (linhas brutas da origem na data, ou mães com e sem pontos) | engine |
 | `conferencia` (`status`, `codigoErro`, mensagem, `pontosDiferentes`) | engine, calculada na hora contra a fonte atual |
 
-Campos sem informação SHALL vir nulos, nunca omitidos. Para ver o detalhe de uma linha, o front pede o arquivo de auditoria da curva e data ao engine (spec `curve-audit-history` do change `engine-modelos-curva`), montado na hora.
+Campos sem informação SHALL vir nulos, nunca omitidos. Com `origensSecundarias`, o front SHALL oferecer, na ação de construir ou recalcular a curva, a escolha entre a origem principal e cada secundária, chamando a construção do engine com `fonte` e `produto` da escolhida, e a simulação por ela antes de gravar. Para ver o detalhe de uma linha, o front pede o arquivo de auditoria da curva e data ao engine (spec `curve-audit-history` do change `engine-modelos-curva`), montado na hora.
 
 #### Scenario: Curva com erro
 - **WHEN** a construção da `DPL` de `2026-09-14` falhou por `INSUMO_INVALIDO` na carga
@@ -46,6 +48,7 @@ A situação SHALL ser decidida nesta ordem, pela primeira regra que se aplica:
 | `NAO_E_DIA_UTIL` | a data-base não é dia útil no calendário da configuração vigente da curva, e não há pontos gravados | não |
 | `IGNORADA` | curva `INATIVO` ou data-base fora da vigência da curva, e não há pontos gravados | não |
 | `SITUACAO_INDISPONIVEL` | o engine não respondeu; `quantidadePontos` mostra se há pontos gravados | sim |
+| `INTERPOLADA_DESATUALIZADA` | há pontos gravados, mas a curva interpolada em `tDadoCurva` não confere com eles (edição manual com o engine fora); `motivo` traz a quantidade de dias diferentes | sim |
 | `CONSTRUIDA` | há pontos gravados, e a conferência com a fonte atual está `OK` com 0 pontos diferentes | não |
 | `DIVERGENTE_DA_FONTE` | há pontos gravados, mas eles não batem com a fonte atual; `motivo`: `PONTOS_DIFERENTES` (edição manual, republicação ou cadastro alterado, com a quantidade), `FONTE_COM_ERRO` (a fonte atual não gera a curva, com o código) ou `SEM_INSUMO` (pontos digitados sem dado da fonte, ou mães sem pontos) | sim |
 | `AGUARDANDO_MAES` | curva derivada sem pontos gravados, com alguma mãe ainda sem pontos na data | não |
@@ -58,6 +61,10 @@ A situação SHALL ser decidida nesta ordem, pela primeira regra que se aplica:
 #### Scenario: Curva editada à mão
 - **WHEN** a `PRE` de `2026-09-14` foi construída pelo engine e depois teve um ponto alterado no `services/curves`
 - **THEN** a linha da `PRE` tem `situacao` = `DIVERGENTE_DA_FONTE`, `motivo` = `PONTOS_DIFERENTES`, `conferencia.pontosDiferentes` = 1 e `atencao` = `true`
+
+#### Scenario: Data construída pela origem secundária
+- **WHEN** a `DI_BACKUP` de `2026-09-14` foi construída pela reserva `B3`/`TS`, e a origem principal `ANBIMA`/`CZ` carregou depois com valores diferentes
+- **THEN** a linha tem `situacao` = `DIVERGENTE_DA_FONTE`, `motivo` = `PONTOS_DIFERENTES`, porque a conferência é sempre contra a principal, e `origensSecundarias` lista a `B3`/`TS` com o modelo `PRONTA_TS_B3`
 
 #### Scenario: Republicação sem recálculo
 - **WHEN** a B3 republicou o arquivo de `2026-09-14` com um vértice da `DCL` corrigido depois da construção, e ninguém recalculou

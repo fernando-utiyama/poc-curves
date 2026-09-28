@@ -375,7 +375,7 @@ tCurvaMercd (cTickerIndcd = nome, PK; cTickerIdtfdUnic = código):
 
 tCurvaPrvdr (cldtfdUnic = MAX+1 gerado pelo serviço):
   cTickerIndcd, iPrvdrDados, cPrvdrMercd, cTickerPrvdr, cPriorCsumo
-  DIxPRE, B3, TS, PRE, 1  ...  SOFR, BLOOMBERG, ZR, S0490Z, 1
+  DIxPRE, B3, TS, PRE, 1  ...  SOFR, BLOOMBERG, BLC2, S0490Z, 1
 
 tConfgCurva (cVrsaoReg = 1, dInicVgcia = 2026-01-01, dValidAte = null).
 cModDado é gravado em JSON compacto, chaves na ordem da tabela do engine:
@@ -433,6 +433,9 @@ Decimais vão como string ("13.9000000").
   CASAS_DECIMAIS .......... inteiro de 0 a 12
   MODO_ARREDONDAMENTO ..... HALF_UP | HALF_EVEN | DOWN           (DOWN = truncamento)
   VERSAO_SCRIPT_* ......... número da versão validada do script  (opcional)
+  MODELOS_POR_ORIGEM ...... objeto {"PROVEDOR/PRODUTO":"MODELO"} das origens secundárias (opcional)
+                            na planilha: B3/TS=PRONTA_TS_B3;BLOOMBERG/BLC2=SOFR_ZERO_BLOOMBERG
+                            as 7 curvas não usam: cada uma tem uma origem só
 
 Combinações:
   - GRANDEZA Price só com unidade PRECO ou PONTOS; as outras grandezas só com TAXA.

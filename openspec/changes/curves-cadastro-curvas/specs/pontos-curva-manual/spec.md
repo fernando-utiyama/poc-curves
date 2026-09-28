@@ -1,6 +1,6 @@
 ## Purpose
 
-No `services/curves`, consultar, gravar, substituir e apagar à mão os pontos de uma curva numa data-base (`tDadoCurva`), como operação de contingência. O engine continua sendo quem constrói e recalcula as curvas e quem interpola; o `services/curves` é quem edita os pontos manualmente. Os dois só compartilham o banco: a mesma trava por curva, a mesma fórmula de `hashPontos` e, ao editar ou apagar pontos, a exclusão do detalhe do cálculo que o engine grava em `tDadoVertcCurva`.
+No `services/curves`, consultar, gravar, substituir e apagar à mão os pontos de uma curva numa data-base, como operação de contingência. Os pontos são a curva construída, em `tDadoVertcCurva`; a curva interpolada, um valor por dia corrido em `tDadoCurva`, é calculada e gravada só pelo engine. O engine continua sendo quem constrói, recalcula e interpola; o `services/curves` é quem edita os pontos manualmente e, depois de cada edição, pede ao engine a regravação da curva interpolada. Os dois compartilham no banco a mesma trava por curva e a mesma fórmula de `hashPontos`.
 
 ## ADDED Requirements
 
@@ -10,30 +10,40 @@ O serviço SHALL expor (prefixo `/api/v1`), identificando a curva pelo código (
 | Rota | Uso | Papel |
 |---|---|---|
 | `GET /curvas-mercado/{codigo}/pontos?de=AAAA-MM-DD&ate=AAAA-MM-DD` | listar as datas-base com pontos no intervalo, com quantidade de pontos e `hashPontos` de cada uma (intervalo máximo de 366 dias) | `Curvas.Leitura` |
-| `GET /curvas-mercado/{codigo}/pontos/{dataBase}` | pontos gravados na data-base (data e valor) e `hashPontos` | `Curvas.Leitura` |
+| `GET /curvas-mercado/{codigo}/pontos/{dataBase}` | pontos gravados na data-base (data, valor e dias úteis) e `hashPontos` | `Curvas.Leitura` |
 | `PUT /curvas-mercado/{codigo}/pontos/{dataBase}` | gravar a lista completa de pontos da data-base, substituindo a atual | `Curvas.Operador` |
 | `DELETE /curvas-mercado/{codigo}/pontos/{dataBase}` | apagar todos os pontos da data-base | `Curvas.Operador` |
 
-A consulta devolve só o dado gravado; dias úteis, fatores e interpolação são do engine. Os erros, a autenticação, o `X-Correlation-Id` e o horário seguem a spec `cadastro-curva-mercado`, com o código de erro adicional `PONTOS_INVALIDOS` (422).
+A consulta devolve só o dado gravado em `tDadoVertcCurva`: data (`dVertcReft`), valor (`vPrecoTx`) e `diasUteis` (`cDiaUtil`, nulo quando não há); fatores, calendário e interpolação são do engine. Os erros, a autenticação, o `X-Correlation-Id` e o horário seguem a spec `cadastro-curva-mercado`, com o código de erro adicional `PONTOS_INVALIDOS` (422).
 
 #### Scenario: Consulta dos pontos
 - **WHEN** o cliente chama `GET /api/v1/curvas-mercado/PRE/pontos/2026-09-14` depois da construção pelo engine
-- **THEN** a resposta traz os 278 pontos (data e valor) e o mesmo `hashPontos` informado pelo engine
+- **THEN** a resposta traz os 278 pontos (data, valor e os dias úteis publicados pela B3 que o engine gravou) e o mesmo `hashPontos` informado pelo engine
 
 ### Requirement: Gravação da lista completa
-`PUT .../pontos/{dataBase}` SHALL receber `{ "pontos": [ { "data": "AAAA-MM-DD", "valor": "13.9000000" } ] }`, com `valor` como string decimal (sem passar por ponto flutuante), e deixar os pontos da data-base exatamente iguais à lista: o que o gestor enviou é o que fica gravado e o que o engine usa, e pontos gravados ausentes da lista são apagados. Vale também para data-base sem pontos. Numa única transação, o serviço SHALL:
+`PUT .../pontos/{dataBase}` SHALL receber `{ "pontos": [ { "data": "AAAA-MM-DD", "valor": "13.9000000", "diasUteis": 1 } ] }`, com `valor` como string decimal (sem passar por ponto flutuante) e `diasUteis` opcional (inteiro; ausente ou nulo = sem dias úteis informados), e deixar os pontos da data-base exatamente iguais à lista: o que o gestor enviou é o que fica gravado e o que o engine usa, e pontos gravados ausentes da lista são apagados. Vale também para data-base sem pontos. Numa única transação, o serviço SHALL:
 1. travar a linha da curva em `tCurvaMercd` com `UPDLOCK, ROWLOCK` (a mesma trava que o engine usa na construção), esperando o tempo que for preciso dentro do tempo limite da requisição (60 segundos): a construção de uma curva pelo engine segura a trava por poucos segundos;
-2. ler os pontos gravados da data-base (já sob a trava) e comparar com a lista, depois do arredondamento;
-3. apagar as linhas de `tDadoVertcCurva` da curva e data-base (o detalhe do cálculo do engine deixa de valer para pontos editados), e gravar só a diferença em `tDadoCurva` (`dBaseReft` = data-base, `cTickerIndcd` = nome, `dVertcReft` = data, `vPrecoTx` = valor arredondado): `UPDATE` dos pontos com valor diferente, `INSERT` dos pontos novos e `DELETE` dos pontos gravados ausentes da lista;
+2. ler os pontos gravados da data-base em `tDadoVertcCurva` (já sob a trava) e comparar com a lista, depois do arredondamento: um ponto muda se o valor ou os dias úteis mudarem;
+3. gravar só a diferença em `tDadoVertcCurva`: `DELETE` dos pontos gravados ausentes da lista; e, para cada ponto novo ou alterado, a linha com `dBaseReft` = data-base, `cTickerIndcd` = nome, `dVertcReft` = data, `vPrecoTx` = valor arredondado, `cDiaUtil` = `diasUteis` (nulo quando não informado), `cQtdDiaPer` = data do ponto − data-base em dias corridos, `cQtdDiaReft` = dias da data-base ao ponto em 30/360 (Bond Basis, conta de datas, sem calendário) e fatores nulos (`UPDATE` do ponto existente, `INSERT` do novo). Os pontos que não mudaram mantêm a linha do engine, com os fatores. O engine obedece os dias úteis informados (spec `curve-build-pipeline` do change `engine-modelos-curva`, requisito "Dias úteis publicados pela fonte ou informados pelo usuário"); sem eles, usa o calendário;
 4. reler os pontos da data-base e conferir que o `hashPontos` relido é igual ao `hashPontos` da lista enviada (depois do arredondamento). Se for diferente, MUST desfazer a transação e responder 500 `ERRO_INTERNO`, sem gravar nada.
 
 Se a lista for igual ao que está gravado, nada SHALL ser escrito nem registrado no log, e a resposta traz o aviso `SEM_MUDANCA`.
 
-O valor SHALL ser arredondado por `CASAS_DECIMAIS` e `MODO_ARREDONDAMENTO` da configuração vigente na data-base (spec `configuracao-calculo-curva`), porque é assim que o engine grava e usa os pontos; todo valor que mudar no arredondamento SHALL gerar o aviso `VALOR_ARREDONDADO`, com o valor enviado e o gravado. Sem configuração vigente, o valor SHALL ser gravado como enviado, com o aviso `SEM_CONFIGURACAO`. A resposta SHALL ser 200 com os pontos relidos do banco, em ordem de data, com o valor como string decimal na escala gravada (spec `cadastro-curva-mercado`, contrato de tipos), e o `hashPontos` novo. O serviço MUST NOT alterar `dBaseReft` nem `cUsuarCalc` de `tCurvaMercd`, MUST NOT gravar em `tDadoVertcCurva` (só apaga) e MUST NOT gravar outra tabela. Se a lista for igual à gravada (`SEM_MUDANCA`), nada é apagado.
+Depois do commit, inclusive com `SEM_MUDANCA` (reenviar a lista corrige uma interpolada que ficou desatualizada), o serviço SHALL chamar `POST /api/v1/curvas/{codigo}/{dataBase}/interpolada` do engine (spec `curve-engine-api` do change `engine-modelos-curva`), com a identidade de serviço dele e tempo limite de 60 segundos, para regravar a curva interpolada a partir dos pontos novos. A edição MUST NOT depender dessa chamada: se o engine não responder ou devolver erro, os pontos continuam gravados, e a resposta traz o aviso `INTERPOLADA_DESATUALIZADA`, com o motivo; a interpolada fica desatualizada até uma nova regravação (reenviando a lista, ou por um operador no engine), e o painel mostra a curva nessa situação.
+
+O valor SHALL ser arredondado por `CASAS_DECIMAIS` e `MODO_ARREDONDAMENTO` da configuração vigente na data-base (spec `configuracao-calculo-curva`), porque é assim que o engine grava e usa os pontos; todo valor que mudar no arredondamento SHALL gerar o aviso `VALOR_ARREDONDADO`, com o valor enviado e o gravado. Sem configuração vigente, o valor SHALL ser gravado como enviado, com o aviso `SEM_CONFIGURACAO`. A resposta SHALL ser 200 com os pontos relidos do banco, em ordem de data, com o valor como string decimal na escala gravada (spec `cadastro-curva-mercado`, contrato de tipos), e o `hashPontos` novo. O serviço MUST NOT alterar `dBaseReft` nem `cUsuarCalc` de `tCurvaMercd`, MUST NOT calcular fatores nem gravar a curva interpolada (`tDadoCurva`), que é do engine. Se a lista for igual à gravada (`SEM_MUDANCA`), nada é apagado.
 
 #### Scenario: Edição de um valor
 - **WHEN** o gestor envia os 278 pontos da `PRE` de `2026-09-14` com o valor de `2027-01-04` alterado
-- **THEN** só a linha de `2027-01-04` é atualizada, a resposta é 200 com os 278 pontos e um `hashPontos` novo, e a interpolação seguinte no engine usa o valor novo
+- **THEN** só a linha de `2027-01-04` em `tDadoVertcCurva` é atualizada, o engine regrava a curva interpolada da data, a resposta é 200 com os 278 pontos e um `hashPontos` novo, e a interpolação seguinte no engine usa o valor novo
+
+#### Scenario: Engine fora na edição
+- **WHEN** o gestor altera um ponto da `PRE` de `2026-09-14` com o engine fora
+- **THEN** o ponto é gravado, a resposta é 200 com o aviso `INTERPOLADA_DESATUALIZADA`, e `tDadoCurva` continua com a interpolação anterior até a regravação
+
+#### Scenario: Dias úteis informados pelo gestor
+- **WHEN** o gestor envia os pontos da `PRE` de `2026-09-14` com o ponto de `2027-01-04` alterado para `"diasUteis": 76`
+- **THEN** a linha desse ponto em `tDadoVertcCurva` passa a ter `cDiaUtil` = 76 e fatores nulos, as linhas dos outros 277 pontos continuam as do engine, e a interpolação seguinte usa 76 dias úteis para esse ponto
 
 #### Scenario: Ponto retirado da lista
 - **WHEN** o gestor envia 277 dos 278 pontos da `PRE` de `2026-09-14`, sem o de `2027-01-04`
@@ -55,20 +65,24 @@ O valor SHALL ser arredondado por `CASAS_DECIMAIS` e `MODO_ARREDONDAMENTO` da co
 A edição manual só MUST ser recusada quando o dado não pode ser gravado de forma consistente no banco. Regra de negócio nunca recusa: vira aviso, e o ponto é gravado. A lista MUST ser rejeitada com 422 `PONTOS_INVALIDOS`, sem alterar nada e com um item em `detalhes` por ponto, só quando:
 - estiver vazia (para apagar, usa-se o `DELETE`);
 - algum ponto não tiver data ou valor, a data não for uma data válida, ou o valor não for decimal;
-- houver datas repetidas (violaria a PK de `tDadoCurva`);
-- o valor, depois do arredondamento, não couber em `vPrecoTx` (`DECIMAL(28,12)`: até 16 dígitos inteiros e 12 casas); sem configuração vigente, um valor com mais de 12 casas também é recusado, porque o banco o alteraria em silêncio.
+- houver datas repetidas (violaria a PK de `tDadoVertcCurva`);
+- o valor, depois do arredondamento, não couber em `vPrecoTx` (`DECIMAL(28,12)`: até 16 dígitos inteiros e 12 casas); sem configuração vigente, um valor com mais de 12 casas também é recusado, porque o banco o alteraria em silêncio;
+- `diasUteis` informado não for um inteiro que caiba em `INT`.
 
 A curva inexistente responde 404 `NAO_ENCONTRADO`. Todas as regras de negócio SHALL gerar avisos na resposta (`avisos`, com código, data do ponto e motivo), e os pontos SHALL ser gravados:
 
 | Aviso | Quando | Efeito no engine |
 |---|---|---|
 | `PONTO_ANTES_DA_DATA_BASE` | data igual ou anterior à data-base | o ponto fica fora da interpolação, com `PONTO_DESCARTADO_PRAZO_NAO_POSITIVO` |
-| `PONTO_EM_FIM_DE_SEMANA` | data em sábado ou domingo | tratado como ponto no mesmo prazo do dia útil anterior |
-| `PONTO_EM_FERIADO` | data é feriado no calendário da configuração vigente; o erro pode estar no cadastro de feriados, e não no ponto | tratado como ponto no mesmo prazo do dia útil anterior |
+| `PONTO_EM_FIM_DE_SEMANA` | data em sábado ou domingo | sem `diasUteis` informado, tratado como ponto no mesmo prazo do dia útil anterior |
+| `PONTO_EM_FERIADO` | data é feriado no calendário da configuração vigente; o erro pode estar no cadastro de feriados, e não no ponto | sem `diasUteis` informado, tratado como ponto no mesmo prazo do dia útil anterior |
 | `VALOR_NAO_POSITIVO` | unidade `PRECO` ou `PONTOS` com valor menor ou igual a zero | a interpolação `LogLinear` falha no engine com `PONTOS_NAO_INTERPOLAVEIS` até o ponto ser corrigido |
 | `VALOR_ARREDONDADO` | valor com mais casas que `CASAS_DECIMAIS` da configuração vigente | o valor usado é o arredondado, mostrado no aviso |
 | `SEM_CONFIGURACAO` | sem configuração vigente na data-base | valor gravado como enviado, sem arredondar |
-| `CALENDARIO_NAO_VERIFICADO` | engine fora, ou sem configuração vigente (portanto sem calendário) | feriados não conferidos |
+| `CALENDARIO_NAO_VERIFICADO` | engine fora, ou sem configuração vigente (portanto sem calendário) | feriados e dias úteis não conferidos |
+| `DIAS_UTEIS_DIFERENTES_DO_CALENDARIO` | `diasUteis` informado diferente da contagem do calendário da configuração vigente | o engine usa os dias informados, com `CALENDARIO_DIVERGENTE` |
+| `DIAS_UTEIS_INCOERENTES` | `diasUteis` menor que 1, ou maior que os dias corridos da data-base ao ponto | o engine usa os dias informados; menor que 1 fica fora da interpolação (`PONTO_DESCARTADO_PRAZO_NAO_POSITIVO`) |
+| `DIAS_UTEIS_FORA_DE_ORDEM` | em ordem de data, `diasUteis` igual ou menor que o de um ponto anterior | o engine descarta o ponto da interpolação (`PONTO_DESCARTADO_MESMO_PRAZO`) |
 
 O tratamento no engine é o do requisito "Pontos no mesmo prazo do eixo" da spec `curve-build-pipeline` do change `engine-modelos-curva`. Nenhuma dependência externa MUST impedir a gravação. Os feriados SHALL ser obtidos do engine, por `GET /api/v1/calendarios/{CALENDARIO}?mercado={MERCADO_CALENDARIO}&anoInicial=&anoFinal=` (spec `calendar-management`), com token de serviço e tempo limite de 10 segundos, cobrindo os anos das datas enviadas; se o engine não responder, a gravação segue com `CALENDARIO_NAO_VERIFICADO`. Taxas podem ser negativas, sem aviso.
 
@@ -89,7 +103,7 @@ O tratamento no engine é o do requisito "Pontos no mesmo prazo do eixo" da spec
 - **THEN** os pontos são gravados com as demais validações, e a resposta traz o aviso `CALENDARIO_NAO_VERIFICADO`
 
 ### Requirement: Exclusão dos pontos de uma data
-`DELETE .../pontos/{dataBase}` SHALL apagar todos os pontos da curva na data-base e o detalhe do cálculo em `tDadoVertcCurva`, na mesma transação travada. Depois, a curva fica "não construída" naquela data para o engine, que pode construí-la de novo pela carga ou pela construção manual.
+`DELETE .../pontos/{dataBase}` SHALL apagar todos os pontos da curva na data-base em `tDadoVertcCurva` e a curva interpolada da data em `tDadoCurva`, na mesma transação travada, para que ninguém leia uma interpolada de pontos que não existem mais. É o único caso em que o serviço escreve em `tDadoCurva`, e só para apagar. Depois, a curva fica "não construída" naquela data para o engine, que pode construí-la de novo pela carga ou pela construção manual.
 
 #### Scenario: Desfazer uma curva digitada
 - **WHEN** o gestor apaga os pontos manuais da `PRE` de `2026-09-15`
