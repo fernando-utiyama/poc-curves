@@ -16,7 +16,7 @@
 - Nunca deixar o cadastro num estado que o engine não consiga ler: uma configuração vigente por data, parâmetros válidos, versões passadas intactas.
 - Edição em lote segura por planilha, do cadastro e dos pontos.
 - O gestor corrige ou digita pontos à mão, sem ser bloqueado, com preferência sobre o engine, e acompanha as curvas num painel.
-- Nenhuma dependência de escrita entre curves e engine: só o banco é compartilhado.
+- A edição nunca depende do engine: os dois compartilham o banco, e a única chamada de escrita do curves ao engine (regravar a curva interpolada depois de uma edição) não bloqueia a edição.
 
 **Non-Goals:**
 - CRUD de provedores (outro dev).
@@ -136,4 +136,4 @@ Os dias úteis que vêm da fonte ou do usuário são obedecidos pelo engine (cha
 
 ## Open Questions
 
-- Com o CRUD de provedores (outro dev): cadastrar o provedor interno `TCEN`, usado pelas curvas derivadas; os identificadores dos provedores precisam ser exatamente `B3`, `ANBIMA` e `BLOOMBERG`, que o engine e o processor usam; e a relação entre `tCurvaPrvdr.cPrvdrMercd` (produto) e `tPrvdrDadoMercd.cProdt`, se o produto da ligação precisa existir no provedor.
+- Com o CRUD de provedores (outro dev): cadastrar o provedor interno `TCEN`, usado pelas curvas derivadas; os identificadores dos provedores (`iPrvdrDados`, o `nomeProvedor` da `ProvedorEntity` do CRUD de provedores) precisam ser exatamente `B3`, `ANBIMA` e `BLOOMBERG`, que o engine e o processor usam. O produto da ligação (`tCurvaPrvdr.cPrvdrMercd`) não é conferido contra `tPrvdrDadoMercd.cProdt`, porque a tabela tem uma linha por provedor e uma fonte pode ter vários produtos.

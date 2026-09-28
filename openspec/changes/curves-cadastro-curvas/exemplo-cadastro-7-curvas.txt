@@ -12,7 +12,7 @@ Pré-requisito: os provedores B3, ANBIMA e BLOOMBERG já cadastrados em
 tPrvdrDadoMercd (CRUD de provedores, de outro dev), com exatamente esses
 identificadores.
 
-Os valores aceitos em cada campo estão na seção 5 e, em produção, em
+Os valores aceitos em cada campo estão na seção 6 e, em produção, em
 GET /api/v1/curvas-mercado/valores (e no Swagger do serviço).
 
 
@@ -461,7 +461,7 @@ POST /api/v1/curvas-mercado/IPCA_IMPLICITA/ligacoes
 
 A configuração aponta para o modelo derivado (ex.: um script Groovy
 INFLACAO_IMPLICITA). O engine a constrói em cadeia, na carga que completar as
-duas mães.
+duas mães, ou na construção da data pelo orquestrador.
 
 
 8. PONTOS A CONFIRMAR
