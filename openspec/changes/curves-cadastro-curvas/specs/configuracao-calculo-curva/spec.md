@@ -19,7 +19,7 @@ Cada versão SHALL gravar uma linha em `tConfgCurva`:
 
 As demais colunas de `tConfgCurva` (`cAtivoFincr`, `cPosCalc`, `cPreCalc`, `cLingSist`, `cPosMotorCalc`, `cPreMotorCalc`, `cTpoInstt`) SHALL ficar nulas.
 
-`parametros` SHALL seguir exatamente a tabela de chaves, tipos, valores aceitos e obrigatoriedade da spec `curve-build-pipeline` do change `engine-modelos-curva` (`GRANDEZA`, `DAY_COUNTER_TEMPO`, `FREQUENCY`, `CALENDARIO`, `MERCADO_CALENDARIO`, `BUSINESS_DAY_CONVENTION`, `EXTRAPOLACAO_INICIO`, `EXTRAPOLACAO_FIM`, `HORIZONTE`, `CASAS_DECIMAIS`, `MODO_ARREDONDAMENTO`, `VERSAO_SCRIPT_*`, `MODELOS_POR_ORIGEM`), com as mesmas regras de combinação: `FREQUENCY` obrigatório com `Compounded` e proibido nos demais, sem `NoFrequency`, `Once` e `OtherFrequency`; `MERCADO_CALENDARIO` igual ao mercado do `CALENDARIO`; `GRANDEZA` = `Price` só para unidade `PRECO` ou `PONTOS`; `FlatForward` só com interpolador `Linear` ou `LogLinear`. Chave desconhecida, tipo errado, valor fora da lista ou item obrigatório ausente MUST resultar em 422 `DADOS_INVALIDOS`, com um item em `detalhes` por problema. O serviço SHALL gravar `cModDado` como JSON compacto, com as chaves na ordem da tabela; se passar de 1.024 caracteres, 422.
+`parametros` SHALL seguir exatamente a tabela de chaves, tipos, valores aceitos e obrigatoriedade da spec `curve-build-pipeline` do change `engine-modelos-curva` (`BASE_INTERPOLACAO`, `DAY_COUNTER_TEMPO`, `FREQUENCY`, `CALENDARIO`, `MERCADO_CALENDARIO`, `BUSINESS_DAY_CONVENTION`, `EXTRAPOLACAO_INICIO`, `EXTRAPOLACAO_FIM`, `HORIZONTE`, `CASAS_DECIMAIS`, `MODO_ARREDONDAMENTO`, `VERSAO_SCRIPT_*`, `MODELOS_POR_ORIGEM`), com as mesmas regras de combinação: `FREQUENCY` obrigatório com `Compounded` e proibido nos demais, sem `NoFrequency`, `Once` e `OtherFrequency`; `MERCADO_CALENDARIO` igual ao mercado do `CALENDARIO`; `BASE_INTERPOLACAO` = `Price` só para unidade `PRECO` ou `PONTOS`; `FlatForward` só com interpolador `Linear` ou `LogLinear`. Chave desconhecida, tipo errado, valor fora da lista ou item obrigatório ausente MUST resultar em 422 `DADOS_INVALIDOS`, com um item em `detalhes` por problema. O serviço SHALL gravar `cModDado` como JSON compacto, com as chaves na ordem da tabela; se passar de 1.024 caracteres, 422.
 
 #### Scenario: Configuração da DIxPRE
 - **WHEN** o cliente cria a versão da `PRE` com `modeloConstrucao` = `PRONTA_TS_B3`, `interpolador` = `LogLinear` e os parâmetros da spec `b3-ready-curve-model` do engine
@@ -78,7 +78,7 @@ Um teste de contrato SHALL comparar a tabela embutida no serviço com a parte fi
 
 #### Scenario: Formulário de configuração
 - **WHEN** o front abre o formulário de nova versão da `PRE`
-- **THEN** as listas de grandeza, eixo, calendário, convenção, extrapolação e arredondamento vêm de `GET /api/v1/curvas-mercado/valores`, com as descrições, e o interpolador lista os nativos e os scripts Groovy ativos
+- **THEN** as listas de base de interpolação, eixo, calendário, convenção, extrapolação e arredondamento vêm de `GET /api/v1/curvas-mercado/valores`, com as descrições, e o interpolador lista os nativos e os scripts Groovy ativos
 
 #### Scenario: Engine fora
 - **WHEN** o engine não responde e o front pede os valores
@@ -104,5 +104,5 @@ A ausência de `MODELOS_POR_ORIGEM` não é aviso: sem ela, o engine usa `modelo
 Uma alteração da curva (`unidade`, `dayCounterCotacao`, `compounding`) que torne inválida a versão vigente ou uma versão futura, pelas regras de combinação dos parâmetros, MUST ser rejeitada com 422 `DADOS_INVALIDOS`, citando a versão. Sem bloquear, a resposta de criação ou validação de versão SHALL trazer o aviso `MODELO_NAO_NATIVO` para `modeloConstrucao`, `interpolador` ou `CALENDARIO` fora dos modelos nativos do engine (construção `PRONTA_TS_B3`, `NTNB_BOOTSTRAP_ANBIMA`, `SOFR_ZERO_BLOOMBERG`; interpoladores `Linear`, `LogLinear`, `BackwardFlat`, `ForwardFlat`, `Cubic`; calendários `Brazil`, `UnitedStates`): o engine só constrói se houver script Groovy ativo com esse nome. Também SHALL trazer o aviso `ORIGEM_INCOMPATIVEL_COM_MODELO` da spec `ligacao-curva-provedor`, quando aplicável.
 
 #### Scenario: Mudança de unidade que invalida a configuração
-- **WHEN** a curva `PRE`, com versão vigente de `GRANDEZA` = `Discount`, é alterada para unidade `PRECO`
+- **WHEN** a curva `PRE`, com versão vigente de `BASE_INTERPOLACAO` = `Discount`, é alterada para unidade `PRECO`
 - **THEN** a resposta é 422 com `DADOS_INVALIDOS`, citando a versão vigente, e nada é gravado

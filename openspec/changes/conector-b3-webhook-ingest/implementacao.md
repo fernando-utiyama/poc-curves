@@ -323,9 +323,9 @@ Portas de saída (`application/port/out/`), uma por dependência:
 
 ```java
 public interface ArquivoCargaPort { byte[] ler(String caminho); }                                   // Blob
-public interface CargaB3Port {                                                                       // banco
+public interface B3CurvaPrimariaPort {                                                               // tBtrsCurvaPrimr
   Map<String, List<String>> curvasPorCodigo();
-  void gravar(LocalDate dataBase, Map<String, List<String>> curvasPorCodigo, Map<String, List<Vertice>> porCodigo);
+  void gravar(LocalDate dataBase, Map<String, List<String>> curvasPorCodigo, Map<String, List<B3CurvaPrimaria>> porCodigo);
 }
 public interface EngineCargaPort { RespostaEngine avisar(AvisoEngine corpo, String correlationId); }  // engine
 public record AvisoEngine(String idCarga, String fonte, String produto, LocalDate dataBase, Map<String, Integer> linhasPorCodigo) {}
@@ -339,8 +339,8 @@ public record RespostaEngine(int status, String corpo) {}
 ### 2.6 Parse e validação: `application/model/LeiauteTaxaSwap.java` (Java puro)
 
 ```java
-public record Vertice(String codigo, int diasCorridos, int diasUteis, BigDecimal valor, int linha) {}
-public record ResultadoParse(LocalDate dataBase, Map<String, List<Vertice>> porCodigo, Map<String, String> invalidos /* código → "linha N: motivo" */) {}
+public record B3CurvaPrimaria(String codigo, int diasCorridos, int diasUteis, BigDecimal valor, int linha) {}
+public record ResultadoParse(LocalDate dataBase, Map<String, List<B3CurvaPrimaria>> porCodigo, Map<String, String> invalidos /* código → "linha N: motivo" */) {}
 public static ResultadoParse interpretar(byte[] arquivo, LocalDate dataBaseEsperada);
 ```
 
@@ -352,7 +352,7 @@ Regras exatas (posições 1-based → `substring(inicio-1, fim)`):
 
 Casos de teste (escritos na seção 3): linha da spec `0049060010120260914T1DCL  CUPOM LIMPO - S0000100001-00001179600000F00001` → `DCL`, 1, 1, `-117.9600000`. Com `docs/TaxaSwap.txt`: 114 códigos, 278 vértices em `PRE`/`DCL`/`DPL`/`INP`/`PTX`, nenhum inválido; primeiro vértice da `PRE` = `13.9000000`.
 
-### 2.7 Gravação: `adapter/out/persistence/jdbc/CargaB3JdbcAdapter.java` (implementa `CargaB3Port`)
+### 2.7 Gravação: `adapter/out/persistence/jdbc/B3CurvaPrimariaJdbcAdapter.java` (implementa `B3CurvaPrimariaPort`)
 
 Consultas com o `JdbcClient` do Spring (mapeia direto para records); inclusões em lote com `JdbcTemplate.batchUpdate`. Ambos já vêm com o `spring-boot-starter-data-jpa`.
 
@@ -476,7 +476,7 @@ Processor (mesmo pacote base, em `src/test/java`):
 - `application/service/ValidadorAvisoCargaB3Test.java`: um caso por regra de 2.4;
 - `application/service/LeiauteTaxaSwapTest.java`: linha da spec, `docs/TaxaSwap.txt` completo e um caso por regra de linha inválida de 2.6;
 - `adapter/out/blob/ArquivoCargaBlobAdapterTest.java`: 404 definitivo, 503 transitório;
-- `adapter/out/persistence/jdbc/CargaB3JdbcAdapterTest.java` (`JdbcTemplate` simulado): SQL e parâmetros enviados, ids `max+1, max+2...`, contagem divergente lança a falha que desfaz a transação;
+- `adapter/out/persistence/jdbc/B3CurvaPrimariaJdbcAdapterTest.java` (`JdbcTemplate` simulado): SQL e parâmetros enviados, ids `max+1, max+2...`, contagem divergente lança a falha que desfaz a transação;
 - `adapter/out/client/EngineCargaClientTest.java` (servidor HTTP simulado): 2xx, 409/429/5xx transitórios, 400 definitivo, cabeçalhos;
 - `application/service/ProcessarCargaB3ServiceTest.java`: cenários da spec `b3-carga-processor` listados em 2.9, com as janelas reduzidas por configuração.
 

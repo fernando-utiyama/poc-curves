@@ -6,7 +6,7 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 
 - **Serviço:** `services/curves` (no sistema real, `acts-srv-curvas`, onde outro dev já faz o CRUD de provedores). Se o serviço já existir transcrito, encaixe as classes na estrutura dele. Se não existir, crie-o com a mesma estrutura do `services/engine`: Java 21, Spring Boot 4 (Jackson 3, `tools.jackson`), pacote `br.com.poc`, camadas `adapter/in/api/rest`, `application/service`, `domain`, `adapter/out/persistence/entity` (entidades) e `adapter/out/persistence/repository`, `adapter/out/client/engine`, `adapter/out/planilha`. No serviço real, as entidades ficam em `br.com.poc.adapter.out.persistence.entity`, com Lombok (`@Getter`, `@Setter`, `@NoArgsConstructor`), como a `ProvedorEntity` do CRUD de provedores: siga o mesmo padrão.
 - **Mesma base do engine** (guia do `engine-modelos-curva`, seção 0):
-  - **hexagonal:** `domain` em Java puro (regras de campo, vigência, `ETag`, validador de parâmetros, `hashPontos`, 30/360, situação do painel), sem Spring, JPA, Jackson ou POI; `application/port/in` (casos de uso) e `application/port/out` (`CurvaPort`, `LigacaoPort`, `ConfiguracaoPort`, `ProvedorPort`, `PontosPort`, `InterpoladaPort`, `TravaCurvaPort`, `EnginePort`, `PlanilhaPort`, `EventosPort`); `application/service` implementa os casos de uso; os adaptadores implementam as portas. O serviço conhece só as portas;
+  - **hexagonal:** `domain` em Java puro (regras de campo, vigência, `ETag`, validador de parâmetros, `hashPontos`, 30/360, situação do painel), sem Spring, JPA, Jackson ou POI; `application/port/in` (casos de uso) e `application/port/out`, uma porta por tabela (`CurvaMercadoPort`, com a trava da curva; `CurvaProvedorPort`; `ConfiguracaoCurvaPort`; `PrvdrDadoMercadoPort`; `DadoVerticeCurvaPort`; `DadoCurvaPort`) mais `EnginePort`, `PlanilhaPort` e `EventosPort`; `application/service` implementa os casos de uso; os adaptadores implementam as portas. O serviço conhece só as portas;
   - **Java 21 nativo:** records para todo dado (domínio, DTOs, eventos, linhas de planilha), sealed e `switch` com pattern matching onde há variações fechadas (resultado de linha da importação, situação do painel), `java.time`, `RoundingMode`, `HexFormat`, `MessageDigest`, `Normalizer`. Nada de tipo próprio de data, relógio, arredondamento ou "utils";
   - **virtual threads:** `spring.threads.virtual.enabled: true`; sem `synchronized`;
   - **exceção:** as entidades JPA seguem o padrão do serviço real (Lombok, como a `ProvedorEntity`); fora delas, sem Lombok nem MapStruct no código novo.
@@ -32,7 +32,7 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 
 | Item | Valor esperado |
 |---|---|
-| `ETag` do cadastro da `PRE` do `exemplo-cadastro-7-curvas.txt` (curva criada, ligação `idLigacao` 1, versão 1 com os parâmetros do exemplo) | `3250375ef09da298772f15e9186a9e493a353a6396f2e2d40fe55679f029bca4` |
+| `ETag` do cadastro da `PRE` do `exemplo-cadastro-7-curvas.txt` (curva criada, ligação `idLigacao` 1, versão 1 com os parâmetros do exemplo) | `63ebcddb87ec554ffb1890b6361789425b6cd8bc9c5fbda181ef518c7c21009d` |
 | JSON canônico desse `ETag` | ver seção 2.3 |
 | `hashPontos` do vetor comum com o engine (`2026-09-15;13.9\n2026-09-16;-117.96`) | `8dcff432fa5271ff16bdaef72940792811802e0a5ae59e8c2bf5cead818d5544` |
 | `hashPontos` da `PRE` de `2026-09-14` construída pelo engine (278 pontos) | `7c4982b34ca35f784863118902e63f28e7d49362d940cc27eb77961d526fca20` |
@@ -102,22 +102,22 @@ spring:
 ### 1.3 Erros, avisos e enums: `domain/`
 
 ```java
-public interface ComRotulo { String rotulo(); String descricao(); }   // igual ao engine: texto no construtor do enum
+public record Texto(String rotulo, String descricao) {}              // igual ao engine: rótulo e descrição pt-BR
 
-public enum CodigoErro implements ComRotulo {
+public enum CodigoErro {                                              // (http, new Texto(...)), com http() e texto()
   PARAMETRO_INVALIDO(400, ...), NAO_AUTENTICADO(401, ...), SEM_PERMISSAO(403, ...), NAO_ENCONTRADO(404, ...),
   CODIGO_EM_USO(409, ...), NOME_EM_USO(409, ...), LIGACAO_DUPLICADA(409, ...), PRIORIDADE_EM_USO(409, ...),
   ALTERADO_POR_OUTRO(412, ...), DADOS_INVALIDOS(422, ...), PONTOS_INVALIDOS(422, ...), IF_MATCH_AUSENTE(428, ...),
   ERRO_INTERNO(500, ...);
   public final int http; ...
 }
-public enum CodigoAviso implements ComRotulo { /* os 19 códigos da tabela "Avisos do serviço" da spec cadastro-curva-mercado, na ordem da tabela */ }
+public enum CodigoAviso { /* new Texto(...) e texto(); os 19 códigos da tabela "Avisos do serviço" da spec cadastro-curva-mercado, na ordem da tabela */ }
 public record Detalhe(String campo, Integer linha, String valor, String motivo) {}
 public record Aviso(CodigoAviso codigo, String mensagem, List<Detalhe> detalhes) {}
 public class ErroCurves extends RuntimeException { public final CodigoErro codigo; public final List<Detalhe> detalhes; ... }
 ```
 
-Enums da tabela "Enums do serviço" da spec `cadastro-curva-mercado` (`Unidade`, `DayCounterCotacao`, `CompoundingCotacao`, `SituacaoCurva`, `SituacaoPainel`, `MotivoPainel`, `TipoAlteracao`, `OperacaoAlteracao`, `OperacaoPontos`, `OrigemPontos`, `ModoImportacao`, `ResultadoLinha`), todos com `ComRotulo`.
+Enums da tabela "Enums do serviço" da spec `cadastro-curva-mercado` (`Unidade`, `DayCounterCotacao`, `CompoundingCotacao`, `SituacaoCurva`, `SituacaoPainel`, `MotivoPainel`, `TipoAlteracao`, `OperacaoAlteracao`, `OperacaoPontos`, `OrigemPontos`, `ModoImportacao`, `ResultadoLinha`), todos com um `Texto` no construtor e o acessor `texto()`, sem interface comum. O catálogo de `GET /curvas-mercado/valores` lista cada enum de forma explícita com referência de método (`itens(Unidade.values(), Unidade::texto)`), como no engine.
 
 Handler (`@RestControllerAdvice`): `ErroCurves` → `codigo.http` e corpo `{ codigoErro, mensagem, correlationId, detalhes }`; JSON malformado → 400 `PARAMETRO_INVALIDO`; `AccessDeniedException` → 403; falha de autenticação → 401; qualquer outro → 500 `ERRO_INTERNO` sem stack trace.
 
@@ -170,7 +170,7 @@ JSON com `correlationId`. `REQUISICAO_CONCLUIDA` (usuário, rota com molde, stat
 - `CurvaMercdEntity` (`tCurvaMercd`, `@Id cTickerIndcd`): mapear só as colunas que o serviço lê ou escreve: `cTickerIndcd`, `cTickerIdtfdUnic`, `cTpoVlr`, `cNormaDia`, `cTpoJuro`, `cMoedaNegoc`, `cPaisInstt`, `cClasfInstt`, `cClassAtivo`, `cSitReg`, `dInicVgcia`, `dValidAte`, `cUsuarAtulz`, `dCriacReg`, `dUltAtulz`, e `dBaseReft`, `cUsuarCalc` como `@Column(insertable = false, updatable = false)`. As demais colunas não são mapeadas (ficam nulas na criação e intocadas depois).
 - As colunas `CHAR` vêm com espaços à direita: escrever à mão os getters de texto, devolvendo `stripTrailing()` (o Lombok não gera um getter que já existe; os demais ficam com `@Getter`). Gravar sem espaços.
 
-### 2.2 Regras (`application/service/CurvaService.java`)
+### 2.2 Regras (`application/service/CurvaMercadoService.java`)
 
 Tabela "Campos da curva de mercado" da spec, campo a campo:
 - `codigo`: `^[A-Z0-9_]{1,50}$`; único (`SELECT COUNT(*) FROM tCurvaMercd WHERE cTickerIdtfdUnic = ? AND cTickerIndcd <> ?`) → 409 `CODIGO_EM_USO`.
@@ -186,15 +186,15 @@ Tabela "Campos da curva de mercado" da spec, campo a campo:
 
 Listagem: filtros `nome` (trecho normalizado), `codigo` (exato), `unidade`, `situacao`; paginação `pagina` (≥ 0) e `tamanho` (padrão 50, máximo 500); ordem por código.
 
-### 2.3 `ETag` (`domain/cadastro/EtagCadastro.java`, Java puro; o JSON canônico é montado pelo adaptador com o Jackson e passado como texto)
+### 2.3 `ETag` (`domain/cadastro/EtagCurvaMercado.java`, Java puro; o JSON canônico é montado pelo adaptador com o Jackson e passado como texto)
 
 SHA-256 hexa minúsculo do JSON canônico: chaves em ordem alfabética em todos os níveis, sem espaços, nulos presentes como `null`, strings UTF-8 sem escape de não ASCII. Estrutura:
 
 ```json
-{"configuracoes":[{"fimVigencia":null,"inicioVigencia":"2026-01-01","interpolador":"LogLinear","modeloConstrucao":"PRONTA_TS_B3","parametros":{"BUSINESS_DAY_CONVENTION":"Following","CALENDARIO":"Brazil","CASAS_DECIMAIS":7,"DAY_COUNTER_TEMPO":"Business252","EXTRAPOLACAO_FIM":"FlatForward","EXTRAPOLACAO_INICIO":"Disabled","FREQUENCY":"Annual","GRANDEZA":"Discount","HORIZONTE":"10Y","MERCADO_CALENDARIO":"Settlement","MODO_ARREDONDAMENTO":"HALF_UP"},"versao":1}],"curva":{"classeAtivo":null,"classificacao":null,"codigo":"PRE","compounding":"Compounded","dayCounterCotacao":"Business252","fimVigencia":null,"inicioVigencia":"2026-01-01","moeda":"BRL","nome":"DIxPRE","pais":"BR","situacao":"ATIVO","unidade":"TAXA"},"ligacoes":[{"codigoNaFonte":"PRE","idLigacao":1,"prioridade":1,"produto":"TS","provedor":"B3"}]}
+{"configuracoes":[{"fimVigencia":null,"inicioVigencia":"2026-01-01","interpolador":"LogLinear","modeloConstrucao":"PRONTA_TS_B3","parametros":{"BASE_INTERPOLACAO":"Discount","BUSINESS_DAY_CONVENTION":"Following","CALENDARIO":"Brazil","CASAS_DECIMAIS":7,"DAY_COUNTER_TEMPO":"Business252","EXTRAPOLACAO_FIM":"FlatForward","EXTRAPOLACAO_INICIO":"Disabled","FREQUENCY":"Annual","HORIZONTE":"10Y","MERCADO_CALENDARIO":"Settlement","MODO_ARREDONDAMENTO":"HALF_UP"},"versao":1}],"curva":{"classeAtivo":null,"classificacao":null,"codigo":"PRE","compounding":"Compounded","dayCounterCotacao":"Business252","fimVigencia":null,"inicioVigencia":"2026-01-01","moeda":"BRL","nome":"DIxPRE","pais":"BR","situacao":"ATIVO","unidade":"TAXA"},"ligacoes":[{"codigoNaFonte":"PRE","idLigacao":1,"prioridade":1,"produto":"TS","provedor":"B3"}]}
 ```
 
-Esse texto dá `3250375ef09da298772f15e9186a9e493a353a6396f2e2d40fe55679f029bca4`. Ligações ordenadas por `idLigacao`, configurações por `versao`. Fora do cálculo: `dBaseReft`, `cUsuarCalc`, `cUsuarAtulz`, `dCriacReg`, `dUltAtulz`. Com Jackson: `JsonMapper.builder().enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS).enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)` e montar o documento com `Map`/`record` só com esses campos.
+Esse texto dá `63ebcddb87ec554ffb1890b6361789425b6cd8bc9c5fbda181ef518c7c21009d`. Ligações ordenadas por `idLigacao`, configurações por `versao`. Fora do cálculo: `dBaseReft`, `cUsuarCalc`, `cUsuarAtulz`, `dCriacReg`, `dUltAtulz`. Com Jackson: `JsonMapper.builder().enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS).enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)` e montar o documento com `Map`/`record` só com esses campos.
 
 Toda alteração (curva, inativação, reativação, ligação, configuração): sem `If-Match` → 428 `IF_MATCH_AUSENTE`; `If-Match` diferente do `ETag` calculado dentro da transação, depois de travar a curva (`SELECT ... WITH (UPDLOCK, ROWLOCK)`) → 412 `ALTERADO_POR_OUTRO`, nada gravado. Resposta de sucesso traz o `ETag` novo.
 
@@ -210,7 +210,7 @@ As da tabela "Rotas da curva de mercado" da spec. `GET /curvas-mercado/{codigo}`
 
 ---
 
-## 3. Ligações (`LigacaoService`)
+## 3. Ligações (`CurvaProvedorService`)
 
 Entidade `CurvaPrvdrEntity` (`tCurvaPrvdr`, `@Id cldtfdUnic`): `cldtfdUnic`, `cTickerIndcd`, `iPrvdrDados`, `cPrvdrMercd`, `cTickerPrvdr`, `cPriorCsumo`. Provedor: usar a `ProvedorEntity` que já existe no serviço (CRUD de provedores), só para leitura: `@Table(name = "tPrvdrDadoMercd")`, `@Id` `iPrvdrDados` → `nomeProvedor` (o identificador: `B3`, `ANBIMA`, `BLOOMBERG`, `TCEN`), `cInfoProdt` → `descricao`, `cProdt` → `produto`, `iCoplt` → `nomeCompletoAtivoOuInstrumento`. Não criar outra entidade para a mesma tabela. `tCurvaPrvdr.iPrvdrDados` tem FK para `tPrvdrDadoMercd.iPrvdrDados`: conferir a existência antes (404 `NAO_ENCONTRADO`) para responder com o erro certo em vez da violação de FK. O produto da ligação (`cPrvdrMercd`) não é conferido contra `cProdt`: `tPrvdrDadoMercd` tem uma linha por provedor (PK em `iPrvdrDados`), e uma fonte pode ter vários produtos (a ANBIMA tem `MS` e, no futuro, `CZ`).
 
@@ -227,7 +227,7 @@ Avisos depois da alteração: `CURVA_SEM_ORIGEM` (nenhuma ligação); `ORIGEM_IN
 
 ---
 
-## 4. Configuração de cálculo (`ConfiguracaoService`)
+## 4. Configuração de cálculo (`ConfiguracaoCurvaService`)
 
 Entidade `ConfgCurvaEntity` (`tConfgCurva`, `@Id @GeneratedValue(IDENTITY) cldtfdConfg`): `cTickerIndcd`, `cMotorCalc`, `cRotnaCalc`, `cModDado`, `cVrsaoReg`, `dInicVgcia`, `dValidAte`; as demais colunas nulas.
 
@@ -237,7 +237,7 @@ Uma tabela única em código (a mesma usada na cópia embutida de valores, seç�
 
 | Chave | Tipo | Obrigatória | Valores |
 |---|---|---|---|
-| `GRANDEZA` | texto | sim | `Discount`, `CompoundFactor`, `ZeroYield`, `Price` |
+| `BASE_INTERPOLACAO` | texto | sim | `Discount`, `CompoundFactor`, `ZeroYield`, `Price` |
 | `DAY_COUNTER_TEMPO` | texto | sim | `Business252`, `Actual360`, `Actual365Fixed`, `Thirty360` |
 | `FREQUENCY` | texto | só com `compounding` = `Compounded` (e proibida nos demais) | `Annual`, `Semiannual`, `EveryFourthMonth`, `Quarterly`, `Bimonthly`, `Monthly`, `EveryFourthWeek`, `Biweekly`, `Weekly`, `Daily` |
 | `CALENDARIO` | texto | sim | qualquer nome (aviso `MODELO_NAO_NATIVO` fora de `Brazil`/`UnitedStates`) |
@@ -250,7 +250,7 @@ Uma tabela única em código (a mesma usada na cópia embutida de valores, seç�
 | `VERSAO_SCRIPT_CONSTRUCAO`, `VERSAO_SCRIPT_INTERPOLACAO`, `VERSAO_SCRIPT_CALENDARIO` | inteiro | não | ≥ 1 |
 | `MODELOS_POR_ORIGEM` | objeto | não | chave `^[^/]+/[^/]+$`, valor texto 1–100 |
 
-Combinações: `Price` só com `PRECO`/`PONTOS`, e as outras grandezas só com `TAXA`; `FlatForward` só com interpolador `Linear` ou `LogLinear`. Chave desconhecida, tipo errado, valor fora da lista (com caixa) ou obrigatório ausente → 422 `DADOS_INVALIDOS`, um `Detalhe` por problema. Avisos: `MODELO_NAO_NATIVO` (modelo, interpolador ou calendário fora dos nativos), `ORIGEM_INCOMPATIVEL_COM_MODELO`, `MODELO_POR_ORIGEM_SEM_LIGACAO`.
+Combinações: `Price` só com `PRECO`/`PONTOS`, e as outras bases de interpolação só com `TAXA`; `FlatForward` só com interpolador `Linear` ou `LogLinear`. Chave desconhecida, tipo errado, valor fora da lista (com caixa) ou obrigatório ausente → 422 `DADOS_INVALIDOS`, um `Detalhe` por problema. Avisos: `MODELO_NAO_NATIVO` (modelo, interpolador ou calendário fora dos nativos), `ORIGEM_INCOMPATIVEL_COM_MODELO`, `MODELO_POR_ORIGEM_SEM_LIGACAO`.
 
 Gravação de `cModDado`: JSON compacto, chaves na **ordem da tabela acima** (não alfabética), `EXTRAPOLACAO_*` gravadas mesmo quando `Disabled`; mais de 1.024 caracteres → 422.
 
@@ -269,7 +269,7 @@ Rotas: as da tabela "Rotas da configuração" da spec. `validacao` roda as regra
 ## 5. Valores aceitos (`GET /api/v1/curvas-mercado/valores`)
 
 1. Engine: `valoresCadastro()` (seção 1.6), com cache local de 5 minutos.
-2. Acrescentar os provedores de `tPrvdrDadoMercd` (pela `ProvedorEntity`: `nomeProvedor` e `descricao`) e os enums e catálogos do serviço (seção 1.3), cada valor com `rotulo` e `descricao` do `ComRotulo`.
+2. Acrescentar os provedores de `tPrvdrDadoMercd` (pela `ProvedorEntity`: `nomeProvedor` e `descricao`) e os enums e catálogos do serviço (seção 1.3), cada valor com o `rotulo` e a `descricao` do seu `texto()`.
 3. Engine fora: devolver a **cópia embutida** (a tabela da seção 4.1, com os modelos nativos e os rótulos em código) com o aviso `VALORES_SEM_ENGINE`. Nunca falha por causa do engine.
 4. OpenAPI: `enum` em `unidade`, `dayCounterCotacao`, `compounding`, `situacao` e em cada chave de `parametros`; `modeloConstrucao`, `interpolador` e `CALENDARIO` como `string` com os nativos na descrição.
 
@@ -308,7 +308,7 @@ Exportar e importar sem editar MUST dar zero mudanças e nenhuma escrita.
 
 ---
 
-## 8. Pontos: consulta e exclusão (`PontosService`)
+## 8. Pontos: consulta e exclusão (`DadoVerticeCurvaService`)
 
 Entidades: `DadoVertcCurvaEntity` (`tDadoVertcCurva`, `@IdClass` com `dBaseReft`, `cTickerIndcd`, `dVertcReft`; `cDiaUtil`, `vFatorDia`, `vFatorAcum`, `cQtdDiaPer`, `cQtdDiaReft`, `vPrecoTx`) e `DadoCurvaEntity` (`tDadoCurva`, só para o `DELETE`).
 
@@ -326,7 +326,7 @@ return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text
 
 ---
 
-## 9. Planilha de pontos (`PontosPlanilhaService`)
+## 9. Planilha de pontos (`DadoVerticeCurvaPlanilhaService`)
 
 Aba única `Pontos`, colunas `Curva`, `DataBase`, `DataPonto`, `Valor`, `DiasUteis`, ordenadas por curva, data-base e data. `Valor`: célula numérica se tiver até 15 dígitos significativos (`v.precision() <= 15`), senão texto com vírgula decimal. `DiasUteis`: `cDiaUtil` gravado, célula vazia se nulo. Exportação: até 50 códigos, 366 dias, 100.000 pontos (acima → 400); arquivo `pontos-curvas_{AAAAMMDDHHmmss}.xlsx`.
 
@@ -407,16 +407,16 @@ Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUn
 
 | Teste | Casos |
 |---|---|
-| `EtagCadastroTest` | vetor da seção 0.2; ordem de chaves; `dBaseReft` alterado não muda o `ETag`; `CHAR` com espaços dá o mesmo `ETag` |
-| `CurvaServiceTest` | cenários da spec `cadastro-curva-mercado` (criação da DIxPRE, nome que colide, preço com cotação, renomear, inativação, duas pessoas editando → 412, sem `If-Match` → 428, enum em caixa errada) |
-| `LigacaoServiceTest` | cenários da spec `ligacao-curva-provedor` (TaxaSwap, provedor inexistente, `TCEN`, ciclo de 2 e de 3 curvas, última ligação excluída, avisos); o SQL do `MAX + 1` com `UPDLOCK, HOLDLOCK` enviado ao repositório |
+| `EtagCurvaMercadoTest` | vetor da seção 0.2; ordem de chaves; `dBaseReft` alterado não muda o `ETag`; `CHAR` com espaços dá o mesmo `ETag` |
+| `CurvaMercadoServiceTest` | cenários da spec `cadastro-curva-mercado` (criação da DIxPRE, nome que colide, preço com cotação, renomear, inativação, duas pessoas editando → 412, sem `If-Match` → 428, enum em caixa errada) |
+| `CurvaProvedorServiceTest` | cenários da spec `ligacao-curva-provedor` (TaxaSwap, provedor inexistente, `TCEN`, ciclo de 2 e de 3 curvas, última ligação excluída, avisos); o SQL do `MAX + 1` com `UPDLOCK, HOLDLOCK` enviado ao repositório |
 | `ValidadorParametrosTest` | um caso por regra da tabela 4.1 (os mesmos da spec do engine); ordem das chaves em `cModDado`; 1.024 caracteres |
-| `ConfiguracaoServiceTest` | cenários da spec `configuracao-calculo-curva` (troca a partir de amanhã, correção retroativa, desistência, vigente em data antiga, unidade que invalida, `MODELOS_POR_ORIGEM` com e sem ligação) |
+| `ConfiguracaoCurvaServiceTest` | cenários da spec `configuracao-calculo-curva` (troca a partir de amanhã, correção retroativa, desistência, vigente em data antiga, unidade que invalida, `MODELOS_POR_ORIGEM` com e sem ligação) |
 | `ValoresServiceTest` | engine respondendo; engine fora com `VALORES_SEM_ENGINE`; todo valor com `rotulo` e `descricao`; tabela embutida igual à parte fixa da resposta do engine (resposta gravada em `src/test/resources/valores-engine.json`) |
 | `CadastroPlanilhaServiceTest` | exportar e importar sem editar → zero mudanças; 30 prioridades trocadas; ligação removida; versão existente editada → erro; erro impede o lote; `Controle` antigo → `ALTERADO_POR_OUTRO`; vírgula e ponto juntos → erro; `MODELOS_POR_ORIGEM` malformado |
 | `PainelServiceTest` | todos os cenários da spec `painel-curvas`, uma linha por situação e por `motivo`, engine fora, feriado americano, carga atrasada, origem secundária |
-| `PontosServiceTest` | vetores da seção 0.2 (`hashPontos`, arredondamento, `diasUteis` 76 com 30/360 = 110); cenários da spec `pontos-curva-manual` (um valor, ponto retirado, casas a mais, lista igual sem escrita, conferência divergente desfaz, data sem construção, engine fora com `INTERPOLADA_DESATUALIZADA`, feriado, sábado, repetida); regravação chamada também com `SEM_MUDANCA` |
-| `PontosPlanilhaServiceTest` | cenários da spec `pontos-curva-planilha`; planilha sem `DiasUteis`; `DiasUteis` apagado → `ALTERACAO`; valor da `PTX` 56,3772259 numérico |
+| `DadoVerticeCurvaServiceTest` | vetores da seção 0.2 (`hashPontos`, arredondamento, `diasUteis` 76 com 30/360 = 110); cenários da spec `pontos-curva-manual` (um valor, ponto retirado, casas a mais, lista igual sem escrita, conferência divergente desfaz, data sem construção, engine fora com `INTERPOLADA_DESATUALIZADA`, feriado, sábado, repetida); regravação chamada também com `SEM_MUDANCA` |
+| `DadoVerticeCurvaPlanilhaServiceTest` | cenários da spec `pontos-curva-planilha`; planilha sem `DiasUteis`; `DiasUteis` apagado → `ALTERACAO`; valor da `PTX` 56,3772259 numérico |
 | `ApiContratoTest` (MockMvc) | um teste por rota com 401, 403 e papel certo; um por `codigoErro`; `X-Correlation-Id` em sucesso, erro e `xlsx`; decimais como string |
 | `FusoTest` | `OffsetDateTime.ofInstant(Instant.parse("2026-09-15T01:30:00Z"), ZoneId.systemDefault())` → `2026-09-14T22:30-03:00`; subida recusada com outro fuso |
 

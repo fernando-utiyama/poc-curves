@@ -63,7 +63,7 @@ Os títulos SHALL ser resolvidos em ordem crescente de `V`. Resolver o título `
 - **`INCOGNITA`**: se nenhum título foi resolvido ainda (primeiro título), `DF_i = (1 + z)^(−DU_i/252)`;
 - **`FLAT_INICIO`**: se a data do evento for anterior à do primeiro título resolvido, `DF_i = (1 + z_1)^(−DU_i/252)`;
 - **`RESOLVIDO`**: se a data do evento for igual à de um título resolvido `k`, `DF_i = (1 + z_k)^(−DU_i/252)`;
-- **`INTERPOLADO`**: nos demais casos, o `DF` interpolado pela grandeza, pelo interpolador e pelo eixo cadastrados, entre os dois pontos vizinhos no conjunto formado pelos títulos já resolvidos e pelo ponto do próprio título `(P_n, z)`.
+- **`INTERPOLADO`**: nos demais casos, o `DF` interpolado pela base de interpolação, pelo interpolador e pelo eixo cadastrados, entre os dois pontos vizinhos no conjunto formado pelos títulos já resolvidos e pelo ponto do próprio título `(P_n, z)`.
 
 Durante o bootstrap, as taxas `z_k` SHALL ser usadas sem arredondamento. A raiz SHALL ser encontrada por bisseção no intervalo `[−0,99; 1,00]`. Se `f` não trocar de sinal nos extremos, a construção falha com `MODELO_FALHOU`, informando o título. Senão, a bisseção repete até a largura do intervalo ser menor que `10^−14` ou até 200 iterações, e `z_n` é o ponto médio do intervalo final. Cada título gera um ponto: data = `P_n`, valor = `z_n × 100`, dias úteis publicados = `vVertcCurva`. `DU_n` do vencimento, no bootstrap, é o `vVertcCurva`.
 

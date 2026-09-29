@@ -53,19 +53,21 @@ tabela bruta ─ modelo de construção ─► tDadoVertcCurva (pontos) ─ inte
 O engine é hexagonal: o **domínio** não conhece Spring, JPA, Jackson, Blob nem POI; a **aplicação** tem os casos de uso e as portas; os **adaptadores** ligam as portas ao mundo (REST, banco, Blob, planilha, Groovy).
 ```
 domain/                 Java puro, sem framework
-  curva/                records do negócio (CadastroCurva, Origem, Parametros, PontoConstruido, PontoGravado,
+  curva/                records do negócio, com os nomes das tabelas (CurvaMercado, CurvaProvedor, ConfiguracaoCurva,
+                        VerticeConstruido, DadoVerticeCurva, DadoCurva,
                         Proveniencia, Aviso, ResultadoConstrucao sealed...), enums de erro e aviso, hashPontos
   quantlib/             enums com nomes do QuantLib: Compounding, Frequency, BusinessDayConvention, DayCounter;
                         InterestRate (record)
   matematica/           DecimalMath: ponte entre BigDecimal e StrictMath (pow, ln, exp)
   calendario/           Calendario (base), Brazil, UnitedStates, CalendarioPorLista
-  interpolacao/         Grandeza e Extrapolacao (enums), Interpolador, InterpoladorLocal, Linear, LogLinear,
-                        BackwardFlat, ForwardFlat, Cubic, EixoDiasUteis, CurvaInterpolada, GradeInterpolada
+  interpolacao/         BaseInterpolacao e Extrapolacao (enums), Interpolador, InterpoladorLocal, Linear, LogLinear,
+                        BackwardFlat, ForwardFlat, Cubic, EixoDiasUteis, CurvaInterpolada, InterpolacaoDadoCurva
   construcao/           ModeloConstrucao, ContextoConstrucao, ProntaTsB3, SofrZeroBloomberg, NtnbBootstrapAnbima
   memoria/              MemoriaCalculo e as suas linhas (records)
 application/
   port/in/              casos de uso (interfaces)
-  port/out/             portas de saída (cadastro, insumos, pontos, curva interpolada, trava, scripts, planilha)
+  port/out/             portas de saída, uma por tabela (CurvaMercadoPort, CurvaProvedorPort, ConfiguracaoCurvaPort,
+                        DadoVerticeCurvaPort, DadoCurvaPort) e as de scripts, planilha e eventos
   service/              implementação dos casos de uso (transação, orquestração, paralelismo)
 adapter/
   in/rest/              controllers, DTOs (records), erros, correlação, segurança, serialização
@@ -76,11 +78,11 @@ adapter/
 
 **Virtual threads:** as requisições rodam em virtual threads (`spring.threads.virtual.enabled`), e o paralelismo da construção da data e da situação usa `Executors.newVirtualThreadPerTaskExecutor()` limitado por `Semaphore` (o limite protege o pool de conexões do banco, não as threads).
 
-### D2. Interpolação = grandeza + interpolador + DayCounter do eixo
-O interpolador é puro: recebe `(x, xs, ys)` e não sabe nada de juros. A grandeza converte ponto ↔ `y`, o `DayCounter` do eixo gera `x`, e a cotação (`InterestRate`) converte taxa ↔ fator. As funções do Manual de Curvas B3 viram configuração (tabela na spec `curve-build-pipeline`). A 1.4.1 (interpolação geométrica de `(1+i)`) não tem mapeamento e fica para uma grandeza nova em Java, numa mudança futura. `ForwardRate` fica fora desta fase. **Alternativa rejeitada:** um interpolador por função B3, que multiplica classes e amarra a base de dias.
+### D2. Interpolação = base de interpolação + interpolador + DayCounter do eixo
+O interpolador é puro: recebe `(x, xs, ys)` e não sabe nada de juros. A base de interpolação converte ponto ↔ `y`, o `DayCounter` do eixo gera `x`, e a cotação (`InterestRate`) converte taxa ↔ fator. As funções do Manual de Curvas B3 viram configuração (tabela na spec `curve-build-pipeline`). A 1.4.1 (interpolação geométrica de `(1+i)`) não tem mapeamento e fica para uma base de interpolação nova em Java, numa mudança futura. `ForwardRate` fica fora desta fase. **Alternativa rejeitada:** um interpolador por função B3, que multiplica classes e amarra a base de dias.
 
 ### D3. Extrapolação por lado, fora do interpolador
-A curva aplica a política de início ou de fim; o interpolador só é chamado dentro de `[x_1, x_n]`. `FlatForward` chama `valorNoSegmento` do interpolador local com `w` fora de `[0, 1]`, o que reproduz 1.4.6, 1.4.7 e 1.4.10 com a mesma fórmula da interpolação; por isso exige `Linear` ou `LogLinear`. `FlatValue` repete o valor do ponto (taxa, preço ou pontos), e não a grandeza, como 1.4.8 e 1.4.9. **Alternativa rejeitada:** `enableExtrapolation()` do QuantLib, que não permite políticas diferentes no início e no fim.
+A curva aplica a política de início ou de fim; o interpolador só é chamado dentro de `[x_1, x_n]`. `FlatForward` chama `valorNoSegmento` do interpolador local com `w` fora de `[0, 1]`, o que reproduz 1.4.6, 1.4.7 e 1.4.10 com a mesma fórmula da interpolação; por isso exige `Linear` ou `LogLinear`. `FlatValue` repete o valor do ponto (taxa, preço ou pontos), e não a base de interpolação, como 1.4.8 e 1.4.9. **Alternativa rejeitada:** `enableExtrapolation()` do QuantLib, que não permite políticas diferentes no início e no fim.
 
 ### D4. Cadastro
 Itens, colunas, valores aceitos e obrigatoriedade estão na spec `curve-build-pipeline`. Decisões:
@@ -94,7 +96,7 @@ Itens, colunas, valores aceitos e obrigatoriedade estão na spec `curve-build-pi
 **Alternativas rejeitadas:** colunas novas em `tConfgCurva` (mudam o schema); parâmetros no Blob (separariam o cadastro do banco e da vigência).
 
 ### D5. Modelo de construção
-O contrato está na spec `curve-extension-models`. O modelo recebe um `ContextoConstrucao` com o cadastro, a data-base, o calendário e o `LeitorInsumos`, que é o único acesso às tabelas brutas. Scripts Groovy não acessam o banco. Cada modelo declara a fonte e o produto que aceita (`PRONTA_TS_B3`: `B3`/`TS`; `NTNB_BOOTSTRAP_ANBIMA`: `ANBIMA`/`MS`; `SOFR_ZERO_BLOOMBERG`: `BLOOMBERG`/`BLC2`), e o pipeline rejeita cadastro que aponte um modelo para outra fonte. O modelo devolve pontos sem arredondamento; o pipeline arredonda e grava.
+O contrato está na spec `curve-extension-models`. O modelo recebe um `ContextoConstrucao` com o cadastro, a data-base, o calendário e o `CurvaPrimariaPort`, que é o único acesso às tabelas brutas. Scripts Groovy não acessam o banco. Cada modelo declara a fonte e o produto que aceita (`PRONTA_TS_B3`: `B3`/`TS`; `NTNB_BOOTSTRAP_ANBIMA`: `ANBIMA`/`MS`; `SOFR_ZERO_BLOOMBERG`: `BLOOMBERG`/`BLC2`), e o pipeline rejeita cadastro que aponte um modelo para outra fonte. O modelo devolve pontos sem arredondamento; o pipeline arredonda e grava.
 
 ### D6. Gravação: pontos e curva interpolada, numa transação travada
 A construção grava os pontos arredondados em `tDadoVertcCurva` e, na mesma transação, a curva interpolada em `tDadoCurva`: um valor por dia corrido, do início ao fim do domínio (cerca de 12.400 linhas na PRE, com o último vértice em 2060). Dia corrido, e não útil, para quem consome achar uma linha em qualquer data sem depender do calendário: com eixo em dias úteis, o fim de semana e o feriado repetem o valor do dia útil anterior. A interpolada é saída: o engine nunca a lê para calcular, e ela sai idêntica ao que a rota de interpolação devolve para a mesma data. Depois de uma edição manual, o `services/curves` pede ao engine a regravação da interpolada (rota própria); com o engine fora, a edição fica gravada, e a interpolada, desatualizada (`INTERPOLADA_DESATUALIZADA`) até a regravação. A transação começa com um `SELECT` com trava de escrita (`PESSIMISTIC_WRITE`, tempo limite de 30 segundos) na linha da curva em `tCurvaMercd`, e a edição manual de pontos no `services/curves` usa a mesma trava. Isso serializa construções e edições da mesma curva entre réplicas sem tabela nova. Quem não obtém a trava recebe `CONSTRUCAO_EM_ANDAMENTO`. A simulação não trava nada.

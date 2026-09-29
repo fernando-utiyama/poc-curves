@@ -10,14 +10,14 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
 ## What Changes
 
 - **Pipeline guiado pelo cadastro.** Construir = ler o cadastro → executar o modelo de construção (`cMotorCalc`) → arredondar → gravar os pontos (curva construída) em `tDadoVertcCurva` e a curva interpolada, um valor por dia corrido, em `tDadoCurva`. Consultar e interpolar leem os pontos gravados e aplicam o interpolador (`cRotnaCalc`) na hora, sem cache, com o mesmo resultado da interpolada gravada. Unidades, contagem de tempo, fórmulas de cotação, interpolação e extrapolação, domínio, arredondamento e erros ficam fechados na spec.
-- **Cadastro com lista fechada de itens.** Origem (fonte, produto, código na fonte), modelos, unidade, grandeza, eixo de tempo, cotação, calendário, extrapolação por lado, horizonte e arredondamento. Item ausente, valor inválido ou chave desconhecida é erro; os únicos padrões são as extrapolações `Disabled`. Regra de metodologia que vale para todas as curvas de um modelo fica no modelo, como o cupom da NTN-B.
+- **Cadastro com lista fechada de itens.** Origem (fonte, produto, código na fonte), modelos, unidade, base de interpolação, eixo de tempo, cotação, calendário, extrapolação por lado, horizonte e arredondamento. Item ausente, valor inválido ou chave desconhecida é erro; os únicos padrões são as extrapolações `Disabled`. Regra de metodologia que vale para todas as curvas de um modelo fica no modelo, como o cupom da NTN-B.
 - **Um pacote Java por modelo, estendível por Groovy.**
   - Construção:
     - `prontatsb3` (`PRONTA_TS_B3`): as 5 curvas B3, obedecendo os dias úteis publicados, com aviso quando o calendário diverge;
     - `ntnbbootstrapanbima` (`NTNB_BOOTSTRAP_ANBIMA`): bootstrap sequencial por bisseção sobre `tAnbmaCurvaPrimr`;
     - `sofrzerobloomberg` (`SOFR_ZERO_BLOOMBERG`): nós por tenor, sem bootstrap;
     - `pontosprontos`: código comum aos modelos sem bootstrap.
-  - Interpolação no modelo do QuantLib: grandeza (`Discount`, `CompoundFactor`, `ZeroYield`, `Price`) + interpolador (`Linear`, `LogLinear`, `BackwardFlat`, `ForwardFlat`, `Cubic`) + `DayCounter` do eixo. As funções do Manual de Curvas B3 viram configuração. Extrapolação por lado: `Disabled`, `FlatForward`, `FlatValue`.
+  - Interpolação no modelo do QuantLib: base de interpolação (`Discount`, `CompoundFactor`, `ZeroYield`, `Price`) + interpolador (`Linear`, `LogLinear`, `BackwardFlat`, `ForwardFlat`, `Cubic`) + `DayCounter` do eixo. As funções do Manual de Curvas B3 viram configuração. Extrapolação por lado: `Disabled`, `FlatForward`, `FlatValue`.
   - Calendários `Brazil`/`Settlement` e `UnitedStates`/`FederalReserve`, com os feriados listados na spec. Feriados também podem ser mantidos por planilha: a importação gera um script Groovy de calendário versionado, e a exportação devolve a planilha no mesmo formato.
   - Construção, interpolação e calendário podem ser criados ou sobrescritos por Groovy, com versões imutáveis no Blob Storage existente (`groovy-models/{tipo}/{nome}/`), propagadas a todas as instâncias em até 30 segundos, validação antes de ativar, sandbox por lista permitida e tempo limite.
 - **Tipos e enums com os nomes do QuantLib** (`Compounding`, `Frequency`, `BusinessDayConvention`, `DayCounter`, calendários), em implementação própria, 100% Java, com valores em `BigDecimal` e `pow`/`ln`/`exp` pelo `StrictMath` do Java. Todo o resto usa o que o Java 21 já tem (`java.time`, `RoundingMode`, records, sealed, virtual threads), em arquitetura hexagonal.
@@ -26,7 +26,7 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
   - Uma rota de simulação executa a construção com o mesmo código, sem gravar nada, e compara ponto a ponto com o que está gravado.
   - As rotas de consulta, interpolação e simulação aceitam `formato=xlsx` e baixam uma planilha com a memória de cálculo:
     - insumos lidos e descartados;
-    - cada ponto com `DU`, `DC`, `X`, grandeza e fatores;
+    - cada ponto com `DU`, `DC`, `X`, base de interpolação e fatores;
     - fluxos do bootstrap;
     - cada prazo interpolado com os vizinhos e o peso;
     - eventos.
@@ -60,7 +60,7 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
 ## Capabilities
 
 ### New Capabilities
-- `curve-build-pipeline`: cadastro e itens obrigatórios, unidades, contagem de tempo, cotação, grandezas, interpoladores, extrapolação, domínio, arredondamento, gravação dos pontos com trava, reconstrução, interpolação sob demanda, proveniência, `hashPontos` e log.
+- `curve-build-pipeline`: cadastro e itens obrigatórios, unidades, contagem de tempo, cotação, bases de interpolação, interpoladores, extrapolação, domínio, arredondamento, gravação dos pontos com trava, reconstrução, interpolação sob demanda, proveniência, `hashPontos` e log.
 - `curve-extension-models`: contratos dos modelos, nomes QuantLib, modelos e calendários nativos, ordem de resolução, versões e estados de script, validação e contenção.
 - `curve-engine-api`: rotas, parâmetros, códigos de erro, correlação, resolução por código e nome, catálogo, construção, consulta, interpolação, saída `xlsx` e `zip`, auditoria montada na hora, situação para o painel, valores aceitos, rotas de calendário, autenticação e papéis, e gestão de scripts.
 - `curve-calculation-memory`: simulação sem gravação, comparação com os pontos gravados e planilha de memória de cálculo com abas e colunas fixas.

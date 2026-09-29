@@ -9,11 +9,11 @@ O engine SHALL montar o cadastro de uma curva na data-base a partir das tabelas 
 - `tCurvaMercd`: `cTickerIdtfdUnic` = **código** (rotas por código); `cTickerIndcd` = **nome de exibição** (chave de todas as FKs, inclusive de `tDadoVertcCurva` e `tDadoCurva`); `cTpoVlr` = **unidade** (`TAXA`, `PRECO` ou `PONTOS`); `cNormaDia` = `DayCounter` da cotação; `cTpoJuro` = `Compounding` da cotação.
 - `tCurvaPrvdr`: a linha da curva com o **menor** `cPriorCsumo` é a **origem**: `iPrvdrDados` = fonte (ex.: `B3`), `cPrvdrMercd` = produto (ex.: `TS`), `cTickerPrvdr` = código na fonte (ex.: `PRE`). As demais linhas são as origens secundárias, usadas só quando o usuário pede a construção por uma delas (requisito "Construção por uma origem secundária"): não há troca automática de fonte.
 - `tConfgCurva`: a linha **vigente** na data-base, isto é, com `cTickerIndcd` = nome, `dInicVgcia <= dataBase` e (`dValidAte` nulo ou `dValidAte >= dataBase`). `cMotorCalc` = modelo de construção; `cRotnaCalc` = interpolador.
-- `tConfgCurva.cModDado` da configuração vigente: um objeto JSON (até 1024 caracteres) com os parâmetros da tabela abaixo, cada um como string, número ou, só em `MODELOS_POR_ORIGEM`, objeto. Ex.: `{"GRANDEZA":"Discount","CASAS_DECIMAIS":7,...}`. `tParmConfgCurva` não é lida nesta fase.
+- `tConfgCurva.cModDado` da configuração vigente: um objeto JSON (até 1024 caracteres) com os parâmetros da tabela abaixo, cada um como string, número ou, só em `MODELOS_POR_ORIGEM`, objeto. Ex.: `{"BASE_INTERPOLACAO":"Discount","CASAS_DECIMAIS":7,...}`. `tParmConfgCurva` não é lida nesta fase.
 
 | Chave | Tipo JSON | Obrigatória | Valores aceitos |
 |---|---|---|---|
-| `GRANDEZA` | string | sim | `Discount`, `CompoundFactor`, `ZeroYield`, `Price` |
+| `BASE_INTERPOLACAO` | string | sim | `Discount`, `CompoundFactor`, `ZeroYield`, `Price` |
 | `DAY_COUNTER_TEMPO` | string | sim | `Business252`, `Actual360`, `Actual365Fixed`, `Thirty360` |
 | `FREQUENCY` | string | só se `cTpoJuro` = `Compounded` | `Annual` (1), `Semiannual` (2), `EveryFourthMonth` (3), `Quarterly` (4), `Bimonthly` (6), `Monthly` (12), `EveryFourthWeek` (13), `Biweekly` (26), `Weekly` (52), `Daily` (365); o número é o `f` da fórmula de cotação |
 | `CALENDARIO` | string | sim | `Brazil`, `UnitedStates` ou nome de calendário Groovy |
@@ -32,7 +32,7 @@ Para unidade `TAXA`, `cNormaDia` e `cTpoJuro` SHALL ser obrigatórios; para `PRE
 - um valor não estiver entre os aceitos;
 - `cModDado` não for um objeto JSON válido, ou tiver chave desconhecida ou valor de tipo diferente do da tabela;
 - não houver linha vigente em `tConfgCurva`, ou houver mais de uma;
-- `GRANDEZA` = `Price` com unidade `TAXA`, ou `GRANDEZA` diferente de `Price` com unidade `PRECO` ou `PONTOS`;
+- `BASE_INTERPOLACAO` = `Price` com unidade `TAXA`, ou `BASE_INTERPOLACAO` diferente de `Price` com unidade `PRECO` ou `PONTOS`;
 - `cTpoJuro` for `SimpleThenCompounded` ou `CompoundedThenSimple` (não suportados nesta fase);
 - a política `FlatForward` for usada com interpolador que não seja `Linear` ou `LogLinear`;
 - a fonte ou o produto da origem não forem os esperados pelo modelo de construção cadastrado (para a origem principal, `cMotorCalc`; para uma secundária, o modelo de `MODELOS_POR_ORIGEM` ou, sem ele, `cMotorCalc`);
@@ -46,7 +46,7 @@ Nenhum valor padrão SHALL ser usado além dos dois marcados na tabela.
 Os valores de enum SHALL ser comparados exatamente como escritos nesta spec, com diferença entre maiúsculas e minúsculas (`business252` é inválido). As colunas `CHAR` de `tCurvaMercd` (`cNormaDia`, `cTpoJuro`, `cSitReg`, `cTpoVlr`, `cPaisInstt`) devolvem o valor completado com espaços à direita; o engine SHALL aparar os espaços à direita de toda coluna de texto do cadastro antes de interpretá-la. `cSitReg` diferente de `ATIVO`, inclusive nulo, SHALL ser tratado como curva inativa.
 
 #### Scenario: Cadastro completo da PRE
-- **WHEN** a curva `PRE` tem origem `B3`/`TS`/`PRE`, construção `PRONTA_TS_B3`, interpolador `LogLinear`, unidade `TAXA`, `cNormaDia` = `Business252`, `cTpoJuro` = `Compounded` e os parâmetros `GRANDEZA` = `Discount`, `DAY_COUNTER_TEMPO` = `Business252`, `FREQUENCY` = `Annual`, `CALENDARIO` = `Brazil`, `MERCADO_CALENDARIO` = `Settlement`, `BUSINESS_DAY_CONVENTION` = `Following`, `EXTRAPOLACAO_FIM` = `FlatForward`, `HORIZONTE` = `10Y`, `CASAS_DECIMAIS` = 7, `MODO_ARREDONDAMENTO` = `HALF_UP`
+- **WHEN** a curva `PRE` tem origem `B3`/`TS`/`PRE`, construção `PRONTA_TS_B3`, interpolador `LogLinear`, unidade `TAXA`, `cNormaDia` = `Business252`, `cTpoJuro` = `Compounded` e os parâmetros `BASE_INTERPOLACAO` = `Discount`, `DAY_COUNTER_TEMPO` = `Business252`, `FREQUENCY` = `Annual`, `CALENDARIO` = `Brazil`, `MERCADO_CALENDARIO` = `Settlement`, `BUSINESS_DAY_CONVENTION` = `Following`, `EXTRAPOLACAO_FIM` = `FlatForward`, `HORIZONTE` = `10Y`, `CASAS_DECIMAIS` = 7, `MODO_ARREDONDAMENTO` = `HALF_UP`
 - **THEN** a curva pode ser construída e interpolada sem nenhum parâmetro vindo do chamador, com extrapolação de início `Disabled`
 
 #### Scenario: Item obrigatório ausente
@@ -81,7 +81,7 @@ Uma curva MAY ter mais de uma ligação de provedor em `tCurvaPrvdr`: a de menor
 Com `fonte` e `produto` informados:
 - a origem usada SHALL ser a ligação da curva em `tCurvaPrvdr` com `iPrvdrDados` = `fonte` e `cPrvdrMercd` = `produto`, e `cTickerPrvdr` dela é o código na fonte. Sem nenhuma ligação assim, MUST falhar com `CADASTRO_INVALIDO`, listando as origens cadastradas da curva; com mais de uma, também `CADASTRO_INVALIDO`. A fonte `TCEN` MUST NOT ser informada: as mães de uma curva derivada não são uma origem selecionável;
 - o modelo de construção SHALL ser `MODELOS_POR_ORIGEM["{fonte}/{produto}"]` do `cModDado` quando a chave existir, e `cMotorCalc` quando não existir. O modelo escolhido SHALL aceitar a fonte e o produto informados, senão `CADASTRO_INVALIDO`;
-- todo o resto do cadastro (unidade, cotação, grandeza, interpolador, calendário, extrapolação, horizonte e arredondamento) SHALL ser o da curva, o mesmo da origem principal: a curva é uma só, e muda só de onde vêm os pontos;
+- todo o resto do cadastro (unidade, cotação, base de interpolação, interpolador, calendário, extrapolação, horizonte e arredondamento) SHALL ser o da curva, o mesmo da origem principal: a curva é uma só, e muda só de onde vêm os pontos;
 - as regras de gravação, trava, recálculo e situação são as da construção pela API. Com pontos gravados e sem `forcarRecalculo=true`, a resposta é `EXISTENTE`, e a comparação SHALL ser feita contra o que a origem informada produz.
 
 A proveniência, a resposta, a memória de cálculo e o `CURVA_GRAVADA` SHALL informar a origem usada (fonte, produto, código na fonte e prioridade) e o aviso `ORIGEM_SECUNDARIA`. O banco não guarda de qual origem vieram os pontos gravados (o schema não muda): a construção automática, a rota de situação e o arquivo de auditoria comparam sempre com a origem principal, e uma data construída pela secundária aparece como diferente da fonte até ser recalculada pela principal. Quem construiu pela secundária, e quando, está no `CURVA_GRAVADA`.
@@ -130,7 +130,7 @@ A fração de ano de cada `DayCounter` SHALL ser: `Business252` = `DU/252`, com 
 ### Requirement: Dias úteis publicados pela fonte ou informados pelo usuário
 Os dias úteis de um ponto que vierem da fonte ou do usuário SHALL ser obedecidos sem discussão; o calendário só conta o que ninguém informou. Os dias corridos nunca dependem do calendário: são `d − B`.
 
-**Na construção,** cada modelo de construção SHALL declarar, por ponto, os dias úteis publicados pela fonte, quando ela os publica (campo `diasUteisPublicados` de `PontoConstruido`, spec `curve-extension-models`):
+**Na construção,** cada modelo de construção SHALL declarar, por ponto, os dias úteis publicados pela fonte, quando ela os publica (campo `diasUteisPublicados` de `VerticeConstruido`, spec `curve-extension-models`):
 
 | Modelo | O que a fonte publica por ponto | Data do ponto | Dias úteis do ponto |
 |---|---|---|---|
@@ -177,8 +177,8 @@ O fator de desconto SHALL ser `DF = 1/FA`, e a taxa implícita de um fator SHALL
 - **WHEN** a `DCL` tem valor 5,000 num prazo de 90 dias corridos, com cotação `Actual360`/`Simple`
 - **THEN** `FA` = `1 + 0,05 × 90/360` = 1,0125
 
-### Requirement: Grandeza interpolada
-Cada ponto `(d, valor)` SHALL ser convertido em `x = fração de ano de d pelo DayCounter do eixo` e `y` pela grandeza cadastrada:
+### Requirement: Base de interpolação
+Cada ponto `(d, valor)` SHALL ser convertido em `x = fração de ano de d pelo DayCounter do eixo` e `y` pela base de interpolação cadastrada:
 - `Discount`: `y = DF(d)`, pela cotação cadastrada;
 - `CompoundFactor`: `y = FA(d)`, pela cotação cadastrada;
 - `ZeroYield`: `y = r`;
@@ -187,7 +187,7 @@ Cada ponto `(d, valor)` SHALL ser convertido em `x = fração de ano de d pelo D
 O valor de um prazo SHALL ser obtido pela conversão inversa do `y` calculado, usando a fração de ano da cotação no próprio prazo. `ForwardRate` não é suportada nesta fase.
 
 #### Scenario: Eixo e cotação diferentes (DCL)
-- **WHEN** a `DCL` usa grandeza `Discount`, eixo `Business252` e cotação `Actual360`/`Simple`
+- **WHEN** a `DCL` usa base de interpolação `Discount`, eixo `Business252` e cotação `Actual360`/`Simple`
 - **THEN** `x` de cada ponto é `DU/252`, e `y` é `1/(1 + r·DC/360)`
 
 ### Requirement: Interpoladores
@@ -200,7 +200,7 @@ Entre dois pontos consecutivos `(x_i, y_i)` e `(x_{i+1}, y_{i+1})`, com `w = (x 
 
 Os pontos SHALL ser ordenados por data, e dois pontos com a mesma data MUST NOT existir. Os interpoladores SHALL receber `x` estritamente crescentes (requisito "Pontos no mesmo prazo do eixo"). As funções do Manual de Curvas B3 SHALL ser obtidas só por configuração:
 
-| Função B3 | Grandeza + interpolador | Eixo | Cotação |
+| Função B3 | Base de interpolação + interpolador | Eixo | Cotação |
 |---|---|---|---|
 | 1.4.2 Flat Forward 252 | `Discount` + `LogLinear` | `Business252` | `Business252`/`Compounded`/`Annual` |
 | 1.4.3 Flat Forward 252 com convenção linear | `Discount` + `LogLinear` | `Business252` | `Actual360`/`Simple` |
@@ -220,7 +220,7 @@ Os pontos SHALL ser ordenados por data, e dois pontos com a mesma data MUST NOT 
 A política de início SHALL valer para prazos antes do primeiro ponto, e a de fim, para prazos depois do último:
 - `Disabled`: o prazo MUST resultar em erro `PRAZO_FORA_DO_DOMINIO`.
 - `FlatForward`: aplica a fórmula do interpolador ao segmento adjacente com `w` fora de `[0, 1]`. No fim, usa o penúltimo e o último ponto (manual 1.4.6 e 1.4.10); no início, o primeiro e o segundo (manual 1.4.7). Exige pelo menos 2 pontos.
-- `FlatValue`: repete o **valor** do ponto adjacente (taxa, preço ou pontos, não a grandeza) e converte esse valor na grandeza usando a fração de ano do próprio prazo (manual 1.4.8 e 1.4.9).
+- `FlatValue`: repete o **valor** do ponto adjacente (taxa, preço ou pontos, não a base de interpolação) e converte esse valor na base de interpolação usando a fração de ano do próprio prazo (manual 1.4.8 e 1.4.9).
 
 #### Scenario: Flat forward no fim com convenção linear (DCL)
 - **WHEN** a `DCL` é extrapolada no fim com `FlatForward`

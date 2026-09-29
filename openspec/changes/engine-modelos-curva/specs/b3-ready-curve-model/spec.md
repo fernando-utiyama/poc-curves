@@ -51,7 +51,7 @@ O modelo SHALL registrar na memória de cálculo: na aba `Insumos`, a tabela `tB
 ### Requirement: Cadastro das cinco curvas
 As cinco curvas SHALL ser cadastradas com construção `PRONTA_TS_B3`, origem `B3`/`TS`, calendário `Brazil`/`Settlement`/`Following`, extrapolação de início `Disabled` e horizonte `10Y`, com os demais itens abaixo. Eles reproduzem o Manual de Curvas B3. As casas decimais são as 7 do leiaute oficial do `TaxaSwap.txt` (campo "Taxa teórica", posições 53 a 66), e não as observadas num arquivo: o valor gravado é sempre idêntico ao publicado.
 
-| Código | Nome | Código na fonte | Unidade | Grandeza + interpolador | Eixo | Cotação | Extrap. fim | Casas | Modo |
+| Código | Nome | Código na fonte | Unidade | Base de interpolação + interpolador | Eixo | Cotação | Extrap. fim | Casas | Modo |
 |---|---|---|---|---|---|---|---|---|---|
 | `PRE` | DIxPRE | `PRE` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Business252`/`Compounded`/`Annual` | `FlatForward` | 7 | `HALF_UP` |
 | `DCL` | Cupom limpo de dólar | `DCL` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Actual360`/`Simple` | `FlatForward` | 7 | `HALF_UP` |

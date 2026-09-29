@@ -30,11 +30,11 @@ domain/                       Java puro: nada de Spring, JPA, Jackson, Azure, PO
   quantlib/                   Compounding, Frequency, BusinessDayConvention, DayCounter, Prazo, InterestRate, Periodos
   matematica/                 DecimalMath
   calendario/                 Calendario, Brazil, UnitedStates, CalendarioPorLista
-  interpolacao/               Grandeza, Extrapolacao, Classificacao, Interpolador, InterpoladorLocal, Linear, LogLinear,
+  interpolacao/               BaseInterpolacao, Extrapolacao, Classificacao, Interpolador, InterpoladorLocal, Linear, LogLinear,
                               BackwardFlat, ForwardFlat, Cubic, EixoDiasUteis, PreparacaoPontos,
-                              CurvaInterpolada, GradeInterpolada
-  construcao/                 ModeloConstrucao, ContextoConstrucao, LeitorInsumos (porta do domínio),
-                              LinhaB3/LinhaAnbima/LinhaBloomberg, PontosProntos, ProntaTsB3, SofrZeroBloomberg,
+                              CurvaInterpolada, InterpolacaoDadoCurva
+  construcao/                 ModeloConstrucao, ContextoConstrucao, CurvaPrimariaPort (porta do domínio),
+                              B3CurvaPrimaria/AnbimaCurvaPrimaria/BloombergCurvaPrimaria, PontosProntos, ProntaTsB3, SofrZeroBloomberg,
                               NtnbBootstrapAnbima
   memoria/                    MemoriaCalculo e as linhas (records)
   cadastro/                   TabelaParametros, ValidadorCadastro
@@ -43,8 +43,8 @@ application/
                               InterpolarCurva, RegravarInterpolada, ProcessarCarga, ConstruirData,
                               ConsultarSituacao, ConsultarValoresCadastro, GerirScripts, GerirCalendario,
                               MontarAuditoria
-  port/out/                   CadastroPort, InsumosPort, PontosPort, InterpoladaPort, TravaCurvaPort,
-                              ResumoCurvaPort, ScriptsPort, CompiladorScriptsPort, PlanilhaPort, EventosPort
+  port/out/                   uma porta por tabela: CurvaMercadoPort (com a trava e o resumo de tCurvaMercd),
+                              CurvaProvedorPort, ConfiguracaoCurvaPort, DadoVerticeCurvaPort, DadoCurvaPort; e ScriptsPort, CompiladorScriptsPort, PlanilhaPort, EventosPort
   service/                    uma classe por caso de uso (@Service; @Transactional quando grava);
                               Paralelo (virtual threads), ResolverModelos
 adapter/
@@ -232,24 +232,24 @@ public class FusoConfig {
 ### 1.5 Erros, avisos e rótulos: `domain/curva/`
 
 ```java
-public interface ComRotulo { String rotulo(); String descricao(); }   // texto pt-BR no construtor do enum
+public record Texto(String rotulo, String descricao) {}              // rótulo e descrição pt-BR de um valor
 
-public enum CodigoErro implements ComRotulo {
-  PARAMETRO_INVALIDO(400, "Parâmetro inválido", "..."), NAO_AUTENTICADO(401, ...), SEM_PERMISSAO(403, ...),
+public enum CodigoErro {
+  PARAMETRO_INVALIDO(400, new Texto("Parâmetro inválido", "...")), NAO_AUTENTICADO(401, ...), SEM_PERMISSAO(403, ...),
   CURVA_NAO_ENCONTRADA(404, ...), CURVA_NAO_CONSTRUIDA(404, ...),
   CODIGO_DUPLICADO(409, ...), NOME_AMBIGUO(409, ...), CONSTRUCAO_EM_ANDAMENTO(409, ...), ESTADO_SCRIPT_CONCORRENTE(409, ...),
   CADASTRO_INVALIDO(422, ...), CURVA_MAE_NAO_CONSTRUIDA(422, ...), INSUMO_INCOMPLETO(422, ...), INSUMO_AUSENTE(422, ...),
   INSUMO_INVALIDO(422, ...), PONTOS_NAO_INTERPOLAVEIS(422, ...), PRAZO_FORA_DO_DOMINIO(422, ...), MODELO_FALHOU(422, ...),
   SCRIPT_INVALIDO(422, ...), ERRO_INTERNO(500, ...), BLOB_INDISPONIVEL(503, ...);
-  private final int http; private final String rotulo, descricao;
-  CodigoErro(int http, String rotulo, String descricao) { this.http = http; this.rotulo = rotulo; this.descricao = descricao; }
-  public int http() { return http; } public String rotulo() { return rotulo; } public String descricao() { return descricao; }
+  private final int http; private final Texto texto;
+  CodigoErro(int http, Texto texto) { this.http = http; this.texto = texto; }
+  public int http() { return http; } public Texto texto() { return texto; }
 }
 
-public enum CodigoAviso implements ComRotulo {
+public enum CodigoAviso {
   CURVA_INATIVA, FORA_DA_VIGENCIA_CURVA, PONTOS_DIFERENTES_DA_FONTE, PONTO_DESCARTADO_MESMO_PRAZO,
   PONTO_DESCARTADO_PRAZO_NAO_POSITIVO, CALENDARIO_DIVERGENTE, CALCULO_GRAVADO_DIVERGENTE, SEM_CALCULO_GRAVADO,
-  INTERPOLADA_DESATUALIZADA, ORIGEM_SECUNDARIA, ESTADO_SCRIPT_DESATUALIZADO, ESTADO_SCRIPT_DESCONHECIDO;  // cada um com (rotulo, descricao)
+  INTERPOLADA_DESATUALIZADA, ORIGEM_SECUNDARIA, ESTADO_SCRIPT_DESATUALIZADO, ESTADO_SCRIPT_DESCONHECIDO;  // cada um com new Texto(...) e texto()
 }
 
 public record Detalhe(String campo, Integer linha, String valor, String motivo) {}
@@ -263,7 +263,7 @@ public final class ErroEngine extends RuntimeException {
 }
 ```
 
-Todo enum que aparece no cadastro, nas respostas, nos avisos e nos erros implementa `ComRotulo` (texto no construtor: valor sem texto não compila). Os três valores de `RoundingMode` aceitos no cadastro têm os rótulos na `TabelaParametros` (seção 5.3), porque o `RoundingMode` é do Java.
+Todo enum que aparece no cadastro, nas respostas, nos avisos e nos erros recebe um `Texto` no construtor e tem o acessor `texto()`, sem interface comum (valor sem texto não compila). O catálogo do `GET /valores-cadastro` lista cada enum de forma explícita, com referência de método (seção 13.4). Os três valores de `RoundingMode` aceitos no cadastro têm os rótulos na `TabelaParametros` (seção 5.3), porque o `RoundingMode` é do Java.
 
 ---
 
@@ -293,7 +293,7 @@ public final class DecimalMath {
 
 `BigDecimal.valueOf(double)` usa a representação decimal mais curta do `double` (a do `Double.toString`), também determinística.
 
-Arredondamento: **nada próprio**. Valor da curva = `valor.setScale(parametros.casasDecimais(), parametros.modoArredondamento())` (o `modoArredondamento` já é `RoundingMode`). Fatores = `fator.setScale(16, RoundingMode.HALF_UP)`, direto no cálculo dos fatores (seção 6.5).
+Arredondamento: **nada próprio**. Valor da curva = `valor.setScale(configuracao.casasDecimais(), configuracao.modoArredondamento())` (o `modoArredondamento` já é `RoundingMode`). Fatores = `fator.setScale(16, RoundingMode.HALF_UP)`, direto no cálculo dos fatores (seção 6.5).
 
 ---
 
@@ -520,27 +520,27 @@ private static Optional<LocalDate> observado(LocalDate f) {   // domingo → seg
 ### 5.1 Records (`domain/curva/`)
 
 ```java
-public enum Unidade implements ComRotulo { TAXA, PRECO, PONTOS; /* (rotulo, descricao) */ }
-public record Origem(String fonte, String produto, String codigoNaFonte, int prioridade) {}
+public enum Unidade { TAXA(new Texto(...)), PRECO(new Texto(...)), PONTOS(new Texto(...)); /* campo Texto e texto(), como em CodigoErro */ }
+public record CurvaProvedor(String fonte, String produto, String codigoNaFonte, int prioridade) {}   // uma linha de tCurvaPrvdr
 public record Mae(String nome, String papel) {}
-public record Parametros(Grandeza grandeza, DayCounter dayCounterTempo, Frequency frequency, String calendario,
+public record ConfiguracaoCurva(BaseInterpolacao baseInterpolacao, DayCounter dayCounterTempo, Frequency frequency, String calendario,
     String mercadoCalendario, BusinessDayConvention convencao, Extrapolacao extrapolacaoInicio,
     Extrapolacao extrapolacaoFim, Period horizonte, int casasDecimais, RoundingMode modoArredondamento,
     Integer versaoScriptConstrucao, Integer versaoScriptInterpolacao, Integer versaoScriptCalendario,
     Map<String, String> modelosPorOrigem) {}
-public record CadastroCurva(String codigo, String nome, Unidade unidade, DayCounter dayCounterCotacao,
+public record CurvaMercado(String codigo, String nome, Unidade unidade, DayCounter dayCounterCotacao,
     Compounding compounding, boolean ativa, LocalDate inicioVigencia, LocalDate fimVigencia,
-    List<Origem> origens /* por prioridade */, List<Mae> maes /* vazia se não derivada */,
-    long idConfiguracao, String modeloConstrucao, String interpolador, Parametros parametros, String jsonParametros) {
-  public Origem origemPrincipal() { return origens.getFirst(); }       // SequencedCollection (Java 21)
+    List<CurvaProvedor> origens /* por prioridade */, List<Mae> maes /* vazia se não derivada */,
+    long idConfiguracao, String modeloConstrucao, String interpolador, ConfiguracaoCurva configuracao, String jsonParametros) {
+  public CurvaProvedor origemPrincipal() { return origens.getFirst(); }       // SequencedCollection (Java 21)
   public boolean derivada() { return "TCEN".equals(origemPrincipal().fonte()); }
-  public InterestRate cotacao() { return new InterestRate(dayCounterCotacao, compounding, parametros.frequency()); }
+  public InterestRate cotacao() { return new InterestRate(dayCounterCotacao, compounding, configuracao.frequency()); }
 }
 ```
 
-### 5.2 Persistência (`adapter/out/persistence/`, implementa `CadastroPort`)
+### 5.2 Persistência (`adapter/out/persistence/`, implementa `CurvaMercadoPort`, `CurvaProvedorPort` e `ConfiguracaoCurvaPort`)
 
-Entidades JPA (classes, só no adaptador) de `tCurvaMercd`, `tCurvaPrvdr` e `tConfgCurva` (a atual `ConfgCurvaEntity` é conferida contra o `001_SCRIPT_INICIAL.sql`). Texto sempre com `stripTrailing()` na leitura (colunas `CHAR`). O adaptador devolve os dados crus em records (`CadastroBruto`); quem monta e valida o `CadastroCurva` é o domínio (5.3). Consultas (`@Query(nativeQuery = true)` quando o JPQL não expressa igual):
+Entidades JPA (classes, só no adaptador) de `tCurvaMercd`, `tCurvaPrvdr` e `tConfgCurva` (a atual `ConfgCurvaEntity` é conferida contra o `001_SCRIPT_INICIAL.sql`). Texto sempre com `stripTrailing()` na leitura (colunas `CHAR`). O adaptador devolve os dados crus em records (`CurvaMercadoLida`); quem monta e valida o `CurvaMercado` é o domínio (5.3). Consultas (`@Query(nativeQuery = true)` quando o JPQL não expressa igual):
 
 ```sql
 -- curva por código (0 → CURVA_NAO_ENCONTRADA; >1 → CODIGO_DUPLICADO)
@@ -561,7 +561,7 @@ O `cModDado` é lido pelo adaptador com o Jackson e entregue ao domínio como `M
 
 `TabelaParametros`: lista de records `Chave(String nome, TipoJson tipo, boolean obrigatoria, String condicao, String padrao, List<String> valores, String formato, String rotulo, String descricao)`, na ordem da tabela da spec `curve-build-pipeline`. Fonte única do validador e do `GET /valores-cadastro`. `MODO_ARREDONDAMENTO` aceita `HALF_UP`, `HALF_EVEN`, `DOWN` e vira `RoundingMode.valueOf(...)` (os nomes são os mesmos do Java).
 
-`ValidadorCadastro.montar(CadastroBruto, Optional<Origem> origemPedida, Function<String, ModeloConstrucao> resolver)`: junta todos os problemas e lança um único `CADASTRO_INVALIDO` com um `Detalhe` por problema:
+`ValidadorCadastro.montar(CurvaMercadoLida, Optional<CurvaProvedor> origemPedida, Function<String, ModeloConstrucao> resolver)`: junta todos os problemas e lança um único `CADASTRO_INVALIDO` com um `Detalhe` por problema:
 1. `cModDado` é objeto JSON; cada chave existe na tabela; tipo certo.
 2. Obrigatórios presentes; valores nas listas, com caixa exata. Padrão só em `EXTRAPOLACAO_INICIO`/`FIM` (`Disabled`).
 3. `cTpoVlr` ∈ `TAXA|PRECO|PONTOS`; com `TAXA`, `cNormaDia` ∈ constantes de `DayCounter` (`DayCounter.valueOf`) e `cTpoJuro` ∈ `Simple|Compounded|Continuous`.
@@ -614,11 +614,11 @@ Classes públicas e não finais: um script Groovy pode estender `LogLinear` e so
 
 `Cubic implements Interpolador`: spline natural em `BigDecimal`. `h_i = x_{i+1} − x_i`; segundas derivadas `M` com `M_0 = M_{n-1} = 0` e, para `i = 1..n-2`, `h_{i-1}·M_{i-1} + 2(h_{i-1}+h_i)·M_i + h_i·M_{i+1} = 6·((y_{i+1}−y_i)/h_i − (y_i−y_{i-1})/h_{i-1})`, resolvido pelo algoritmo de Thomas. Avaliação: `S(x) = M_i(x_{i+1}−x)³/(6h_i) + M_{i+1}(x−x_i)³/(6h_i) + (y_i/h_i − M_i h_i/6)(x_{i+1}−x) + (y_{i+1}/h_i − M_{i+1} h_i/6)(x−x_i)`. Com 2 pontos, igual ao linear.
 
-### 6.2 `Grandeza`, `Extrapolacao` e `Classificacao` (enums)
+### 6.2 `BaseInterpolacao`, `Extrapolacao` e `Classificacao` (enums)
 
 ```java
-public enum Grandeza implements ComRotulo {
-  Discount, CompoundFactor, ZeroYield, Price;   // cada um com (rotulo, descricao)
+public enum BaseInterpolacao {
+  Discount, CompoundFactor, ZeroYield, Price;   // cada um com new Texto(...) e texto()
   public BigDecimal paraY(BigDecimal valor, Prazo prazo, InterestRate cotacao) {
     return switch (this) {
       case Discount -> BigDecimal.ONE.divide(cotacao.fator(valor, prazo), DecimalMath.MC);
@@ -636,22 +636,22 @@ public enum Grandeza implements ComRotulo {
     };
   }
 }
-public enum Extrapolacao implements ComRotulo { Disabled, FlatForward, FlatValue; /* (rotulo, descricao) */ }
-public enum Classificacao implements ComRotulo { PONTO, INTERPOLADO, EXTRAPOLADO_INICIO, EXTRAPOLADO_FIM, FORA_DO_DOMINIO; /* ... */ }
+public enum Extrapolacao { Disabled, FlatForward, FlatValue; /* new Texto(...) e texto() */ }
+public enum Classificacao { PONTO, INTERPOLADO, EXTRAPOLADO_INICIO, EXTRAPOLADO_FIM, FORA_DO_DOMINIO; /* new Texto(...) e texto() */ }
 ```
 
 ### 6.3 Dias úteis ancorados: `EixoDiasUteis.java` (requisito "Dias úteis publicados pela fonte ou informados pelo usuário")
 
 ```java
-public record PontoGravado(LocalDate data, BigDecimal valor, Integer diasUteis /* cDiaUtil; null = calendário */,
+public record DadoVerticeCurva(LocalDate data, BigDecimal valor, Integer diasUteis /* cDiaUtil; null = calendário */,
     Integer diasCorridos, Integer dias30360, BigDecimal fatorAcum, BigDecimal fatorDia) {}
 
 public final class EixoDiasUteis {
   private final LocalDate base; private final Calendario cal; private final List<LocalDate> datas; private final int[] du;
 
-  public EixoDiasUteis(LocalDate base, Calendario cal, List<PontoGravado> mantidos) {   // em ordem de data
+  public EixoDiasUteis(LocalDate base, Calendario cal, List<DadoVerticeCurva> mantidos) {   // em ordem de data
     this.base = base; this.cal = cal;
-    this.datas = mantidos.stream().map(PontoGravado::data).toList();
+    this.datas = mantidos.stream().map(DadoVerticeCurva::data).toList();
     this.du = mantidos.stream().mapToInt(p -> p.diasUteis() != null ? p.diasUteis() : cal.diasUteis(base, p.data())).toArray();
   }
 
@@ -683,26 +683,26 @@ Entrada: pontos em ordem de data. `x` = `dayCounterTempo.fracaoAno(new Prazo(B, 
 2. `x` ≤ `x` do último mantido → descarta com `PONTO_DESCARTADO_MESMO_PRAZO` (data descartada, data mantida, `x`).
 3. Nenhum mantido → `CURVA_NAO_CONSTRUIDA`.
 
-Devolve `record PontosPreparados(List<PontoGravado> mantidos, List<Aviso> avisos)`. Os gravados nunca são alterados.
+Devolve `record PontosPreparados(List<DadoVerticeCurva> mantidos, List<Aviso> avisos)`. Os gravados nunca são alterados.
 
 ### 6.5 `CurvaInterpolada.java`
 
 Criada por um método de fábrica com o cadastro, os pontos mantidos, o calendário e o interpolador resolvidos:
 - início do domínio `cal.advance(B, 1)`; fim `max(último ponto, B.plus(horizonte))`;
-- `xs`, `ys` (`grandeza.paraY`), eixo de dias úteis, políticas de início e fim.
+- `xs`, `ys` (`baseInterpolacao.paraY`), eixo de dias úteis, políticas de início e fim.
 
 `ValorNoPrazo avaliar(LocalDate d, Integer duPedido)`, com `record ValorNoPrazo(LocalDate data, int du, long dc, BigDecimal x, BigDecimal valor, Classificacao classificacao, BigDecimal fatorAcum, BigDecimal fatorDia)`:
 1. `d` fora de `[início, fim]` → `PRAZO_FORA_DO_DOMINIO` (prazo e limites).
 2. `du = duPedido != null ? duPedido : eixo.du(d)`; `prazo = new Prazo(B, d, du)`; `x` pelo eixo.
 3. `d` = data de ponto mantido → valor gravado, `PONTO`.
-4. Antes do primeiro → política de início; depois do último → política de fim; senão interpolador e `grandeza.deY`.
+4. Antes do primeiro → política de início; depois do último → política de fim; senão interpolador e `baseInterpolacao.deY`.
 5. `Disabled` → `PRAZO_FORA_DO_DOMINIO`; `FlatValue` → valor do ponto adjacente; `FlatForward` (só `Linear`/`LogLinear`, ≥ 2 pontos) → `extrapolar(w, yE, yD)` do segmento adjacente com `w` fora de `[0,1]`.
 6. `valor.setScale(casasDecimais, modoArredondamento)`. Para `TAXA`: `fa = cotacao.fator(valorArredondado, prazo).setScale(16, RoundingMode.HALF_UP)`, `fd = DecimalMath.pow(fa, BigDecimal.ONE.divide(BigDecimal.valueOf(du), DecimalMath.MC)).setScale(16, RoundingMode.HALF_UP)` (`du` ≥ 1). `PRECO`/`PONTOS`: fatores nulos.
 
-### 6.6 `GradeInterpolada.java`
+### 6.6 `InterpolacaoDadoCurva.java`
 
 - Início: `cal.advance(B, 1)`, ou o primeiro ponto se a extrapolação de início é `Disabled`. Fim: fim do domínio, ou o último ponto se a de fim é `Disabled`.
-- `List<DiaInterpolado>` (`record DiaInterpolado(LocalDate data, BigDecimal valor)`), um por dia corrido de `inicio.datesUntil(fim.plusDays(1))`, cada dia pelo mesmo `avaliar` da 6.5, com os dias úteis contados em ordem.
+- `List<DadoCurva>` (`record DadoCurva(LocalDate data, BigDecimal valor)`), um por dia corrido de `inicio.datesUntil(fim.plusDays(1))`, cada dia pelo mesmo `avaliar` da 6.5, com os dias úteis contados em ordem.
 - O valor de cada dia MUST ser igual ao da rota de interpolação para a mesma data.
 
 ---
@@ -733,7 +733,7 @@ O adaptador REST converte com `switch (resultado) { case Construida c -> ...; ca
 
 ### 7.2 `ConstruirCurvaService` (`@Transactional(timeout = 30)`)
 
-Portas: `TravaCurvaPort`, `CadastroPort`, `PontosPort` (`tDadoVertcCurva`), `InterpoladaPort` (`tDadoCurva`), `InsumosPort` (implementa `LeitorInsumos`), `ResumoCurvaPort` (`tCurvaMercd`), `EventosPort`. O SQL que tem de chegar ao banco (trava e resumo em consulta nativa; exclusões em `@Modifying @Query`; inclusões por `saveAll` com o `batch_size`):
+Portas: `CurvaMercadoPort` (`tCurvaMercd`: trava, `dBaseReft` e `cUsuarCalc`), `CurvaProvedorPort` e `ConfiguracaoCurvaPort` (cadastro), `DadoVerticeCurvaPort` (`tDadoVertcCurva`), `DadoCurvaPort` (`tDadoCurva`), `CurvaPrimariaPort` (tabelas `*CurvaPrimr`), `EventosPort`. O SQL que tem de chegar ao banco (trava e resumo em consulta nativa; exclusões em `@Modifying @Query`; inclusões por `saveAll` com o `batch_size`):
 
 ```sql
 SET LOCK_TIMEOUT 30000;
@@ -754,9 +754,9 @@ Passos:
 1. Trava; pontos atuais (depois da trava).
 2. Cadastro vigente (seção 5) com a origem pedida; na construção pela API, avisos `CURVA_INATIVA`/`FORA_DA_VIGENCIA_CURVA`.
 3. Havendo pontos e sem `forcarRecalculo`: passos 4–6 sem gravar, comparar `hashPontos`, aviso `PONTOS_DIFERENTES_DA_FONTE` com a quantidade de pontos diferentes → `Existente`. Nada é escrito.
-4. Insumos pelo `LeitorInsumos`; na carga, linhas lidas ≠ `linhasAvisadas[código na fonte]` → `INSUMO_INCOMPLETO` (lidas e avisadas).
-5. Modelo → `List<PontoConstruido>`; arredondar; data repetida → `MODELO_FALHOU`. Para cada ponto: `DUp` = publicado ou `cal.diasUteis(B, d)`; publicado ≠ calendário, ou data não útil → acumular `CALENDARIO_DIVERGENTE`; `DC`; `DayCounter.dias30360`; para `TAXA`, fatores (16 casas).
-6. `CurvaInterpolada` + `GradeInterpolada`; falha → desfaz tudo.
+4. Insumos pelo `CurvaPrimariaPort`; na carga, linhas lidas ≠ `linhasAvisadas[código na fonte]` → `INSUMO_INCOMPLETO` (lidas e avisadas).
+5. Modelo → `List<VerticeConstruido>`; arredondar; data repetida → `MODELO_FALHOU`. Para cada ponto: `DUp` = publicado ou `cal.diasUteis(B, d)`; publicado ≠ calendário, ou data não útil → acumular `CALENDARIO_DIVERGENTE`; `DC`; `DayCounter.dias30360`; para `TAXA`, fatores (16 casas).
+6. `CurvaInterpolada` + `InterpolacaoDadoCurva`; falha → desfaz tudo.
 7. Gravar (SQL acima); `Construida` ou `Reconstruida`.
 8. `TransactionSynchronization.afterCommit`: `CURVA_GRAVADA` e `CONSTRUCAO_CONCLUIDA`. Falha → `CONSTRUCAO_FALHOU`, sem `CURVA_GRAVADA`.
 
@@ -779,8 +779,8 @@ Grade em memória a partir dos pontos atuais × `SELECT dVertcReft, vPrecoTx FRO
 ```java
 public final class HashPontos {
   private HashPontos() {}
-  public static String calcular(List<PontoGravado> pontos) {
-    var texto = pontos.stream().sorted(Comparator.comparing(PontoGravado::data))
+  public static String calcular(List<DadoVerticeCurva> pontos) {
+    var texto = pontos.stream().sorted(Comparator.comparing(DadoVerticeCurva::data))
         .map(p -> p.data() + ";" + (p.valor().signum() == 0 ? "0" : p.valor().stripTrailingZeros().toPlainString()))
         .collect(Collectors.joining("\n"));
     try {
@@ -797,27 +797,27 @@ public final class HashPontos {
 ### 8.1 Contratos
 
 ```java
-public record PontoConstruido(LocalDate data, BigDecimal valor, Integer diasUteisPublicados) {}
+public record VerticeConstruido(LocalDate data, BigDecimal valor, Integer diasUteisPublicados) {}
 public interface ModeloConstrucao {
   String nome(); String fonte(); String produto();
   default List<String> papeis() { return List.of(); }
-  List<PontoConstruido> construir(ContextoConstrucao ctx, MemoriaCalculo memoria);
+  List<VerticeConstruido> construir(ContextoConstrucao ctx, MemoriaCalculo memoria);
 }
-public record ContextoConstrucao(CadastroCurva cadastro, Origem origem, LocalDate dataBase, Calendario calendario,
-    LeitorInsumos insumos, Function<String, CurvaMae> maes /* só derivadas; nos outros modelos lança MODELO_FALHOU */) {
+public record ContextoConstrucao(CurvaMercado cadastro, CurvaProvedor origem, LocalDate dataBase, Calendario calendario,
+    CurvaPrimariaPort curvasPrimarias, Function<String, CurvaMae> maes /* só derivadas; nos outros modelos lança MODELO_FALHOU */) {
   public CurvaMae curvaMae(String papel) { return maes.apply(papel); }
 }
-public interface LeitorInsumos {                      // porta do domínio; implementada no adaptador
-  List<LinhaB3> b3(String nomeCurva, LocalDate dataBase);
-  List<LinhaAnbima> anbima(String nomeCurva, LocalDate dataBase);
-  List<LinhaBloomberg> bloomberg(String nomeCurva, LocalDate dataBase);
+public interface CurvaPrimariaPort {                  // porta do domínio (tabelas *CurvaPrimr); implementada no adaptador
+  List<B3CurvaPrimaria> b3(String nomeCurva, LocalDate dataBase);
+  List<AnbimaCurvaPrimaria> anbima(String nomeCurva, LocalDate dataBase);
+  List<BloombergCurvaPrimaria> bloomberg(String nomeCurva, LocalDate dataBase);
 }
-public record LinhaB3(int id, String curva, LocalDate dataBase, Integer diasCorridos, Integer diasUteis, BigDecimal taxa) {}
-public record LinhaAnbima(int id, String curva, LocalDate dataBase, BigDecimal prazo, BigDecimal taxa) {}
-public record LinhaBloomberg(int id, String curva, String ticker, LocalDate dataBase, BigDecimal ultimo) {}
+public record B3CurvaPrimaria(int id, String curva, LocalDate dataBase, Integer diasCorridos, Integer diasUteis, BigDecimal taxa) {}
+public record AnbimaCurvaPrimaria(int id, String curva, LocalDate dataBase, BigDecimal prazo, BigDecimal taxa) {}
+public record BloombergCurvaPrimaria(int id, String curva, String ticker, LocalDate dataBase, BigDecimal ultimo) {}
 ```
 
-Adaptador (`InsumosJpaAdapter`), consultas nativas:
+Adaptador (`CurvaPrimariaJpaAdapter`), consultas nativas:
 
 ```sql
 SELECT cldtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx FROM tBtrsCurvaPrimr  WHERE cTickerIndcd = ? AND dBaseReft = ?;
@@ -1018,7 +1018,18 @@ Usuário: claim `preferred_username`, senão `appid`.
 
 ### 13.4 `GET /valores-cadastro`
 
-Gerado da `TabelaParametros` (5.3) e dos enums com `ComRotulo`; modelos por tipo (nativos + Groovy `ATIVA`), com fonte/produto e papéis; catálogos de enums de resposta, avisos e erros; `versaoValores` = SHA-256 do JSON com chaves ordenadas.
+Gerado da `TabelaParametros` (5.3) e dos enums, listados um a um com referência de método, sem interface:
+
+```java
+record ItemCatalogo(String valor, String rotulo, String descricao) {}
+static <E extends Enum<E>> List<ItemCatalogo> itens(E[] valores, Function<E, Texto> texto) {
+  return Arrays.stream(valores).map(v -> new ItemCatalogo(v.name(), texto.apply(v).rotulo(), texto.apply(v).descricao())).toList();
+}
+// catalogo.put("unidade", itens(Unidade.values(), Unidade::texto));
+// catalogo.put("codigoErro", itens(CodigoErro.values(), CodigoErro::texto)); ... um por enum
+```
+
+Além disso: modelos por tipo (nativos + Groovy `ATIVA`), com fonte/produto e papéis; catálogos de enums de resposta, avisos e erros; `versaoValores` = SHA-256 do JSON com chaves ordenadas.
 
 ### 13.5 Remover do engine antigo
 
@@ -1077,7 +1088,7 @@ Ordem: **verificar, adaptar, criar, rodar**. Só o que já existe no pom (`sprin
 
 - `src/test/resources/TaxaSwap_20260914.txt`: cópia de `docs/TaxaSwap.txt`.
 - `FixturesCadastro`: as 7 curvas como nas specs de modelo e no `exemplo-cadastro-7-curvas.txt`.
-- `FixturesB3`: lê o `TaxaSwap` e devolve os `LinhaB3` que o `LeitorInsumos` simulado entrega para `DIxPRE`, `Cupom limpo de dólar`, `Cupom Limpo DI X IPCA`, `IBOVESPA` e `PTAX - USD`.
+- `FixturesB3`: lê o `TaxaSwap` e devolve os `B3CurvaPrimaria` que o `CurvaPrimariaPort` simulado entrega para `DIxPRE`, `Cupom limpo de dólar`, `Cupom Limpo DI X IPCA`, `IBOVESPA` e `PTAX - USD`.
 - Massa de 12 meses de `TaxaSwap` (tarefa 15.2) em `src/test/resources/massa-b3/`.
 - Fuso nos testes, como no `main`: `src/test/resources/junit-platform.properties` com `junit.jupiter.extensions.autodetection.enabled=true` e uma `FusoBrasiliaExtension` (registrada em `src/test/resources/META-INF/services/org.junit.jupiter.api.extension.Extension`) que faz `TimeZone.setDefault(TimeZone.getTimeZone("America/Sao_Paulo"))` no `beforeAll`.
 
@@ -1095,7 +1106,7 @@ Ordem: **verificar, adaptar, criar, rodar**. Só o que já existe no pom (`sprin
 | `EixoDiasUteisTest` | quatro cenários do requisito de dias úteis publicados; calendário certo = calendário puro |
 | `PreparacaoPontosTest` | `2026-12-24` e `2026-12-25`; ponto sozinho no feriado; fora de ordem; na data-base |
 | `CurvaInterpoladaTest` | vetores de `2030-06-10` (valores exatos nas 7 casas) e fatores com tolerância `1e-14` (seção 0.3); domínio; `FlatValue` da `INP`; `PTX` depois do último ponto |
-| `GradeInterpoladaTest` | `PRE`: 12.390 dias, fim de semana = sexta, cada dia = `avaliar` da mesma data |
+| `InterpolacaoDadoCurvaTest` | `PRE`: 12.390 dias, fim de semana = sexta, cada dia = `avaliar` da mesma data |
 | `HashPontosTest` | vetor comum e os 5 `hashPontos`; valor com 12 casas dá o mesmo hash |
 | `ValidadorCadastroTest` | um caso por regra de `CADASTRO_INVALIDO`; `'ATIVO' + espaços`; `business252` recusado; `MODELOS_POR_ORIGEM` sem ligação ignorado |
 | `ProntaTsB3Test`, `SofrZeroBloombergTest`, `NtnbBootstrapAnbimaTest` | tabelas "Regras do arquivo"; `15M` → `2027-12-14`; bootstrap sintético que recupera uma curva zero conhecida |

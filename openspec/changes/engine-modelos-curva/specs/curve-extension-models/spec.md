@@ -10,7 +10,7 @@ O catálogo SHALL ter exatamente três tipos de modelo, cada um identificado por
 - **interpolação**: o nome é `tConfgCurva.cRotnaCalc`;
 - **calendário**: o nome é o parâmetro `CALENDARIO`.
 
-O mesmo nome MAY existir em tipos diferentes. Grandezas, `DayCounter`, cotação e políticas de extrapolação SHALL ser só nativos, sem sobrescrita por Groovy nesta fase.
+O mesmo nome MAY existir em tipos diferentes. Bases de interpolação, `DayCounter`, cotação e políticas de extrapolação SHALL ser só nativos, sem sobrescrita por Groovy nesta fase.
 
 #### Scenario: Resolução por tipo
 - **WHEN** existe um interpolador chamado `Linear` e nenhum calendário com esse nome
@@ -18,7 +18,7 @@ O mesmo nome MAY existir em tipos diferentes. Grandezas, `DayCounter`, cotação
 
 ### Requirement: Contratos dos modelos
 Todo modelo, nativo ou Groovy, SHALL implementar um destes contratos:
-- **Construção:** `List<PontoConstruido> construir(ContextoConstrucao ctx, MemoriaCalculo memoria)`. `PontoConstruido` tem data, valor sem arredondamento e `diasUteisPublicados` (inteiro, nulo quando a fonte não publica dias úteis), obedecido pelo pipeline (spec `curve-build-pipeline`). `ContextoConstrucao` fornece o cadastro, a data-base, o calendário resolvido e o leitor de insumos, que é o único acesso às tabelas brutas (`tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr`, `tBbergCurvaPrimr`). Para curva derivada (spec `curve-build-pipeline`), o contexto SHALL fornecer também `curvaMae(String papel)`: a curva mãe na mesma data-base, montada a partir dos pontos gravados em `tDadoVertcCurva` com o cadastro vigente da mãe, pronta para interpolar, e com o `hashPontos` dos pontos lidos; um modelo não derivado que chame `curvaMae` falha com `MODELO_FALHOU`. Todo modelo de construção SHALL declarar a fonte e o produto que aceita, e o modelo derivado declara a fonte `TCEN` e a lista de papéis. Falhas SHALL ser sinalizadas por exceções do engine que carregam o código de erro (`INSUMO_AUSENTE`, `INSUMO_INVALIDO` ou `MODELO_FALHOU`).
+- **Construção:** `List<VerticeConstruido> construir(ContextoConstrucao ctx, MemoriaCalculo memoria)`. `VerticeConstruido` tem data, valor sem arredondamento e `diasUteisPublicados` (inteiro, nulo quando a fonte não publica dias úteis), obedecido pelo pipeline (spec `curve-build-pipeline`). `ContextoConstrucao` fornece o cadastro, a data-base, o calendário resolvido e o leitor de insumos, que é o único acesso às tabelas brutas (`tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr`, `tBbergCurvaPrimr`). Para curva derivada (spec `curve-build-pipeline`), o contexto SHALL fornecer também `curvaMae(String papel)`: a curva mãe na mesma data-base, montada a partir dos pontos gravados em `tDadoVertcCurva` com o cadastro vigente da mãe, pronta para interpolar, e com o `hashPontos` dos pontos lidos; um modelo não derivado que chame `curvaMae` falha com `MODELO_FALHOU`. Todo modelo de construção SHALL declarar a fonte e o produto que aceita, e o modelo derivado declara a fonte `TCEN` e a lista de papéis. Falhas SHALL ser sinalizadas por exceções do engine que carregam o código de erro (`INSUMO_AUSENTE`, `INSUMO_INVALIDO` ou `MODELO_FALHOU`).
 - **Interpolação:** `BigDecimal valor(BigDecimal x, List<BigDecimal> xs, List<BigDecimal> ys, MemoriaCalculo memoria)`, chamado só com `xs[0] <= x <= xs[último]`. Os interpoladores locais (`Linear`, `LogLinear`, `BackwardFlat`, `ForwardFlat`) SHALL estender uma base comum que localiza o segmento e chama o ponto de extensão `protected BigDecimal valorNoSegmento(BigDecimal w, BigDecimal yEsquerda, BigDecimal yDireita)`. A política `FlatForward` SHALL chamar esse mesmo método com `w` fora de `[0, 1]`.
 - **Calendário:** `boolean isBusinessDay(LocalDate data)` e `String mercado()`, que declara o mercado aceito em `MERCADO_CALENDARIO`, com o ponto de extensão `protected Set<LocalDate> feriados(int ano)`. Contagem de dias úteis, `advance` e `adjust` SHALL ser implementados na base comum a partir de `isBusinessDay`.
 
@@ -34,7 +34,7 @@ Os tipos usados pelos modelos e pelo cadastro SHALL ter os nomes de tipo e de co
 - `DayCounter`: `Business252`, `Actual360`, `Actual365Fixed`, `Thirty360` (constantes de um enum);
 - calendários: `Brazil` com o mercado `Settlement`; `UnitedStates` com o mercado `FederalReserve`;
 - interpoladores: `Linear`, `LogLinear`, `BackwardFlat`, `ForwardFlat`, `Cubic`;
-- grandezas: `Discount`, `ZeroYield` e as extensões próprias `CompoundFactor` e `Price`.
+- bases de interpolação: `Discount`, `ZeroYield` e as extensões próprias `CompoundFactor` e `Price`.
 
 A implementação MUST ser própria, em Java, sem depender da biblioteca QuantLib. Prazos e horizontes (`nD`, `nW`, `nM`, `nY`) SHALL usar o `java.time.Period` do próprio Java, sem tipo próprio de período nem de unidade de tempo.
 
