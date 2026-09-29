@@ -252,7 +252,11 @@ Prazo fora do domínio MUST resultar em `PRAZO_FORA_DO_DOMINIO`, informando o pr
 - **THEN** a consulta falha com `PRAZO_FORA_DO_DOMINIO`, informando o prazo e o fim do domínio
 
 ### Requirement: Arredondamento e precisão
-Todo cálculo MUST usar `BigDecimal` com `MathContext.DECIMAL128`, sem passar por `double`, e sem arredondamento intermediário. O arredondamento cadastrado (`CASAS_DECIMAIS` + `MODO_ARREDONDAMENTO`) SHALL ser aplicado apenas ao valor da curva (taxa, preço ou pontos), em dois momentos: ao gravar um ponto e ao devolver um valor. A interpolação SHALL usar como entrada os valores gravados (já arredondados). Os fatores SHALL ser calculados a partir do valor já arredondado devolvido e SHALL ser devolvidos com 16 casas decimais, `HALF_UP`, sem usar o arredondamento cadastrado.
+Valores, somas, multiplicações, divisões e arredondamentos MUST usar `BigDecimal` com `MathContext.DECIMAL128`, sem arredondamento intermediário. Potência com expoente fracionário, logaritmo e exponencial SHALL ser calculados em `double` pelo `StrictMath` do Java (`StrictMath.pow`, `StrictMath.log`, `StrictMath.exp`), que dá o mesmo resultado bit a bit em qualquer máquina, e o resultado volta para `BigDecimal` por `BigDecimal.valueOf(double)`; potência com expoente inteiro usa `BigDecimal.pow`. Com isso, os fatores têm a precisão do `double` (cerca de 15 a 16 dígitos significativos) nas últimas das 16 casas. O arredondamento cadastrado (`CASAS_DECIMAIS` + `MODO_ARREDONDAMENTO`) SHALL ser aplicado apenas ao valor da curva (taxa, preço ou pontos), em dois momentos: ao gravar um ponto e ao devolver um valor. A interpolação SHALL usar como entrada os valores gravados (já arredondados). Os fatores SHALL ser calculados a partir do valor já arredondado devolvido e SHALL ser devolvidos com 16 casas decimais, `HALF_UP`, sem usar o arredondamento cadastrado.
+
+#### Scenario: Mesma conta em qualquer instância
+- **WHEN** a mesma curva e data é interpolada em duas instâncias diferentes do engine
+- **THEN** os valores e os fatores devolvidos são idênticos até a última casa, porque o `StrictMath` não depende da máquina
 
 #### Scenario: Curva truncada
 - **WHEN** a `PTX` tem 7 casas com `DOWN` e o valor calculado é 5,43219876
@@ -270,10 +274,10 @@ Para unidade `TAXA`, cada valor devolvido SHALL trazer o fator acumulado `FA` (c
 - **THEN** os valores trazem só os pontos de índice, sem fatores
 
 ### Requirement: Datas e horários de Brasília
-Datas-base, datas de ponto e prazos SHALL ser datas puras, sem hora nem fuso. Todo "hoje" e todo instante SHALL usar explicitamente o fuso `America/Sao_Paulo`, sem depender do fuso padrão da JVM ou do servidor. Instantes em respostas, planilhas, auditoria, `estado.json` e logs SHALL ser gravados em ISO-8601 com o deslocamento (ex.: `2026-09-14T21:30:00.000-03:00`), e nomes de arquivo com carimbo de tempo SHALL usar o horário de Brasília.
+Datas-base, datas de ponto e prazos SHALL ser datas puras, sem hora nem fuso. O fuso padrão da JVM do engine SHALL ser `America/Sao_Paulo`, fixado pela própria aplicação no início do `main`, antes de subir o Spring, de modo que "hoje" e todo instante saiam no horário de Brasília sem depender do fuso do servidor nem de configuração externa; na subida, o engine SHALL conferir o fuso padrão e não subir se ele for outro. Instantes em respostas, planilhas, auditoria, `estado.json` e logs SHALL ser gravados em ISO-8601 com o deslocamento (ex.: `2026-09-14T21:30:00.000-03:00`), e nomes de arquivo com carimbo de tempo SHALL usar o horário de Brasília.
 
 #### Scenario: Servidor em UTC perto da meia-noite
-- **WHEN** o engine roda com a JVM em UTC e uma construção é concluída às 22h30 de Brasília (01h30 UTC do dia seguinte)
+- **WHEN** o engine roda num servidor em UTC e uma construção é concluída às 22h30 de Brasília (01h30 UTC do dia seguinte)
 - **THEN** o instante registrado é `...T22:30:00...-03:00`, com a data de Brasília
 
 ### Requirement: Construção grava a curva construída e a curva interpolada

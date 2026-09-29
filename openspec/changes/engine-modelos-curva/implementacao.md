@@ -1,23 +1,69 @@
 # Guia de implementação: engine-modelos-curva
 
-Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec manda; este guia diz onde e como.** Siga as seções na ordem. Cada seção lista os arquivos, as assinaturas, o código das partes difíceis e os casos de teste. Os testes são escritos só na seção 16, depois de tudo compilar.
+Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec manda; este guia diz onde e como.** Siga a ordem da seção 15. Os testes são escritos só na seção 16, depois de tudo compilar.
 
 ## 0. Regras para quem implementa
 
-- Pacote base: `br.com.poc` (em `services/engine/src/main/java/br/com/poc/`). Java 21, Spring Boot 4 (Jackson 3, pacote `tools.jackson`).
-- Não invente rota, classe pública, código de erro, código de aviso, coluna ou tabela fora deste guia e das specs. Não crie tabela, sequência, índice nem tópico.
-- **Todo número de curva é `BigDecimal`.** Nunca `double`, nem em passo intermediário (exceção única: o chute inicial de `DecimalMath.ln`, seção 2).
-- Mensagens para o usuário em pt-BR, com acentuação, UTF-8. Códigos (enums, `codigoErro`, avisos) não se traduzem.
-- "Hoje" e instantes só pelo `Relogio` (seção 1.4). Proibido `LocalDate.now()`, `Instant.now()`, `ZoneId.systemDefault()` fora dele.
-- Leitura só em `READ COMMITTED`. Proibido `NOLOCK` e `READ UNCOMMITTED`.
-- Arquivos de configuração que já existem no repositório real (`pom.xml`, `application*.yml`, `logback.xml`): **não reescrever**. Verificar se têm o que este guia pede e acrescentar só o que faltar.
+**Java 21, arquitetura hexagonal, código nativo.**
+- **Use o que o Java já tem:** `java.time` (`LocalDate`, `Period`, `DayOfWeek`, `TemporalAdjusters`, `ChronoUnit`, `LocalDate.datesUntil`), `BigDecimal`, `MathContext` e `RoundingMode`, records, sealed interfaces, `switch` com pattern matching, `HexFormat`, `MessageDigest`, `Stream`, `java.util.zip`, virtual threads.
+- **Código próprio só nestes pontos**, porque o Java não tem:
+  - os **enums com nomes do QuantLib** (`Compounding`, `Frequency`, `BusinessDayConvention`, `DayCounter`) e o record `InterestRate`, para os scripts Groovy usarem os nomes do mercado;
+  - os **calendários de feriados** (`Brazil`, `UnitedStates`, `CalendarioPorLista`);
+  - a ponte `DecimalMath` entre `BigDecimal` e o `StrictMath` (`pow`, `ln`, `exp`);
+  - os **interpoladores** e os **modelos de construção** (estendíveis por Groovy);
+  - as regras do negócio (validação do cadastro, dias úteis ancorados, grade, `hashPontos`).
+- **Proibido criar tipo próprio** de relógio, período, unidade de tempo, arredondamento ou "utils" de data: use `java.time` e `RoundingMode`.
+- **Records para tudo que é dado** (domínio, DTOs, eventos, linhas de memória, linhas de insumo). Classe só onde o record não serve: entidade JPA, `Calendario` e interpoladores (estendidos por Groovy), `MemoriaCalculo` (acumula linhas durante o cálculo).
+- **Sem `synchronized`** (no Java 21 ele prende a virtual thread à thread do sistema): use `ConcurrentHashMap`, `ReentrantLock` e `Atomic*`.
+- **Sem MapStruct nem Lombok no código novo:** conversão por métodos estáticos `de(...)` nos records.
+- Todo número de curva é `BigDecimal`; `double` só dentro do `DecimalMath` (`StrictMath`) e na célula numérica da planilha.
+- Fuso: a JVM inteira roda em `America/Sao_Paulo` (seção 1.4). `LocalDate.now()` e `OffsetDateTime.now()` são usados direto.
+- Não invente rota, código de erro, aviso, coluna ou tabela fora deste guia e das specs. Não crie tabela, sequência, índice nem tópico.
+- Arquivos de configuração que já existem (`pom.xml`, `application*.yml`, `logback.xml`): **não reescrever**; conferir e acrescentar só o que faltar.
 - O serviço roda em no mínimo 2 instâncias: nenhum estado de negócio em memória local, além dos caches descritos aqui.
 
-### 0.1 Papel das tabelas (não confundir)
+### 0.1 Arquitetura hexagonal (pacote base `br.com.poc`)
+
+```
+domain/                       Java puro: nada de Spring, JPA, Jackson, Azure, POI, Groovy
+  curva/                      records do negócio, enums de erro e aviso, ResultadoConstrucao (sealed), HashPontos
+  quantlib/                   Compounding, Frequency, BusinessDayConvention, DayCounter, Prazo, InterestRate, Periodos
+  matematica/                 DecimalMath
+  calendario/                 Calendario, Brazil, UnitedStates, CalendarioPorLista
+  interpolacao/               Grandeza, Extrapolacao, Classificacao, Interpolador, InterpoladorLocal, Linear, LogLinear,
+                              BackwardFlat, ForwardFlat, Cubic, EixoDiasUteis, PreparacaoPontos,
+                              CurvaInterpolada, GradeInterpolada
+  construcao/                 ModeloConstrucao, ContextoConstrucao, LeitorInsumos (porta do domínio),
+                              LinhaB3/LinhaAnbima/LinhaBloomberg, PontosProntos, ProntaTsB3, SofrZeroBloomberg,
+                              NtnbBootstrapAnbima
+  memoria/                    MemoriaCalculo e as linhas (records)
+  cadastro/                   TabelaParametros, ValidadorCadastro
+application/
+  port/in/                    casos de uso (interfaces): ConstruirCurva, SimularCurva, ConsultarCurva,
+                              InterpolarCurva, RegravarInterpolada, ProcessarCarga, ConstruirData,
+                              ConsultarSituacao, ConsultarValoresCadastro, GerirScripts, GerirCalendario,
+                              MontarAuditoria
+  port/out/                   CadastroPort, InsumosPort, PontosPort, InterpoladaPort, TravaCurvaPort,
+                              ResumoCurvaPort, ScriptsPort, CompiladorScriptsPort, PlanilhaPort, EventosPort
+  service/                    uma classe por caso de uso (@Service; @Transactional quando grava);
+                              Paralelo (virtual threads), ResolverModelos
+adapter/
+  in/rest/                    controllers, DTOs (records), ErroHandler, FiltroCorrelacao, SegurancaConfig, JsonConfig
+  out/persistence/            entidades JPA, repositórios Spring Data, adaptadores das portas
+  out/blob/                   ScriptsBlobAdapter
+  out/groovy/                 CarregadorGroovy
+  out/planilha/               PlanilhaPoiAdapter
+  out/log/                    EventosLogAdapter
+config/                       ExecutorConfig, FusoConfig
+```
+
+Regra de dependência: `adapter` → `application` → `domain`; o domínio não importa nada de fora dele. Os scripts Groovy só enxergam `domain/{curva, quantlib, matematica, calendario, interpolacao, construcao, memoria}` (spec `curve-extension-models`).
+
+### 0.2 Papel das tabelas (não confundir)
 
 | Tabela | Conteúdo | Quem grava |
 |---|---|---|
-| `tDadoVertcCurva` | **curva construída**: os pontos (vértices), com `cDiaUtil`, `cQtdDiaPer`, `cQtdDiaReft`, `vFatorAcum`, `vFatorDia`, `vPrecoTx` | engine; `services/curves` na edição manual |
+| `tDadoVertcCurva` | **curva construída**: os pontos, com `cDiaUtil`, `cQtdDiaPer`, `cQtdDiaReft`, `vFatorAcum`, `vFatorDia`, `vPrecoTx` | engine; `services/curves` na edição manual |
 | `tDadoCurva` | **curva interpolada**: um `vPrecoTx` por dia corrido | só o engine (o curves só apaga) |
 | `tCurvaMercd` | cadastro da curva; o engine escreve só `dBaseReft` e `cUsuarCalc` | curves e engine |
 | `tCurvaPrvdr`, `tConfgCurva` | origens e configuração vigente | curves |
@@ -25,9 +71,9 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 
 Pontos, dias úteis dos pontos e `hashPontos` vêm **sempre** de `tDadoVertcCurva`. `tDadoCurva` nunca é lida para calcular.
 
-### 0.2 Vetores de teste reais (usar nos testes)
+### 0.3 Vetores de teste reais
 
-Fonte: `docs/TaxaSwap.txt` (data-base `B` = `2026-09-14`), valores conferidos por uma reimplementação independente das fórmulas da spec:
+Fonte: `docs/TaxaSwap.txt` (data-base `B` = `2026-09-14`), conferidos por uma reimplementação independente das fórmulas da spec:
 
 | Item | Valor esperado |
 |---|---|
@@ -35,50 +81,45 @@ Fonte: `docs/TaxaSwap.txt` (data-base `B` = `2026-09-14`), valores conferidos po
 | primeiro valor | `PRE` 13.9; `DCL` -117.96; `DPL` 18.59; `INP` 185648; `PTX` 5.1696 |
 | último valor | `PRE` 14.16; `DCL` 20.13; `DPL` 7.19; `INP` 233414; `PTX` 56.3772259 |
 | vértice de 7.406 DU da `PRE` | `2056-04-10`, 14.167 |
-| `DU` do calendário `Brazil` nos 278 vértices da `PRE` | igual ao `cDiaUtil` publicado em todos (0 divergências) |
-| `hashPontos` da `PRE` | `7c4982b34ca35f784863118902e63f28e7d49362d940cc27eb77961d526fca20` |
-| `hashPontos` da `DCL` | `0504d24e90556dab534e53ec6b81740c99baef65829ff00cb1f61ced388aaf40` |
-| `hashPontos` da `DPL` | `82c7d7ffcc7f4bbad9ca64a8dd611ea528cb10764f0782f456164def0dd8977a` |
-| `hashPontos` da `INP` | `f08705dd681da17324ee8f7264be41a949408fb14cecdcbb49700a30f3db741a` |
-| `hashPontos` da `PTX` | `1b2bbfc82020d153483a47193561702b0cdc7f516193fe4c0c8137153810827b` |
+| `DU` do `Brazil` nos 278 vértices da `PRE` | igual ao `cDiaUtil` publicado em todos (0 divergências) |
+| `hashPontos` `PRE` | `7c4982b34ca35f784863118902e63f28e7d49362d940cc27eb77961d526fca20` |
+| `hashPontos` `DCL` | `0504d24e90556dab534e53ec6b81740c99baef65829ff00cb1f61ced388aaf40` |
+| `hashPontos` `DPL` | `82c7d7ffcc7f4bbad9ca64a8dd611ea528cb10764f0782f456164def0dd8977a` |
+| `hashPontos` `INP` | `f08705dd681da17324ee8f7264be41a949408fb14cecdcbb49700a30f3db741a` |
+| `hashPontos` `PTX` | `1b2bbfc82020d153483a47193561702b0cdc7f516193fe4c0c8137153810827b` |
 | `hashPontos` do vetor comum com o curves (`2026-09-15;13.9\n2026-09-16;-117.96`) | `8dcff432fa5271ff16bdaef72940792811802e0a5ae59e8c2bf5cead818d5544` |
 | interpolação em `2030-06-10` (DU 932, DC 1.365; vizinhos `2030-05-15` DU 914 e `2030-07-01` DU 946, `w` = 0.5625) | `PRE` 14.0624222; `DCL` 6.6547016; `PTX` 6.6901076 (`DOWN`) |
-| fatores da `PRE` em DU 932 (valor 14.0624222) | acumulado 1.6268101753135545; diário 1.0005222620285954 |
-| fatores da `DCL` em DC 1.365 (valor 6.6547016, `Actual360`/`Simple`) | acumulado 1.2523241023333333; diário (`FA^(1/932)`) 1.0002414466401755 |
-| fator da `PRE` no 1º vértice (13.9, DU 1) | acumulado = diário = 1.0005166043641946 |
+| fatores da `PRE` em DU 932 (valor 14.0624222) | acumulado 1.6268101753135545; diário 1.0005222620285954 (conferir com tolerância de `1e-14`: as últimas casas vêm do `double`) |
+| fatores da `DCL` em DC 1.365 (valor 6.6547016, `Actual360`/`Simple`) | acumulado 1.2523241023333333 (exato: sem `pow`); diário (`FA^(1/932)`) 1.0002414466401755 (tolerância `1e-14`) |
+| fator da `PRE` no 1º vértice (13.9, DU 1) | acumulado = diário = 1.0005166043641946 (tolerância `1e-14`) |
 | curva interpolada da `PRE` | 12.390 linhas em `tDadoCurva`, de `2026-09-15` a `2060-08-16`; `2026-09-19` e `2026-09-20` iguais a `2026-09-18` |
-| Páscoa (Meeus/Jones/Butcher) | 2026: `04-05` (Carnaval `02-16` e `02-17`, Sexta-feira Santa `04-03`, Corpus Christi `06-04`); 2027: `03-28` (Carnaval `02-08`/`02-09`, Sexta `03-26`, Corpus `05-27`) |
-| `UnitedStates`/`FederalReserve` 2026 | `01-01`, `01-19`, `02-16`, `05-25`, `06-19`, `09-07`, `10-12`, `11-11`, `11-26`, `12-25` (4 de julho é sábado: não observado) |
-| `UnitedStates` 2027 | `01-01`, `01-18`, `02-15`, `05-31`, `07-05` (4 de julho no domingo), `09-06`, `10-11`, `11-11`, `11-25` (19/06 e 25/12 no sábado: não observados) |
+| Páscoa | 2026: `04-05` (Carnaval `02-16`/`02-17`, Sexta-feira Santa `04-03`, Corpus Christi `06-04`); 2027: `03-28` (Carnaval `02-08`/`02-09`, Sexta `03-26`, Corpus `05-27`) |
+| `UnitedStates` 2026 | `01-01`, `01-19`, `02-16`, `05-25`, `06-19`, `09-07`, `10-12`, `11-11`, `11-26`, `12-25` (4 de julho no sábado: não observado) |
+| `UnitedStates` 2027 | `01-01`, `01-18`, `02-15`, `05-31`, `07-05`, `09-06`, `10-11`, `11-11`, `11-25` (19/06 e 25/12 no sábado: não observados) |
 | tenor `15M` a partir de `2026-09-14` | `2027-12-14` |
+| 30/360 de `2026-09-14` a `2027-01-04` | 110 |
 
 ---
 
-## 1. Base: dependências, configuração, erros, relógio
+## 1. Base
 
 ### 1.1 `pom.xml`: o mínimo de coisas novas
 
-Só três acréscimos, porque a spec os exige e não há como fazer sem eles:
-
 | Acrescentar | Por quê |
 |---|---|
-| `org.springframework.boot:spring-boot-starter-oauth2-resource-server` (sem versão: vem do Spring Boot) | validar o JWT do Entra ID e ler os papéis |
-| `com.azure:azure-storage-blob` e `com.azure:azure-identity`, sem versão própria, pelo `com.azure:azure-sdk-bom` **1.3.8** importado em `dependencyManagement` (`<type>pom</type>`, `<scope>import</scope>`) | scripts Groovy no Blob, por Managed Identity |
-| `org.apache.poi:poi-ooxml` **5.5.1** | planilhas `.xlsx` (memória de cálculo, auditoria, feriados) |
+| `org.springframework.boot:spring-boot-starter-oauth2-resource-server` (versão do Spring Boot) | JWT do Entra ID |
+| `com.azure:azure-storage-blob` e `com.azure:azure-identity`, pelo `com.azure:azure-sdk-bom` **1.3.8** importado em `dependencyManagement` (`<type>pom</type>`, `<scope>import</scope>`) | scripts Groovy no Blob, Managed Identity |
+| `org.apache.poi:poi-ooxml` **5.5.1** | planilhas `.xlsx` |
 
-No `spring-boot-maven-plugin` (já existe), acrescentar a meta `build-info` (versão do artefato na proveniência).
+No `spring-boot-maven-plugin` (já existe), acrescentar a meta `build-info`. Não remover nada do que já está no pom (MapStruct, Lombok, Feign, Redis ficam; o código novo só não os usa). Nenhuma dependência de teste nova: `spring-boot-starter-test` (JUnit 5, Mockito, AssertJ, MockMvc) e o `archunit-junit5` que já existe.
 
-Não remover nada do que já está no pom: o objetivo é o mínimo de coisas **novas**. As dependências que a engine nova deixa de usar (`commons-math3`, `co.dv01.jquantlib:core`, Feign, cache e Redis) ficam como estão; o código novo só não as usa.
-
-Não acrescentar nenhuma dependência de teste: os testes usam só o que vem no `spring-boot-starter-test` (JUnit 5, inclusive testes parametrizados, Mockito, AssertJ, MockMvc) e o `archunit-junit5` que já existe. O `groovy` 4.0.25 fica como está.
-
-### 1.2 `application.yml` (verificar e acrescentar)
+### 1.2 `application.yml` (conferir e acrescentar)
 
 ```yaml
 engine:
   seguranca:
-    emissor: ${ENGINE_JWT_EMISSOR}          # https://login.microsoftonline.com/{tenant}/v2.0
-    audiencia: ${ENGINE_JWT_AUDIENCIA}      # api://{app do engine}
+    emissor: ${ENGINE_JWT_EMISSOR}
+    audiencia: ${ENGINE_JWT_AUDIENCIA}
   blob:
     endpoint: ${ENGINE_BLOB_ENDPOINT}
     container: ${ENGINE_BLOB_CONTAINER}
@@ -101,13 +142,14 @@ engine:
   construcao-data:
     paralelismo: 8
 spring:
+  threads:
+    virtual:
+      enabled: true                       # requisições HTTP em virtual threads
   datasource:
     hikari:
       connection-timeout: ${engine.timeout.banco-conexao-ms}
+      maximum-pool-size: 20               # >= paralelismo + margem para as requisições
       transaction-isolation: TRANSACTION_READ_COMMITTED
-  jdbc:
-    template:
-      query-timeout: 30s
   jpa:
     open-in-view: false
     properties:
@@ -115,7 +157,6 @@ spring:
         jdbc:
           batch_size: 1000
         order_inserts: true
-        order_updates: true
   security:
     oauth2:
       resourceserver:
@@ -124,466 +165,629 @@ spring:
           audiences: ${engine.seguranca.audiencia}
 ```
 
-Perfil `local` (e só ele): `engine.blob.connection-string` para o Azurite. O perfil de produção MUST NOT aceitar connection string (seção 11.2).
+Perfil `local` (e só ele): `engine.blob.connection-string` para o Azurite.
 
-### 1.3 Erros e avisos: `domain/curva/CodigoErro.java`, `CodigoAviso.java`, `ErroEngine.java`, `Aviso.java`, `Detalhe.java`
+### 1.3 Virtual threads: `config/ExecutorConfig.java` e `application/service/Paralelo.java`
 
 ```java
-public enum CodigoErro {
-  PARAMETRO_INVALIDO(400), NAO_AUTENTICADO(401), SEM_PERMISSAO(403),
-  CURVA_NAO_ENCONTRADA(404), CURVA_NAO_CONSTRUIDA(404),
-  CODIGO_DUPLICADO(409), NOME_AMBIGUO(409), CONSTRUCAO_EM_ANDAMENTO(409), ESTADO_SCRIPT_CONCORRENTE(409),
-  CADASTRO_INVALIDO(422), CURVA_MAE_NAO_CONSTRUIDA(422), INSUMO_INCOMPLETO(422), INSUMO_AUSENTE(422),
-  INSUMO_INVALIDO(422), PONTOS_NAO_INTERPOLAVEIS(422), PRAZO_FORA_DO_DOMINIO(422), MODELO_FALHOU(422),
-  SCRIPT_INVALIDO(422), ERRO_INTERNO(500), BLOB_INDISPONIVEL(503);
-  public final int http; CodigoErro(int http) { this.http = http; }
+@Configuration
+public class ExecutorConfig {
+  @Bean(destroyMethod = "close")
+  ExecutorService executorVirtual() { return Executors.newVirtualThreadPerTaskExecutor(); }
+}
+```
+
+Trabalho em paralelo (construção da data, situação): uma virtual thread por curva, limitada por `Semaphore`. O limite protege o pool de conexões do banco, não as threads.
+
+```java
+public sealed interface Resultado<R> {
+  record Ok<R>(R valor) implements Resultado<R> {}
+  record TempoEsgotado<R>() implements Resultado<R> {}
+  record Falha<R>(Throwable erro) implements Resultado<R> {}
 }
 
-public enum CodigoAviso {
+public final class Paralelo {
+  public static <T, R> List<Resultado<R>> executar(ExecutorService exec, List<T> itens, int limite,
+      Duration prazo, Function<T, R> tarefa) {
+    var vagas = new Semaphore(limite);
+    var futuros = itens.stream().map(i -> exec.submit(() -> {
+      vagas.acquire();
+      try { return tarefa.apply(i); } finally { vagas.release(); }
+    })).toList();
+    long fim = System.nanoTime() + prazo.toNanos();
+    return futuros.stream().<Resultado<R>>map(f -> {
+      try { return new Resultado.Ok<>(f.get(Math.max(0, fim - System.nanoTime()), TimeUnit.NANOSECONDS)); }
+      catch (TimeoutException e) { f.cancel(true); return new Resultado.TempoEsgotado<>(); }
+      catch (ExecutionException e) { return new Resultado.Falha<>(e.getCause()); }
+      catch (InterruptedException e) { Thread.currentThread().interrupt(); return new Resultado.TempoEsgotado<>(); }
+    }).toList();
+  }
+}
+```
+
+(`TimeUnit` aqui é o `java.util.concurrent.TimeUnit` do Java.) Cada tarefa abre a sua própria transação: a curva é a unidade de gravação.
+
+### 1.4 Fuso da JVM: `Application.java` e `config/FusoConfig.java`
+
+```java
+public static void main(String[] args) {
+  TimeZone.setDefault(TimeZone.getTimeZone("America/Sao_Paulo"));   // antes de qualquer coisa
+  SpringApplication.run(Application.class, args);
+}
+
+@Configuration
+public class FusoConfig {
+  static final ZoneId BRASILIA = ZoneId.of("America/Sao_Paulo");
+  @Bean ApplicationRunner conferirFuso() {
+    return args -> {
+      if (!ZoneId.systemDefault().equals(BRASILIA))
+        throw new IllegalStateException("Fuso da JVM é " + ZoneId.systemDefault() + "; o engine exige America/Sao_Paulo");
+    };
+  }
+}
+```
+
+"Hoje" = `LocalDate.now()`; instante = `OffsetDateTime.now()` (sai com `-03:00`); carimbo de arquivo = `LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))`. Instante no JSON: `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`.
+
+### 1.5 Erros, avisos e rótulos: `domain/curva/`
+
+```java
+public interface ComRotulo { String rotulo(); String descricao(); }   // texto pt-BR no construtor do enum
+
+public enum CodigoErro implements ComRotulo {
+  PARAMETRO_INVALIDO(400, "Parâmetro inválido", "..."), NAO_AUTENTICADO(401, ...), SEM_PERMISSAO(403, ...),
+  CURVA_NAO_ENCONTRADA(404, ...), CURVA_NAO_CONSTRUIDA(404, ...),
+  CODIGO_DUPLICADO(409, ...), NOME_AMBIGUO(409, ...), CONSTRUCAO_EM_ANDAMENTO(409, ...), ESTADO_SCRIPT_CONCORRENTE(409, ...),
+  CADASTRO_INVALIDO(422, ...), CURVA_MAE_NAO_CONSTRUIDA(422, ...), INSUMO_INCOMPLETO(422, ...), INSUMO_AUSENTE(422, ...),
+  INSUMO_INVALIDO(422, ...), PONTOS_NAO_INTERPOLAVEIS(422, ...), PRAZO_FORA_DO_DOMINIO(422, ...), MODELO_FALHOU(422, ...),
+  SCRIPT_INVALIDO(422, ...), ERRO_INTERNO(500, ...), BLOB_INDISPONIVEL(503, ...);
+  private final int http; private final String rotulo, descricao;
+  CodigoErro(int http, String rotulo, String descricao) { this.http = http; this.rotulo = rotulo; this.descricao = descricao; }
+  public int http() { return http; } public String rotulo() { return rotulo; } public String descricao() { return descricao; }
+}
+
+public enum CodigoAviso implements ComRotulo {
   CURVA_INATIVA, FORA_DA_VIGENCIA_CURVA, PONTOS_DIFERENTES_DA_FONTE, PONTO_DESCARTADO_MESMO_PRAZO,
   PONTO_DESCARTADO_PRAZO_NAO_POSITIVO, CALENDARIO_DIVERGENTE, CALCULO_GRAVADO_DIVERGENTE, SEM_CALCULO_GRAVADO,
-  INTERPOLADA_DESATUALIZADA, ORIGEM_SECUNDARIA, ESTADO_SCRIPT_DESATUALIZADO, ESTADO_SCRIPT_DESCONHECIDO
+  INTERPOLADA_DESATUALIZADA, ORIGEM_SECUNDARIA, ESTADO_SCRIPT_DESATUALIZADO, ESTADO_SCRIPT_DESCONHECIDO;  // cada um com (rotulo, descricao)
 }
 
 public record Detalhe(String campo, Integer linha, String valor, String motivo) {}
 public record Aviso(CodigoAviso codigo, String mensagem, List<Detalhe> detalhes) {}
 
-public class ErroEngine extends RuntimeException {
-  public final CodigoErro codigo; public final List<Detalhe> detalhes;
+public final class ErroEngine extends RuntimeException {
+  private final CodigoErro codigo; private final List<Detalhe> detalhes;
   public ErroEngine(CodigoErro codigo, String mensagem, List<Detalhe> detalhes) { super(mensagem); this.codigo = codigo; this.detalhes = List.copyOf(detalhes); }
   public ErroEngine(CodigoErro codigo, String mensagem) { this(codigo, mensagem, List.of()); }
+  public CodigoErro codigo() { return codigo; } public List<Detalhe> detalhes() { return detalhes; }
 }
 ```
 
-Toda falha de negócio é `ErroEngine`. As classes antigas de `application/exception/` continuam só se outro código ainda as usar; o handler novo (seção 13.2) trata `ErroEngine` primeiro.
-
-### 1.4 `domain/tempo/Relogio.java`
-
-```java
-@Component
-public class Relogio {
-  public static final ZoneId BRASILIA = ZoneId.of("America/Sao_Paulo");
-  private final Clock clock;
-  public Relogio() { this(Clock.system(BRASILIA)); }
-  public Relogio(Clock clock) { this.clock = clock.withZone(BRASILIA); }   // testes injetam Clock fixo
-  public LocalDate hoje() { return LocalDate.now(clock); }
-  public OffsetDateTime agora() { return OffsetDateTime.now(clock); }       // sempre com -03:00
-  public String carimboArquivo() { return agora().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")); }
-}
-```
-
-Serialização de instante: `yyyy-MM-dd'T'HH:mm:ss.SSSXXX` (ex.: `2026-09-14T21:30:00.000-03:00`).
+Todo enum que aparece no cadastro, nas respostas, nos avisos e nos erros implementa `ComRotulo` (texto no construtor: valor sem texto não compila). Os três valores de `RoundingMode` aceitos no cadastro têm os rótulos na `TabelaParametros` (seção 5.3), porque o `RoundingMode` é do Java.
 
 ---
 
-## 2. Matemática decimal: `domain/matematica/`
+## 2. Matemática: `domain/matematica/DecimalMath.java`
 
-### 2.1 `DecimalMath.java`
-
-Precisão interna de 60 dígitos; resultado em `MathContext.DECIMAL128`. Potência inteira é exata; fracionária é `exp(b·ln a)`.
+Híbrido (decisão D7): valores e arredondamento em `BigDecimal`; `pow` fracionário, `ln` e `exp` pelo **`StrictMath`** do Java (nunca `Math`: o `StrictMath` dá o mesmo resultado bit a bit em qualquer máquina, o que mantém o `hashPontos` igual entre as instâncias). Expoente inteiro pelo `BigDecimal.pow` nativo, exato.
 
 ```java
 public final class DecimalMath {
   public static final MathContext MC = MathContext.DECIMAL128;
-  private static final MathContext I = new MathContext(60, RoundingMode.HALF_EVEN);
-  private static final BigDecimal EPS = new BigDecimal("1e-58");
-
-  public static BigDecimal exp(BigDecimal z) {
-    // redução: z/2^k com |z| < 0.5, série de Taylor, depois k quadraturas
-    int k = 0; BigDecimal r = z;
-    while (r.abs().compareTo(new BigDecimal("0.5")) > 0) { r = r.divide(BigDecimal.TWO, I); k++; }
-    BigDecimal soma = BigDecimal.ONE, termo = BigDecimal.ONE;
-    for (int n = 1; n < 400; n++) {
-      termo = termo.multiply(r, I).divide(BigDecimal.valueOf(n), I);
-      soma = soma.add(termo, I);
-      if (termo.abs().compareTo(EPS) < 0) break;
-    }
-    for (int i = 0; i < k; i++) soma = soma.multiply(soma, I);
-    return soma.round(MC);
-  }
-
-  public static BigDecimal ln(BigDecimal x) {
-    if (x.signum() <= 0) throw new ArithmeticException("ln de valor não positivo: " + x);
-    // Newton-Halley: y ← y + 2(x − e^y)/(x + e^y), chute pelo double (só o chute)
-    BigDecimal y = new BigDecimal(Math.log(x.doubleValue()));
-    for (int i = 0; i < 100; i++) {
-      BigDecimal ey = expInterno(y);
-      BigDecimal delta = BigDecimal.TWO.multiply(x.subtract(ey, I), I).divide(x.add(ey, I), I);
-      y = y.add(delta, I);
-      if (delta.abs().compareTo(EPS) < 0) break;
-    }
-    return y.round(MC);
-  }
+  private DecimalMath() {}
 
   public static BigDecimal pow(BigDecimal a, BigDecimal b) {
     if (b.signum() == 0) return BigDecimal.ONE;
-    if (b.stripTrailingZeros().scale() <= 0 && b.abs().compareTo(BigDecimal.valueOf(999_999)) <= 0) {
-      return a.pow(b.intValueExact(), MC);                 // expoente inteiro: exato
-    }
+    if (b.stripTrailingZeros().scale() <= 0 && b.abs().compareTo(BigDecimal.valueOf(999_999)) <= 0)
+      return a.pow(b.intValueExact(), MC);                              // inteiro: exato
     if (a.signum() <= 0) throw new ArithmeticException("potência fracionária de valor não positivo: " + a);
-    return exp(b.multiply(ln(a), I));
+    return BigDecimal.valueOf(StrictMath.pow(a.doubleValue(), b.doubleValue()));
   }
-  // expInterno = exp sem o round(MC) final (mesmo código, retorna 'soma')
+  public static BigDecimal ln(BigDecimal x) {
+    if (x.signum() <= 0) throw new ArithmeticException("ln de valor não positivo: " + x);
+    return BigDecimal.valueOf(StrictMath.log(x.doubleValue()));
+  }
+  public static BigDecimal exp(BigDecimal z) { return BigDecimal.valueOf(StrictMath.exp(z.doubleValue())); }
 }
 ```
 
-`ln` para `x` fora da faixa do `double` (acima de 1e308) não ocorre em curvas; se ocorrer, `ArithmeticException` → `ERRO_INTERNO`.
+`BigDecimal.valueOf(double)` usa a representação decimal mais curta do `double` (a do `Double.toString`), também determinística.
 
-### 2.2 `Arredondamento.java`
-
-```java
-public enum ModoArredondamento { HALF_UP, HALF_EVEN, DOWN;
-  public RoundingMode java() { return switch (this) { case HALF_UP -> RoundingMode.HALF_UP; case HALF_EVEN -> RoundingMode.HALF_EVEN; case DOWN -> RoundingMode.DOWN; }; } }
-public record Arredondamento(int casas, ModoArredondamento modo) {
-  public BigDecimal aplicar(BigDecimal v) { return v.setScale(casas, modo.java()); }
-  public static BigDecimal fator16(BigDecimal v) { return v.setScale(16, RoundingMode.HALF_UP); }
-}
-```
+Arredondamento: **nada próprio**. Valor da curva = `valor.setScale(parametros.casasDecimais(), parametros.modoArredondamento())` (o `modoArredondamento` já é `RoundingMode`). Fatores = `fator.setScale(16, RoundingMode.HALF_UP)`, direto no cálculo dos fatores (seção 6.5).
 
 ---
 
-## 3. Tipos QuantLib: `domain/quantlib/`
+## 3. Tipos com nomes do QuantLib: `domain/quantlib/`
 
-Nomes exatos (PascalCase nas constantes, como o QuantLib):
+Nomes exatos, com o PascalCase das constantes do QuantLib:
 
 ```java
 public enum Compounding { Simple, Compounded, Continuous, SimpleThenCompounded, CompoundedThenSimple }
-public enum Frequency { NoFrequency(-1), Once(0), Annual(1), Semiannual(2), EveryFourthMonth(3), Quarterly(4),
-  Bimonthly(6), Monthly(12), EveryFourthWeek(13), Biweekly(26), Weekly(52), Daily(365), OtherFrequency(999);
-  public final int valor; Frequency(int v) { valor = v; } }
-public enum BusinessDayConvention { Following, ModifiedFollowing, Preceding, ModifiedPreceding, Unadjusted, HalfMonthModifiedFollowing, Nearest }
-public enum TimeUnit { Days, Weeks, Months, Years }
-public record Period(int n, TimeUnit unidade) {
-  private static final Pattern P = Pattern.compile("^([1-9][0-9]*)([DWMY])$");
-  public static Period parse(String s) { /* casa P; senão IllegalArgumentException; D→Days W→Weeks M→Months Y→Years */ }
-  public LocalDate somarCorrido(LocalDate d) { /* Days: plusDays; Weeks: plusWeeks; Months: plusMonths; Years: plusYears (Java já leva ao último dia do mês) */ }
+
+public enum Frequency {
+  NoFrequency(-1), Once(0), Annual(1), Semiannual(2), EveryFourthMonth(3), Quarterly(4), Bimonthly(6),
+  Monthly(12), EveryFourthWeek(13), Biweekly(26), Weekly(52), Daily(365), OtherFrequency(999);
+  private final int vezesPorAno; Frequency(int v) { vezesPorAno = v; }
+  public int vezesPorAno() { return vezesPorAno; }
+}
+
+public enum BusinessDayConvention { Following, ModifiedFollowing, Preceding, ModifiedPreceding, Unadjusted,
+  HalfMonthModifiedFollowing, Nearest }
+
+/** Um prazo: data-base, data e dias úteis já resolvidos (publicados ou ancorados, seção 6.3). */
+public record Prazo(LocalDate base, LocalDate data, int du) {
+  public long dc() { return ChronoUnit.DAYS.between(base, data); }
+}
+
+public enum DayCounter {
+  Business252    { public BigDecimal fracaoAno(Prazo p) { return div(p.du(), 252); } },
+  Actual360      { public BigDecimal fracaoAno(Prazo p) { return div(p.dc(), 360); } },
+  Actual365Fixed { public BigDecimal fracaoAno(Prazo p) { return div(p.dc(), 365); } },
+  Thirty360      { public BigDecimal fracaoAno(Prazo p) { return div(dias30360(p.base(), p.data()), 360); } };
+
+  public abstract BigDecimal fracaoAno(Prazo p);
+
+  /** 30/360 USA (Bond Basis). Também é o cQtdDiaReft. */
+  public static int dias30360(LocalDate b, LocalDate d) {
+    int d1 = Math.min(b.getDayOfMonth(), 30);
+    int d2 = (d.getDayOfMonth() == 31 && d1 == 30) ? 30 : d.getDayOfMonth();
+    return 360 * (d.getYear() - b.getYear()) + 30 * (d.getMonthValue() - b.getMonthValue()) + (d2 - d1);
+  }
+  private static BigDecimal div(long a, int b) { return BigDecimal.valueOf(a).divide(BigDecimal.valueOf(b), DecimalMath.MC); }
 }
 ```
 
-### 3.1 `DayCounter` (interface) e implementações
+`Business252` recebe o `du` já resolvido; ele não conta dias úteis sozinho.
+
+### 3.1 `InterestRate.java` (cotação)
 
 ```java
-public interface DayCounter { String nome(); BigDecimal fracaoAno(int du, int dc, LocalDate b, LocalDate d); }
-// Business252: du/252 | Actual360: dc/360 | Actual365Fixed: dc/365 | Thirty360: dias30360(b,d)/360
-```
+public record InterestRate(DayCounter dayCounter, Compounding compounding, Frequency frequency) {
+  private static final BigDecimal CEM = BigDecimal.valueOf(100);
 
-Divisões com `DecimalMath.MC`. `Business252` recebe o `du` já resolvido (ancorado, seção 6.3); não conta sozinho.
-
-`dias30360(b, d)` (Bond Basis, USA): `d1 = min(b.dia, 30)`; `d2 = (d.dia == 31 && d1 == 30) ? 30 : d.dia`; resultado `360·(a2−a1) + 30·(m2−m1) + (d2−d1)`. É também `cQtdDiaReft`.
-
-### 3.2 `InterestRate.java` (cotação)
-
-```java
-public record InterestRate(DayCounter dc, Compounding comp, Frequency freq) {
-  // r = valor/100; τ = fração de ano
-  public BigDecimal fator(BigDecimal valorPercentual, BigDecimal tau) {
-    BigDecimal r = valorPercentual.divide(BigDecimal.valueOf(100), DecimalMath.MC);
-    BigDecimal fa = switch (comp) {
+  public BigDecimal fator(BigDecimal valorPercentual, Prazo prazo) {
+    var r = valorPercentual.divide(CEM, DecimalMath.MC);
+    var tau = dayCounter.fracaoAno(prazo);
+    var fa = switch (compounding) {
       case Simple -> BigDecimal.ONE.add(r.multiply(tau, DecimalMath.MC));
-      case Compounded -> { BigDecimal f = BigDecimal.valueOf(freq.valor);
-        yield DecimalMath.pow(BigDecimal.ONE.add(r.divide(f, DecimalMath.MC)), f.multiply(tau)); }
+      case Compounded -> {
+        var f = BigDecimal.valueOf(frequency.vezesPorAno());
+        yield DecimalMath.pow(BigDecimal.ONE.add(r.divide(f, DecimalMath.MC)), f.multiply(tau));
+      }
       case Continuous -> DecimalMath.exp(r.multiply(tau, DecimalMath.MC));
-      default -> throw new ErroEngine(CodigoErro.CADASTRO_INVALIDO, "Cotação não suportada: " + comp);
+      case SimpleThenCompounded, CompoundedThenSimple ->
+          throw new ErroEngine(CodigoErro.CADASTRO_INVALIDO, "Cotação não suportada: " + compounding);
     };
     if (fa.signum() <= 0) throw new ErroEngine(CodigoErro.MODELO_FALHOU, "Fator acumulado não positivo: " + fa);
     return fa;
   }
-  public BigDecimal taxa(BigDecimal fa, BigDecimal tau) { // inversa exata, devolve em percentual
-    BigDecimal r = switch (comp) {
+
+  public BigDecimal taxa(BigDecimal fa, Prazo prazo) {          // inversa exata, em percentual
+    var tau = dayCounter.fracaoAno(prazo);
+    var r = switch (compounding) {
       case Simple -> fa.subtract(BigDecimal.ONE).divide(tau, DecimalMath.MC);
-      case Compounded -> { BigDecimal f = BigDecimal.valueOf(freq.valor);
-        yield DecimalMath.pow(fa, BigDecimal.ONE.divide(f.multiply(tau), DecimalMath.MC)).subtract(BigDecimal.ONE).multiply(f); }
+      case Compounded -> {
+        var f = BigDecimal.valueOf(frequency.vezesPorAno());
+        yield DecimalMath.pow(fa, BigDecimal.ONE.divide(f.multiply(tau), DecimalMath.MC)).subtract(BigDecimal.ONE).multiply(f);
+      }
       case Continuous -> DecimalMath.ln(fa).divide(tau, DecimalMath.MC);
-      default -> throw new IllegalStateException();
+      case SimpleThenCompounded, CompoundedThenSimple -> throw new IllegalStateException();
     };
-    return r.multiply(BigDecimal.valueOf(100));
+    return r.multiply(CEM);
   }
 }
 ```
 
-Casos: 13,9 com DU 252 em `Business252`/`Compounded`/`Annual` → 1.139; 5,000 com DC 90 em `Actual360`/`Simple` → 1.0125.
+### 3.2 `Periodos.java`: `nD|nW|nM|nY` → `java.time.Period`
+
+```java
+public final class Periodos {
+  private static final Pattern FORMATO = Pattern.compile("^([1-9][0-9]*)([DWMY])$");
+  private Periodos() {}
+  public static Period parse(String s) {
+    var m = FORMATO.matcher(s);
+    if (!m.matches()) throw new IllegalArgumentException("Período fora do formato nD, nW, nM ou nY: " + s);
+    int n = Integer.parseInt(m.group(1));
+    return switch (m.group(2)) {
+      case "D" -> Period.ofDays(n);
+      case "W" -> Period.ofWeeks(n);
+      case "M" -> Period.ofMonths(n);
+      default -> Period.ofYears(n);
+    };
+  }
+}
+```
+
+`LocalDate.plus(Period)` já leva ao último dia do mês quando o dia não existe. Usado no `HORIZONTE` (dias corridos). O tenor da SOFR trata `D` à parte (dias úteis, seção 8.5).
 
 ---
 
 ## 4. Calendários: `domain/calendario/`
 
-### 4.1 Base `Calendar.java`
+### 4.1 Base `Calendario.java`
+
+Classe abstrata (não interface) porque guarda o cache de feriados e porque os scripts Groovy a estendem sobrescrevendo só `feriados(int ano)`.
 
 ```java
-public abstract class Calendar {
+public abstract class Calendario {
   private final ConcurrentHashMap<Integer, Set<LocalDate>> cache = new ConcurrentHashMap<>();
-  public abstract String nome(); public abstract String mercado();
-  protected abstract Set<LocalDate> feriados(int ano);                  // ponto de extensão
+  public abstract String nome();
+  public abstract String mercado();
+  protected abstract Set<LocalDate> feriados(int ano);
+
   public boolean isBusinessDay(LocalDate d) {
-    DayOfWeek w = d.getDayOfWeek();
-    return w != DayOfWeek.SATURDAY && w != DayOfWeek.SUNDAY && !cache.computeIfAbsent(d.getYear(), this::feriados).contains(d);
+    return switch (d.getDayOfWeek()) {
+      case SATURDAY, SUNDAY -> false;
+      default -> !cache.computeIfAbsent(d.getYear(), a -> Set.copyOf(feriados(a))).contains(d);
+    };
   }
-  public int diasUteis(LocalDate de, LocalDate ate) {                  // quantidade em (de, ate]; 0 se ate <= de
-    int n = 0; for (LocalDate d = de.plusDays(1); !d.isAfter(ate); d = d.plusDays(1)) if (isBusinessDay(d)) n++; return n;
+
+  /** Dias úteis em (de, ate]; 0 se ate <= de. */
+  public int diasUteis(LocalDate de, LocalDate ate) {
+    if (!ate.isAfter(de)) return 0;
+    return (int) de.plusDays(1).datesUntil(ate.plusDays(1)).filter(this::isBusinessDay).count();
   }
-  public LocalDate advance(LocalDate d, int n) {                        // n dias úteis para frente (n >= 0)
-    LocalDate r = d; int k = 0; while (k < n) { r = r.plusDays(1); if (isBusinessDay(r)) k++; } return r;
+
+  /** n dias úteis depois de d (n >= 0). */
+  public LocalDate advance(LocalDate d, int n) {
+    if (n == 0) return d;
+    return Stream.iterate(d.plusDays(1), x -> x.plusDays(1)).filter(this::isBusinessDay)
+        .skip(n - 1L).findFirst().orElseThrow();
   }
-  public LocalDate adjust(LocalDate d, BusinessDayConvention c) { /* regras QuantLib abaixo */ }
+
+  public LocalDate adjust(LocalDate d, BusinessDayConvention c) {
+    return switch (c) {
+      case Unadjusted -> d;
+      case Following -> proximo(d, 1);
+      case Preceding -> proximo(d, -1);
+      case ModifiedFollowing -> { var f = proximo(d, 1); yield f.getMonth() == d.getMonth() ? f : proximo(d, -1); }
+      case ModifiedPreceding -> { var p = proximo(d, -1); yield p.getMonth() == d.getMonth() ? p : proximo(d, 1); }
+      case HalfMonthModifiedFollowing -> {
+        var mf = adjust(d, BusinessDayConvention.ModifiedFollowing);
+        yield (d.getDayOfMonth() <= 15 && mf.getDayOfMonth() > 15) ? proximo(d, -1) : mf;
+      }
+      case Nearest -> {
+        var f = proximo(d, 1); var p = proximo(d, -1);
+        yield ChronoUnit.DAYS.between(d, f) <= ChronoUnit.DAYS.between(p, d) ? f : p;
+      }
+    };
+  }
+
+  private LocalDate proximo(LocalDate d, int passo) {    // d se útil, senão o próximo útil no sentido do passo
+    var r = d; while (!isBusinessDay(r)) r = r.plusDays(passo); return r;
+  }
 }
 ```
 
-`adjust`: `Unadjusted` → `d`; `Following` → próximo útil (inclusive `d`); `Preceding` → anterior útil; `ModifiedFollowing` → `Following`, mas se mudar de mês, `Preceding`; `ModifiedPreceding` → `Preceding`, mas se mudar de mês, `Following`; `HalfMonthModifiedFollowing` → `ModifiedFollowing`, e se `d` ≤ dia 15 e o resultado passar do dia 15, `Preceding`; `Nearest` → o útil mais próximo, com empate indo para `Following`.
-
-Um script Groovy (seção 11) sobrescreve só `feriados(int ano)`.
-
-### 4.2 `brazil/Brazil.java` (nome `Brazil`, mercado `Settlement`)
+### 4.2 `Brazil.java` (nome `Brazil`, mercado `Settlement`, construtor `new Brazil()`)
 
 ```java
-static LocalDate pascoa(int y) { // Meeus/Jones/Butcher
-  int a = y % 19, b = y / 100, c = y % 100, d = b / 4, e = b % 4, f = (b + 8) / 25, g = (b - f + 1) / 3;
-  int h = (19 * a + b - d - g + 15) % 30, i = c / 4, k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
-  int m = (a + 11 * h + 22 * l) / 451, mes = (h + l - 7 * m + 114) / 31, dia = ((h + l - 7 * m + 114) % 31) + 1;
-  return LocalDate.of(y, mes, dia);
+public class Brazil extends Calendario {
+  public String nome() { return "Brazil"; }
+  public String mercado() { return "Settlement"; }
+  protected Set<LocalDate> feriados(int y) {
+    var p = pascoa(y);
+    var s = new HashSet<>(List.of(LocalDate.of(y, 1, 1), p.minusDays(48), p.minusDays(47), p.minusDays(2),
+        LocalDate.of(y, 4, 21), LocalDate.of(y, 5, 1), p.plusDays(60), LocalDate.of(y, 9, 7),
+        LocalDate.of(y, 10, 12), LocalDate.of(y, 11, 2), LocalDate.of(y, 11, 15), LocalDate.of(y, 12, 25)));
+    if (y >= 2024) s.add(LocalDate.of(y, 11, 20));
+    return s;
+  }
+  static LocalDate pascoa(int y) {   // Meeus/Jones/Butcher
+    int a = y % 19, b = y / 100, c = y % 100, d = b / 4, e = b % 4, f = (b + 8) / 25, g = (b - f + 1) / 3;
+    int h = (19 * a + b - d - g + 15) % 30, i = c / 4, k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+    int m = (a + 11 * h + 22 * l) / 451, x = h + l - 7 * m + 114;
+    return LocalDate.of(y, x / 31, (x % 31) + 1);
+  }
 }
+```
+
+### 4.3 `UnitedStates.java` (nome `UnitedStates`, mercado `FederalReserve`)
+
+Com os `TemporalAdjusters` do Java:
+
+```java
 protected Set<LocalDate> feriados(int y) {
-  LocalDate p = pascoa(y);
-  Set<LocalDate> s = new HashSet<>(List.of(LocalDate.of(y,1,1), p.minusDays(48), p.minusDays(47), p.minusDays(2),
-    LocalDate.of(y,4,21), LocalDate.of(y,5,1), p.plusDays(60), LocalDate.of(y,9,7), LocalDate.of(y,10,12),
-    LocalDate.of(y,11,2), LocalDate.of(y,11,15), LocalDate.of(y,12,25)));
-  if (y >= 2024) s.add(LocalDate.of(y,11,20));
+  var s = new HashSet<LocalDate>();
+  Stream.of(LocalDate.of(y, 1, 1), LocalDate.of(y, 7, 4), LocalDate.of(y, 11, 11), LocalDate.of(y, 12, 25))
+      .flatMap(f -> observado(f).stream()).forEach(s::add);
+  if (y >= 2022) observado(LocalDate.of(y, 6, 19)).ifPresent(s::add);
+  if (y >= 1998) s.add(LocalDate.of(y, 1, 1).with(TemporalAdjusters.dayOfWeekInMonth(3, DayOfWeek.MONDAY)));
+  s.add(LocalDate.of(y, 2, 1).with(TemporalAdjusters.dayOfWeekInMonth(3, DayOfWeek.MONDAY)));
+  s.add(LocalDate.of(y, 5, 1).with(TemporalAdjusters.lastInMonth(DayOfWeek.MONDAY)));
+  s.add(LocalDate.of(y, 9, 1).with(TemporalAdjusters.firstInMonth(DayOfWeek.MONDAY)));
+  s.add(LocalDate.of(y, 10, 1).with(TemporalAdjusters.dayOfWeekInMonth(2, DayOfWeek.MONDAY)));
+  s.add(LocalDate.of(y, 11, 1).with(TemporalAdjusters.dayOfWeekInMonth(4, DayOfWeek.THURSDAY)));
   return s;
 }
+private static Optional<LocalDate> observado(LocalDate f) {   // domingo → segunda; sábado → não observado
+  return switch (f.getDayOfWeek()) {
+    case SUNDAY -> Optional.of(f.plusDays(1));
+    case SATURDAY -> Optional.empty();
+    default -> Optional.of(f);
+  };
+}
 ```
 
-Constante estilo QuantLib: `Brazil.Market.Settlement` (enum interno com um valor) e construtor `new Brazil(Brazil.Market.Settlement)`.
+### 4.4 `CalendarioPorLista.java`
 
-### 4.3 `unitedstates/UnitedStates.java` (nome `UnitedStates`, mercado `FederalReserve`)
-
-Datas fixas (1/1, 19/6 a partir de 2022, 4/7, 11/11, 25/12): no domingo → segunda seguinte; no sábado → não observado. Móveis: 3ª segunda de janeiro (a partir de 1998), 3ª segunda de fevereiro, última segunda de maio, 1ª segunda de setembro, 2ª segunda de outubro, 4ª quinta de novembro. Vetores 2026 e 2027 na seção 0.2. Constante: `UnitedStates.Market.FederalReserve`.
-
-### 4.4 `CalendarioPorLista.java` (base dos calendários importados)
-
-Campos: `nome`, `mercado`, `anoInicial`, `anoFinal`, `Set<LocalDate> datas`. `feriados(ano)` devolve as datas do ano; se `ano` fora da cobertura → `ErroEngine(MODELO_FALHOU, "Calendário {nome} v{versao}: data {d} fora da cobertura {anoInicial}–{anoFinal}")`. Também `isBusinessDay` checa a cobertura antes de tudo.
+`public class CalendarioPorLista extends Calendario`, construtor `(String nome, String mercado, int anoInicial, int anoFinal, Set<LocalDate> datas)`. `feriados(ano)` devolve as datas do ano; ano fora da cobertura → `ErroEngine(MODELO_FALHOU, "Calendário {nome}: data fora da cobertura {anoInicial}–{anoFinal}")`. `isBusinessDay` confere a cobertura antes de chamar `super`.
 
 ---
 
-## 5. Cadastro: `domain/curva/CadastroCurva.java` e `adapter/out/persistence/jpa/CadastroJpaAdapter.java`
+## 5. Cadastro
 
-### 5.1 Modelo
+### 5.1 Records (`domain/curva/`)
 
 ```java
-public enum Unidade { TAXA, PRECO, PONTOS }
+public enum Unidade implements ComRotulo { TAXA, PRECO, PONTOS; /* (rotulo, descricao) */ }
 public record Origem(String fonte, String produto, String codigoNaFonte, int prioridade) {}
 public record Mae(String nome, String papel) {}
-public record Parametros(String grandeza, String dayCounterTempo, Frequency frequency, String calendario,
-  String mercadoCalendario, BusinessDayConvention convencao, String extrapolacaoInicio, String extrapolacaoFim,
-  Period horizonte, Arredondamento arredondamento, Integer versaoScriptConstrucao, Integer versaoScriptInterpolacao,
-  Integer versaoScriptCalendario, Map<String,String> modelosPorOrigem) {}
-public record CadastroCurva(String codigo, String nome, Unidade unidade, String cNormaDia, Compounding cTpoJuro,
-  boolean ativa, LocalDate inicioVigencia, LocalDate fimVigencia, List<Origem> origens /* ordem de prioridade */,
-  List<Mae> maes /* vazia se não derivada */, int idConfiguracao, String modeloConstrucao, String interpolador,
-  Parametros parametros, String jsonParametros) {
-  public Origem origemPrincipal() { return origens.get(0); }
+public record Parametros(Grandeza grandeza, DayCounter dayCounterTempo, Frequency frequency, String calendario,
+    String mercadoCalendario, BusinessDayConvention convencao, Extrapolacao extrapolacaoInicio,
+    Extrapolacao extrapolacaoFim, Period horizonte, int casasDecimais, RoundingMode modoArredondamento,
+    Integer versaoScriptConstrucao, Integer versaoScriptInterpolacao, Integer versaoScriptCalendario,
+    Map<String, String> modelosPorOrigem) {}
+public record CadastroCurva(String codigo, String nome, Unidade unidade, DayCounter dayCounterCotacao,
+    Compounding compounding, boolean ativa, LocalDate inicioVigencia, LocalDate fimVigencia,
+    List<Origem> origens /* por prioridade */, List<Mae> maes /* vazia se não derivada */,
+    long idConfiguracao, String modeloConstrucao, String interpolador, Parametros parametros, String jsonParametros) {
+  public Origem origemPrincipal() { return origens.getFirst(); }       // SequencedCollection (Java 21)
   public boolean derivada() { return "TCEN".equals(origemPrincipal().fonte()); }
+  public InterestRate cotacao() { return new InterestRate(dayCounterCotacao, compounding, parametros.frequency()); }
 }
 ```
 
-### 5.2 Persistência (JPA; todas as colunas `CHAR`/`VARCHAR` com `stripTrailing()` na leitura)
+### 5.2 Persistência (`adapter/out/persistence/`, implementa `CadastroPort`)
 
-Acesso por JPA, em `adapter/out/persistence/jpa/`: entidades `CurvaMercdEntity` (`tCurvaMercd`), `CurvaPrvdrEntity` (`tCurvaPrvdr`) e `ConfgCurvaEntity` (`tConfgCurva`, já existe: conferir as colunas contra o `001_SCRIPT_INICIAL.sql`), com repositórios Spring Data. As consultas abaixo são as que os repositórios SHALL executar; onde o JPQL não expressa exatamente, usar `@Query(nativeQuery = true)` com o SQL como está.
+Entidades JPA (classes, só no adaptador) de `tCurvaMercd`, `tCurvaPrvdr` e `tConfgCurva` (a atual `ConfgCurvaEntity` é conferida contra o `001_SCRIPT_INICIAL.sql`). Texto sempre com `stripTrailing()` na leitura (colunas `CHAR`). O adaptador devolve os dados crus em records (`CadastroBruto`); quem monta e valida o `CadastroCurva` é o domínio (5.3). Consultas (`@Query(nativeQuery = true)` quando o JPQL não expressa igual):
 
 ```sql
 -- curva por código (0 → CURVA_NAO_ENCONTRADA; >1 → CODIGO_DUPLICADO)
 SELECT cTickerIndcd, cTickerIdtfdUnic, cTpoVlr, cNormaDia, cTpoJuro, cSitReg, dInicVgcia, dValidAte, dBaseReft, cUsuarCalc
   FROM tCurvaMercd WHERE cTickerIdtfdUnic = ?;
--- curva por nome: ler todas com código não nulo e comparar em Java (normalizar = sem acento via Normalizer NFD
--- removendo \p{M}, minúsculo, strip()); 0 → CURVA_NAO_ENCONTRADA, >1 → NOME_AMBIGUO (detalhes: códigos e nomes)
+-- por nome: ler (cTickerIndcd, cTickerIdtfdUnic) com código não nulo e comparar em Java o nome normalizado
+-- (Normalizer.normalize(s, NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT).strip()); 0 → CURVA_NAO_ENCONTRADA; >1 → NOME_AMBIGUO
 SELECT cTickerIndcd, cTickerIdtfdUnic FROM tCurvaMercd WHERE cTickerIdtfdUnic IS NOT NULL;
--- origens
 SELECT iPrvdrDados, cPrvdrMercd, cTickerPrvdr, cPriorCsumo FROM tCurvaPrvdr WHERE cTickerIndcd = ? ORDER BY cPriorCsumo, cldtfdUnic;
--- configuração vigente (precisa ser exatamente 1 linha; 0 ou >1 → CADASTRO_INVALIDO)
+-- configuração vigente (exatamente 1 linha; 0 ou >1 → CADASTRO_INVALIDO)
 SELECT cldtfdConfg, cMotorCalc, cRotnaCalc, cModDado FROM tConfgCurva
  WHERE cTickerIndcd = ? AND dInicVgcia <= ? AND (dValidAte IS NULL OR dValidAte >= ?);
 ```
 
-### 5.3 Validação (classe `ValidadorCadastro`, uma exceção `CADASTRO_INVALIDO` com um `Detalhe` por problema)
+O `cModDado` é lido pelo adaptador com o Jackson e entregue ao domínio como `Map<String, Object>` (o domínio não depende do Jackson); JSON inválido vira um problema de `CADASTRO_INVALIDO` com o motivo.
 
-Aplicar **todas** as regras da spec `curve-build-pipeline` (requisito "Cadastro da curva e itens obrigatórios") nesta ordem, juntando os problemas antes de lançar:
-1. `cModDado` é objeto JSON (Jackson `ObjectMapper.readTree`); cada chave pertence à tabela; tipo certo (string, número inteiro, ou objeto só em `MODELOS_POR_ORIGEM`).
-2. Obrigatórios presentes; valores nas listas (comparação exata, com caixa). Padrão só para `EXTRAPOLACAO_INICIO` e `EXTRAPOLACAO_FIM` (`Disabled`).
-3. `cTpoVlr` ∈ `TAXA|PRECO|PONTOS`; para `TAXA`, `cNormaDia` ∈ `Business252|Actual360|Actual365Fixed|Thirty360` e `cTpoJuro` ∈ `Simple|Compounded|Continuous` (os outros dois → inválido).
-4. Combinações: `Price` só com `PRECO`/`PONTOS`, e o contrário; `FREQUENCY` só com `Compounded` (obrigatória nele), nunca `NoFrequency|Once|OtherFrequency`; `MERCADO_CALENDARIO` = mercado do calendário resolvido; `FlatForward` só com `Linear|LogLinear`; `CASAS_DECIMAIS` 0..12; `HORIZONTE` pelo `Period.parse`.
-5. `MODELOS_POR_ORIGEM`: chave casa `^[^/]+/[^/]+$`, valor texto não vazio. Chave sem ligação ou da principal é ignorada (não é erro).
-6. Modelo de construção resolvido (seção 11) aceita a fonte e o produto da origem usada.
-7. Derivada (`TCEN`): mães existem, sem ciclo (DFS pelas ligações `TCEN`), papéis exatamente os declarados pelo modelo.
+### 5.3 `domain/cadastro/TabelaParametros` e `ValidadorCadastro`
 
-`cSitReg` ≠ `ATIVO` (inclusive nulo) → `ativa = false`. Situação e vigência **nunca** geram `CADASTRO_INVALIDO`.
+`TabelaParametros`: lista de records `Chave(String nome, TipoJson tipo, boolean obrigatoria, String condicao, String padrao, List<String> valores, String formato, String rotulo, String descricao)`, na ordem da tabela da spec `curve-build-pipeline`. Fonte única do validador e do `GET /valores-cadastro`. `MODO_ARREDONDAMENTO` aceita `HALF_UP`, `HALF_EVEN`, `DOWN` e vira `RoundingMode.valueOf(...)` (os nomes são os mesmos do Java).
 
-### 5.4 Origem secundária (`fonte` e `produto` na construção e na simulação)
+`ValidadorCadastro.montar(CadastroBruto, Optional<Origem> origemPedida, Function<String, ModeloConstrucao> resolver)`: junta todos os problemas e lança um único `CADASTRO_INVALIDO` com um `Detalhe` por problema:
+1. `cModDado` é objeto JSON; cada chave existe na tabela; tipo certo.
+2. Obrigatórios presentes; valores nas listas, com caixa exata. Padrão só em `EXTRAPOLACAO_INICIO`/`FIM` (`Disabled`).
+3. `cTpoVlr` ∈ `TAXA|PRECO|PONTOS`; com `TAXA`, `cNormaDia` ∈ constantes de `DayCounter` (`DayCounter.valueOf`) e `cTpoJuro` ∈ `Simple|Compounded|Continuous`.
+4. Combinações: `Price` só com `PRECO`/`PONTOS` e o contrário; `FREQUENCY` só com `Compounded` (e obrigatória nele), nunca `NoFrequency|Once|OtherFrequency`; `MERCADO_CALENDARIO` = `mercado()` do calendário resolvido; `FlatForward` só com `Linear|LogLinear`; `CASAS_DECIMAIS` 0..12; `HORIZONTE` por `Periodos.parse`.
+5. `MODELOS_POR_ORIGEM`: chave `^[^/]+/[^/]+$`, valor texto não vazio; chave sem ligação ou da principal é ignorada.
+6. O modelo de construção da origem usada aceita a fonte e o produto dela.
+7. Derivada: mães existem, sem ciclo (busca em profundidade pelas ligações `TCEN`), papéis iguais aos declarados pelo modelo.
 
-Os dois ou nenhum (só um → `PARAMETRO_INVALIDO`). Com eles: ligação com `iPrvdrDados = fonte` e `cPrvdrMercd = produto`; nenhuma ou mais de uma → `CADASTRO_INVALIDO` listando as origens; `fonte = TCEN` → `PARAMETRO_INVALIDO`. Modelo = `modelosPorOrigem.get(fonte + "/" + produto)`, senão `cMotorCalc`. Aviso `ORIGEM_SECUNDARIA` com fonte, produto, código na fonte e prioridade.
+`cSitReg` ≠ `ATIVO` (inclusive nulo) → `ativa = false`. Situação e vigência nunca geram `CADASTRO_INVALIDO`.
+
+### 5.4 Origem secundária
+
+`fonte` e `produto` juntos ou nenhum (só um → `PARAMETRO_INVALIDO`); `fonte = TCEN` → `PARAMETRO_INVALIDO`. Ligação com `iPrvdrDados = fonte` e `cPrvdrMercd = produto`; nenhuma ou mais de uma → `CADASTRO_INVALIDO` com as origens. Modelo = `modelosPorOrigem.get(fonte + "/" + produto)` ou `cMotorCalc`. Aviso `ORIGEM_SECUNDARIA` (fonte, produto, código na fonte, prioridade).
 
 ---
 
 ## 6. Interpolação: `domain/interpolacao/`
 
-### 6.1 Contratos
+### 6.1 Contratos e interpoladores
 
 ```java
-public interface Interpolador {                          // chamado só com xs[0] <= x <= xs[n-1]
+public interface Interpolador {                        // chamado só com xs.getFirst() <= x <= xs.getLast()
   String nome();
   BigDecimal valor(BigDecimal x, List<BigDecimal> xs, List<BigDecimal> ys, MemoriaCalculo memoria);
 }
+
 public abstract class InterpoladorLocal implements Interpolador {
   public final BigDecimal valor(BigDecimal x, List<BigDecimal> xs, List<BigDecimal> ys, MemoriaCalculo m) {
-    int i = segmento(x, xs);                              // maior i com xs[i] <= x, limitado a n-2
-    if (x.compareTo(xs.get(i)) == 0) return ys.get(i);
-    BigDecimal w = x.subtract(xs.get(i)).divide(xs.get(i + 1).subtract(xs.get(i)), DecimalMath.MC);
+    int pos = Collections.binarySearch(xs, x);
+    if (pos >= 0) return ys.get(pos);
+    int i = Math.min(-pos - 2, xs.size() - 2);                       // maior i com xs[i] < x
+    var w = x.subtract(xs.get(i)).divide(xs.get(i + 1).subtract(xs.get(i)), DecimalMath.MC);
     return valorNoSegmento(w, ys.get(i), ys.get(i + 1));
   }
-  public BigDecimal valorNoSegmentoPublico(BigDecimal w, BigDecimal yE, BigDecimal yD) { return valorNoSegmento(w, yE, yD); } // usado pelo FlatForward
+  public final BigDecimal extrapolar(BigDecimal w, BigDecimal yEsquerda, BigDecimal yDireita) {   // FlatForward
+    return valorNoSegmento(w, yEsquerda, yDireita);
+  }
   protected abstract BigDecimal valorNoSegmento(BigDecimal w, BigDecimal yEsquerda, BigDecimal yDireita);
 }
 ```
 
-| Classe (pacote) | `valorNoSegmento` |
+| Classe | `valorNoSegmento` |
 |---|---|
-| `linear/Linear` | `yE + w·(yD − yE)` |
-| `loglinear/LogLinear` | `yE · pow(yD/yE, w)` (todos os `y` > 0, checado antes: senão `PONTOS_NAO_INTERPOLAVEIS` com os pontos) |
-| `backwardflat/BackwardFlat` | `yD` |
-| `forwardflat/ForwardFlat` | `yE` |
+| `Linear` | `yE + w·(yD − yE)` |
+| `LogLinear` | `yE · DecimalMath.pow(yD/yE, w)` (todos os `y` > 0, checado antes; senão `PONTOS_NAO_INTERPOLAVEIS` com os pontos) |
+| `BackwardFlat` | `yD` |
+| `ForwardFlat` | `yE` |
 
-`cubic/Cubic` (implementa `Interpolador` direto): spline natural. Com `h_i = x_{i+1}−x_i`, resolver o sistema tridiagonal das segundas derivadas `M` (`M_0 = M_{n-1} = 0`; para `i = 1..n-2`: `h_{i-1}·M_{i-1} + 2(h_{i-1}+h_i)·M_i + h_i·M_{i+1} = 6·((y_{i+1}−y_i)/h_i − (y_i−y_{i-1})/h_{i-1})`) pelo algoritmo de Thomas em `BigDecimal`, e avaliar `S(x) = M_i(x_{i+1}−x)³/(6h_i) + M_{i+1}(x−x_i)³/(6h_i) + (y_i/h_i − M_i h_i/6)(x_{i+1}−x) + (y_{i+1}/h_i − M_{i+1} h_i/6)(x−x_i)`. Com 2 pontos, igual ao linear.
+Classes públicas e não finais: um script Groovy pode estender `LogLinear` e sobrescrever só `valorNoSegmento`.
 
-### 6.2 Grandeza (`Grandeza.java`, enum `Discount, CompoundFactor, ZeroYield, Price`)
+`Cubic implements Interpolador`: spline natural em `BigDecimal`. `h_i = x_{i+1} − x_i`; segundas derivadas `M` com `M_0 = M_{n-1} = 0` e, para `i = 1..n-2`, `h_{i-1}·M_{i-1} + 2(h_{i-1}+h_i)·M_i + h_i·M_{i+1} = 6·((y_{i+1}−y_i)/h_i − (y_i−y_{i-1})/h_{i-1})`, resolvido pelo algoritmo de Thomas. Avaliação: `S(x) = M_i(x_{i+1}−x)³/(6h_i) + M_{i+1}(x−x_i)³/(6h_i) + (y_i/h_i − M_i h_i/6)(x_{i+1}−x) + (y_{i+1}/h_i − M_{i+1} h_i/6)(x−x_i)`. Com 2 pontos, igual ao linear.
 
-Para um valor `v` num prazo com fração de ano `τ` da cotação: `Discount` → `y = 1/FA`; `CompoundFactor` → `y = FA`; `ZeroYield` → `y = v/100`; `Price` → `y = v`. Inversa no prazo pedido: `Discount` → `FA = 1/y`, `v = taxa(FA, τ)`; `CompoundFactor` → `v = taxa(y, τ)`; `ZeroYield` → `v = 100·y`; `Price` → `v = y`.
+### 6.2 `Grandeza`, `Extrapolacao` e `Classificacao` (enums)
+
+```java
+public enum Grandeza implements ComRotulo {
+  Discount, CompoundFactor, ZeroYield, Price;   // cada um com (rotulo, descricao)
+  public BigDecimal paraY(BigDecimal valor, Prazo prazo, InterestRate cotacao) {
+    return switch (this) {
+      case Discount -> BigDecimal.ONE.divide(cotacao.fator(valor, prazo), DecimalMath.MC);
+      case CompoundFactor -> cotacao.fator(valor, prazo);
+      case ZeroYield -> valor.movePointLeft(2);
+      case Price -> valor;
+    };
+  }
+  public BigDecimal deY(BigDecimal y, Prazo prazo, InterestRate cotacao) {
+    return switch (this) {
+      case Discount -> cotacao.taxa(BigDecimal.ONE.divide(y, DecimalMath.MC), prazo);
+      case CompoundFactor -> cotacao.taxa(y, prazo);
+      case ZeroYield -> y.movePointRight(2);
+      case Price -> y;
+    };
+  }
+}
+public enum Extrapolacao implements ComRotulo { Disabled, FlatForward, FlatValue; /* (rotulo, descricao) */ }
+public enum Classificacao implements ComRotulo { PONTO, INTERPOLADO, EXTRAPOLADO_INICIO, EXTRAPOLADO_FIM, FORA_DO_DOMINIO; /* ... */ }
+```
 
 ### 6.3 Dias úteis ancorados: `EixoDiasUteis.java` (requisito "Dias úteis publicados pela fonte ou informados pelo usuário")
 
 ```java
 public record PontoGravado(LocalDate data, BigDecimal valor, Integer diasUteis /* cDiaUtil; null = calendário */,
-  Integer diasCorridos, Integer dias30360, BigDecimal fatorAcum, BigDecimal fatorDia) {}
+    Integer diasCorridos, Integer dias30360, BigDecimal fatorAcum, BigDecimal fatorDia) {}
 
 public final class EixoDiasUteis {
-  private final LocalDate base; private final Calendar cal; private final List<LocalDate> datas; private final int[] du;
-  // pontos já mantidos (seção 6.4), em ordem de data; du[i] = p.diasUteis() != null ? p.diasUteis() : cal.diasUteis(base, p.data())
+  private final LocalDate base; private final Calendario cal; private final List<LocalDate> datas; private final int[] du;
+
+  public EixoDiasUteis(LocalDate base, Calendario cal, List<PontoGravado> mantidos) {   // em ordem de data
+    this.base = base; this.cal = cal;
+    this.datas = mantidos.stream().map(PontoGravado::data).toList();
+    this.du = mantidos.stream().mapToInt(p -> p.diasUteis() != null ? p.diasUteis() : cal.diasUteis(base, p.data())).toArray();
+  }
+
   public int du(LocalDate d) {
-    int i = indiceDoPontoAnteriorOuIgual(d);             // -1 se antes do primeiro
-    if (i >= 0 && datas.get(i).equals(d)) return du[i];
+    int pos = Collections.binarySearch(datas, d);
+    if (pos >= 0) return du[pos];
+    int i = -pos - 2;                                              // -1 se antes do primeiro
     if (i < 0) return Math.min(cal.diasUteis(base, d), du[0]);
     int v = du[i] + cal.diasUteis(datas.get(i), d);
-    return (i + 1 < du.length) ? Math.min(v, du[i + 1]) : v;
+    return i + 1 < du.length ? Math.min(v, du[i + 1]) : v;
   }
-  public LocalDate dataDoDu(int n) {                      // prazo pedido em du
+
+  public LocalDate dataDoDu(int n) {                             // prazo pedido em du
     for (int i = 0; i < du.length; i++) if (du[i] == n) return datas.get(i);
-    int i = maiorIndiceComDuMenor(n);                    // -1 se n < du[0]
-    LocalDate de = i < 0 ? base : datas.get(i); int ja = i < 0 ? 0 : du[i];
-    LocalDate d = cal.advance(de, n - ja);
-    if (i + 1 < du.length && !d.isBefore(datas.get(i + 1))) d = datas.get(i + 1).minusDays(1);
-    return d;
+    int i = -1; while (i + 1 < du.length && du[i + 1] < n) i++;    // maior índice com du < n
+    var de = i < 0 ? base : datas.get(i);
+    var d = cal.advance(de, n - (i < 0 ? 0 : du[i]));
+    return (i + 1 < du.length && !d.isBefore(datas.get(i + 1))) ? datas.get(i + 1).minusDays(1) : d;
   }
 }
 ```
 
-Para a grade diária (seção 7.4), não chamar `du(d)` dia a dia do zero: caminhar os dias em ordem, somando 1 a cada dia útil a partir do ponto anterior, e reiniciar em cada ponto.
+Na grade diária (6.6) os dias úteis são contados caminhando os dias em ordem (soma 1 a cada dia útil e reinicia em cada ponto), sem chamar `du(d)` do zero para cada dia.
 
-### 6.4 Preparação dos pontos: `PreparacaoPontos.java` (requisito "Pontos no mesmo prazo do eixo")
+### 6.4 `PreparacaoPontos.java` (requisito "Pontos no mesmo prazo do eixo")
 
-Entrada: pontos gravados em ordem de data. Para cada ponto, `x` = fração do eixo (`Business252`: `DUp/252`; demais: pelo `DayCounter` com `DC`). Regras, nesta ordem:
+Entrada: pontos em ordem de data. `x` = `dayCounterTempo.fracaoAno(new Prazo(B, d, DUp))`. Em ordem:
 1. `x <= 0` → descarta, aviso `PONTO_DESCARTADO_PRAZO_NAO_POSITIVO`.
-2. Percorrendo em ordem de data: se `x` ≤ `x` do último mantido → descarta com `PONTO_DESCARTADO_MESMO_PRAZO` (data descartada, data mantida, `x`). Isso cobre "mesmo `x`, fica o de menor data" e "`x` que diminui".
-3. Sobrou nenhum → `CURVA_NAO_CONSTRUIDA`.
+2. `x` ≤ `x` do último mantido → descarta com `PONTO_DESCARTADO_MESMO_PRAZO` (data descartada, data mantida, `x`).
+3. Nenhum mantido → `CURVA_NAO_CONSTRUIDA`.
 
-Os pontos gravados nunca são alterados; a consulta devolve todos, com os avisos.
+Devolve `record PontosPreparados(List<PontoGravado> mantidos, List<Aviso> avisos)`. Os gravados nunca são alterados.
 
 ### 6.5 `CurvaInterpolada.java`
 
-Monta, a partir do cadastro e dos pontos mantidos: `xs`, `ys` (grandeza), eixo de dias úteis, interpolador resolvido, políticas de início e fim, domínio.
-- Início do domínio: `cal.advance(B, 1)`. Fim: `max(data do último ponto, horizonte.somarCorrido(B))`.
-- `avaliar(LocalDate d, Integer duPedido)`:
-  1. `d` fora de `[início, fim]` → `PRAZO_FORA_DO_DOMINIO` (prazo e limites).
-  2. `du = duPedido != null ? duPedido : eixo.du(d)`; `dc = d − B`; `x` pelo eixo; `τ` pela cotação.
-  3. `d` = data de ponto mantido → valor gravado, `PONTO`.
-  4. Antes do primeiro: política de início; depois do último: política de fim; senão interpolador → `y`; valor pela inversa da grandeza.
-  5. `Disabled` → `PRAZO_FORA_DO_DOMINIO`. `FlatValue` → valor do ponto adjacente. `FlatForward` (só `Linear`/`LogLinear`; ≥ 2 pontos) → `valorNoSegmentoPublico(w, yE, yD)` do segmento adjacente com `w` fora de `[0,1]`.
-  6. Arredondar o valor pelo cadastro. Para `TAXA`: `FA` = `fator(valorArredondado, τ)` e `FD` = `FA^(1/du)` (`du` ≥ 1), ambos `fator16`.
-- Registra na memória: prazo, vizinhos, `w`, `Y`, classificação, motivo.
+Criada por um método de fábrica com o cadastro, os pontos mantidos, o calendário e o interpolador resolvidos:
+- início do domínio `cal.advance(B, 1)`; fim `max(último ponto, B.plus(horizonte))`;
+- `xs`, `ys` (`grandeza.paraY`), eixo de dias úteis, políticas de início e fim.
+
+`ValorNoPrazo avaliar(LocalDate d, Integer duPedido)`, com `record ValorNoPrazo(LocalDate data, int du, long dc, BigDecimal x, BigDecimal valor, Classificacao classificacao, BigDecimal fatorAcum, BigDecimal fatorDia)`:
+1. `d` fora de `[início, fim]` → `PRAZO_FORA_DO_DOMINIO` (prazo e limites).
+2. `du = duPedido != null ? duPedido : eixo.du(d)`; `prazo = new Prazo(B, d, du)`; `x` pelo eixo.
+3. `d` = data de ponto mantido → valor gravado, `PONTO`.
+4. Antes do primeiro → política de início; depois do último → política de fim; senão interpolador e `grandeza.deY`.
+5. `Disabled` → `PRAZO_FORA_DO_DOMINIO`; `FlatValue` → valor do ponto adjacente; `FlatForward` (só `Linear`/`LogLinear`, ≥ 2 pontos) → `extrapolar(w, yE, yD)` do segmento adjacente com `w` fora de `[0,1]`.
+6. `valor.setScale(casasDecimais, modoArredondamento)`. Para `TAXA`: `fa = cotacao.fator(valorArredondado, prazo).setScale(16, RoundingMode.HALF_UP)`, `fd = DecimalMath.pow(fa, BigDecimal.ONE.divide(BigDecimal.valueOf(du), DecimalMath.MC)).setScale(16, RoundingMode.HALF_UP)` (`du` ≥ 1). `PRECO`/`PONTOS`: fatores nulos.
+
+### 6.6 `GradeInterpolada.java`
+
+- Início: `cal.advance(B, 1)`, ou o primeiro ponto se a extrapolação de início é `Disabled`. Fim: fim do domínio, ou o último ponto se a de fim é `Disabled`.
+- `List<DiaInterpolado>` (`record DiaInterpolado(LocalDate data, BigDecimal valor)`), um por dia corrido de `inicio.datesUntil(fim.plusDays(1))`, cada dia pelo mesmo `avaliar` da 6.5, com os dias úteis contados em ordem.
+- O valor de cada dia MUST ser igual ao da rota de interpolação para a mesma data.
 
 ---
 
-## 7. Pipeline e gravação: `application/service/ConstruirCurvaService.java`
+## 7. Casos de uso de construção: `application/service/`
 
-### 7.1 Interface e resultado
+### 7.1 Pedido e resultado (sealed), em `domain/curva/`
 
 ```java
 public enum Acionamento { CARGA, ORQUESTRADOR, API }
-public enum Situacao { CONSTRUIDA, RECONSTRUIDA, EXISTENTE, IGNORADA, SEM_INSUMO }
 public record PedidoConstrucao(String codigo, LocalDate dataBase, boolean forcarRecalculo, String fonte, String produto,
-  Acionamento acionadoPor, String usuario, String idCarga, Map<String,Integer> linhasAvisadas /* só na carga */,
-  boolean gravar /* false = simulação */) {}
-public record ResultadoConstrucao(String codigo, String nome, LocalDate dataBase, Situacao situacao, String motivoIgnorada,
-  Proveniencia proveniencia, int quantidadePontos, String hashPontos, List<Aviso> avisos, long duracaoMs,
-  CodigoErro codigoErro, String mensagemErro, MemoriaCalculo memoria) {}
+    Acionamento acionadoPor, String usuario, String idCarga, Map<String, Integer> linhasAvisadas) {}
+
+public sealed interface ResultadoConstrucao permits Construida, Reconstruida, Existente, Ignorada, SemInsumo, Falhou {
+  String codigo();
+}
+public record Construida(String codigo, String nome, LocalDate dataBase, Proveniencia proveniencia, int pontos,
+    String hashPontos, List<Aviso> avisos, long duracaoMs) implements ResultadoConstrucao {}
+public record Reconstruida(String codigo, String nome, LocalDate dataBase, Proveniencia proveniencia, int pontos,
+    String hashPontos, List<Aviso> avisos, long duracaoMs) implements ResultadoConstrucao {}
+public record Existente(String codigo, String nome, LocalDate dataBase, String hashPontos, List<Aviso> avisos) implements ResultadoConstrucao {}
+public record Ignorada(String codigo, CodigoAviso motivo) implements ResultadoConstrucao {}          // CURVA_INATIVA | FORA_DA_VIGENCIA_CURVA
+public record SemInsumo(String codigo) implements ResultadoConstrucao {}
+public record Falhou(String codigo, CodigoErro codigoErro, String mensagem, List<Detalhe> detalhes) implements ResultadoConstrucao {}
 ```
 
-### 7.2 Passos da construção (`gravar = true`), numa única transação (`@Transactional`, `TransactionTemplate` com timeout 30 s)
+O adaptador REST converte com `switch (resultado) { case Construida c -> ...; case Existente e -> ...; ... }`, exaustivo: o compilador avisa se faltar um caso.
 
-Entidades JPA (`adapter/out/persistence/jpa/entity/`), só com as colunas do `001_SCRIPT_INICIAL.sql`, chave composta por `@IdClass` (`dBaseReft`, `cTickerIndcd`, `dVertcReft`):
-- `DadoVertcCurvaEntity` (`tDadoVertcCurva`): `dBaseReft`, `cTickerIndcd`, `dVertcReft`, `cDiaUtil` (`Integer`), `vFatorDia` e `vFatorAcum` (`BigDecimal`, `precision = 28, scale = 16`), `cQtdDiaPer`, `cQtdDiaReft` (`Integer`), `vPrecoTx` (`BigDecimal`, `precision = 28, scale = 12`). Reescrever a entidade atual.
-- `DadoCurvaEntity` (`tDadoCurva`): `dBaseReft`, `cTickerIndcd`, `dVertcReft`, `vPrecoTx`. Tirar os campos que não existem no schema (`dtVerticeReferencia`, `cDiaUtil`, `cQtdDiaReft`, `vDiaFator`, `vFatorCalc`).
+### 7.2 `ConstruirCurvaService` (`@Transactional(timeout = 30)`)
 
-A trava é consulta nativa no repositório de `CurvaMercdEntity` (o `SET LOCK_TIMEOUT` vai na mesma conexão, dentro da transação, pelo `EntityManager`). As exclusões são `@Modifying @Query` em JPQL; as inclusões, `saveAll` (com o `batch_size` da seção 1.2). O SQL abaixo é o que tem de chegar ao banco:
+Portas: `TravaCurvaPort`, `CadastroPort`, `PontosPort` (`tDadoVertcCurva`), `InterpoladaPort` (`tDadoCurva`), `InsumosPort` (implementa `LeitorInsumos`), `ResumoCurvaPort` (`tCurvaMercd`), `EventosPort`. O SQL que tem de chegar ao banco (trava e resumo em consulta nativa; exclusões em `@Modifying @Query`; inclusões por `saveAll` com o `batch_size`):
 
 ```sql
 SET LOCK_TIMEOUT 30000;
 SELECT cTickerIndcd FROM tCurvaMercd WITH (UPDLOCK, ROWLOCK) WHERE cTickerIndcd = ?;   -- erro SQL 1222 → CONSTRUCAO_EM_ANDAMENTO
 SELECT dVertcReft, vPrecoTx, cDiaUtil, cQtdDiaPer, cQtdDiaReft, vFatorAcum, vFatorDia
-  FROM tDadoVertcCurva WHERE cTickerIndcd = ? AND dBaseReft = ? ORDER BY dVertcReft;   -- pontos atuais (depois da trava)
-```
-1. Cadastro vigente (seção 5), com a origem pedida. Avisos `CURVA_INATIVA` / `FORA_DA_VIGENCIA_CURVA` (vigência de `tCurvaMercd`) quando a construção é pela API.
-2. Havendo pontos e sem `forcarRecalculo` → executar o modelo sem gravar (passos 3–5 com `gravar = false`), comparar `hashPontos`, aviso `PONTOS_DIFERENTES_DA_FONTE` com a quantidade de pontos diferentes (data presente dos dois lados com valor diferente, mais os que só existem de um lado), situação `EXISTENTE`. Nada é escrito. Fim.
-3. Ler insumos pelo `LeitorInsumos` (seção 8). Na carga: `linhas lidas != linhasAvisadas[código na fonte]` → `INSUMO_INCOMPLETO` (lidas e avisadas).
-4. Executar o modelo (seção 8) → `List<PontoConstruido>`. Arredondar cada valor. Datas repetidas → `MODELO_FALHOU`.
-5. Para cada ponto: `DUp` = `diasUteisPublicados` ou `cal.diasUteis(B, d)`; se publicado e diferente do calendário, ou data não útil → acumular `CALENDARIO_DIVERGENTE`. `DC = d − B`; `30/360` pela seção 3.1; para `TAXA`: `FA`, `FD` (16 casas).
-6. Montar a `CurvaInterpolada` com esses pontos e gerar a grade (seção 7.4). Falha → desfaz tudo, com o erro.
-7. Gravar:
-```sql
+  FROM tDadoVertcCurva WHERE cTickerIndcd = ? AND dBaseReft = ? ORDER BY dVertcReft;
 DELETE FROM tDadoCurva      WHERE cTickerIndcd = ? AND dBaseReft = ?;
 DELETE FROM tDadoVertcCurva WHERE cTickerIndcd = ? AND dBaseReft = ?;
-INSERT INTO tDadoVertcCurva (dBaseReft, cTickerIndcd, dVertcReft, cDiaUtil, vFatorDia, vFatorAcum, cQtdDiaPer, cQtdDiaReft, vPrecoTx)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);                        -- batchUpdate
-INSERT INTO tDadoCurva (dBaseReft, cTickerIndcd, dVertcReft, vPrecoTx) VALUES (?, ?, ?, ?);   -- batchUpdate em lotes de 1.000
+INSERT INTO tDadoVertcCurva (dBaseReft, cTickerIndcd, dVertcReft, cDiaUtil, vFatorDia, vFatorAcum, cQtdDiaPer, cQtdDiaReft, vPrecoTx) VALUES (...);
+INSERT INTO tDadoCurva (dBaseReft, cTickerIndcd, dVertcReft, vPrecoTx) VALUES (...);
 UPDATE tCurvaMercd SET dBaseReft = CASE WHEN dBaseReft IS NULL OR dBaseReft < ? THEN ? ELSE dBaseReft END,
                        cUsuarCalc = ? WHERE cTickerIndcd = ?;
 ```
-8. Situação `CONSTRUIDA` (não havia pontos) ou `RECONSTRUIDA`. Depois do commit (`TransactionSynchronization.afterCommit`): log `CURVA_GRAVADA` (seção 14.1) e `CONSTRUCAO_CONCLUIDA`. Falha → `CONSTRUCAO_FALHOU`, sem `CURVA_GRAVADA`.
 
-`fatores` nulos para `PRECO` e `PONTOS`. `cUsuarCalc` = `preferred_username` do token, ou `appid` para identidade de serviço.
+Entidades (só no adaptador): `DadoVertcCurvaEntity` (`@IdClass` com `dBaseReft`, `cTickerIndcd`, `dVertcReft`; `cDiaUtil`, `cQtdDiaPer`, `cQtdDiaReft` `Integer`; `vFatorDia`, `vFatorAcum` `precision 28, scale 16`; `vPrecoTx` `precision 28, scale 12`) e `DadoCurvaEntity` (as 4 colunas do schema; tirar `dtVerticeReferencia`, `cDiaUtil`, `cQtdDiaReft`, `vDiaFator`, `vFatorCalc`).
 
-### 7.3 Simulação (`gravar = false`)
+Passos:
+1. Trava; pontos atuais (depois da trava).
+2. Cadastro vigente (seção 5) com a origem pedida; na construção pela API, avisos `CURVA_INATIVA`/`FORA_DA_VIGENCIA_CURVA`.
+3. Havendo pontos e sem `forcarRecalculo`: passos 4–6 sem gravar, comparar `hashPontos`, aviso `PONTOS_DIFERENTES_DA_FONTE` com a quantidade de pontos diferentes → `Existente`. Nada é escrito.
+4. Insumos pelo `LeitorInsumos`; na carga, linhas lidas ≠ `linhasAvisadas[código na fonte]` → `INSUMO_INCOMPLETO` (lidas e avisadas).
+5. Modelo → `List<PontoConstruido>`; arredondar; data repetida → `MODELO_FALHOU`. Para cada ponto: `DUp` = publicado ou `cal.diasUteis(B, d)`; publicado ≠ calendário, ou data não útil → acumular `CALENDARIO_DIVERGENTE`; `DC`; `DayCounter.dias30360`; para `TAXA`, fatores (16 casas).
+6. `CurvaInterpolada` + `GradeInterpolada`; falha → desfaz tudo.
+7. Gravar (SQL acima); `Construida` ou `Reconstruida`.
+8. `TransactionSynchronization.afterCommit`: `CURVA_GRAVADA` e `CONSTRUCAO_CONCLUIDA`. Falha → `CONSTRUCAO_FALHOU`, sem `CURVA_GRAVADA`.
 
-Mesmo serviço, sem trava e sem escrita. Não lança erro de negócio: devolve `status` `ERRO` com `codigoErro`, mensagem e a memória até a falha (só `CURVA_NAO_ENCONTRADA` e `PARAMETRO_INVALIDO` viram HTTP). Compara com os pontos gravados: `IGUAL`, `DIFERENTE`, `SO_SIMULADO`, `SO_GRAVADO`. Prazos pedidos fora do domínio: `FORA_DO_DOMINIO` com motivo, sem falhar os demais.
+`cUsuarCalc` = `preferred_username` do token, ou `appid` para identidade de serviço.
 
-### 7.4 Grade da curva interpolada (`GradeInterpolada.java`)
+### 7.3 `SimularCurvaService`
 
-- Início: `cal.advance(B, 1)`, ou a data do primeiro ponto se a extrapolação de início é `Disabled`.
-- Fim: fim do domínio, ou a data do último ponto se a de fim é `Disabled`.
-- Um valor por dia corrido, pelo mesmo `avaliar` da seção 6.5 (sem `duPedido`), arredondado. Caminhar os dias em ordem para os dias úteis (seção 6.3). O valor de cada dia MUST ser igual ao da rota de interpolação para a mesma data.
+Mesmo pipeline sem trava nem escrita (o pipeline dos passos 2–6 é um componente único, chamado pelos dois serviços, com `gravar` falso aqui). Falha de negócio não vira HTTP: devolve `status` `ERRO`, `codigoErro`, mensagem e a memória até a falha (só `CURVA_NAO_ENCONTRADA` e `PARAMETRO_INVALIDO` viram HTTP). Comparação com os gravados: `IGUAL`, `DIFERENTE`, `SO_SIMULADO`, `SO_GRAVADO`. Prazo pedido fora do domínio: `FORA_DO_DOMINIO` com motivo.
 
-### 7.5 Regravação da interpolada: `RegravarInterpoladaService.java`
+### 7.4 `RegravarInterpoladaService`
 
-Mesma trava da 7.2. Ler os pontos de `tDadoVertcCurva`; sem pontos → `DELETE FROM tDadoCurva ...` e `CURVA_NAO_CONSTRUIDA`. Com pontos → cadastro vigente, `CurvaInterpolada`, grade, `DELETE` + `INSERT` só em `tDadoCurva`. Não executa modelo, não altera pontos, não gera `CURVA_GRAVADA`; loga `INTERPOLADA_REGRAVADA` (código, nome, data-base, usuário, `hashPontos`, quantidade de linhas).
+Mesma trava. Sem pontos → apaga `tDadoCurva` da data e `CURVA_NAO_CONSTRUIDA`. Com pontos → cadastro, `CurvaInterpolada`, grade, `DELETE` + `INSERT` só em `tDadoCurva`. Sem modelo, sem `CURVA_GRAVADA`; evento `INTERPOLADA_REGRAVADA`.
 
-### 7.6 Conferência da interpolada (consulta, auditoria, situação)
+### 7.5 Conferência da interpolada (consulta, auditoria, situação)
 
-Gerar a grade em memória a partir dos pontos atuais e comparar com `SELECT dVertcReft, vPrecoTx FROM tDadoCurva WHERE cTickerIndcd = ? AND dBaseReft = ?` (comparar `BigDecimal` com `compareTo`, porque o banco devolve 12 casas). Diferença em data ou valor → `INTERPOLADA_DESATUALIZADA` com a quantidade de dias diferentes.
+Grade em memória a partir dos pontos atuais × `SELECT dVertcReft, vPrecoTx FROM tDadoCurva WHERE cTickerIndcd = ? AND dBaseReft = ?` (comparar com `compareTo`: o banco devolve 12 casas). Diferença → `INTERPOLADA_DESATUALIZADA` com a quantidade de dias.
 
-### 7.7 `hashPontos` (`HashPontos.java`)
+### 7.6 `HashPontos` (`domain/curva/`)
 
 ```java
-public static String calcular(List<PontoGravado> pontos) {             // em ordem de data
-  String texto = pontos.stream().sorted(Comparator.comparing(PontoGravado::data))
-    .map(p -> p.data() + ";" + canonico(p.valor())).collect(Collectors.joining("\n"));
-  return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(texto.getBytes(StandardCharsets.UTF_8)));
+public final class HashPontos {
+  private HashPontos() {}
+  public static String calcular(List<PontoGravado> pontos) {
+    var texto = pontos.stream().sorted(Comparator.comparing(PontoGravado::data))
+        .map(p -> p.data() + ";" + (p.valor().signum() == 0 ? "0" : p.valor().stripTrailingZeros().toPlainString()))
+        .collect(Collectors.joining("\n"));
+    try {
+      return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(texto.getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
+  }
 }
-static String canonico(BigDecimal v) { return v.signum() == 0 ? "0" : v.stripTrailingZeros().toPlainString(); }
 ```
 
 ---
@@ -595,16 +799,25 @@ static String canonico(BigDecimal v) { return v.signum() == 0 ? "0" : v.stripTra
 ```java
 public record PontoConstruido(LocalDate data, BigDecimal valor, Integer diasUteisPublicados) {}
 public interface ModeloConstrucao {
-  String nome(); String fonte(); String produto(); List<String> papeis();   // papeis vazio se não derivado
+  String nome(); String fonte(); String produto();
+  default List<String> papeis() { return List.of(); }
   List<PontoConstruido> construir(ContextoConstrucao ctx, MemoriaCalculo memoria);
 }
-public interface ContextoConstrucao {
-  CadastroCurva cadastro(); Origem origem(); LocalDate dataBase(); Calendar calendario(); LeitorInsumos insumos();
-  CurvaMae curvaMae(String papel);    // só derivadas; em outro modelo → ErroEngine(MODELO_FALHOU)
+public record ContextoConstrucao(CadastroCurva cadastro, Origem origem, LocalDate dataBase, Calendario calendario,
+    LeitorInsumos insumos, Function<String, CurvaMae> maes /* só derivadas; nos outros modelos lança MODELO_FALHOU */) {
+  public CurvaMae curvaMae(String papel) { return maes.apply(papel); }
 }
+public interface LeitorInsumos {                      // porta do domínio; implementada no adaptador
+  List<LinhaB3> b3(String nomeCurva, LocalDate dataBase);
+  List<LinhaAnbima> anbima(String nomeCurva, LocalDate dataBase);
+  List<LinhaBloomberg> bloomberg(String nomeCurva, LocalDate dataBase);
+}
+public record LinhaB3(int id, String curva, LocalDate dataBase, Integer diasCorridos, Integer diasUteis, BigDecimal taxa) {}
+public record LinhaAnbima(int id, String curva, LocalDate dataBase, BigDecimal prazo, BigDecimal taxa) {}
+public record LinhaBloomberg(int id, String curva, String ticker, LocalDate dataBase, BigDecimal ultimo) {}
 ```
 
-### 8.2 `LeitorInsumos` (único acesso às tabelas brutas; `adapter/out/persistence/jpa/LeitorInsumosJpa.java`, com `@Query(nativeQuery = true)` ou entidades das três tabelas brutas)
+Adaptador (`InsumosJpaAdapter`), consultas nativas:
 
 ```sql
 SELECT cldtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx FROM tBtrsCurvaPrimr  WHERE cTickerIndcd = ? AND dBaseReft = ?;
@@ -612,73 +825,61 @@ SELECT cldtfdUnic, cTickerIndcd, dBaseReft, vVertcCurva, vPrecoTx      FROM tAnb
 SELECT cldtfdUnic, cTickerIndcd, cTickerBberg, dBaseReft, vPrecoUlt   FROM tBbergCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;
 ```
 
-`cTickerIndcd` é o **nome** da curva. Nenhuma linha → `INSUMO_AUSENTE` (código, fonte, código na fonte, data). O leitor devolve a quantidade de linhas lidas para a conferência da carga. Cada linha vai para a aba `Insumos` da memória.
+Nenhuma linha → `INSUMO_AUSENTE` (código, fonte, código na fonte, data). Cada linha vai para a aba `Insumos`.
 
-### 8.3 `pontosprontos/PontosProntos.java` (comum)
+### 8.2 `PontosProntos` (comum)
 
-Ordena por data, rejeita data repetida (`INSUMO_INVALIDO` com as linhas) e registra os pontos na memória com as colunas extras do modelo.
+Ordena por data, data repetida → `INSUMO_INVALIDO` com as linhas, registra os pontos na memória com as colunas extras do modelo.
 
-### 8.4 `prontatsb3/ProntaTsB3` (`PRONTA_TS_B3`, fonte `B3`, produto `TS`)
+### 8.3 `ProntaTsB3` (`PRONTA_TS_B3`, `B3`/`TS`)
 
-Aplicar a tabela "Regras do arquivo" da spec `b3-ready-curve-model` linha a linha. Ponto: `data = B + cDiaCorri`, `valor = vPrecoTx` (sem mudar sinal ou escala), `diasUteisPublicados = cDiaUtil`. Colunas extras na aba `Pontos`: `DC publicado`, `DU publicado`. Não falha por calendário (o pipeline avisa, passo 7.2.5).
+Tabela "Regras do arquivo" da spec `b3-ready-curve-model` linha a linha. Ponto: `B.plusDays(diasCorridos)`, `taxa` sem mudar sinal nem escala, `diasUteisPublicados = diasUteis`. Extras: `DC publicado`, `DU publicado`. Não falha por calendário.
 
-### 8.5 `sofrzerobloomberg/SofrZeroBloomberg` (`SOFR_ZERO_BLOOMBERG`, fonte `BLOOMBERG`, produto `BLC2`)
+### 8.4 `NtnbBootstrapAnbima` (`NTNB_BOOTSTRAP_ANBIMA`, `ANBIMA`/`MS`)
 
-Aplicar a tabela "Regras do arquivo" da spec `sofr-bloomberg-curve-model`. `cTickerBberg.stripTrailing().split(" +")`: termo 0 = membro (tem de ser o código na fonte), termo 1 = tenor (`^([1-9][0-9]*)([DWMY])$`). Data: `D` → `cal.advance(B, n)`; `W` → `adjust(B + 7n)`; `M`/`Y` → `adjust(B.plusMonths/plusYears(n))`, com a convenção do cadastro. Mesmo tenor e mesmo valor → mantém o de menor `cldtfdUnic`, descarta os demais com `DUPLICADO`. `diasUteisPublicados = null`. Extras: `Tenor`, `Data nao ajustada`.
-
-### 8.6 `ntnbbootstrapanbima/NtnbBootstrapAnbima` (`NTNB_BOOTSTRAP_ANBIMA`, fonte `ANBIMA`, produto `MS`)
-
-Interpolador cadastrado tem de ser `Linear` ou `LogLinear` (senão `CADASTRO_INVALIDO`). Aplicar a tabela "Regras do arquivo" da spec `ntnb-anbima-curve-model` (sem tolerância). Para cada título mantido:
+Interpolador `Linear` ou `LogLinear` (senão `CADASTRO_INVALIDO`); tabela "Regras do arquivo" da spec `ntnb-anbima-curve-model` (sem tolerância). Por título:
 
 ```java
-LocalDate a = cal.advance(B, vVertcCurva);                 // data aproximada
-LocalDate v = a.withDayOfMonth(15);                        // vencimento nominal
-LocalDate p = cal.adjust(v, BusinessDayConvention.Following); // data do ponto; DU do ponto = vVertcCurva
-BigDecimal y = vPrecoTx / 100;
-BigDecimal c = 100 × (pow(1.06, 0.5) − 1);                 // cupom, sem arredondar
-// eventos: datas nominais v, v−6m, v−12m... enquanto adjust(nominal, Following) > B
-// DU_i = cal.diasUteis(B, pagamento_i), exceto o do vencimento, que é vVertcCurva
-// fluxo F_i = c; no vencimento F = c + 100
-// cotação C = Σ F_i · (1+y)^(−DU_i/252)
+var a = cal.advance(B, prazo);                                   // data aproximada
+var v = a.withDayOfMonth(15);                                     // vencimento nominal
+var p = cal.adjust(v, BusinessDayConvention.Following);           // data do ponto; DU = prazo publicado
+var y = taxa.movePointLeft(2);
+var c = BigDecimal.valueOf(100).multiply(DecimalMath.pow(new BigDecimal("1.06"), new BigDecimal("0.5")).subtract(BigDecimal.ONE));
+// eventos: Stream.iterate(v, n -> n.minusMonths(6)).takeWhile(n -> cal.adjust(n, Following).isAfter(B));
+// DU_i pelo calendário; o do vencimento = prazo. Fluxo c por evento, c + 100 no vencimento.
+// Cotação C = Σ F_i·(1+y)^(−DU_i/252)
 ```
 
-Bootstrap em ordem crescente de `v`. Para o título `n`, `f(z) = Σ F_i·DF_i(z) − C`:
-- vencimento: `DF = (1+z)^(−DU_n/252)`;
-- evento antes de qualquer título resolvido (primeiro título): mesma incógnita (`INCOGNITA`);
-- evento antes do primeiro título resolvido: `(1+z_1)^(−DU_i/252)` (`FLAT_INICIO`);
-- evento na data de um título resolvido `k`: `(1+z_k)^(−DU_i/252)` (`RESOLVIDO`);
-- demais: `DF` interpolado pela grandeza, interpolador e eixo cadastrados entre os resolvidos e o ponto `(P_n, z)` (`INTERPOLADO`).
+Bootstrap em ordem crescente de `v`, `f(z) = Σ F_i·DF_i(z) − C`, com as origens de DF `INCOGNITA`, `FLAT_INICIO`, `RESOLVIDO`, `INTERPOLADO` da spec; bisseção em `[−0.99, 1.00]` até largura < `1e-14` ou 200 iterações; sem troca de sinal → `MODELO_FALHOU`. Ponto `(p, 100·z, prazo)`. Memória: extras `Vencimento nominal`, `Taxa indicativa`, `Cotacao`, `Iteracoes`, `Residuo`; aba `Fluxos`.
 
-Bisseção em `[−0.99, 1.00]`: `f(a)·f(b) > 0` → `MODELO_FALHOU` (vencimento e `f` nos extremos); senão até largura < `1e-14` ou 200 iterações; `z_n` = ponto médio; ponto `(P_n, 100·z_n, vVertcCurva)`. Memória: extras `Vencimento nominal`, `Taxa indicativa`, `Cotacao`, `Iteracoes`, `Residuo`; aba `Fluxos` com `Titulo`, `Data nominal`, `Data pagamento`, `DU`, `Fluxo`, `Origem DF`, `DF`, `Valor presente`.
+### 8.5 `SofrZeroBloomberg` (`SOFR_ZERO_BLOOMBERG`, `BLOOMBERG`/`BLC2`)
+
+Tabela "Regras do arquivo" da spec `sofr-bloomberg-curve-model`. `ticker.strip().split(" +")`: termo 0 = membro, termo 1 = tenor (`^([1-9][0-9]*)([DWMY])$`). Data: `D` → `cal.advance(B, n)`; `W`/`M`/`Y` → `cal.adjust(B.plus(Periodos.parse(tenor)), convencao)`. Mesmo tenor e mesmo valor → fica o de menor `id`, os demais `DUPLICADO`. `diasUteisPublicados = null`. Extras: `Tenor`, `Data nao ajustada`.
 
 ---
 
-## 9. Carga, construção da data e situação: `application/service/`
+## 9. Carga, construção da data e situação
 
-### 9.1 `ProcessarCargaService` (`POST /api/v1/cargas`, papel `Curvas.Processor`)
+### 9.1 `ProcessarCargaService` (`POST /api/v1/cargas`)
 
-Corpo: `{ idCarga (1..100), fonte, produto, dataBase, linhasPorCodigo: { código: inteiro >= 0 } }`; faltando campo, mapa vazio, negativo ou data inválida → 400. Não grava a carga em lugar nenhum. Passos:
-1. Log `CARGA_RECEBIDA`.
-2. Curvas cuja **origem principal** tem `fonte`/`produto` da carga e código na fonte em `linhasPorCodigo`. Código sem curva → log `AVISO`.
-3. Para cada curva, independente (falha de uma não para as outras): inativa ou fora da vigência → `IGNORADA` com o motivo; senão `ConstruirCurvaService` com `acionadoPor = CARGA`, `linhasAvisadas`, `forcarRecalculo = false`.
+Corpo: `record AvisoCarga(String idCarga, String fonte, String produto, LocalDate dataBase, Map<String, Integer> linhasPorCodigo)`; inválido → 400. Nada é gravado sobre a carga.
+1. `CARGA_RECEBIDA`.
+2. Curvas cuja **origem principal** tem a fonte e o produto da carga e código em `linhasPorCodigo`; código sem curva → log `AVISO`.
+3. Cada curva independente: inativa/fora da vigência → `Ignorada`; senão `ConstruirCurvaService` (`CARGA`, `linhasAvisadas`, sem recálculo).
 4. Cadeia de derivadas (9.3).
-5. Resposta 200: `idCarga` e, por curva, `codigo`, `situacao` ou `codigoErro` + `mensagem`, `motivoIgnorada`, `avisos`, `hashPontos`. Log `CARGA_PROCESSADA`.
+5. 200 com o `idCarga` e os resultados; `CARGA_PROCESSADA`. Prazo total `engine.timeout.carga-segundos`.
 
-Tempo total limitado a `engine.timeout.carga-segundos`.
+### 9.2 `ConstruirDataService` (`POST /api/v1/construcoes/{dataBase}`)
 
-### 9.2 `ConstruirDataService` (`POST /api/v1/construcoes/{dataBase}`, papel `Curvas.Orquestrador`)
-
-Todas as curvas com código. Mesmas regras da carga, sem conferência de quantidade, `acionadoPor = ORQUESTRADOR`. Sem pontos e sem insumo (nenhuma linha bruta da origem na data, ou alguma mãe sem pontos) → `SEM_INSUMO`, sem erro. Curvas de provedor em paralelo (`ExecutorService` com `engine.construcao-data.paralelismo`), depois as derivadas em cadeia. Esgotado `engine.timeout.construcao-data-segundos`, não iniciar as que faltam e responder `ERRO_INTERNO` (as gravadas ficam). Logs `CONSTRUCAO_DATA_RECEBIDA` e `CONSTRUCAO_DATA_PROCESSADA`.
-
-A existência de pontos é conferida **depois** da trava (passo 7.2), então webhook e orquestrador simultâneos não duplicam.
+Todas as curvas com código, regras da carga, sem conferência de quantidade, `ORQUESTRADOR`; sem pontos e sem insumo → `SemInsumo`. Curvas de provedor com `Paralelo.executar` (limite `engine.construcao-data.paralelismo`, prazo `engine.timeout.construcao-data-segundos`); depois as derivadas em cadeia. Tempo esgotado: as já gravadas ficam, as outras não começam, resposta `ERRO_INTERNO`. Eventos `CONSTRUCAO_DATA_RECEBIDA` e `CONSTRUCAO_DATA_PROCESSADA`. A existência de pontos é conferida depois da trava.
 
 ### 9.3 Cadeia de derivadas
 
-Repetir até não haver mudança: derivadas ativas, vigentes, sem pontos e com todas as mães com pontos na data → construir (em ordem topológica). Derivada com pontos → comparar como `EXISTENTE`. Nunca recalcular. `curvaMae(papel)` monta uma `CurvaInterpolada` da mãe com os pontos de `tDadoVertcCurva` e o cadastro vigente dela, e guarda o `hashPontos` para a proveniência.
+Até não mudar nada: derivadas ativas, vigentes, sem pontos e com todas as mães com pontos → construir em ordem topológica. Com pontos → comparar como `Existente`. Nunca recalcular. `curvaMae(papel)` monta a `CurvaInterpolada` da mãe com os pontos dela e guarda o `hashPontos` para a proveniência.
 
-### 9.4 `SituacaoService` (`GET /api/v1/curvas/situacao?dataBase=`)
+### 9.4 `ConsultarSituacaoService` (`GET /api/v1/curvas/situacao?dataBase=`)
 
-Por curva com código, em paralelo (`engine.situacao.paralelismo`), sem gravar: `insumo` (linhas brutas: `SELECT COUNT(*)` na tabela da origem; ou mães com/sem pontos), `pontosGravados` (quantidade e `hashPontos`), `interpolada` (linhas em `tDadoCurva` e `atualizada`, seção 7.6), `conferencia` (simulação: `status`, `codigoErro`, mensagem, `hashPontosFonte`, `pontosDiferentes`; nula sem insumo). Falha ou tempo de uma curva → `conferencia.status = ERRO` só dela.
+Por curva, com `Paralelo.executar` (limite `engine.situacao.paralelismo`, prazo `engine.timeout.situacao-segundos`), sem gravar: `insumo`, `pontosGravados`, `interpolada` (7.5), `conferencia` (simulação). Falha ou tempo de uma → `conferencia.status = ERRO` só dela.
 
 ---
 
@@ -686,100 +887,114 @@ Por curva com código, em paralelo (`engine.situacao.paralelismo`), sem gravar: 
 
 ### 10.1 `domain/memoria/MemoriaCalculo.java`
 
-Objeto único preenchido pelos próprios métodos que calculam (nenhum recálculo para a memória). Coleções: `resumo` (lista de `Campo`/`Valor`), `insumos`, `pontos` (com colunas extras declaradas pelo modelo), `fluxos`, `interpolacao`, `eventos` (`Ordem`, `Nivel` `INFO|AVISO|ERRO`, `Evento`, `Mensagem`).
+Classe (acumula durante um cálculo, confinada a uma thread) com listas de records: `CampoResumo(String campo, String valor)`, `LinhaInsumo`, `LinhaPonto` (com `SequencedMap<String, Object> extras` na ordem declarada pelo modelo, `LinkedHashMap`), `LinhaFluxo`, `LinhaPrazo`, `Evento(int ordem, String nivel, String evento, String mensagem)`. Preenchida pelos próprios métodos que calculam.
 
-### 10.2 `adapter/out/planilha/PlanilhaMemoriaCalculo.java` (Apache POI, `XSSFWorkbook`)
+### 10.2 `adapter/out/planilha/PlanilhaPoiAdapter.java` (implementa `PlanilhaPort`)
 
-Seis abas, nesta ordem e com os cabeçalhos exatos da spec `curve-calculation-memory`: `Resumo`, `Insumos`, `Pontos`, `Fluxos`, `Interpolacao`, `Eventos`. Primeira linha congelada (`createFreezePane(0, 1)`). Datas: células de data com formato `dd/mm/yyyy`. Números: células numéricas (`setCellValue(v.doubleValue())` **só** na célula da planilha; o JSON tem a precisão completa). Célula não aplicável: vazia. Nota de 15 dígitos no `Resumo`.
-
-Nome: `{codigo}_{dataBase}_{GRAVADA|SIMULACAO}_{AAAAMMDDHHmmss}.xlsx`, `Content-Type` `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
+Seis abas, na ordem e com os cabeçalhos exatos da spec `curve-calculation-memory`: `Resumo`, `Insumos`, `Pontos`, `Fluxos`, `Interpolacao`, `Eventos`. Primeira linha congelada (`createFreezePane(0, 1)`); datas com formato `dd/mm/yyyy`; números como células numéricas (`doubleValue()` só na célula); célula não aplicável vazia; nota dos 15 dígitos no `Resumo`. Nome `{codigo}_{dataBase}_{GRAVADA|SIMULACAO}_{AAAAMMDDHHmmss}.xlsx`.
 
 ### 10.3 `formato=zip`
 
-`memoria.xlsx`, `memoria.json`, `modelos/{tipo}/{nome}/v{versao}.groovy` (texto compilado guardado em memória na carga da versão), `manifesto.json` (`correlationId`, versão do engine, `estadoScript`, modelos, lista de arquivos com SHA-256). `application/zip`.
+`java.util.zip.ZipOutputStream`: `memoria.xlsx`, `memoria.json`, `modelos/{tipo}/{nome}/v{versao}.groovy` (texto compilado guardado em memória), `manifesto.json` (`correlationId`, versão do engine, `estadoScript`, modelos, arquivos com SHA-256).
 
 ---
 
-## 11. Modelos Groovy e Blob: `domain/modelo/`, `adapter/out/blob/`
+## 11. Modelos Groovy e Blob
 
-### 11.1 Resolução (`RegistroModelos<T>`, um por tipo `construcao|interpolacao|calendario`)
+### 11.1 `application/service/ResolverModelos`
 
-Ordem: versão fixada no cadastro (tem de estar `VALIDADA`, `ATIVA` ou `INATIVA` depois de validada) → versão `ATIVA` no `estado.json` → nativo Java (`@Component` registrado na subida) → `CADASTRO_INVALIDO` (tipo e nome). Nativos: construção `PRONTA_TS_B3`, `NTNB_BOOTSTRAP_ANBIMA`, `SOFR_ZERO_BLOOMBERG`; interpolação `Linear`, `LogLinear`, `BackwardFlat`, `ForwardFlat`, `Cubic`; calendário `Brazil`, `UnitedStates`.
+Por tipo (`construcao`, `interpolacao`, `calendario`): versão fixada no cadastro (validada) → versão `ATIVA` do `estado.json` → nativo (beans `ModeloConstrucao`, `Interpolador` e `Calendario` do domínio, declarados num `@Configuration` e registrados por nome na subida) → `CADASTRO_INVALIDO`. Nativos: `PRONTA_TS_B3`, `NTNB_BOOTSTRAP_ANBIMA`, `SOFR_ZERO_BLOOMBERG`; `Linear`, `LogLinear`, `BackwardFlat`, `ForwardFlat`, `Cubic`; `Brazil`, `UnitedStates`.
 
-### 11.2 Blob (`RepositorioScriptsBlob`)
+### 11.2 `adapter/out/blob/ScriptsBlobAdapter` (implementa `ScriptsPort`)
 
-- Cliente: `new BlobServiceClientBuilder().endpoint(endpoint).credential(new DefaultAzureCredentialBuilder().build())`; `connectionString` só no perfil `local` (em outro perfil, a presença dela falha a subida).
-- `groovy-models/{tipo}/{nome}/v{n}.groovy`: `upload` com `BlobRequestConditions().setIfNoneMatch("*")`; 409 com o mesmo conteúdo = sucesso.
-- `groovy-models/{tipo}/{nome}/estado.json`: `{ "ativa": n|null, "versoes": { "n": { "status", "hash", "autor", "criadoEm", "aprovador", "atualizadoEm", "motivo" } } }`; gravar com `setIfMatch(etagLido)`; 412 → `ESTADO_SCRIPT_CONCORRENTE`.
-- Cache de estado por instância: 30 s (inclusive a ausência); releitura condicional por ETag. Classe compilada em memória por (tipo, nome, versão, hash), sem expirar. Hash do conteúdo ≠ `estado.json` → `MODELO_FALHOU`.
-- Repetição: só leituras e a gravação imutável, 3 tentativas (200, 400, 800 ms + até 100 ms aleatórios). Circuito: 5 falhas seguidas → 60 s sem chamar o Blob (log `CIRCUITO_BLOB_ABERTO` uma vez).
-- Blob fora: último estado lido, sem prazo, `estadoScript = DESATUALIZADO`, log `ESTADO_SCRIPT_DESATUALIZADO` no máximo 1 por minuto; sem estado ou sem a versão compilada → nativo, `DESCONHECIDO`, log `ERRO`. Subida: tenta ler todos os estados por até 300 s fora de prontidão; depois fica pronta mesmo assim.
+- Cliente `new BlobServiceClientBuilder().endpoint(endpoint).credential(new DefaultAzureCredentialBuilder().build())`; connection string só no perfil `local`.
+- `groovy-models/{tipo}/{nome}/v{n}.groovy` com `BlobRequestConditions().setIfNoneMatch("*")` (409 com o mesmo conteúdo = sucesso).
+- `estado.json`: `record EstadoScript(Integer ativa, Map<String, VersaoScript> versoes)` e `record VersaoScript(String status, String hash, String autor, OffsetDateTime criadoEm, String aprovador, OffsetDateTime atualizadoEm, String motivo)`, gravado com `setIfMatch(etag)`; 412 → `ESTADO_SCRIPT_CONCORRENTE`.
+- Cache por instância de 30 s (inclusive da ausência) em `ConcurrentHashMap` com o instante de leitura; releitura condicional por ETag. Classe compilada em memória por (tipo, nome, versão, hash), sem expirar. Hash ≠ `estado.json` → `MODELO_FALHOU`.
+- Repetição só em leitura e gravação imutável: 3 tentativas (200, 400, 800 ms + até 100 ms, `ThreadLocalRandom`). Circuito: 5 falhas seguidas → 60 s sem chamar o Blob (`AtomicInteger` e `AtomicLong`); log `CIRCUITO_BLOB_ABERTO` uma vez.
+- Blob fora: último estado lido, sem prazo, `DESATUALIZADO` (log no máximo 1 por minuto); sem estado ou sem a versão compilada → nativo, `DESCONHECIDO`, log `ERRO`. Subida: tenta ler os estados por até 300 s fora de prontidão.
 
-### 11.3 `CarregadorGroovy`
+### 11.3 `adapter/out/groovy/CarregadorGroovy` (implementa `CompiladorScriptsPort`)
 
 ```java
-CompilerConfiguration cc = new CompilerConfiguration();
-SecureASTCustomizer s = new SecureASTCustomizer();
+var s = new SecureASTCustomizer();
 s.setIndirectImportCheckEnabled(true);
 s.setAllowedStarImports(List.of("br.com.poc.domain.curva", "br.com.poc.domain.quantlib", "br.com.poc.domain.matematica",
-  "br.com.poc.domain.calendario", "br.com.poc.domain.interpolacao", "br.com.poc.domain.construcao", "br.com.poc.domain.memoria",
-  "java.math", "java.time", "java.util"));
+    "br.com.poc.domain.calendario", "br.com.poc.domain.interpolacao", "br.com.poc.domain.construcao",
+    "br.com.poc.domain.memoria", "java.math", "java.time", "java.util"));
+s.setAllowedImports(List.of());
 s.setDisallowedReceivers(List.of("java.lang.System", "java.lang.Runtime", "java.lang.Thread", "java.lang.Class",
-  "java.lang.ClassLoader", "java.lang.ProcessBuilder", "java.io.File", "java.net.URL", "java.net.Socket"));
-s.setAllowedImports(List.of());                                // só os star imports acima
+    "java.lang.ClassLoader", "java.lang.ProcessBuilder", "java.io.File", "java.net.URL", "java.net.Socket"));
+var cc = new CompilerConfiguration();
 cc.addCompilationCustomizers(s, new ASTTransformationCustomizer(Map.of("value", timeoutSegundos), TimedInterrupt.class));
 ```
 
-Além do customizer, na validação: script que referencie pacote fora da lista, `java.io`, `java.net`, `java.lang.reflect`, `Thread`, `System`, `Runtime`, `ProcessBuilder` → `REPROVADA`. Classe compilada tem de implementar o contrato do tipo (`ModeloConstrucao`, `Interpolador`, `Calendar`), senão `REPROVADA`. Tempo esgotado na execução → `MODELO_FALHOU` (modelo e tempo).
+A classe compilada tem de implementar o contrato do tipo (`ModeloConstrucao`, `Interpolador`, estender `Calendario`), senão `REPROVADA`. Tempo esgotado → `MODELO_FALHOU` (modelo e tempo). O `TimedInterrupt` interrompe a thread, e isso funciona igual em virtual threads.
 
 ### 11.4 Estados e validação
 
-`RASCUNHO` → validação → `VALIDADA`/`REPROVADA`; `VALIDADA`|`INATIVA` → ativação → `ATIVA` (a anterior vira `INATIVA`, `aprovador` = quem ativou); `ATIVA` → desativação → `INATIVA`. Outra transição → `SCRIPT_INVALIDO`. Validação por tipo: interpolação em `xs=[1,2,3]`, `ys=[0.9,0.8,0.7]`, `x=1.5` e `2.5`; calendário: `isBusinessDay` de todos os dias do ano corrente (e, se gerado por planilha, toda a cobertura: útil ⇔ não é fim de semana nem data da lista); construção: `codigo` e `dataBase` no corpo, simulação com `status = OK`.
+`RASCUNHO` → validação → `VALIDADA`/`REPROVADA`; `VALIDADA`|`INATIVA` → ativação → `ATIVA` (a anterior vira `INATIVA`; `aprovador` = quem ativou); `ATIVA` → desativação → `INATIVA`; outra → `SCRIPT_INVALIDO`. Validação: interpolação em `xs=[1,2,3]`, `ys=[0.9,0.8,0.7]`, `x=1.5` e `2.5`; calendário: todos os dias do ano corrente (e, se gerado por planilha, toda a cobertura); construção: `codigo` e `dataBase` no corpo e simulação `OK`.
 
 ---
 
-## 12. Calendário por planilha: `CalendarioPlanilhaService`
+## 12. Calendário por planilha (`GerirCalendarioService` + `PlanilhaPoiAdapter`)
 
-Importação (`POST /api/v1/calendarios/{nome}/importacao?mercado=&anoInicial=&anoFinal=`, multipart `arquivo`): aba `Feriados`, cabeçalho `Data`, `Descricao`; datas célula ou texto `dd/mm/aaaa`/`aaaa-mm-dd`; rejeições da spec `calendar-management` → 400 `PARAMETRO_INVALIDO` com um `Detalhe` por problema. Gerar o script por modelo fixo (datas em ordem crescente, uma por linha), gravar como próxima versão `RASCUNHO` do tipo `calendario`. Não guardar a planilha.
+Importação (`POST /api/v1/calendarios/{nome}/importacao?mercado=&anoInicial=&anoFinal=`, multipart `arquivo`): aba `Feriados` (`Data`, `Descricao`); rejeições da spec `calendar-management` → 400 com um `Detalhe` por problema. Script gerado por um text block fixo (datas em ordem crescente):
 
-```groovy
-import br.com.poc.domain.calendario.*
-import java.time.LocalDate
-class {NomeClasse} extends CalendarioPorLista {
-  {NomeClasse}() { super("{nome}", "{mercado}", {anoInicial}, {anoFinal}, [
-    LocalDate.parse("2026-01-01"),
-    ...
-  ] as Set) }
+```java
+static String script(String nome, String mercado, int ini, int fim, SortedSet<LocalDate> datas) {
+  var classe = "Calendario_" + nome.replaceAll("[^A-Za-z0-9]", "_");
+  var lista = datas.stream().map(d -> "    LocalDate.parse(\"" + d + "\")").collect(Collectors.joining(",\n"));
+  return """
+      import br.com.poc.domain.calendario.*
+      import java.time.LocalDate
+      class %s extends CalendarioPorLista {
+        %s() { super("%s", "%s", %d, %d, [
+      %s
+        ] as Set) }
+      }
+      """.formatted(classe, classe, nome, mercado, ini, fim, lista);
 }
 ```
 
-`{NomeClasse}` = `Calendario_` + nome com não alfanuméricos trocados por `_`. Mesma planilha → mesmo texto → mesmo hash.
-
-Exportação (`GET /api/v1/calendarios/{nome}?mercado=&anoInicial=&anoFinal=&versao=&formato=`): dias de segunda a sexta não úteis no intervalo (≤ 150 anos); `xlsx` com abas `Feriados` e `Resumo`.
+Mesma planilha → mesmo texto → mesmo hash. Grava a próxima versão `RASCUNHO` do tipo `calendario`; a planilha não é guardada. Exportação (`GET /api/v1/calendarios/{nome}?mercado=&anoInicial=&anoFinal=&versao=&formato=`): dias de segunda a sexta não úteis no intervalo (≤ 150 anos); `xlsx` com `Feriados` e `Resumo`.
 
 ---
 
-## 13. API: `adapter/in/api/rest/`
+## 13. API: `adapter/in/rest/`
 
-### 13.1 Rotas (controllers novos; prefixo `/api/v1`)
+### 13.1 Rotas
 
 | Controller | Rotas |
 |---|---|
 | `CargaController` | `POST /cargas` |
 | `ConstrucaoDataController` | `POST /construcoes/{dataBase}` |
 | `CurvaController` | `GET /curvas`, `GET /curvas/situacao`, `POST /curvas/{codigo}/{dataBase}/construcao`, `GET /curvas/{codigo}/{dataBase}`, `GET .../interpolacao`, `GET .../simulacao`, `POST .../interpolada`, `GET .../auditoria` |
-| `CurvaPorNomeController` | `GET /curvas/por-nome/{dataBase}`, `.../interpolacao`, `.../simulacao` (só leitura) |
+| `CurvaPorNomeController` | `GET /curvas/por-nome/{dataBase}`, `.../interpolacao`, `.../simulacao` |
 | `ValoresCadastroController` | `GET /valores-cadastro` |
 | `ModeloController` | `POST /modelos/{tipo}/{nome}`, `POST .../versoes/{versao}/validacao`, `POST .../versoes/{versao}/ativacao`, `POST .../desativacao`, `GET /modelos/{tipo}/{nome}` |
 | `CalendarioController` | `POST /calendarios/{nome}/importacao`, `GET /calendarios/{nome}` |
 
-Parâmetros: validar à mão (`@RequestParam Map<String,List<String>>`) contra a lista permitida de cada rota; desconhecido → 400. `du` inteiro ≥ 1; `data` `AAAA-MM-DD` posterior à data-base (qualquer dia corrido); até 5.000 prazos, na ordem recebida; `formato` `json|xlsx|zip` (zip só consulta, interpolação e simulação); `forcarRecalculo` `true|false`; `fonte`+`produto` juntos.
+Controllers só convertem (records de entrada e saída) e chamam as portas de entrada; nenhuma regra de negócio. Parâmetros validados à mão (`@RequestParam MultiValueMap<String, String>`) contra a lista permitida de cada rota; desconhecido → 400. `du` inteiro ≥ 1; `data` posterior à data-base (qualquer dia corrido); até 5.000 prazos na ordem recebida; `formato` `json|xlsx|zip`; `forcarRecalculo` `true|false`; `fonte`+`produto` juntos. Tempo total da requisição: `engine.timeout.requisicao-segundos` (`executorVirtual.submit(...).get(timeout)`).
 
-### 13.2 Erros, correlação e serialização
+### 13.2 Erros, correlação e JSON
 
-- `FiltroCorrelacao` (`OncePerRequestFilter`, primeira posição): `X-Correlation-Id` recebido ou `UUID.randomUUID()`; coloca no MDC (`correlationId`) e no cabeçalho de toda resposta, inclusive `xlsx`/`zip` e erro.
-- `ErroEngineHandler` (`@RestControllerAdvice`): `ErroEngine` → `status = codigo.http`, corpo `{ codigoErro, mensagem, correlationId, detalhes: [{campo, linha, valor, motivo}] }`; `AccessDeniedException` → 403 `SEM_PERMISSAO`; falha de autenticação → 401 `NAO_AUTENTICADO`; tempo de requisição → 500 `ERRO_INTERNO`; qualquer outro → 500 `ERRO_INTERNO` sem stack trace.
-- Jackson 3: `BigDecimal` como string plana. Com o `JsonMapper.Builder`: `withConfigOverride(BigDecimal.class, o -> o.setFormat(JsonFormat.Value.forShape(JsonFormat.Shape.STRING)))` e `enable(StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN)`. Datas `AAAA-MM-DD`; instantes pelo formato da seção 1.4. `avisos` sempre presente (lista vazia).
+- `FiltroCorrelacao` (`OncePerRequestFilter`, primeiro na cadeia): `X-Correlation-Id` recebido ou `UUID.randomUUID()`, no MDC e em toda resposta.
+- `ErroHandler` (`@RestControllerAdvice`):
+  ```java
+  @ExceptionHandler(Exception.class)
+  ResponseEntity<ErroDto> tratar(Exception e) {
+    return switch (e) {
+      case ErroEngine ee -> resposta(ee.codigo(), ee.getMessage(), ee.detalhes());
+      case AccessDeniedException a -> resposta(CodigoErro.SEM_PERMISSAO, "Sem permissão para esta operação.", List.of());
+      case AuthenticationException a -> resposta(CodigoErro.NAO_AUTENTICADO, "Token ausente ou inválido.", List.of());
+      case TimeoutException t -> resposta(CodigoErro.ERRO_INTERNO, "Tempo da requisição esgotado.", List.of());
+      default -> resposta(CodigoErro.ERRO_INTERNO, "Erro interno.", List.of());   // sem stack trace
+    };
+  }
+  record ErroDto(String codigoErro, String mensagem, String correlationId, List<Detalhe> detalhes) {}
+  ```
+- `JsonConfig` (Jackson 3): `BigDecimal` como string plana (`withConfigOverride(BigDecimal.class, o -> o.setFormat(JsonFormat.Value.forShape(JsonFormat.Shape.STRING)))` + `StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN`); datas `AAAA-MM-DD`; instantes `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`; `avisos` sempre presente.
 
 ### 13.3 Segurança (`SegurancaConfig`)
 
@@ -796,49 +1011,33 @@ http.csrf(c -> c.disable())
     .requestMatchers(HttpMethod.GET, "/api/v1/**").hasAnyAuthority("Curvas.Leitura", "Curvas.Operador")
     .anyRequest().denyAll())
   .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(conversorRoles())));
-// conversorRoles: JwtGrantedAuthoritiesConverter com setAuthoritiesClaimName("roles") e setAuthorityPrefix("")
+// conversorRoles: JwtGrantedAuthoritiesConverter com authoritiesClaimName "roles" e authorityPrefix ""
 ```
 
-Usuário: claim `preferred_username`, senão `appid`. Não há propriedade que desligue a segurança fora do perfil `local` de teste.
+Usuário: claim `preferred_username`, senão `appid`.
 
 ### 13.4 `GET /valores-cadastro`
 
-Gerado das mesmas constantes do `ValidadorCadastro` (uma única tabela de parâmetros em código: chave, tipo, obrigatoriedade, condição, padrão, valores, formato) e dos enums; modelos por tipo do `RegistroModelos` (nativos + Groovy `ATIVA`), com fonte/produto e papéis; catálogos de enums de resposta, avisos e erros com `rotulo` e `descricao` pt-BR. Os textos ficam **no próprio código**, em cada enum, pela interface:
+Gerado da `TabelaParametros` (5.3) e dos enums com `ComRotulo`; modelos por tipo (nativos + Groovy `ATIVA`), com fonte/produto e papéis; catálogos de enums de resposta, avisos e erros; `versaoValores` = SHA-256 do JSON com chaves ordenadas.
 
-```java
-public interface ComRotulo { String rotulo(); String descricao(); }
-// exemplo
-public enum ModoArredondamento implements ComRotulo {
-  HALF_UP("Arredondar para cima no meio", "Arredonda para o mais próximo; no meio, para longe do zero"),
-  HALF_EVEN("Arredondar para o par", "Arredonda para o mais próximo; no meio, para o dígito par"),
-  DOWN("Truncar", "Corta as casas excedentes, sem arredondar");
-  private final String rotulo, descricao;
-  ModoArredondamento(String r, String d) { rotulo = r; descricao = d; }
-  public String rotulo() { return rotulo; } public String descricao() { return descricao; }
-}
-```
+### 13.5 Remover do engine antigo
 
-Todo enum que aparece no cadastro, nas respostas, nos avisos e nos erros SHALL implementar `ComRotulo` (inclusive `CodigoErro`, `CodigoAviso`, `Situacao`, `Unidade`, `Grandeza`, `Compounding`, `Frequency`, `BusinessDayConvention`, as políticas de extrapolação e os estados de script); o texto é argumento do construtor, então valor sem texto não compila. As chaves de `cModDado` (tabela de parâmetros do `ValidadorCadastro`) levam `rotulo` e `descricao` na própria tabela em código. Modelos Groovy ativos usam o nome como rótulo e a descrição "Modelo Groovy {nome}, versão {n}". Mudar um texto exige deploy, como qualquer código; `versaoValores` = SHA-256 do JSON gerado com chaves ordenadas.
-
-### 13.5 Remover
-
-`CurvaConstrucaoController`, `CurvaCalculoController`, `ModeloUploadController`, DTOs antigos (`CalcularCurva*`, `ConstruirCurva*`, `UploadModeloResponse`), `domain/pipeline/**`, `domain/strategy/**`, `domain/service/CurvaInterpolacaoDomainService`, `domain/service/GroovyDynamicModelCompiler`, `domain/model/{ConvencaoDias, MetodoInterpolacao, PoliticaExtrapolacao, ...}` sem uso, `domain/calendar/**`, `MtrizCurvaEntity`/repositório, `ParmConfgCurvaEntity`/repositório, os campos antigos das entidades de `tDadoCurva` e `tDadoVertcCurva` (seção 7.2), `CurvaJpaPersistenceAdapter`, `CalcularCurvaUseCase`, `ConstruirCurvaUseCase`, `CurvaPersistencePort` e os serviços antigos (depois de reescritos). Ao final, busca sem referências a `MetodoInterpolacao`, `PoliticaExtrapolacao`, `ComposableCurveBuilder`, `CurveBuilderRegistry`, `tMtrizCurva`, `dtVerticeReferencia`.
+`CurvaConstrucaoController`, `CurvaCalculoController`, `ModeloUploadController`, DTOs antigos, `domain/pipeline/**`, `domain/strategy/**`, `domain/service/CurvaInterpolacaoDomainService`, `domain/service/GroovyDynamicModelCompiler`, `domain/model/**` sem uso, `domain/calendar/**`, `MtrizCurvaEntity`/repositório, `ParmConfgCurvaEntity`/repositório, `CurvaJpaPersistenceAdapter`, `CalcularCurvaUseCase`, `ConstruirCurvaUseCase`, `CurvaPersistencePort` e os serviços antigos. Ao final, busca sem referências a `MetodoInterpolacao`, `PoliticaExtrapolacao`, `ComposableCurveBuilder`, `CurveBuilderRegistry`, `tMtrizCurva`, `dtVerticeReferencia`.
 
 ---
 
 ## 14. Auditoria, logs, métricas e resiliência
 
-### 14.1 Eventos de log (JSON, `logstash-logback-encoder`, sempre com `correlationId`)
+### 14.1 Eventos (`adapter/out/log/EventosLogAdapter`, JSON com `correlationId`)
 
 | Evento | Nível | Campos |
 |---|---|---|
-| `CURVA_GRAVADA` | AVISO | `idAuditoria` (UUID), `codigo`, `nome`, `dataBase`, `operacao` (`CONSTRUCAO`/`RECONSTRUCAO`), `acionadoPor`, `usuario`, `instante`, `idCarga`, `hashPontos`, `hashPontosAnterior`, `quantidadePontos`, `pontosAnteriores` (data e valor), `origem`, `proveniencia` (versão do engine, `estadoScript`, avisos, modelos, cadastro, mães) |
+| `CURVA_GRAVADA` | AVISO | `idAuditoria`, `codigo`, `nome`, `dataBase`, `operacao` (`CONSTRUCAO`/`RECONSTRUCAO`), `acionadoPor`, `usuario`, `instante`, `idCarga`, `hashPontos`, `hashPontosAnterior`, `quantidadePontos`, `pontosAnteriores`, `origem`, `proveniencia` |
 | `CONSTRUCAO_CONCLUIDA` / `CONSTRUCAO_FALHOU` / `INSUMO_DESCARTADO` / `SIMULACAO_EXECUTADA` | INFO / ERRO / AVISO / INFO | spec `curve-build-pipeline` |
-| `CARGA_RECEBIDA`, `CARGA_PROCESSADA`, `PONTOS_DIFERENTES_DA_FONTE` (AVISO) | | spec `curve-load-trigger` |
-| `CONSTRUCAO_DATA_RECEBIDA`, `CONSTRUCAO_DATA_PROCESSADA`, `INTERPOLADA_REGRAVADA` | INFO | specs `curve-load-trigger` e `curve-engine-api` |
+| `CARGA_RECEBIDA`, `CARGA_PROCESSADA`, `PONTOS_DIFERENTES_DA_FONTE` (AVISO), `CONSTRUCAO_DATA_RECEBIDA`, `CONSTRUCAO_DATA_PROCESSADA`, `INTERPOLADA_REGRAVADA` | | specs `curve-load-trigger` e `curve-engine-api` |
 | `REQUISICAO_CONCLUIDA`, `DEPENDENCIA_CHAMADA` (DEBUG), `DEPENDENCIA_LENTA` (AVISO), `DEPENDENCIA_FALHOU` (ERRO), `TEMPO_ESGOTADO` | | spec `curve-engine-resilience` |
 
-Nunca no log: token, connection string, conteúdo de script, corpo inteiro. Lista de pontos só em `CURVA_GRAVADA`. Stack trace só em campo próprio.
+Cada evento é um record serializado; nunca token, connection string, script ou corpo inteiro; lista de pontos só em `CURVA_GRAVADA`.
 
 ### 14.2 Métricas (Micrometer)
 
@@ -846,94 +1045,90 @@ Nunca no log: token, connection string, conteúdo de script, corpo inteiro. List
 
 ### 14.3 Tempos limite e prontidão
 
-Tabela da spec `curve-engine-resilience` com as propriedades da seção 1.2. Requisição inteira: `ExecutorService` + `Future.get(timeout)` no controller, ou `AsyncRequestTimeout` equivalente. Gravação no banco e `estado.json` nunca repetem. `readiness`: banco (`DataSourceHealthIndicator`) e, só durante a espera de subida, o estado dos scripts; `health` mostra o Blob como informativo.
+Tabela da spec `curve-engine-resilience`, com as propriedades da seção 1.2. Gravação no banco e `estado.json` nunca repetem. `readiness`: banco e, só na espera de subida, o estado dos scripts; `health` mostra o Blob como informativo.
 
 ### 14.4 Versão do engine
 
-`spring-boot-maven-plugin` com a meta `build-info` (já existe o plugin; só acrescentar a meta); a proveniência lê `BuildProperties.getVersion()`. Sem commit e sem plugin novo.
+`BuildProperties.getVersion()` (meta `build-info`), na proveniência, no `CURVA_GRAVADA`, no `Resumo` e no manifesto.
 
 ---
 
-## 15. Ordem de implementação (uma tarefa de `tasks.md` por vez; `mvn -q compile` depois de cada uma)
+## 15. Ordem de implementação (uma tarefa de `tasks.md` por vez; `mvn -q compile` ao fim de cada uma)
 
-1. Seções 1, 2, 3, 4 (tarefas 1.x e 2.x).
+1. Seções 1, 2, 3, 4 (tarefas 1.x, 2.x e 15.1).
 2. Seção 6 (3.x). Seção 5 (4.x).
-3. Seção 11 (5.x). Seção 10.1 e 7.7 (6.x). Seção 8 (7.x).
-4. Seção 7 (8.x). Seção 9 (9.x). Seção 14.1 (10.1). Seção 13 (10.4, 12.x). Seção 10.2/10.3 (13.x, 14.6). Seção 12 (14.1–14.4). Seções 14.2–14.4 (11.x, 14.5). Relógio já feito (15.1).
+3. Seção 11 (5.x). Seções 10.1 e 7.6 (6.x). Seção 8 (7.x).
+4. Seção 7 (8.x). Seção 9 (9.x). Seção 14.1 (10.1). Seção 13 (10.4, 12.x). Seções 10.2/10.3 (13.x, 14.6). Seção 12 (14.1–14.4). Seções 14.2–14.4 (11.x, 14.5).
 5. Seção 13.5 (remoções), `mvn compile` limpo.
-6. Seção 16 (testes). Seção 17 (verificação).
+6. Seção 16 (testes). Seção 17 (homologação).
 
 ---
 
-## 16. Testes (ao final da implementação)
+## 16. Testes (ao final)
 
-Só depois de tudo compilar. Ordem: **verificar, adaptar, criar, rodar**. Não há testes no engine hoje (`src/test` não existe); crie `src/test/java/br/com/poc/` e `src/test/resources/`.
+Ordem: **verificar, adaptar, criar, rodar**. Só o que já existe no pom (`spring-boot-starter-test`, ArchUnit). **Sem banco nem Blob reais**: portas de saída com Mockito ou implementações em memória (`ScriptsPort` em memória com ETag simulado). O domínio, por ser Java puro, é testado sem Spring (`new` direto).
 
 ### 16.1 Verificar
 
 1. `mvn -q compile` limpo.
-2. Buscas que não podem achar nada em `src/main`: `LocalDate.now(`, `Instant.now(`, `ZoneId.systemDefault(`, `NOLOCK`, `READ_UNCOMMITTED`, `double ` em `domain/` (fora do chute de `DecimalMath.ln` e das células de planilha), `MetodoInterpolacao`, `PoliticaExtrapolacao`, `tMtrizCurva`, `dtVerticeReferencia`.
+2. Buscas sem resultado em `src/main`: `NOLOCK`, `READ_UNCOMMITTED`, `synchronized`, `double ` em `domain/` (fora do `DecimalMath`), e a expressão regular `Math\.(pow|log|exp)\(` (tem de ser `StrictMath`; o `` evita casar com `StrictMath.`), `MetodoInterpolacao`, `PoliticaExtrapolacao`, `tMtrizCurva`, `dtVerticeReferencia`, `class Relogio`, `class Period`, `class Arredondamento`, `TimeUnit {` (enum próprio).
 
 ### 16.2 Recursos de teste
 
 - `src/test/resources/TaxaSwap_20260914.txt`: cópia de `docs/TaxaSwap.txt`.
-- **Sem banco nem Blob reais nos testes.** Os testes rodam só com `mvn verify`, sem SQL Server, Azurite ou rede: repositórios JPA e o cliente do Blob são substituídos por Mockito ou por implementações em memória das portas (`RepositorioScripts` em memória com ETag simulado). O que só um banco ou um Blob reais provam (trava de 30 s, leitura consistente durante a reconstrução, gravação das duas tabelas no SQL Server, ETag do Blob) fica na lista da seção 16.5, conferida na homologação.
-- `FixturesCadastro`: as 7 curvas exatamente como nas specs `b3-ready-curve-model`, `ntnb-anbima-curve-model`, `sofr-bloomberg-curve-model` e o `exemplo-cadastro-7-curvas.txt` do change `curves-cadastro-curvas`.
-- `FixturesB3`: lê o `TaxaSwap` e devolve as linhas que o `LeitorInsumos` simulado entrega para `DIxPRE`, `Cupom limpo de dólar`, `Cupom Limpo DI X IPCA`, `IBOVESPA` e `PTAX - USD` (`cldtfdUnic` sequencial no teste), no formato das colunas de `tBtrsCurvaPrimr`.
-- Massa de 12 meses de `TaxaSwap` (tarefa 15.2): compactada em `src/test/resources/massa-b3/`.
+- `FixturesCadastro`: as 7 curvas como nas specs de modelo e no `exemplo-cadastro-7-curvas.txt`.
+- `FixturesB3`: lê o `TaxaSwap` e devolve os `LinhaB3` que o `LeitorInsumos` simulado entrega para `DIxPRE`, `Cupom limpo de dólar`, `Cupom Limpo DI X IPCA`, `IBOVESPA` e `PTAX - USD`.
+- Massa de 12 meses de `TaxaSwap` (tarefa 15.2) em `src/test/resources/massa-b3/`.
+- Fuso nos testes, como no `main`: `src/test/resources/junit-platform.properties` com `junit.jupiter.extensions.autodetection.enabled=true` e uma `FusoBrasiliaExtension` (registrada em `src/test/resources/META-INF/services/org.junit.jupiter.api.extension.Extension`) que faz `TimeZone.setDefault(TimeZone.getTimeZone("America/Sao_Paulo"))` no `beforeAll`.
 
-### 16.3 Criar (um arquivo por linha; casos das seções e das specs)
+### 16.3 Criar
 
-| Teste | Casos principais |
+| Teste | Casos |
 |---|---|
-| `RelogioTest` (tempo simulado, sem esperar relógio real) | `new Relogio(Clock.fixed(Instant.parse("2026-09-15T01:30:00Z"), ZoneOffset.UTC))`: `hoje()` = `2026-09-14` e `agora()` = `2026-09-14T22:30:00.000-03:00`; `carimboArquivo()` = `20260914223000`. Nos demais testes, o `Relogio` é um mock do Mockito (`when(relogio.agora()).thenReturn(...)`), nunca o relógio real |
-| `DecimalMathTest` | `pow`, `ln`, `exp` contra referência de 50 dígitos (erro relativo < `1e-30`); potência inteira exata |
-| `ArredondamentoTest` | 5.43219876 → 5.4321987 (`DOWN`, 7); 5.123456789 → 5.12345679 (`HALF_UP`, 8) |
-| `PeriodTest`, `FrequencyTest` | parse válido/inválido; valores numéricos |
-| `DayCounterTest` | `(B,d]` com `2026-09-14`→`2026-09-15` = 1 e 1; 30/360 com fim de mês |
-| `InterestRateTest` | 1.139; 1.0125; ida e volta exata |
-| `BrazilTest` | Páscoa e feriados de 2026 e 2027 (seção 0.2); DU dos 278 vértices da `PRE` = publicado |
-| `UnitedStatesTest` | feriados 2026 e 2027 (seção 0.2) |
-| `InterpoladoresTest` | valor exato nos nós; `LogLinear` com `y <= 0` → `PONTOS_NAO_INTERPOLAVEIS`; `Cubic` com 2 pontos = linear |
-| `ManualB3Test` | 1.4.2, 1.4.3, 1.4.4, 1.4.5, 1.4.11, 1.4.6–1.4.10 implementados direto em `BigDecimal` no teste e comparados |
-| `EixoDiasUteisTest` | os quatro cenários do requisito de dias úteis publicados; calendário certo = calendário puro |
-| `PreparacaoPontosTest` | pontos de `2026-12-24` e `2026-12-25` (mesmo prazo); ponto sozinho no feriado; dias úteis fora de ordem; ponto na data-base |
-| `CurvaInterpoladaTest` | vetores de `2030-06-10` (`PRE`, `DCL`, `PTX`) e fatores (seção 0.2); domínio; `FlatValue` da `INP`; `PTX` depois do último ponto |
-| `HashPontosTest` | vetor comum e os 5 `hashPontos` da seção 0.2; valor lido com 12 casas dá o mesmo hash |
+| `DecimalMathTest` | `pow`, `ln`, `exp` contra valores de referência (erro relativo < `1e-14`); expoente inteiro exato pelo `BigDecimal.pow`; mesma entrada dá o mesmo resultado bit a bit |
+| `ArredondamentoTest` | `setScale` com o `RoundingMode` do cadastro: 5.43219876 → 5.4321987 (`DOWN`, 7); 5.123456789 → 5.12345679 (`HALF_UP`, 8) |
+| `QuantlibTest` | constantes e valores de `Frequency`; `Periodos.parse` válido e inválido; `DayCounter` com `(B,d]` e 30/360 (110, seção 0.3) |
+| `InterestRateTest` | 1.139; 1.0125; ida e volta taxa→fator→taxa igual depois do arredondamento cadastrado |
+| `BrazilTest`, `UnitedStatesTest` | Páscoa e feriados de 2026 e 2027 (seção 0.3); DU dos 278 vértices da `PRE` = publicado; `adjust` nas 7 convenções |
+| `InterpoladoresTest` | valor exato nos nós; `LogLinear` com `y <= 0`; `Cubic` com 2 pontos = linear |
+| `ManualB3Test` | 1.4.2, 1.4.3, 1.4.4, 1.4.5, 1.4.11 e 1.4.6–1.4.10 implementados direto no teste |
+| `EixoDiasUteisTest` | quatro cenários do requisito de dias úteis publicados; calendário certo = calendário puro |
+| `PreparacaoPontosTest` | `2026-12-24` e `2026-12-25`; ponto sozinho no feriado; fora de ordem; na data-base |
+| `CurvaInterpoladaTest` | vetores de `2030-06-10` (valores exatos nas 7 casas) e fatores com tolerância `1e-14` (seção 0.3); domínio; `FlatValue` da `INP`; `PTX` depois do último ponto |
+| `GradeInterpoladaTest` | `PRE`: 12.390 dias, fim de semana = sexta, cada dia = `avaliar` da mesma data |
+| `HashPontosTest` | vetor comum e os 5 `hashPontos`; valor com 12 casas dá o mesmo hash |
 | `ValidadorCadastroTest` | um caso por regra de `CADASTRO_INVALIDO`; `'ATIVO' + espaços`; `business252` recusado; `MODELOS_POR_ORIGEM` sem ligação ignorado |
-| `ProntaTsB3Test`, `SofrZeroBloombergTest`, `NtnbBootstrapAnbimaTest` | tabelas "Regras do arquivo"; `15M` → `2027-12-14`; bootstrap sintético que recupera uma curva zero conhecida; `z_1 = y_1`; soma dos valores presentes = cotação − resíduo |
-| `ConstruirCurvaServiceTest` (repositórios simulados) | `PRE`: 278 pontos e 12.390 linhas enviados ao `saveAll`; fim de semana = sexta; recálculo apaga e regrava as duas; `EXISTENTE` com e sem `PONTOS_DIFERENTES_DA_FONTE`; `dBaseReft` não retrocede; exceção no commit simulado sem `CURVA_GRAVADA`; exceção de trava → `CONSTRUCAO_EM_ANDAMENTO`; calendário com feriado a menos → `CALENDARIO_DIVERGENTE` |
-| `RegravarInterpoladaTest` (repositórios simulados) | ponto alterado direto em `tDadoVertcCurva` → `INTERPOLADA_DESATUALIZADA` → regravação → atualizada |
-| `ProcessarCargaServiceTest`, `ConstruirDataServiceTest` (serviço de construção e repositórios simulados) | todos os cenários da spec `curve-load-trigger` (retry, republicação, inativa, falha isolada, 150 de 278, aviso atrasado, linha a menos do usuário, derivada, webhook e orquestrador juntos) |
-| `OrigemSecundariaTest` (repositórios simulados) | cenários da spec `curve-build-pipeline` e `curve-engine-api` |
-| `RegistroModelosTest` (`RepositorioScripts` em memória) | resolução; duas instâncias do registro; ativação concorrente; hash adulterado; Blob parado; circuito |
-| `CarregadorGroovyTest` | script válido; tipo errado; rede → reprovado; laço → `MODELO_FALHOU`; `LogLinear` sobrescrevendo só `valorNoSegmento` |
-| `PlanilhaMemoriaCalculoTest`, `CalendarioPlanilhaTest` | abas, cabeçalhos, tipos de célula; ida e volta do `Brazil` 2001–2100; mesma planilha → mesmo hash |
-| `ApiContratoTest` (MockMvc) | um teste por rota com 401/403/papel certo; um por `codigoErro`; `X-Correlation-Id` em sucesso, erro e `xlsx`; fator com 16 casas como string; parâmetro desconhecido 400; `data` em sábado |
-| `ValoresCadastroTest` | ida e volta com o validador; interpolador Groovy ativado aparece; todo valor com `rotulo` e `descricao` não vazios e com acentuação correta em UTF-8 |
-| `ArquiteturaTest` (ArchUnit) | proibições da seção 16.1; `domain` não depende de `adapter` |
-| `PropriedadesTest` (`@ParameterizedTest` com 1.000 casos gerados por `new Random(20260914)`, sem biblioteca extra) | ponto preservado; determinismo; ida e volta taxa↔fator; monotonicidade de DU e DC |
-| `OraculoB3Test` | massa de 12 meses: cada vértice das 5 curvas devolve o `vPrecoTx`, e nenhuma construção traz `CALENDARIO_DIVERGENTE` |
+| `ProntaTsB3Test`, `SofrZeroBloombergTest`, `NtnbBootstrapAnbimaTest` | tabelas "Regras do arquivo"; `15M` → `2027-12-14`; bootstrap sintético que recupera uma curva zero conhecida |
+| `ConstruirCurvaServiceTest` (portas simuladas) | `PRE`: 278 pontos e 12.390 linhas enviados às portas; recálculo; `Existente` com e sem `PONTOS_DIFERENTES_DA_FONTE`; `dBaseReft` não retrocede; falha no commit sem `CURVA_GRAVADA`; trava → `CONSTRUCAO_EM_ANDAMENTO`; `CALENDARIO_DIVERGENTE` |
+| `RegravarInterpoladaServiceTest`, `ProcessarCargaServiceTest`, `ConstruirDataServiceTest`, `OrigemSecundariaTest` | cenários das specs `curve-engine-api`, `curve-load-trigger` e `curve-build-pipeline`; no paralelo, uma curva lenta estourando o prazo sem afetar as outras |
+| `ParaleloTest` | limite do `Semaphore` respeitado (nunca mais que `limite` tarefas ao mesmo tempo); tempo esgotado cancela só as atrasadas; exceção de uma tarefa vira `Falha` só dela |
+| `ResolverModelosTest` (`ScriptsPort` em memória) | resolução; duas instâncias; ativação concorrente; hash adulterado; Blob parado; circuito |
+| `CarregadorGroovyTest` | válido; tipo errado; rede → reprovado; laço → `MODELO_FALHOU`; `LogLinear` sobrescrevendo só `valorNoSegmento`; script com `DayCounter.Business252` e `new Brazil()` |
+| `PlanilhaPoiAdapterTest`, `CalendarioPlanilhaTest` | abas, cabeçalhos, tipos de célula; ida e volta do `Brazil` 2001–2100; mesma planilha → mesmo hash |
+| `ApiContratoTest` (MockMvc) | cada rota com 401/403/papel certo; um por `codigoErro`; `X-Correlation-Id`; fator com 16 casas como string; parâmetro desconhecido 400; `data` em sábado |
+| `FusoTest` | `OffsetDateTime.ofInstant(Instant.parse("2026-09-15T01:30:00Z"), ZoneId.systemDefault())` → `2026-09-14T22:30-03:00`; `conferirFuso` falha com outro fuso |
+| `ValoresCadastroTest` | ida e volta com o validador; Groovy ativo aparece; todo valor com `rotulo` e `descricao` |
+| `ArquiteturaTest` (ArchUnit) | `domain` não depende de `org.springframework`, `jakarta.persistence`, `tools.jackson`, `com.azure`, `org.apache.poi`, `groovy`; `application` não depende de `adapter` |
+| `PropriedadesTest` (`@ParameterizedTest` com 1.000 casos de `new Random(20260914)`) | ponto preservado; determinismo (bit a bit); ida e volta taxa↔fator igual depois do arredondamento cadastrado; monotonicidade de DU e DC |
+| `OraculoB3Test` | massa de 12 meses: cada vértice devolve o `vPrecoTx`, sem `CALENDARIO_DIVERGENTE` |
 
-### 16.4 Rodar e fechar
+### 16.4 Rodar
 
-1. `mvn verify` no engine: tudo passa, sem banco nem Blob.
-2. As buscas da 16.1 não acham nada.
-3. Teste que falha e reflete a spec → corrigir o código, não o teste.
+`mvn verify` passa sem banco nem Blob. Teste que falha e reflete a spec → corrigir o código.
 
 ### 16.5 Conferido na homologação (não é teste automatizado)
 
-O que depende de SQL Server ou de Blob reais fica para o roteiro de homologação, no ambiente com o banco e o Blob do projeto:
-- trava da curva: duas construções da mesma curva ao mesmo tempo não misturam pontos, e a segunda espera até 30 s ou recebe `CONSTRUCAO_EM_ANDAMENTO`;
-- consulta durante uma reconstrução devolve os pontos antigos inteiros ou os novos inteiros;
-- `tDadoVertcCurva` e `tDadoCurva` gravadas juntas, com as quantidades da seção 0.2;
-- ativação de script propagada às duas instâncias em até 30 s, e ativação concorrente com `ESTADO_SCRIPT_CONCORRENTE`;
+- trava: duas construções da mesma curva ao mesmo tempo não misturam pontos; a segunda espera até 30 s ou recebe `CONSTRUCAO_EM_ANDAMENTO`;
+- consulta durante uma reconstrução devolve os pontos antigos ou os novos inteiros;
+- `tDadoVertcCurva` e `tDadoCurva` gravadas juntas, com as quantidades da seção 0.3;
+- ativação de script chegando às duas instâncias em até 30 s; ativação concorrente com `ESTADO_SCRIPT_CONCORRENTE`;
+- construção da data com as 7 curvas em paralelo (virtual threads) sem esgotar o pool de conexões;
 - a seção 17.
 
 ## 17. Verificação ponta a ponta (na homologação)
 
-1. Banco de homologação com o `001_SCRIPT_INICIAL.sql`, o cadastro das 7 curvas e `tBtrsCurvaPrimr` do `TaxaSwap` de `2026-09-14`.
-2. `POST /api/v1/cargas` com `B3`/`TS` e 278 por código → as 5 curvas `CONSTRUIDA`, `hashPontos` iguais aos da seção 0.2.
+1. Banco com o `001_SCRIPT_INICIAL.sql`, o cadastro das 7 curvas e `tBtrsCurvaPrimr` do `TaxaSwap` de `2026-09-14`.
+2. `POST /api/v1/cargas` com `B3`/`TS` e 278 por código → as 5 curvas construídas, `hashPontos` iguais aos da seção 0.3.
 3. `GET /api/v1/curvas/PRE/2026-09-14/interpolacao?data=2030-06-10` → 14.0624222, igual a `tDadoCurva` em `2030-06-10`.
 4. Alterar um ponto direto em `tDadoVertcCurva` → consulta com `INTERPOLADA_DESATUALIZADA` → `POST .../interpolada` → atualizada.
 5. `POST /api/v1/construcoes/2026-09-14` → as 5 `EXISTENTE`, NTN-B e SOFR `SEM_INSUMO`.

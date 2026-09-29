@@ -2,10 +2,10 @@ Guia de implementação passo a passo (arquivos, assinaturas, código das partes
 
 ## 1. Tipos QuantLib e matemática decimal
 
-- [ ] 1.1 Criar `domain/quantlib` com `Compounding`, `Frequency` (valores numéricos do QuantLib), `BusinessDayConvention`, `TimeUnit` e `Period` (parse de `nD`, `nW`, `nM`, `nY`, rejeitando outros formatos); verificar com teste que lista constantes e valores de `Frequency` e testa o parse válido e inválido
-- [ ] 1.2 Criar `domain/matematica` com `DecimalMath` (`pow`, `ln`, `exp` em `BigDecimal`, `DECIMAL128`) e `Arredondamento` (`HALF_UP`, `HALF_EVEN`, `DOWN`); verificar com testes de potência fracionária contra valores conhecidos e de `DOWN` contra `HALF_UP` (ex.: 5,43219876 com 7 casas)
-- [ ] 1.3 Criar `DayCounter` com `Business252` (`DU/252` pelo calendário), `Actual360`, `Actual365Fixed` e `Thirty360` (30/360 Bond Basis); verificar `DU` e `DC` pela regra `(B, d]`, incluindo `2026-09-14` → `2026-09-15` = 1 e 1, feriado e fim de mês no 30/360
-- [ ] 1.4 Criar `InterestRate` (`Simple`, `Compounded`, `Continuous`; rejeitando `SimpleThenCompounded` e `CompoundedThenSimple`) com `FA`, `DF` e taxa implícita, sempre com taxa em percentual; verificar com os cenários da spec (13,9 em 252 DU → 1,139; 5 em 90 DC simples 360 → 1,0125) e ida e volta exata taxa→fator→taxa
+- [ ] 1.1 Criar `domain/quantlib` com os enums `Compounding`, `Frequency` (valores numéricos do QuantLib) e `BusinessDayConvention`, e o parse de `nD`, `nW`, `nM`, `nY` para `java.time.Period` (sem tipo próprio de período); verificar com teste que lista constantes e valores de `Frequency` e testa o parse válido e inválido
+- [ ] 1.2 Criar `domain/matematica/DecimalMath` (ponte para o `StrictMath`: `pow` fracionário, `ln` e `exp` em `double` convertidos por `BigDecimal.valueOf`; expoente inteiro pelo `BigDecimal.pow` nativo) e usar o `RoundingMode` do Java para o arredondamento (`HALF_UP`, `HALF_EVEN`, `DOWN`, sem tipo próprio); verificar com testes de potência fracionária contra valores conhecidos e de `DOWN` contra `HALF_UP` (ex.: 5,43219876 com 7 casas)
+- [ ] 1.3 Criar o enum `DayCounter` com `Business252` (`DU/252`), `Actual360`, `Actual365Fixed` e `Thirty360` (30/360 Bond Basis); verificar `DU` e `DC` pela regra `(B, d]`, incluindo `2026-09-14` → `2026-09-15` = 1 e 1, feriado e fim de mês no 30/360
+- [ ] 1.4 Criar `InterestRate` (`Simple`, `Compounded`, `Continuous`; rejeitando `SimpleThenCompounded` e `CompoundedThenSimple`) com `FA`, `DF` e taxa implícita, sempre com taxa em percentual; verificar com os cenários da spec (13,9 em 252 DU → 1,139; 5 em 90 DC simples 360 → 1,0125) e ida e volta taxa→fator→taxa igual depois do arredondamento cadastrado
 
 ## 2. Calendários
 
@@ -16,7 +16,7 @@ Guia de implementação passo a passo (arquivos, assinaturas, código das partes
 ## 3. Interpolação e extrapolação
 
 - [ ] 3.1 Criar a base `InterpoladorLocal` (localiza o segmento e chama `valorNoSegmento(w, yEsq, yDir)`) e `Linear`, `LogLinear` (rejeita `y <= 0`), `BackwardFlat` e `ForwardFlat`; criar `Cubic` (spline natural em `BigDecimal`); verificar valores entre nós e valor exato nos nós
-- [ ] 3.2 Criar as grandezas `Discount`, `CompoundFactor`, `ZeroYield` e `Price`, com conversão ponto ↔ `y` pela cotação e pela fração de ano do próprio prazo; verificar ida e volta em cada grandeza, inclusive com eixo e cotação diferentes (DCL)
+- [ ] 3.2 Criar as grandezas `Discount`, `CompoundFactor`, `ZeroYield` e `Price`, com conversão ponto ↔ `y` pela cotação e pela fração de ano do próprio prazo; verificar ida e volta em cada grandeza (igual depois do arredondamento cadastrado), inclusive com eixo e cotação diferentes (DCL)
 - [ ] 3.3 Verificar, com testes que implementam diretamente as fórmulas do Manual de Curvas B3 em `BigDecimal`, que as combinações da tabela da spec reproduzem 1.4.2, 1.4.3, 1.4.4, 1.4.5 e 1.4.11
 - [ ] 3.4 Criar as políticas `Disabled`, `FlatForward` (via `valorNoSegmento` com `w` fora de `[0, 1]`) e `FlatValue` (repete o valor, não a grandeza), por lado; verificar contra 1.4.6, 1.4.7, 1.4.8, 1.4.9 e 1.4.10, e o erro `PRAZO_FORA_DO_DOMINIO` de `Disabled`
 - [ ] 3.5 Criar `CurvaInterpolada`: domínio `[B + 1 DU, max(último ponto, B + HORIZONTE)]`, classificação `PONTO`/`INTERPOLADO`/`EXTRAPOLADO_INICIO`/`EXTRAPOLADO_FIM`, curva de um ponto só, arredondamento só do valor e fatores com 16 casas a partir do valor arredondado; verificar os cenários de domínio da spec `curve-build-pipeline`
@@ -113,10 +113,10 @@ Guia de implementação passo a passo (arquivos, assinaturas, código das partes
 
 ## 15. Datas, horários e testes em massa
 
-- [ ] 15.1 Criar um relógio único do engine com `America/Sao_Paulo` e usá-lo em todo "hoje" e instante (respostas, planilhas, auditoria, carga, `estado.json`, logs, nomes de arquivo); verificar com um teste simulado do cenário das 22h30 (`Relogio` com `Clock.fixed` em 01h30 UTC; nos demais testes, `Relogio` mockado) e com um teste de arquitetura que proíbe `LocalDate.now()`, `Instant.now()` e `ZoneId.systemDefault()` fora do relógio
+- [ ] 15.1 Fixar o fuso padrão da JVM em `America/Sao_Paulo` no início do `main` (`TimeZone.setDefault`, antes do Spring) e conferir na subida (falha se for outro); verificar que um instante das 01h30 UTC é formatado como 22h30 `-03:00` do dia anterior, e que a subida falha com outro fuso
 - [ ] 15.2 Montar a massa de regressão: `TaxaSwap.txt` de todos os pregões de pelo menos 12 meses consecutivos (baixados da B3), com Carnaval, Sexta-feira Santa, Corpus Christi, virada de ano e 20 de novembro, guardados compactados nos recursos de teste; verificar o oráculo das 5 curvas em todos os arquivos
-- [ ] 15.3 Criar testes de propriedade com JUnit parametrizado (1.000 casos gerados com semente fixa, sem biblioteca extra) para: ponto preservado em qualquer curva gerada; determinismo; ida e volta taxa→fator→taxa em cada cotação; monotonicidade de `DU` e `DC`; `advance` e contagem de dias úteis coerentes em qualquer par de datas; verificar com pelo menos 1.000 casos por propriedade
-- [ ] 15.4 Criar o teste de precisão do `DecimalMath` (`pow`, `ln`, `exp`) contra valores de referência de alta precisão (ex.: 50 dígitos) em entradas típicas de curva; verificar erro relativo menor que `10^−30`
+- [ ] 15.3 Criar testes de propriedade com JUnit parametrizado (1.000 casos gerados com semente fixa, sem biblioteca extra) para: ponto preservado em qualquer curva gerada; determinismo; ida e volta taxa→fator→taxa em cada cotação (igual depois do arredondamento cadastrado); monotonicidade de `DU` e `DC`; `advance` e contagem de dias úteis coerentes em qualquer par de datas; verificar com pelo menos 1.000 casos por propriedade
+- [ ] 15.4 Criar o teste do `DecimalMath` (`pow`, `ln`, `exp`) contra valores de referência em entradas típicas de curva; verificar erro relativo menor que `1e-14` e o mesmo resultado bit a bit em duas execuções
 - [ ] 15.5 Criar testes de bootstrap da NTN-B com títulos sintéticos cuja taxa zero é conhecida por construção (gerar as taxas indicativas a partir de uma curva zero dada e verificar que o bootstrap recupera essa curva dentro da tolerância)
 
 ## 16. Verificação final

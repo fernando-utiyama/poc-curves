@@ -31,16 +31,15 @@ Os tipos usados pelos modelos e pelo cadastro SHALL ter os nomes de tipo e de co
 - `Compounding`: `Simple`, `Compounded`, `Continuous`, `SimpleThenCompounded`, `CompoundedThenSimple` (os dois últimos existem no enum, mas o cadastro os rejeita nesta fase);
 - `Frequency`: de `NoFrequency` a `OtherFrequency`, com os mesmos valores numéricos;
 - `BusinessDayConvention`: `Following`, `ModifiedFollowing`, `Preceding`, `ModifiedPreceding`, `Unadjusted`, `HalfMonthModifiedFollowing`, `Nearest`;
-- `TimeUnit`: `Days`, `Weeks`, `Months`, `Years`;
-- `DayCounter`: `Business252`, `Actual360`, `Actual365Fixed`, `Thirty360`;
+- `DayCounter`: `Business252`, `Actual360`, `Actual365Fixed`, `Thirty360` (constantes de um enum);
 - calendários: `Brazil` com o mercado `Settlement`; `UnitedStates` com o mercado `FederalReserve`;
 - interpoladores: `Linear`, `LogLinear`, `BackwardFlat`, `ForwardFlat`, `Cubic`;
 - grandezas: `Discount`, `ZeroYield` e as extensões próprias `CompoundFactor` e `Price`.
 
-A implementação MUST ser própria, em Java, sem depender da biblioteca QuantLib.
+A implementação MUST ser própria, em Java, sem depender da biblioteca QuantLib. Prazos e horizontes (`nD`, `nW`, `nM`, `nY`) SHALL usar o `java.time.Period` do próprio Java, sem tipo próprio de período nem de unidade de tempo.
 
 #### Scenario: Script no estilo QuantLib
-- **WHEN** um script Groovy usa `Compounding.Compounded`, `Frequency.Annual`, `new Business252(new Brazil(Brazil.Market.Settlement))` e `BusinessDayConvention.Following`
+- **WHEN** um script Groovy usa `Compounding.Compounded`, `Frequency.Annual`, `DayCounter.Business252`, `new Brazil()` e `BusinessDayConvention.Following`
 - **THEN** o script compila e executa sem adaptação de nomes
 
 ### Requirement: Modelos nativos

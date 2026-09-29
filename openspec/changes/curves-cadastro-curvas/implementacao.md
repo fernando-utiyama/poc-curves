@@ -7,7 +7,7 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 - **Serviço:** `services/curves` (no sistema real, `acts-srv-curvas`, onde outro dev já faz o CRUD de provedores). Se o serviço já existir transcrito, encaixe as classes na estrutura dele. Se não existir, crie-o com a mesma estrutura do `services/engine`: Java 21, Spring Boot 4 (Jackson 3, `tools.jackson`), pacote `br.com.poc`, camadas `adapter/in/api/rest`, `application/service`, `domain`, `adapter/out/persistence/entity` (entidades) e `adapter/out/persistence/repository`, `adapter/out/client/engine`, `adapter/out/planilha`. No serviço real, as entidades ficam em `br.com.poc.adapter.out.persistence.entity`, com Lombok (`@Getter`, `@Setter`, `@NoArgsConstructor`), como a `ProvedorEntity` do CRUD de provedores: siga o mesmo padrão.
 - Não invente rota, código de erro, aviso, coluna ou tabela fora deste guia e das specs. Não crie tabela, sequência, índice nem tópico. O serviço não usa o Blob.
 - Número de curva é sempre `BigDecimal`, nunca `double` (a única exceção é a célula numérica da planilha, seção 9).
-- "Hoje" e instantes só pelo `Relogio` (seção 1.4). Leitura em `READ COMMITTED`, nunca `NOLOCK`.
+- Fuso: a JVM inteira roda em `America/Sao_Paulo` (seção 1.4); `LocalDate.now()` e `OffsetDateTime.now()` são usados direto. Leitura em `READ COMMITTED`, nunca `NOLOCK`.
 - Mensagens em pt-BR com acentuação, UTF-8. Códigos (enums, `codigoErro`, avisos) não se traduzem.
 - Arquivos de configuração que já existem: não reescrever; conferir e acrescentar só o que faltar.
 - O serviço roda em no mínimo 2 instâncias: nenhum estado de negócio em memória local, além do cache de valores aceitos (seção 5, item 3).
@@ -119,9 +119,9 @@ Serialização (Jackson 3): `BigDecimal` como string plana (`withConfigOverride(
 
 Enum de entrada com caixa diferente (`taxa`) → 422 `DADOS_INVALIDOS` com o campo e os valores aceitos: ler enums como string e converter com `Enum.valueOf` em `try/catch`, nunca com a desserialização tolerante do Jackson.
 
-### 1.4 Relógio
+### 1.4 Fuso da JVM
 
-Mesma classe do engine (`domain/tempo/Relogio`: `hoje()`, `agora()` com `-03:00`, `carimboArquivo()`), construída sobre `Clock` em `America/Sao_Paulo`. `dCriacReg` e `dUltAtulz` (`datetime`) recebem `relogio.agora().toLocalDateTime()` (hora de Brasília).
+Igual ao engine (seção 1.4 do guia do engine): o `main` faz `TimeZone.setDefault(TimeZone.getTimeZone("America/Sao_Paulo"))` antes do Spring, e um `ApplicationRunner` impede a subida se o fuso for outro. Sem classe de relógio própria. `dCriacReg` e `dUltAtulz` (`datetime`) recebem `LocalDateTime.now()` (hora de Brasília).
 
 ### 1.5 Segurança
 
@@ -250,7 +250,7 @@ Gravação de `cModDado`: JSON compacto, chaves na **ordem da tabela acima** (n�
 
 Na mesma transação, com a curva travada e o `If-Match` conferido:
 - primeira versão: `cVrsaoReg = 1`; `inicioVigencia` ≥ `dInicVgcia` da curva (pode ser no passado);
-- versão nova: `inicioVigencia` > o da última **e** ≥ `relogio.hoje()`, senão 422; fecha a última (`dValidAte = inicio da nova − 1 dia`); `cVrsaoReg = última + 1`; nova com `dValidAte` nulo;
+- versão nova: `inicioVigencia` > o da última **e** ≥ `LocalDate.now()`, senão 422; fecha a última (`dValidAte = inicio da nova − 1 dia`); `cVrsaoReg = última + 1`; nova com `dValidAte` nulo;
 - exclusão: só a última e só se `inicioVigencia` > hoje; a anterior volta a `dValidAte` nulo; senão 422;
 - não há alteração de versão.
 
@@ -273,7 +273,7 @@ Rotas: as da tabela "Rotas da configuração" da spec. `validacao` roda as regra
 2. Uma chamada a `situacao(dataBase)` e uma a `feriados` por consulta. Engine fora → todas as linhas `SITUACAO_INDISPONIVEL` e aviso `ENGINE_INDISPONIVEL`; nunca falha.
 3. Por curva com código (ativas ou não), montar a linha com os campos da tabela "Colunas de cada linha" da spec: curva, origem principal, `origensSecundarias` (ligações de prioridade maior, com o modelo de `MODELOS_POR_ORIGEM` ou `modeloConstrucao`), configuração vigente na data, `ultimaDataPublicada`/`calculadoPor` (`dBaseReft`/`cUsuarCalc`), `quantidadePontos` e `hashPontos` (de `tDadoVertcCurva`), `insumo`, `interpolada` e `conferencia` (do engine).
 4. Situação: a **primeira** regra da tabela "Situação na data-base" da spec que se aplica, nesta ordem: `NAO_E_DIA_UTIL`, `IGNORADA`, `SITUACAO_INDISPONIVEL`, `INTERPOLADA_DESATUALIZADA`, `CONSTRUIDA`, `DIVERGENTE_DA_FONTE`, `AGUARDANDO_MAES`, `AGUARDANDO_CARGA`, `COM_ERRO`, `NAO_CONSTRUIDA`, com `motivo` e `atencao` da tabela.
-5. `atrasada`: situação `AGUARDANDO_CARGA` ou `NAO_CONSTRUIDA` e (data-base passada, ou data-base hoje e `relogio.agora()` depois de `curves.painel.horario-esperado.{provedor}`; provedor sem horário → `false` hoje).
+5. `atrasada`: situação `AGUARDANDO_CARGA` ou `NAO_CONSTRUIDA` e (data-base passada, ou data-base hoje e `LocalTime.now()` depois de `curves.painel.horario-esperado.{provedor}`; provedor sem horário → `false` hoje).
 6. Contadores sobre todas as curvas antes dos filtros; depois aplicar `situacao`, `provedor`, `nome`, `somenteAtencao`; ordenar por código.
 
 ---
@@ -389,11 +389,11 @@ Nada a remover no serviço (é novo ou é do outro dev). Conferir que nenhum có
 
 ## 13. Testes (ao final)
 
-Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUnit 5 com testes parametrizados, Mockito, AssertJ, MockMvc) e ArchUnit se o serviço já tiver. **Sem banco nem engine reais**: repositórios e `EngineClient` com Mockito; `Relogio` mockado (`when(relogio.agora())...`), nunca o relógio real.
+Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUnit 5 com testes parametrizados, Mockito, AssertJ, MockMvc) e ArchUnit se o serviço já tiver. **Sem banco nem engine reais**: repositórios e `EngineClient` com Mockito. Fuso dos testes como no `main`: `FusoBrasiliaExtension` registrada por autodetecção do JUnit (`junit-platform.properties` + `META-INF/services`), com `TimeZone.setDefault` no `beforeAll`. Quem depende de "hoje" (vigência, atraso do painel) recebe a data ou a hora por parâmetro do método testado.
 
 ### 13.1 Verificar
 
-`mvn -q compile` limpo. Buscas sem resultado em `src/main`: `LocalDate.now(`, `Instant.now(`, `ZoneId.systemDefault(`, `NOLOCK`, `BlobServiceClient`, gravação de `dBaseReft` ou `cUsuarCalc`.
+`mvn -q compile` limpo. Buscas sem resultado em `src/main`: `class Relogio`, `NOLOCK`, `synchronized`, `BlobServiceClient`, gravação de `dBaseReft` ou `cUsuarCalc`.
 
 ### 13.2 Criar
 
@@ -410,7 +410,7 @@ Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUn
 | `PontosServiceTest` | vetores da seção 0.2 (`hashPontos`, arredondamento, `diasUteis` 76 com 30/360 = 110); cenários da spec `pontos-curva-manual` (um valor, ponto retirado, casas a mais, lista igual sem escrita, conferência divergente desfaz, data sem construção, engine fora com `INTERPOLADA_DESATUALIZADA`, feriado, sábado, repetida); regravação chamada também com `SEM_MUDANCA` |
 | `PontosPlanilhaServiceTest` | cenários da spec `pontos-curva-planilha`; planilha sem `DiasUteis`; `DiasUteis` apagado → `ALTERACAO`; valor da `PTX` 56,3772259 numérico |
 | `ApiContratoTest` (MockMvc) | um teste por rota com 401, 403 e papel certo; um por `codigoErro`; `X-Correlation-Id` em sucesso, erro e `xlsx`; decimais como string |
-| `RelogioTest` | `Clock.fixed` em `2026-09-15T01:30:00Z` → `hoje()` = `2026-09-14`, `agora()` 22h30 `-03:00` |
+| `FusoTest` | `OffsetDateTime.ofInstant(Instant.parse("2026-09-15T01:30:00Z"), ZoneId.systemDefault())` → `2026-09-14T22:30-03:00`; subida recusada com outro fuso |
 
 ### 13.3 Rodar
 

@@ -49,27 +49,32 @@ tabela bruta ─ modelo de construção ─► tDadoVertcCurva (pontos) ─ inte
 
 ## Decisions
 
-### D1. Pacotes do domínio
+### D1. Arquitetura hexagonal, Java 21 e código nativo
+O engine é hexagonal: o **domínio** não conhece Spring, JPA, Jackson, Blob nem POI; a **aplicação** tem os casos de uso e as portas; os **adaptadores** ligam as portas ao mundo (REST, banco, Blob, planilha, Groovy).
 ```
-domain/
-  curva/          CadastroCurva, PontoConstruido, Ponto, CurvaInterpolada, Proveniencia, hashPontos
-  quantlib/       Compounding, Frequency, BusinessDayConvention, TimeUnit, Period, InterestRate,
-                  DayCounter (+ Business252, Actual360, Actual365Fixed, Thirty360)
-  matematica/     DecimalMath (pow/ln/exp em BigDecimal), Arredondamento
-  calendario/     Calendar (base: contagem, advance, adjust), brazil/, unitedstates/,
-                  CalendarioPorLista (base dos calendários importados por planilha)
-  construcao/     ModeloConstrucao, ContextoConstrucao, LeitorInsumos, pontosprontos/,
-                  prontatsb3/, ntnbbootstrapanbima/, sofrzerobloomberg/
-  interpolacao/   Grandeza (Discount, CompoundFactor, ZeroYield, Price), Interpolador,
-                  InterpoladorLocal (valorNoSegmento), linear/, loglinear/, backwardflat/,
-                  forwardflat/, cubic/, extrapolacao/ (Disabled, FlatForward, FlatValue)
-  memoria/        MemoriaCalculo e suas linhas (insumo, ponto, fluxo, prazo, evento)
-  modelo/         RegistroModelos<T>, CarregadorGroovy, RepositorioScripts (porta)
-  tempo/          Relogio (único ponto de "hoje" e de instantes, em America/Sao_Paulo)
-adapter/out/planilha/  PlanilhaMemoriaCalculo (Apache POI)
-adapter/out/blob/      RepositorioScriptsBlob (Azure Blob Storage)
+domain/                 Java puro, sem framework
+  curva/                records do negócio (CadastroCurva, Origem, Parametros, PontoConstruido, PontoGravado,
+                        Proveniencia, Aviso, ResultadoConstrucao sealed...), enums de erro e aviso, hashPontos
+  quantlib/             enums com nomes do QuantLib: Compounding, Frequency, BusinessDayConvention, DayCounter;
+                        InterestRate (record)
+  matematica/           DecimalMath: ponte entre BigDecimal e StrictMath (pow, ln, exp)
+  calendario/           Calendario (base), Brazil, UnitedStates, CalendarioPorLista
+  interpolacao/         Grandeza e Extrapolacao (enums), Interpolador, InterpoladorLocal, Linear, LogLinear,
+                        BackwardFlat, ForwardFlat, Cubic, EixoDiasUteis, CurvaInterpolada, GradeInterpolada
+  construcao/           ModeloConstrucao, ContextoConstrucao, ProntaTsB3, SofrZeroBloomberg, NtnbBootstrapAnbima
+  memoria/              MemoriaCalculo e as suas linhas (records)
+application/
+  port/in/              casos de uso (interfaces)
+  port/out/             portas de saída (cadastro, insumos, pontos, curva interpolada, trava, scripts, planilha)
+  service/              implementação dos casos de uso (transação, orquestração, paralelismo)
+adapter/
+  in/rest/              controllers, DTOs (records), erros, correlação, segurança, serialização
+  out/persistence/      entidades JPA e repositórios, implementando as portas
+  out/blob/  out/planilha/  out/groovy/
 ```
-Nomes de tipo e de constante seguem o QuantLib (`Compounding.Compounded`, `Brazil.Market.Settlement`), inclusive o PascalCase das constantes. **Alternativa rejeitada:** QuantLib-SWIG (JNI), que traz binário nativo e não roda em `BigDecimal`.
+**Código nativo do Java sempre que existir:** `java.time` (`LocalDate`, `Period`, `DayOfWeek`), `BigDecimal` e `RoundingMode`, `StrictMath` (`pow`, `ln` e `exp`, D7) (os modos `HALF_UP`, `HALF_EVEN` e `DOWN` do cadastro são os nomes do `RoundingMode`), records, sealed interfaces, pattern matching, `HexFormat`, `MessageDigest`, virtual threads. **Código próprio só onde o Java não tem:** os enums e tipos com nomes do QuantLib (para os scripts Groovy usarem os nomes do mercado), os calendários de feriados, os interpoladores (estendíveis por Groovy) e os modelos de construção. **Alternativas rejeitadas:** QuantLib-SWIG (JNI), que traz binário nativo e não roda em `BigDecimal`; tipos próprios de período, unidade de tempo, arredondamento e relógio, que duplicariam o `java.time` e o `java.math`.
+
+**Virtual threads:** as requisições rodam em virtual threads (`spring.threads.virtual.enabled`), e o paralelismo da construção da data e da situação usa `Executors.newVirtualThreadPerTaskExecutor()` limitado por `Semaphore` (o limite protege o pool de conexões do banco, não as threads).
 
 ### D2. Interpolação = grandeza + interpolador + DayCounter do eixo
 O interpolador é puro: recebe `(x, xs, ys)` e não sabe nada de juros. A grandeza converte ponto ↔ `y`, o `DayCounter` do eixo gera `x`, e a cotação (`InterestRate`) converte taxa ↔ fator. As funções do Manual de Curvas B3 viram configuração (tabela na spec `curve-build-pipeline`). A 1.4.1 (interpolação geométrica de `(1+i)`) não tem mapeamento e fica para uma grandeza nova em Java, numa mudança futura. `ForwardRate` fica fora desta fase. **Alternativa rejeitada:** um interpolador por função B3, que multiplica classes e amarra a base de dias.
@@ -99,7 +104,7 @@ A proveniência vai na resposta e no log `CURVA_GRAVADA` (D23); o banco não tem
 **Alternativa rejeitada:** gravar a curva diária em `tCurvaData`, como numa versão anterior deste design. `tDadoCurva` já é a tabela da curva interpolada, e `tCurvaData` sai do schema.
 
 ### D7. Precisão
-`BigDecimal` com `MathContext.DECIMAL128` e `DecimalMath.pow/ln/exp` para potências fracionárias, sem arredondamento intermediário. O arredondamento do cadastro vale só para o valor da curva, na gravação e na resposta. Os fatores saem do valor já arredondado, com 16 casas: quem lê a taxa publicada consegue reproduzir o fator. **Alternativa rejeitada:** `double` com arredondamento no fim, que já produz as diferenças que o oráculo B3 detecta.
+Híbrido: valores, somas, divisões e arredondamento em `BigDecimal` com `MathContext.DECIMAL128`; `pow` fracionário, `ln` e `exp` em `double` pelo `StrictMath`, com expoente inteiro pelo `BigDecimal.pow`. O `StrictMath` é determinístico em qualquer máquina, então o mesmo insumo dá o mesmo `hashPontos` em todas as instâncias. O `double` tem cerca de 15 a 16 dígitos significativos: sobra para as taxas de 7 ou 8 casas, e as últimas casas dos fatores de 16 casas carregam a imprecisão do `double`. O arredondamento é o `setScale` do próprio `BigDecimal` com o `RoundingMode` do cadastro. O arredondamento do cadastro vale só para o valor da curva, na gravação e na resposta. Os fatores saem do valor já arredondado, com 16 casas: quem lê a taxa publicada consegue reproduzir o fator. **Alternativas rejeitadas:** tudo em `BigDecimal` com `ln`/`exp` próprios em série (código matemático próprio, contra a preferência por código nativo do Java); `Math` em vez de `StrictMath` (pode variar na última casa entre máquinas, pelos intrinsics da CPU). **Risco aceito:** um valor que caia a menos de ~1e-14 de uma fronteira de arredondamento da 7ª ou 8ª casa pode arredondar para o outro lado; nos vértices não há conta (o valor é o publicado), e o oráculo da B3 compara os vértices.
 
 ### D8. Registro genérico e Groovy
 `RegistroModelos<T>` é um só para os três tipos, com a resolução: versão fixada → `ATIVA` → Java nativo → erro. Os nativos se registram na subida (`@Component` por modelo).
@@ -166,7 +171,7 @@ No primeiro título, todos os eventos são descontados pela própria incógnita,
 ### D15. Nós na tabela Bloomberg existente
 Os nós ficam em `tBbergCurvaPrimr`: `cTickerIndcd` = curva de mercado, `cTickerBberg` = ticker (o tenor é o segundo termo), `vPrecoUlt` = taxa zero, decimal pela regra de precisão (D7). As linhas da SOFR se separam das de contrato futuro pelo `cTickerIndcd`. O modelo aceita o ticker completo, que precisa da coluna maior (change `banco-curvas-ajustes`), e a forma curta `{membro} {tenor}`, que cabe no schema atual. **Por ora não é preciso se preocupar com o tamanho:** a lista de tickers da SOFR está fixa no conector, que até a homologação grava a forma curta (ex.: `S0490Z 15M`); para produção, com o ALTER aplicado, o ticker fica livre e passa a ser gravado completo. Como o modelo lê as duas formas, a troca não exige mudança no engine. **Alternativa rejeitada:** tabela nova `mkt.SofrCurveRaw`, que mudaria o schema sem necessidade.
 
-### D16. Tenor por `Period`
+### D16. Tenor por `java.time.Period`
 Qualquer `nD`, `nW`, `nM`, `nY`, sem tabela fixa de tenores (a lista real tem `9M` e `15M`). `D` conta dias úteis, como o `advance` do QuantLib, porque `1D` é o overnight.
 
 ### D17. Duplicidade de tenor
@@ -238,8 +243,8 @@ Feriado decretado de última hora não pode esperar deploy. A planilha de feriad
 A proveniência diz quais modelos e versões rodaram, mas investigar exige o código. O zip leva a planilha, o JSON e o código-fonte de cada script Groovy tirado da memória da instância (o texto que foi compilado, não uma releitura do Blob), mais um manifesto com os hashes. Modelos nativos são identificados pela versão do artefato do engine, gravada no build (sem o commit: cada versão publicada corresponde a um código só). Com isso, um caso de produção pode ser reproduzido fora do ambiente, com o mesmo código.
 
 ### D29. Datas e horários de Brasília, testes em massa
-- **Horário de Brasília em tudo:** os servidores do Azure rodam em UTC, e às 21h de Brasília já é o dia seguinte em UTC. O engine nunca usa o fuso padrão da JVM; "hoje" e instantes são calculados com `America/Sao_Paulo` e gravados com o deslocamento. Um teste de arquitetura proíbe o uso do fuso padrão fora do relógio, e o cenário das 22h30 é testado com um relógio fixo em UTC.
-- **Regressão com muitos pregões:** o oráculo contra a B3 roda sobre pelo menos 12 meses de `TaxaSwap.txt`, cobrindo os feriados móveis e a virada de ano, onde erros de calendário aparecem. Somam-se testes de propriedade com JUnit parametrizado e semente fixa (ponto preservado, determinismo, ida e volta taxa↔fator em valores aleatórios), sem biblioteca extra no pom e um teste de precisão do `DecimalMath` contra uma referência de alta precisão.
+- **Horário de Brasília em tudo, pela JVM inteira:** os servidores do Azure rodam em UTC, e às 21h de Brasília já é o dia seguinte em UTC. O `main` do engine fixa o fuso padrão da JVM em `America/Sao_Paulo` antes de subir o Spring (`TimeZone.setDefault`), e a subida falha se o fuso não for esse. Assim, `LocalDate.now()` e `OffsetDateTime.now()` já saem no horário de Brasília, sem classe de relógio própria. **Alternativa rejeitada:** um relógio próprio injetado em todo lugar, que duplicava o `java.time` e espalhava uma dependência por todo o código.
+- **Regressão com muitos pregões:** o oráculo contra a B3 roda sobre pelo menos 12 meses de `TaxaSwap.txt`, cobrindo os feriados móveis e a virada de ano, onde erros de calendário aparecem. Somam-se testes de propriedade com JUnit parametrizado e semente fixa (ponto preservado, determinismo, ida e volta taxa↔fator em valores aleatórios), sem biblioteca extra no pom e um teste do `DecimalMath` contra valores de referência, com tolerância de `double`.
 - **Sem contrato de API versionado nesta fase.**
 
 ### D30. Situação e vigência da curva só valem para a construção automática
