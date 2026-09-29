@@ -5,6 +5,11 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 ## 0. Regras para quem implementa
 
 - **Serviço:** `services/curves` (no sistema real, `acts-srv-curvas`, onde outro dev já faz o CRUD de provedores). Se o serviço já existir transcrito, encaixe as classes na estrutura dele. Se não existir, crie-o com a mesma estrutura do `services/engine`: Java 21, Spring Boot 4 (Jackson 3, `tools.jackson`), pacote `br.com.poc`, camadas `adapter/in/api/rest`, `application/service`, `domain`, `adapter/out/persistence/entity` (entidades) e `adapter/out/persistence/repository`, `adapter/out/client/engine`, `adapter/out/planilha`. No serviço real, as entidades ficam em `br.com.poc.adapter.out.persistence.entity`, com Lombok (`@Getter`, `@Setter`, `@NoArgsConstructor`), como a `ProvedorEntity` do CRUD de provedores: siga o mesmo padrão.
+- **Mesma base do engine** (guia do `engine-modelos-curva`, seção 0):
+  - **hexagonal:** `domain` em Java puro (regras de campo, vigência, `ETag`, validador de parâmetros, `hashPontos`, 30/360, situação do painel), sem Spring, JPA, Jackson ou POI; `application/port/in` (casos de uso) e `application/port/out` (`CurvaPort`, `LigacaoPort`, `ConfiguracaoPort`, `ProvedorPort`, `PontosPort`, `InterpoladaPort`, `TravaCurvaPort`, `EnginePort`, `PlanilhaPort`, `EventosPort`); `application/service` implementa os casos de uso; os adaptadores implementam as portas. O serviço conhece só as portas;
+  - **Java 21 nativo:** records para todo dado (domínio, DTOs, eventos, linhas de planilha), sealed e `switch` com pattern matching onde há variações fechadas (resultado de linha da importação, situação do painel), `java.time`, `RoundingMode`, `HexFormat`, `MessageDigest`, `Normalizer`. Nada de tipo próprio de data, relógio, arredondamento ou "utils";
+  - **virtual threads:** `spring.threads.virtual.enabled: true`; sem `synchronized`;
+  - **exceção:** as entidades JPA seguem o padrão do serviço real (Lombok, como a `ProvedorEntity`); fora delas, sem Lombok nem MapStruct no código novo.
 - Não invente rota, código de erro, aviso, coluna ou tabela fora deste guia e das specs. Não crie tabela, sequência, índice nem tópico. O serviço não usa o Blob.
 - Número de curva é sempre `BigDecimal`, nunca `double` (a única exceção é a célula numérica da planilha, seção 9).
 - Fuso: a JVM inteira roda em `America/Sao_Paulo` (seção 1.4); `LocalDate.now()` e `OffsetDateTime.now()` são usados direto. Leitura em `READ COMMITTED`, nunca `NOLOCK`.
@@ -72,6 +77,9 @@ curves:
     requisicao-segundos: 60
     importacao-pontos-segundos: 120
 spring:
+  threads:
+    virtual:
+      enabled: true                              # requisições em virtual threads
   datasource:
     hikari:
       transaction-isolation: TRANSACTION_READ_COMMITTED
@@ -178,7 +186,7 @@ Tabela "Campos da curva de mercado" da spec, campo a campo:
 
 Listagem: filtros `nome` (trecho normalizado), `codigo` (exato), `unidade`, `situacao`; paginação `pagina` (≥ 0) e `tamanho` (padrão 50, máximo 500); ordem por código.
 
-### 2.3 `ETag` (`domain/cadastro/EtagCadastro.java`)
+### 2.3 `ETag` (`domain/cadastro/EtagCadastro.java`, Java puro; o JSON canônico é montado pelo adaptador com o Jackson e passado como texto)
 
 SHA-256 hexa minúsculo do JSON canônico: chaves em ordem alfabética em todos os níveis, sem espaços, nulos presentes como `null`, strings UTF-8 sem escape de não ASCII. Estrutura:
 

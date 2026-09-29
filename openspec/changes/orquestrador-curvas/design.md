@@ -31,6 +31,9 @@ O orquestrador roda em no mínimo duas instâncias no Azure, e cada disparo agen
 ### D6. Nenhum estado novo
 Não há tabela, tópico ou arquivo novo. O histórico das execuções fica no log estruturado e nas métricas; se o orquestrador real já guardar execuções de tarefa, as tarefas das curvas usam esse mesmo registro.
 
+### D7. Mesma base de implementação dos outros serviços
+Quando o código real for transcrito, as tarefas das curvas seguem a base do engine (guia do `engine-modelos-curva`, seção 0): arquitetura hexagonal (as chamadas ao conector e ao engine atrás de portas de saída), Java 21 nativo (records para pedidos, respostas e eventos; `java.time`; `Thread.sleep(Duration)` nas esperas entre tentativas), virtual threads (`spring.threads.virtual.enabled`), sem `synchronized`, e o fuso da JVM fixado em `America/Sao_Paulo` no `main`, sem classe de relógio própria. Se o orquestrador real já tiver outro padrão, prevalece o dele.
+
 ## Risks / Trade-offs
 
 - **Horários não informados.** → Sem padrão; a tarefa só é agendada quando configurada (D4). Definir com a operação antes do deploy.

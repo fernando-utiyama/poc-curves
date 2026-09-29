@@ -241,9 +241,14 @@ Casos de teste (escritos na seção 3; um arquivo por rota, dependências mockad
 
 ---
 
-## 2. Processor (`services/processor`, Java, Spring Boot)
+## 2. Processor (`services/processor`, Java 21, Spring Boot)
 
-Pacote base: `br.com.poc.starter.srv.hex`.
+Pacote base: `br.com.poc.starter.srv.hex`. **Mesma base do engine** (guia do `engine-modelos-curva`, seção 0):
+- **Hexagonal, no layout que o serviço já tem:** `application/model` é o domínio (Java puro, sem Spring, JPA, Jackson ou Azure); `application/port/in` e `application/port/out` são as portas; `application/service` implementa os casos de uso; `adapter/in` (Kafka) e `adapter/out` (Blob, banco, cliente do engine) implementam as portas. O serviço só conhece as portas, nunca o adaptador.
+- **Java 21 nativo:** records para todo dado, sealed para as falhas, `switch` com pattern matching, `HexFormat` e `MessageDigest` para o SHA-256, `String.lines()`, `Thread.sleep(Duration)`, `ThreadLocalRandom`. Nada de tipo próprio de data, relógio ou "utils".
+- **Virtual threads:** `spring.threads.virtual.enabled: true`; o listener do Kafka roda numa virtual thread, então as esperas das novas tentativas (`Thread.sleep`) não prendem thread do sistema. Sem `synchronized`.
+- **Fuso da JVM:** o `main` faz `TimeZone.setDefault(TimeZone.getTimeZone("America/Sao_Paulo"))` antes do Spring, e um `ApplicationRunner` impede a subida com outro fuso. Os instantes de log (`CARGA_FALHOU` etc.) saem de `OffsetDateTime.now()`, já com `-03:00`.
+- **Sem Lombok nem MapStruct no código novo:** conversões em métodos estáticos dos records.
 
 ### 2.1 Remover
 
@@ -274,6 +279,9 @@ processor:
     aviso-minutos: 10
     alerta-aviso-minutos: 2
 spring:
+  threads:
+    virtual:
+      enabled: true                            # listener e requisições em virtual threads
   kafka:
     consumer:
       enable-auto-commit: false
@@ -295,15 +303,40 @@ public record AvisoCargaB3(String idCarga, String fonte, String produto, LocalDa
 }
 ```
 
-Validação (classe `application/service/ValidadorAvisoCargaB3.java`, método `void validar(AvisoCargaB3 a)` que lança `FalhaDefinitivaException(etapa="VALIDACAO", motivo)`): todas as regras da spec (campos obrigatórios; `fonte` `B3`; `produto` `TS`; `idCarga` casa `^B3-TS-\d{8}-[0-9a-f]{12}$` e a data do `idCarga` = `dataBase`; `caminho` = `b3/{AAAAMMDD}/cargas/{idCarga}/TaxaSwap.txt`; `sha256` casa `^[0-9a-f]{64}$`; `origem` em `DOWNLOAD`, `REPROCESSAMENTO`, `UPLOAD`). JSON inválido → a mesma exceção.
+Validação (classe `application/model/ValidadorAvisoCargaB3.java`, Java puro, método `static void validar(AvisoCargaB3 a)` que lança `FalhaDefinitiva("VALIDACAO", motivo)`): todas as regras da spec (campos obrigatórios; `fonte` `B3`; `produto` `TS`; `idCarga` casa `^B3-TS-\d{8}-[0-9a-f]{12}$` e a data do `idCarga` = `dataBase`; `caminho` = `b3/{AAAAMMDD}/cargas/{idCarga}/TaxaSwap.txt`; `sha256` casa `^[0-9a-f]{64}$`; `origem` em `DOWNLOAD`, `REPROCESSAMENTO`, `UPLOAD`). JSON inválido → a mesma exceção.
 
-Exceções novas em `application/exception/` (ao lado de `BusinessException` e `InfrastructureException`, que continuam para o resto do serviço): `FalhaDefinitivaException(String etapa, String motivo)` e `FalhaTransitoriaException(String etapa, Throwable causa)`.
+Falhas novas em `application/exception/` (ao lado de `BusinessException` e `InfrastructureException`, que continuam para o resto do serviço), fechadas por `sealed`:
 
-### 2.5 Leitura do arquivo: `adapter/out/blob/ArquivoCargaBlobAdapter.java`
+```java
+public abstract sealed class FalhaCarga extends RuntimeException permits FalhaDefinitiva, FalhaTransitoria {
+  private final String etapa;                                   // LEITURA, VALIDACAO, GRAVACAO, AVISO
+  protected FalhaCarga(String etapa, String mensagem, Throwable causa) { super(mensagem, causa); this.etapa = etapa; }
+  public String etapa() { return etapa; }
+}
+public final class FalhaDefinitiva extends FalhaCarga { public FalhaDefinitiva(String etapa, String motivo) { super(etapa, motivo, null); } }
+public final class FalhaTransitoria extends FalhaCarga { public FalhaTransitoria(String etapa, Throwable causa) { super(etapa, causa.getMessage(), causa); } }
+```
 
-`byte[] ler(String caminho)` com `BlobServiceClientBuilder().endpoint(endpoint).credential(new DefaultAzureCredentialBuilder().build())`. 404 → `FalhaDefinitivaException("LEITURA", "arquivo inexistente: " + caminho)`; outras falhas de rede/5xx/408/429 → `FalhaTransitoriaException("LEITURA", e)`. Depois de ler, no serviço: `bytes.length == arquivo.bytes` e `sha256Hex(bytes).equals(arquivo.sha256)`; senão `FalhaDefinitivaException("LEITURA", "divergência de tamanho|hash")`.
+Nas seções abaixo, `FalhaDefinitivaException` e `FalhaTransitoriaException` significam `FalhaDefinitiva` e `FalhaTransitoria`.
 
-### 2.6 Parse e validação: `application/service/LeiauteTaxaSwap.java`
+Portas de saída (`application/port/out/`), uma por dependência:
+
+```java
+public interface ArquivoCargaPort { byte[] ler(String caminho); }                                   // Blob
+public interface CargaB3Port {                                                                       // banco
+  Map<String, List<String>> curvasPorCodigo();
+  void gravar(LocalDate dataBase, Map<String, List<String>> curvasPorCodigo, Map<String, List<Vertice>> porCodigo);
+}
+public interface EngineCargaPort { RespostaEngine avisar(AvisoEngine corpo, String correlationId); }  // engine
+public record AvisoEngine(String idCarga, String fonte, String produto, LocalDate dataBase, Map<String, Integer> linhasPorCodigo) {}
+public record RespostaEngine(int status, String corpo) {}
+```
+
+### 2.5 Leitura do arquivo: `adapter/out/blob/ArquivoCargaBlobAdapter.java` (implementa `ArquivoCargaPort`)
+
+`byte[] ler(String caminho)` com um único `BlobContainerClient` criado na subida (bean), com `BlobServiceClientBuilder().endpoint(endpoint).credential(new DefaultAzureCredentialBuilder().build())`. 404 → `FalhaDefinitivaException("LEITURA", "arquivo inexistente: " + caminho)`; outras falhas de rede/5xx/408/429 → `FalhaTransitoriaException("LEITURA", e)`. Depois de ler, no serviço: `bytes.length == arquivo.bytes` e `HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)).equals(arquivo.sha256)`; senão `FalhaDefinitivaException("LEITURA", "divergência de tamanho|hash")`.
+
+### 2.6 Parse e validação: `application/model/LeiauteTaxaSwap.java` (Java puro)
 
 ```java
 public record Vertice(String codigo, int diasCorridos, int diasUteis, BigDecimal valor, int linha) {}
@@ -312,19 +345,16 @@ public static ResultadoParse interpretar(byte[] arquivo, LocalDate dataBaseEsper
 ```
 
 Regras exatas (posições 1-based → `substring(inicio-1, fim)`):
-- `String texto = new String(arquivo, StandardCharsets.ISO_8859_1)`; `linhas = texto.split("\n")`, ignorando vazias.
+- `var linhas = new String(arquivo, StandardCharsets.ISO_8859_1).lines().filter(l -> !l.isBlank()).toList();` (`String.lines()` já trata `\r\n`, `\n` e `\r`).
 - Arquivo sem linhas, linha com tamanho ≠ 72, data (12–19) diferente entre linhas ou de `dataBaseEsperada`, ou código (22–26, `strip()`) vazio → `FalhaDefinitivaException("VALIDACAO", "linha N: <motivo>")`.
 - Por linha: `dc = 42–46`, `du = 47–51`, `sinal = 52`, `taxa = 53–66`. Código fica inválido (registrar em `invalidos`, parar de ler as linhas daquele código) se: `dc` ou `du` não são só dígitos; `dc < 1`, `du < 1` ou `du > dc`; `sinal` não é `+` nem `-`; `taxa` não é só dígitos; `dc` repetido no código.
-- `valor = new BigDecimal(new BigInteger(taxa)).movePointLeft(7)` com o sinal (`negate()` se `-`); escala 7. Nunca `double`.
+- `valor = new BigDecimal(taxa).movePointLeft(7)` com o sinal (`negate()` se `-`); escala 7. Nunca `double`.
 
 Casos de teste (escritos na seção 3): linha da spec `0049060010120260914T1DCL  CUPOM LIMPO - S0000100001-00001179600000F00001` → `DCL`, 1, 1, `-117.9600000`. Com `docs/TaxaSwap.txt`: 114 códigos, 278 vértices em `PRE`/`DCL`/`DPL`/`INP`/`PTX`, nenhum inválido; primeiro vértice da `PRE` = `13.9000000`.
 
-### 2.7 Gravação: `adapter/out/persistence/jdbc/CargaB3JdbcAdapter.java` (usa `JdbcTemplate`)
+### 2.7 Gravação: `adapter/out/persistence/jdbc/CargaB3JdbcAdapter.java` (implementa `CargaB3Port`)
 
-```java
-Map<String, List<String>> curvasPorCodigo();   // código → nomes das curvas de mercado
-void gravar(LocalDate dataBase, Map<String, List<String>> curvasPorCodigo, Map<String, List<Vertice>> porCodigo);
-```
+Consultas com o `JdbcClient` do Spring (mapeia direto para records); inclusões em lote com `JdbcTemplate.batchUpdate`. Ambos já vêm com o `spring-boot-starter-data-jpa`.
 
 Colunas conforme o `001_SCRIPT_INICIAL.sql`: `tBtrsCurvaPrimr(cldtfdUnic int NOT NULL, cTickerIndcd varchar(50) NOT NULL, cDiaCorri int, cDiaUtil int, dBaseReft date, vFatorAcum decimal(28,16), vPrecoTx decimal(28,12), vFatorDia decimal(28,16))` e `tCurvaPrvdr(cldtfdUnic, cPriorCsumo, cPrvdrMercd varchar(50), cTickerIndcd varchar(50), cTickerPrvdr varchar(1024), iPrvdrDados varchar(1024))`. `vPrecoTx` recebe o `BigDecimal` de escala 7 sem arredondar.
 
@@ -345,9 +375,9 @@ SELECT COUNT(*) FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;  
 - Nunca escrever em `tCurvaMercd` nem `tCurvaPrvdr`.
 - Deadlock, timeout de comando ou perda de conexão → `FalhaTransitoriaException("GRAVACAO", e)`; violação de FK/chave → `FalhaDefinitivaException("GRAVACAO", …)`.
 
-### 2.8 Aviso ao engine: `adapter/out/client/EngineCargaClient.java`
+### 2.8 Aviso ao engine: `adapter/out/client/EngineCargaClient.java` (implementa `EngineCargaPort`)
 
-`RespostaEngine avisar(AvisoEngine corpo, String correlationId)` com `RestClient`:
+`RespostaEngine avisar(AvisoEngine corpo, String correlationId)` com `RestClient` (um só, criado na subida; o `DefaultAzureCredential` também é um bean único, que já guarda o token até perto de expirar):
 - `POST {processor.engine.url}/api/v1/cargas`, JSON `{ idCarga, fonte:"B3", produto:"TS", dataBase:"AAAA-MM-DD", linhasPorCodigo:{ código: quantidade } }`;
 - cabeçalhos `Authorization: Bearer <token>` (`DefaultAzureCredential.getTokenSync(new TokenRequestContext().addScopes(escopo))`) e `X-Correlation-Id`;
 - tempo limite de leitura `timeout-segundos`;
@@ -367,7 +397,27 @@ public void processar(String mensagem, String correlationId);
 5. `repetir("AVISO", avisoMinutos, () -> engine.avisar(...))`, com `AVISO_ATRASADO` (log `ERRO` + métrica) se passar de `alertaAvisoMinutos` desde o commit;
 6. log JSON da carga (campos da spec) e métricas.
 
-`repetir(etapa, minutos, acao)`: repete só em `FalhaTransitoriaException`, esperando 1 s, 2 s, 4 s… até 60 s, com ±10% aleatório, até a janela acabar; cada nova tentativa gera log `AVISO`. Janela esgotada → `FalhaDefinitivaException(etapa, "janela esgotada")`.
+`repetir(etapa, minutos, acao)`: repete só em `FalhaTransitoria`, esperando 1 s, 2 s, 4 s… até 60 s, com ±10% aleatório, até a janela acabar; cada nova tentativa gera log `AVISO`. Janela esgotada → `FalhaDefinitiva(etapa, "janela esgotada")`. Só Java:
+
+```java
+static <T> T repetir(String etapa, Duration janela, Supplier<T> acao) {
+  var fim = System.nanoTime() + janela.toNanos();
+  var espera = Duration.ofSeconds(1);
+  for (int tentativa = 1; ; tentativa++) {
+    try { return acao.get(); }
+    catch (FalhaTransitoria f) {
+      if (System.nanoTime() + espera.toNanos() > fim) throw new FalhaDefinitiva(etapa, "janela esgotada após " + tentativa + " tentativas");
+      log.warn(...);                                                  // AVISO com etapa, tentativa e causa
+      long ms = espera.toMillis();
+      sleep(Duration.ofMillis(ms + ThreadLocalRandom.current().nextLong(-ms / 10, ms / 10 + 1)));
+      espera = espera.multipliedBy(2).compareTo(Duration.ofSeconds(60)) > 0 ? Duration.ofSeconds(60) : espera.multipliedBy(2);
+    }
+  }
+}
+// sleep: Thread.sleep(Duration); InterruptedException → reinterrompe a thread e lança FalhaDefinitiva(etapa, "interrompido")
+```
+
+O tratamento final usa `switch` com pattern matching sobre a falha (`case FalhaDefinitiva d -> ...`), e o `sealed` garante que não sobra caso.
 
 Qualquer `FalhaDefinitivaException` → log `CARGA_FALHOU` (nível `ERRO`, campos: `idCarga`, `dataBase`, `motivo`, `etapa`, `estado` = `GRAVADA_SEM_AVISO` se a etapa for `AVISO`, senão `NAO_GRAVADA`, `tentativas`, instante de Brasília) + métrica, e **retornar normalmente** (a mensagem é confirmada).
 

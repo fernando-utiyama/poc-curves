@@ -2,7 +2,7 @@
 
 - [ ] 1.1 Esperar a transcrição do orquestrador real e mapear onde entram tarefa agendada, execução manual e execução única; verificar com o dono do orquestrador antes de codificar
 - [ ] 1.2 Criar o cliente HTTP do conector e do engine com token por client credentials (Managed Identity ou cofre), `X-Correlation-Id` e os tempos limite da spec; verificar com servidor simulado que o cabeçalho e o token vão em toda chamada
-- [ ] 1.3 Criar o relógio de Brasília e a checagem de dia útil pela exportação de calendário do engine, com cache até o fim do dia e o recuo para só fim de semana com o engine fora; verificar feriado, fim de semana, engine fora e a JVM em UTC
+- [ ] 1.3 Fixar o fuso padrão da JVM em `America/Sao_Paulo` no início do `main` (`TimeZone.setDefault`, antes do Spring, com a subida recusada se o fuso for outro), sem classe de relógio própria, e criar a checagem de dia útil pela exportação de calendário do engine, com cache até o fim do dia e o recuo para só fim de semana com o engine fora; verificar feriado, fim de semana, engine fora e o servidor em UTC (a data-base continua a de Brasília)
 
 ## 2. Tarefas
 
