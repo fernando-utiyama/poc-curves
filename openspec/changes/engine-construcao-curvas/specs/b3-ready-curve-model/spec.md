@@ -41,13 +41,6 @@ O `TaxaSwap.txt` já chega validado pelo leiaute no processor (change `conector-
 - **WHEN** o calendário `Brazil` não tem um feriado que a B3 considerou, e por isso o `DU` calculado de um vértice difere de `cDiaUtil`
 - **THEN** a curva é construída com o `cDiaUtil` publicado, com o aviso `CALENDARIO_DIVERGENTE` informando o vértice, o `DU` calculado e o `cDiaUtil` publicado
 
-### Requirement: Memória de cálculo do modelo
-O modelo SHALL registrar na memória de cálculo: na aba `Insumos`, a tabela `tBtrsCurvaPrimr` e as colunas lidas `cTickerIndcd`, `dBaseReft`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx`; na aba `Pontos`, as colunas extras `DC publicado` e `DU publicado`. O modelo não registra fluxos.
-
-#### Scenario: Divergência visível na planilha
-- **WHEN** a simulação da `PRE` tem calendário divergente
-- **THEN** a aba `Insumos` mostra a linha com o `cDiaUtil` publicado, e a aba `Eventos` mostra o aviso com o `DU` calculado
-
 ### Requirement: Cadastro das cinco curvas
 As cinco curvas SHALL ser cadastradas com construção `PRONTA_TS_B3`, origem `B3`/`TS`, calendário `Brazil`/`Settlement`/`Following`, extrapolação de início `Disabled` e horizonte `10Y`, com os demais itens abaixo. Eles reproduzem o Manual de Curvas B3. As casas decimais são as 7 do leiaute oficial do `TaxaSwap.txt` (campo "Taxa teórica", posições 53 a 66), e não as observadas num arquivo: o valor gravado é sempre idêntico ao publicado.
 

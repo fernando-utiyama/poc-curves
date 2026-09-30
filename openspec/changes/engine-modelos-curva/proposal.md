@@ -73,6 +73,7 @@ Acrescentam requisitos às capabilities criadas pela change `engine-construcao-c
 - `curve-load-trigger`: construção em cadeia das derivadas.
 - `curve-audit-history`: auditoria no log e arquivo de auditoria montado na hora.
 - `calendar-management`: calendário por lista, importação e validação da planilha, exportação em planilha e por versão.
+- `b3-ready-curve-model`, `ntnb-anbima-curve-model`, `sofr-bloomberg-curve-model`: o registro de cada modelo na memória de cálculo.
 
 ## Impact
 

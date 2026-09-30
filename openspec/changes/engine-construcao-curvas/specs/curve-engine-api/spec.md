@@ -1,6 +1,6 @@
 ## Purpose
 
-Define a API HTTP do engine para construir, consultar, interpolar e simular curvas, identificando a curva pelo código (ou, só para leitura, pelo nome) e pela data-base, e para gerir os scripts Groovy de modelo por tipo e nome. Fixa rotas, parâmetros, corpos, códigos HTTP e códigos de erro.
+Define a API HTTP do engine para construir, consultar e interpolar curvas, identificando a curva pelo código (ou, só para leitura, pelo nome) e pela data-base, mais as rotas básicas usadas pelos outros serviços (carga, construção da data, situação, valores aceitos, regravação da interpolada, feriados). Fixa rotas, parâmetros, corpos, códigos HTTP e códigos de erro. Simulação, auditoria, planilhas e gestão de scripts estão na change `engine-modelos-curva`.
 
 ## ADDED Requirements
 
@@ -33,7 +33,7 @@ As rotas antigas (`POST /api/v1/curvas/construir`, `POST /api/v1/calculo`, `POST
 - `du` SHALL ser inteiro maior ou igual a 1 e representa o prazo de `du` dias úteis após a data-base; a data correspondente segue o requisito "Dias úteis publicados pela fonte ou informados pelo usuário" da spec `curve-build-pipeline` (vértice com esses dias úteis publicados, senão o calendário ancorado no ponto anterior).
 - `data` SHALL ser posterior à data-base; pode ser qualquer dia corrido, e o dia não útil tem o valor da curva interpolada nesse dia (spec `curve-build-pipeline`, requisito "Curva interpolada gravada").
 - `du` e `data` MAY se repetir e se combinar, até 5.000 prazos por requisição; a resposta segue a ordem recebida.
-- `formato` SHALL aceitar `json` (padrão), `xlsx` ou, nas rotas de consulta de pontos, interpolação e simulação, `zip` (spec `curve-calculation-memory`).
+- `formato` SHALL aceitar `json` (padrão); `xlsx` e `zip` são acrescentados pela change `engine-modelos-curva` (spec `curve-calculation-memory`), e até lá respondem 400 `PARAMETRO_INVALIDO`.
 - `forcarRecalculo` SHALL aceitar `true` ou `false` (padrão).
 - `fonte` e `produto` (construção e simulação por código) SHALL vir juntos ou nenhum dos dois; só um deles é 400 `PARAMETRO_INVALIDO`. Sem eles, vale a origem principal; com eles, a origem secundária (spec `curve-build-pipeline`). A comparação é exata, com diferença de caixa.
 - Qualquer outro parâmetro de query MUST resultar em 400.
@@ -218,6 +218,6 @@ A rota MUST NOT construir nem gravar nada. As curvas SHALL ser conferidas em par
 O OpenAPI (Swagger) do engine SHALL declarar como `enum` todo campo de valor fechado nos corpos e respostas. Um teste SHALL garantir que todo valor aceito pelo validador aparece nesta rota, e vice-versa.
 
 #### Scenario: Interpolador Groovy ativado
-- **WHEN** um script de interpolação `LogCubicB3` é ativado
+- **WHEN** (com a gestão de scripts da change `engine-modelos-curva`) um script de interpolação `LogCubicB3` é ativado
 - **THEN** a próxima chamada de `GET /api/v1/valores-cadastro` lista `LogCubicB3` com origem `GROOVY` e a versão ativa, e `versaoValores` muda
 

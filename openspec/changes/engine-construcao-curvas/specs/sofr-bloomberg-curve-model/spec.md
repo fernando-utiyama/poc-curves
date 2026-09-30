@@ -54,18 +54,11 @@ A fonte não publica dias úteis, então não há `CALENDARIO_DIVERGENTE` para a
 
 #### Scenario: Dois nós 1D idênticos
 - **WHEN** a fonte tem dois nós `1D` com o mesmo valor
-- **THEN** a curva tem um ponto em `1D`, e o descarte aparece no log e na aba `Insumos`
+- **THEN** a curva tem um ponto em `1D`, e o descarte aparece no log
 
 #### Scenario: Dois nós 1D divergentes
 - **WHEN** a fonte tem dois nós `1D` com valores diferentes
 - **THEN** a construção falha com `INSUMO_INVALIDO`, informando o tenor e os dois valores
-
-### Requirement: Memória de cálculo do modelo
-O modelo SHALL registrar na memória de cálculo: na aba `Insumos`, a tabela `tBbergCurvaPrimr` e as colunas lidas `cldtfdUnic`, `cTickerIndcd`, `cTickerBberg`, `dBaseReft`, `vPrecoUlt`, mais o tenor extraído; na aba `Pontos`, as colunas extras `Tenor` e `Data nao ajustada`. O modelo não registra fluxos.
-
-#### Scenario: Ajuste visível
-- **WHEN** a data de um tenor é ajustada por feriado
-- **THEN** a aba `Pontos` mostra a data não ajustada e a data do ponto
 
 ### Requirement: Cadastro da SOFR
 A curva SHALL ser cadastrada com:

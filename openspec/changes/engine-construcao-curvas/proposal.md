@@ -4,6 +4,7 @@ O primeiro objetivo do projeto é entregar 7 curvas: DIxPRE, DCL, PTAX, DPL e IB
 
 ## What Changes
 
+- **Escopo desta entrega:** onde um requisito desta change cita algo da segunda parte (simulação, `formato=xlsx`/`zip`, memória de cálculo, scripts Groovy e Blob, auditoria, origem secundária, curva derivada), isso passa a valer com a change `engine-modelos-curva`. Até lá: só modelos, interpoladores e calendários nativos, proveniência sempre com origem `JAVA` e `estadoScript` = `ATUAL`, construção só pela origem principal, e curva derivada recusada com `CADASTRO_INVALIDO`. O contrato do modelo recebe a `MemoriaCalculo`; nesta parte ela pode ser só o acumulador, sem planilha.
 - **Pipeline guiado pelo cadastro:** ler o cadastro (`tCurvaMercd`, ligação principal em `tCurvaPrvdr`, configuração vigente em `tConfgCurva` e parâmetros em `cModDado`) → executar o modelo de construção → arredondar → gravar os pontos em `tDadoVertcCurva` e a curva interpolada em `tDadoCurva`, sob a trava da curva, e atualizar `dBaseReft` e `cUsuarCalc` em `tCurvaMercd`.
 - **Tipos com nomes do QuantLib e matemática decimal** (`Compounding`, `Frequency`, `BusinessDayConvention`, `DayCounter`, `InterestRate`, `DecimalMath` pelo `StrictMath`).
 - **Calendários nativos** `Brazil`/`Settlement` e `UnitedStates`/`FederalReserve`.

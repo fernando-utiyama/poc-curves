@@ -1,6 +1,6 @@
 ## Purpose
 
-Mantém a trilha de toda construção e recálculo de curva sem alterar o schema do banco e sem gravar nada de curva no Blob Storage: quem gravou, quando, a partir de qual carga, com quais modelos e cadastro, e quais pontos foram substituídos. O resumo da última construção fica nas colunas de cálculo de `tCurvaMercd`, o registro de cada gravação, no log estruturado, e o arquivo de auditoria é montado na hora, a pedido do front.
+Mantém em `tCurvaMercd` o resumo da última construção de cada curva (`dBaseReft` e `cUsuarCalc`). O registro de cada gravação no log e o arquivo de auditoria estão na change `engine-modelos-curva`.
 
 ## ADDED Requirements
 

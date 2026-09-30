@@ -1,6 +1,6 @@
 ## Purpose
 
-Mantém o catálogo de modelos de construção, de interpolação e de calendário do engine, com tipos e nomes compatíveis com o QuantLib. Os modelos nativos em Java podem ser complementados ou sobrescritos por scripts Groovy, com versão, validação, contenção e rastreabilidade. Fixa os contratos que um script implementa, os estados de uma versão e os modelos nativos.
+Mantém o catálogo de modelos de construção, de interpolação e de calendário do engine, com tipos e nomes compatíveis com o QuantLib, os contratos que todo modelo implementa e os modelos nativos em Java. Os scripts Groovy que complementam ou sobrescrevem os nativos (versões, validação, contenção) estão na change `engine-modelos-curva`.
 
 ## ADDED Requirements
 

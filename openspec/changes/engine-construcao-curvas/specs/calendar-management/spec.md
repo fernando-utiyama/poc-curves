@@ -1,6 +1,6 @@
 ## Purpose
 
-Permite manter os feriados de um calendário sem deploy: importar uma planilha com a lista de feriados, que o engine converte num script Groovy de calendário versionado, e exportar os feriados de qualquer calendário (nativo ou Groovy) no mesmo formato da importação, para conferir, corrigir e reimportar.
+Exporta, em JSON, os feriados dos calendários nativos (`Brazil`/`Settlement` e `UnitedStates`/`FederalReserve`), para o `services/curves` e o orquestrador conferirem dias úteis. A manutenção de feriados por planilha (calendário por lista, importação e exportação em planilha) está na change `engine-modelos-curva`.
 
 ## ADDED Requirements
 
