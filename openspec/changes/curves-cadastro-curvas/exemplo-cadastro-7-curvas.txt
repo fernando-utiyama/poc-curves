@@ -461,7 +461,7 @@ POST /api/v1/curvas-mercado/IPCA_IMPLICITA/ligacoes
 
 A configuração aponta para o modelo derivado (ex.: um script Groovy
 INFLACAO_IMPLICITA). O engine a constrói em cadeia, na carga que completar as
-duas mães, ou na construção da data pelo orquestrador.
+duas curvas componentes, ou na construção da data pelo orquestrador.
 
 
 8. PONTOS A CONFIRMAR

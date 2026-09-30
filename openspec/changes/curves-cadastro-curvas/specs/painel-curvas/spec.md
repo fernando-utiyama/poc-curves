@@ -24,14 +24,14 @@ Cada linha SHALL trazer:
 | Campo | Fonte |
 |---|---|
 | `codigo`, `nome`, `unidade`, `situacaoCadastro` (`ATIVO`/`INATIVO`) | `tCurvaMercd` |
-| `origem` (provedor, produto, código na fonte; ou as mães, para curva derivada) | `tCurvaPrvdr`, ligação de menor prioridade |
+| `origem` (provedor, produto, código na fonte; ou as curvas componentes, para curva derivada) | `tCurvaPrvdr`, ligação de menor prioridade |
 | `origensSecundarias` (provedor, produto, código na fonte, prioridade e o modelo que a lê, de `MODELOS_POR_ORIGEM` ou `modeloConstrucao`), lista vazia quando não há | `tCurvaPrvdr` e configuração vigente |
 | `modeloConstrucao`, `interpolador`, `versaoConfiguracao` | configuração vigente na data-base em `tConfgCurva` |
 | `ultimaDataPublicada`, `calculadoPor` | `tCurvaMercd.dBaseReft` e `cUsuarCalc` |
 | `situacao`, `motivo`, `atencao`, `atrasada` | regra abaixo |
 | `quantidadePontos`, `hashPontos` | pontos gravados em `tDadoVertcCurva` na data-base, com o `hashPontos` da spec `pontos-curva-manual` |
 | `interpolada` (quantidade de linhas em `tDadoCurva` e se confere com os pontos atuais) | engine |
-| `insumo` (linhas brutas da origem na data, ou mães com e sem pontos) | engine |
+| `insumo` (linhas brutas da origem na data, ou componentes com e sem pontos) | engine |
 | `conferencia` (`status`, `codigoErro`, mensagem, `pontosDiferentes`) | engine, calculada na hora contra a fonte atual |
 
 Campos sem informação SHALL vir nulos, nunca omitidos. Com `origensSecundarias`, o front SHALL oferecer, na ação de construir ou recalcular a curva, a escolha entre a origem principal e cada secundária, chamando a construção do engine com `fonte` e `produto` da escolhida, e a simulação por ela antes de gravar. Para ver o detalhe de uma linha, o front pede o arquivo de auditoria da curva e data ao engine (spec `curve-audit-history` do change `engine-modelos-curva`), montado na hora.
@@ -50,8 +50,8 @@ A situação SHALL ser decidida nesta ordem, pela primeira regra que se aplica:
 | `SITUACAO_INDISPONIVEL` | o engine não respondeu; `quantidadePontos` mostra se há pontos gravados | sim |
 | `INTERPOLADA_DESATUALIZADA` | há pontos gravados, mas a curva interpolada em `tDadoCurva` não confere com eles (edição manual com o engine fora); `motivo` traz a quantidade de dias diferentes | sim |
 | `CONSTRUIDA` | há pontos gravados, e a conferência com a fonte atual está `OK` com 0 pontos diferentes | não |
-| `DIVERGENTE_DA_FONTE` | há pontos gravados, mas eles não batem com a fonte atual; `motivo`: `PONTOS_DIFERENTES` (edição manual, republicação ou cadastro alterado, com a quantidade), `FONTE_COM_ERRO` (a fonte atual não gera a curva, com o código) ou `SEM_INSUMO` (pontos digitados sem dado da fonte, ou mães sem pontos) | sim |
-| `AGUARDANDO_MAES` | curva derivada sem pontos gravados, com alguma mãe ainda sem pontos na data | não |
+| `DIVERGENTE_DA_FONTE` | há pontos gravados, mas eles não batem com a fonte atual; `motivo`: `PONTOS_DIFERENTES` (edição manual, republicação ou cadastro alterado, com a quantidade), `FONTE_COM_ERRO` (a fonte atual não gera a curva, com o código) ou `SEM_INSUMO` (pontos digitados sem dado da fonte, ou componentes sem pontos) | sim |
+| `AGUARDANDO_COMPONENTES` | curva derivada sem pontos gravados, com alguma curva componente ainda sem pontos na data | não |
 | `AGUARDANDO_CARGA` | curva com origem de provedor, sem pontos gravados e sem linhas brutas na data | só se `atrasada` |
 | `COM_ERRO` | sem pontos gravados, com insumo, e a conferência dá erro (é o erro que a construção dá) | sim |
 | `NAO_CONSTRUIDA` | sem pontos gravados, com insumo, e a conferência está `OK`: a curva poderia ser construída e não foi | sim |
@@ -70,7 +70,7 @@ A situação SHALL ser decidida nesta ordem, pela primeira regra que se aplica:
 - **WHEN** a B3 republicou o arquivo de `2026-09-14` com um vértice da `DCL` corrigido depois da construção, e ninguém recalculou
 - **THEN** a `DCL` aparece como `DIVERGENTE_DA_FONTE`, com `motivo` = `PONTOS_DIFERENTES` e 1 ponto diferente, e as curvas B3 sem mudança continuam `CONSTRUIDA`
 
-#### Scenario: Derivada com mãe recalculada
+#### Scenario: Derivada com curva componente recalculada
 - **WHEN** a `DIxPRE` de uma data foi recalculada com valores diferentes depois da construção de uma curva derivada dela
 - **THEN** a derivada aparece como `DIVERGENTE_DA_FONTE`, com `motivo` = `PONTOS_DIFERENTES`
 

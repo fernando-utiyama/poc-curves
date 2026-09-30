@@ -46,7 +46,15 @@ Toda rota de `/api/v1` MUST exigir um token JWT do Microsoft Entra ID (`Authoriz
 - `Curvas.ModelosAutor`: enviar e validar scripts;
 - `Curvas.ModelosAprovador`: ativar e desativar scripts.
 
-Token ausente ou inválido MUST resultar em 401 `NAO_AUTENTICADO`; token sem o papel exigido, em 403 `SEM_PERMISSAO`. O usuário gravado na auditoria e no log SHALL ser o `preferred_username` do token ou, para identidade de serviço, o `appid`. A autenticação MUST NOT poder ser desligada por configuração no perfil de produção.
+Token ausente ou inválido MUST resultar em 401 `NAO_AUTENTICADO`; token sem o papel exigido, em 403 `SEM_PERMISSAO`. O usuário gravado na auditoria e no log SHALL ser o `preferred_username` do token ou, para identidade de serviço, o `appid`. A validação do token SHALL ser a do Resource Server do Spring (`spring.security.oauth2.resourceserver.jwt`), e MUST falhar fechada em todo ambiente implantado: sem emissor ou audiência configurados, a aplicação MUST NOT subir; com o Entra ID indisponível para obter as chaves, as requisições MUST ser recusadas com 401 até as chaves serem obtidas. Nenhum validador alternativo que aceite token sem verificar assinatura ("mock") SHALL existir no código de produção, qualquer que seja o nome do perfil. O único modo sem Entra ID é o teste automatizado, com o suporte de teste do Spring Security.
+
+#### Scenario: Emissor não configurado
+- **WHEN** o engine sobe em qualquer perfil sem `engine.seguranca.emissor`
+- **THEN** a aplicação não sobe, e o log diz a propriedade que falta
+
+#### Scenario: Entra ID indisponível na subida
+- **WHEN** o engine sobe e o Entra ID não responde para entregar as chaves
+- **THEN** toda rota protegida responde 401 até as chaves serem obtidas; nenhum token é aceito sem validação
 
 #### Scenario: Leitura sem papel
 - **WHEN** um usuário autenticado sem `Curvas.Leitura` consulta `GET /api/v1/curvas/PRE/2026-09-14`
@@ -75,7 +83,7 @@ Token ausente ou inválido MUST resultar em 401 `NAO_AUTENTICADO`; token sem o p
 - **THEN** a resposta traz o mesmo valor de `2026-09-18` (sexta-feira), igual à linha de `2026-09-19` em `tDadoCurva`
 
 ### Requirement: Erros padronizados
-Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlationId", "detalhes": [ { "campo", "linha", "valor", "motivo" } ] }`, o mesmo formato do `services/curves`, com a mensagem em português, sem stack trace; em cada item de `detalhes`, o que não se aplica vem nulo. Os códigos e status SHALL ser:
+Toda resposta de erro SHALL seguir o padrão do projeto: Problem Details (RFC 9457, `application/problem+json`), produzido pelo tratador de exceções padrão (`ApplicationExceptionHandler`), com `type`, `title`, `status`, `detail` (mensagem em português, do `MessageSource`), `instance`, e as propriedades `code` (o código do erro abaixo), `correlationId` e, quando houver, `detalhes`: `[ { "campo", "linha", "valor", "motivo" } ]` (o que não se aplica vem nulo). Sem stack trace. O mesmo formato vale no `services/curves`. Os códigos e status SHALL ser:
 
 | `codigoErro` | HTTP | Quando |
 |---|---|---|
@@ -89,7 +97,7 @@ Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlatio
 | `CONSTRUCAO_EM_ANDAMENTO` | 409 | trava da curva não obtida em 30 segundos |
 | `ESTADO_SCRIPT_CONCORRENTE` | 409 | estado do script alterado por outra requisição entre a leitura e a gravação |
 | `CADASTRO_INVALIDO` | 422 | item do cadastro ausente, inválido ou incompatível |
-| `CURVA_MAE_NAO_CONSTRUIDA` | 422 | curva derivada com alguma mãe sem pontos gravados na data; `detalhes` lista as mães |
+| `CURVA_COMPONENTE_NAO_CONSTRUIDA` | 422 | curva derivada com alguma curva componente sem pontos gravados na data; `detalhes` lista as curvas componentes |
 | `INSUMO_INCOMPLETO` | 422 | quantidade de linhas lidas diferente da avisada na carga |
 | `INSUMO_AUSENTE` | 422 | origem sem dados na data |
 | `INSUMO_INVALIDO` | 422 | dado da origem viola regra do modelo |
@@ -102,7 +110,7 @@ Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlatio
 
 #### Scenario: Código desconhecido
 - **WHEN** o cliente chama `GET /api/v1/curvas/XYZ/2026-09-14`
-- **THEN** a resposta é 404 com `CURVA_NAO_ENCONTRADA` informando `XYZ`
+- **THEN** a resposta é 404 em Problem Details, com `code` = `CURVA_NAO_ENCONTRADA`, o `detail` informando `XYZ` e o `correlationId`
 
 ### Requirement: Contrato de tipos das respostas
 Para o front receber os valores sem perda nem ambiguidade, toda resposta JSON do engine SHALL seguir:
@@ -137,6 +145,7 @@ Avisos do engine:
 | `ORIGEM_SECUNDARIA` | construção pela API, simulação | pontos construídos ou simulados a partir de uma origem secundária; `detalhes` traz fonte, produto, código na fonte e prioridade |
 | `FORA_DA_VIGENCIA_CURVA` | construção pela API, simulação | data-base fora da vigência da curva |
 | `PONTOS_DIFERENTES_DA_FONTE` | carga, construção da data, construção pela API | pontos gravados diferentes do que a fonte atual produz; `detalhes` traz a quantidade |
+| `COMPARACAO_INDISPONIVEL` | carga, construção da data, construção pela API | curva `EXISTENTE` cuja comparação com a fonte atual falhou; `detalhes` traz o `codigoErro` e a mensagem da falha |
 | `PONTO_DESCARTADO_MESMO_PRAZO` | consulta, interpolação, construção, simulação | ponto no mesmo prazo de outro, fora da interpolação |
 | `PONTO_DESCARTADO_PRAZO_NAO_POSITIVO` | consulta, interpolação, construção, simulação | ponto na data-base ou antes, fora da interpolação |
 | `CALENDARIO_DIVERGENTE` | construção, simulação, consulta, auditoria | dias úteis publicados pela fonte ou informados pelo usuário diferentes do calendário, ou ponto da fonte em dia não útil; a curva segue os dias publicados; `detalhes` traz a data, os dias do ponto e os do calendário |
@@ -224,10 +233,10 @@ Com `formato=xlsx`, as rotas de consulta de pontos, de interpolação e de simul
 ### Requirement: Situação das curvas numa data-base
 `GET /curvas/situacao?dataBase=` SHALL devolver, para cada curva com código não nulo, o que o engine calcula na hora e o `services/curves` não consegue calcular, sem ler nem gravar nenhum registro próprio:
 - código, nome e origem;
-- `insumo`: para curva com origem de provedor, a quantidade de linhas brutas da origem na data (`linhasBrutas`); para curva derivada, cada mãe com nome, papel e se tem pontos gravados na data;
+- `insumo`: para curva com origem de provedor, a quantidade de linhas brutas da origem na data (`linhasBrutas`); para curva derivada, cada curva componente com nome, papel e se tem pontos gravados na data;
 - `pontosGravados`: quantidade e `hashPontos` em `tDadoVertcCurva`;
 - `interpolada`: quantidade de linhas em `tDadoCurva` na data e `atualizada` (`true` quando todo dia da grade confere com a interpolação dos pontos atuais; `false` com a quantidade de dias diferentes; nulo sem pontos);
-- `conferencia`: quando há insumo (linhas brutas, ou todas as mães com pontos), o resultado de executar o modelo como a simulação, sem gravar: `status` (`OK` ou `ERRO`), `codigoErro` e mensagem, `hashPontosFonte` e, se houver pontos gravados, `pontosDiferentes` (quantidade de pontos que diferem, que só existem de um lado ou do outro); nula sem insumo.
+- `conferencia`: quando há insumo (linhas brutas, ou todas as curvas componentes com pontos), o resultado de executar o modelo como a simulação, sem gravar: `status` (`OK` ou `ERRO`), `codigoErro` e mensagem, `hashPontosFonte` e, se houver pontos gravados, `pontosDiferentes` (quantidade de pontos que diferem, que só existem de um lado ou do outro); nula sem insumo.
 
 A rota MUST NOT construir nem gravar nada. As curvas SHALL ser conferidas em paralelo, com até `engine.situacao.paralelismo` (padrão 8) ao mesmo tempo, e a falha ou o tempo esgotado de uma MUST NOT impedir as outras: a curva sai com `conferencia.status` = `ERRO` e o código correspondente. Quem monta o painel, com o cadastro e as regras de situação, é o `services/curves` (spec `painel-curvas` do change `curves-cadastro-curvas`).
 
@@ -245,7 +254,7 @@ A rota MUST NOT construir nem gravar nada. As curvas SHALL ser conferidas em par
 - cada chave de `cModDado`: tipo, obrigatoriedade (com a condição, ex.: `FREQUENCY` só com `Compounded`), valor padrão, e os valores aceitos ou o formato (ex.: `HORIZONTE` pela expressão do `Period`, `CASAS_DECIMAIS` de 0 a 12);
 - para cada valor, um `rotulo` curto em pt-BR, para listas e telas, e uma `descricao` em pt-BR (ex.: `DOWN`: rótulo "Truncar", descrição "Corta as casas excedentes, sem arredondar"; `FlatForward`: rótulo "Taxa a termo constante");
 - as regras de combinação, cada uma com um código e o texto;
-- os modelos por tipo (construção, interpolação, calendário): nome, origem (`JAVA` ou `GROOVY`), versão `ATIVA` do script quando houver; para calendário, os mercados aceitos; para os modelos de construção, a fonte e o produto de origem esperados e, nos modelos derivados (fonte `TCEN`), os papéis das mães;
+- os modelos por tipo (construção, interpolação, calendário): nome, origem (`JAVA` ou `GROOVY`), versão `ATIVA` do script quando houver; para calendário, os mercados aceitos; para os modelos de construção, a fonte e o produto de origem esperados e, nos modelos derivados (fonte `TCEN`), os papéis das curvas componentes;
 - os enums das respostas e os catálogos de avisos e de erros do engine, com `rotulo` e `descricao` em pt-BR de cada valor, para o front exibir rótulos sem manter lista própria;
 - `versaoValores`: SHA-256 do conteúdo, para o cliente saber quando atualizar o cache.
 

@@ -66,7 +66,7 @@ Toda resposta de consulta de uma curva SHALL trazer o cabeçalho `ETag` = SHA-25
 - **THEN** a primeira é gravada, e a segunda recebe 412 com `ALTERADO_POR_OUTRO`
 
 ### Requirement: Autenticação, papéis e erros
-Toda rota MUST exigir token JWT do Entra ID, no mesmo registro de aplicação do engine. Leitura exige `Curvas.Leitura`; escrita, o papel novo `Curvas.Cadastro`. Token ausente ou inválido: 401 `NAO_AUTENTICADO`; sem papel: 403 `SEM_PERMISSAO`. Toda resposta de erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlationId", "detalhes": [ { "campo", "linha", "valor", "motivo" } ] }`, o mesmo formato do engine, com nulo no que não se aplica, em português, sem stack trace, com os códigos:
+Toda rota MUST exigir token JWT do Entra ID, no mesmo registro de aplicação do engine. Leitura exige `Curvas.Leitura`; escrita, o papel novo `Curvas.Cadastro`. Token ausente ou inválido: 401 `NAO_AUTENTICADO`; sem papel: 403 `SEM_PERMISSAO`. Toda resposta de erro SHALL seguir o padrão do projeto, o mesmo do engine: Problem Details (RFC 9457, `application/problem+json`) pelo tratador de exceções padrão (`ApplicationExceptionHandler`), com `type`, `title`, `status`, `detail` (em português, do `MessageSource`), `instance`, e as propriedades `code` (o código abaixo), `correlationId` e, quando houver, `detalhes` (`campo`, `linha`, `valor`, `motivo`, com nulo no que não se aplica); sem stack trace. Os códigos:
 
 | `codigoErro` | HTTP | Quando |
 |---|---|---|
@@ -113,8 +113,8 @@ Enums do serviço:
 | `compounding` | `Simple`, `Compounded`, `Continuous` |
 | `situacao` da curva | `ATIVO`, `INATIVO` |
 | `provedor` da ligação | os de `tPrvdrDadoMercd`; o engine e o processor reconhecem `B3`, `ANBIMA`, `BLOOMBERG` e o interno `TCEN` |
-| `produto` da ligação | `TS` (B3, arquivo Taxas de Mercado para Swaps), `MS` (ANBIMA, arquivo de Mercado Secundário de títulos públicos, `ms{AAMMDD}.txt`), `BLC2` (Bloomberg, fonte de preço do curve member no ticker); para `TCEN`, o papel da mãe declarado pelo modelo derivado (ex.: `NUMERADOR`, `DENOMINADOR`) |
-| situação no painel | `NAO_E_DIA_UTIL`, `IGNORADA`, `SITUACAO_INDISPONIVEL`, `INTERPOLADA_DESATUALIZADA`, `CONSTRUIDA`, `DIVERGENTE_DA_FONTE`, `AGUARDANDO_MAES`, `AGUARDANDO_CARGA`, `COM_ERRO`, `NAO_CONSTRUIDA` |
+| `produto` da ligação | `TS` (B3, arquivo Taxas de Mercado para Swaps), `MS` (ANBIMA, arquivo de Mercado Secundário de títulos públicos, `ms{AAMMDD}.txt`), `BLC2` (Bloomberg, fonte de preço do curve member no ticker); para `TCEN`, o papel da curva componente declarado pelo modelo derivado (ex.: `NUMERADOR`, `DENOMINADOR`) |
+| situação no painel | `NAO_E_DIA_UTIL`, `IGNORADA`, `SITUACAO_INDISPONIVEL`, `INTERPOLADA_DESATUALIZADA`, `CONSTRUIDA`, `DIVERGENTE_DA_FONTE`, `AGUARDANDO_COMPONENTES`, `AGUARDANDO_CARGA`, `COM_ERRO`, `NAO_CONSTRUIDA` |
 | `motivo` no painel | `PONTOS_DIFERENTES`, `FONTE_COM_ERRO`, `SEM_INSUMO` |
 | tipo no `CADASTRO_ALTERADO` | `CURVA`, `LIGACAO`, `CONFIGURACAO` |
 | operação no `CADASTRO_ALTERADO` | `CRIACAO`, `ALTERACAO`, `INATIVACAO`, `REATIVACAO`, `EXCLUSAO` |
@@ -133,7 +133,7 @@ Avisos do serviço:
 | `ORIGEM_INCOMPATIVEL_COM_MODELO` | ligações, configuração | provedor ou produto diferente do esperado pelo modelo nativo |
 | `MODELO_NAO_NATIVO` | configuração | modelo, interpolador ou calendário que depende de script Groovy |
 | `MODELO_POR_ORIGEM_SEM_LIGACAO` | ligações, configuração, planilha | chave de `MODELOS_POR_ORIGEM` sem ligação correspondente, ou da origem principal: ignorada pelo engine |
-| `CURVA_COM_FILHAS` | inativação | curva é mãe de curva derivada ativa |
+| `CURVA_COM_FILHAS` | inativação | curva é componente de curva derivada ativa |
 | `VALORES_SEM_ENGINE` | valores aceitos | engine fora: valores da cópia embutida, só com modelos nativos |
 | `ENGINE_INDISPONIVEL` | painel | engine fora: situação sem conferência |
 | `INTERPOLADA_DESATUALIZADA` | pontos, planilha de pontos | pontos gravados, mas a regravação da curva interpolada no engine falhou; ela fica com a interpolação anterior até ser regravada |

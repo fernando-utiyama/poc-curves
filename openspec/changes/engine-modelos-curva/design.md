@@ -60,7 +60,7 @@ domain/                 Java puro, sem framework
                         InterestRate (record)
   matematica/           DecimalMath: ponte entre BigDecimal e StrictMath (pow, ln, exp)
   calendario/           Calendario (base), Brazil, UnitedStates, CalendarioPorLista
-  interpolacao/         BaseInterpolacao e Extrapolacao (enums), Interpolador, InterpoladorLocal, Linear, LogLinear,
+  interpolacao/         BaseInterpolacao e Extrapolacao (enums), Interpolador, InterpoladorPorSegmento, Linear, LogLinear,
                         BackwardFlat, ForwardFlat, Cubic, EixoDiasUteis, CurvaInterpolada, InterpolacaoDadoCurva
   construcao/           ModeloConstrucao, ContextoConstrucao, ProntaTsB3, SofrZeroBloomberg, NtnbBootstrapAnbima
   memoria/              MemoriaCalculo e as suas linhas (records)
@@ -263,10 +263,10 @@ O painel de acompanhamento fica no `services/curves` (change `curves-cadastro-cu
 
 ### D34. Curva derivada de outras curvas, sem modelo nesta fase
 Curvas como a inflação implícita (PRE sobre a NTN-B bootstrapada) não vêm de fonte: vêm de outras curvas já construídas. A estrutura fica pronta agora, sem nenhum modelo derivado:
-- **Cadastro sem schema novo:** as mães são ligações em `tCurvaPrvdr` com o provedor interno `TCEN`, o nome da mãe em `cTickerPrvdr` e o papel (ex.: `NUMERADOR`, `DENOMINADOR`) em `cPrvdrMercd`.
-- **O modelo lê as mães pelo contexto**, já montadas para interpolar com o cadastro de cada uma, e nunca pelas tabelas brutas.
-- **Construção em cadeia na carga:** depois das curvas da carga, o engine constrói as derivadas cujas mães já estão prontas, em ordem de dependência. As mães de fontes diferentes se resolvem sozinhas: a derivada sai na carga que completa as mães.
-- **Nada é recalculado em cascata.** A mãe recalculada ou editada deixa a derivada diferente do que as mães atuais produzem, o que aparece na conferência do painel, e o recálculo é do usuário, como em toda curva.
+- **Cadastro sem schema novo:** as curvas componentes são ligações em `tCurvaPrvdr` com o provedor interno `TCEN`, o nome da curva componente em `cTickerPrvdr` e o papel (ex.: `NUMERADOR`, `DENOMINADOR`) em `cPrvdrMercd`.
+- **O modelo lê as curvas componentes pelo contexto**, já montadas para interpolar com o cadastro de cada uma, e nunca pelas tabelas brutas.
+- **Construção em cadeia na carga:** depois das curvas da carga, o engine constrói as derivadas cujas curvas componentes já estão prontas, em ordem de dependência. As curvas componentes de fontes diferentes se resolvem sozinhas: a derivada sai na carga que completa as curvas componentes.
+- **Nada é recalculado em cascata.** A curva componente recalculada ou editada deixa a derivada diferente do que as curvas componentes atuais produzem, o que aparece na conferência do painel, e o recálculo é do usuário, como em toda curva.
 
 **Alternativas rejeitadas:** tabela de dependências entre curvas (muda o schema); o modelo derivado ler `tDadoVertcCurva` direto (duplicaria a montagem da curva e escaparia da proveniência); recálculo em cascata (uma edição manual na PRE mudaria em silêncio todas as filhas já consumidas).
 
@@ -288,7 +288,7 @@ A NTN-B desta fase vem do bootstrap dos títulos do arquivo de Mercado Secundár
 **Alternativa rejeitada:** pontos em `tDadoCurva` e só o detalhe em `tDadoVertcCurva` (versão anterior deste design): `tDadoCurva` é a curva interpolada, e dividir o ponto entre as duas tabelas obrigava a manter as duas em sincronia na edição manual.
 
 ### D37. Dois gatilhos automáticos: processor e orquestrador
-O processor sabe quando o dado de mercado puro terminou de ser gravado, então ele dispara as curvas da carga (D22). Mas nem toda construção automática nasce de uma carga: a derivada cuja mãe foi construída ou recalculada à mão pela API não entra em nenhuma cadeia, e um aviso de carga perdido deixa a curva sem pontos. Por isso o orquestrador também dispara, por `POST /api/v1/construcoes/{dataBase}`, com o papel próprio `Curvas.Orquestrador`:
+O processor sabe quando o dado de mercado puro terminou de ser gravado, então ele dispara as curvas da carga (D22). Mas nem toda construção automática nasce de uma carga: a derivada cuja curva componente foi construída ou recalculada à mão pela API não entra em nenhuma cadeia, e um aviso de carga perdido deixa a curva sem pontos. Por isso o orquestrador também dispara, por `POST /api/v1/construcoes/{dataBase}`, com o papel próprio `Curvas.Orquestrador`:
 - **Todas as curvas da data, com as regras automáticas:** constrói o que tem insumo e não tem pontos, nunca recalcula, ignora curva inativa ou fora da vigência, e devolve `SEM_INSUMO` para o que ainda não tem dado. Primeiro as curvas de provedor, em paralelo; depois as derivadas, em cadeia.
 - **Não usa a rota de construção por curva**, que é a do usuário e constrói até curva inativa.
 - **Papel próprio**, para a auditoria distinguir `acionadoPor` = `ORQUESTRADOR` de `CARGA` e `API`.

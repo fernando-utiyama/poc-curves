@@ -24,14 +24,26 @@ O engine SHALL expor `POST /api/v1/cargas`, com o corpo:
 - **THEN** o engine constrói as curvas cadastradas com origem `B3`/`TS` cujo código na fonte está na carga, e o log tem `CARGA_RECEBIDA` com o `idCarga`
 
 ### Requirement: Construção disparada pela carga
-Ao receber uma carga, o engine SHALL processar, na própria requisição, cada curva com origem igual à fonte e ao produto da carga e com código na fonte presente em `linhasPorCodigo`:
+Ao receber uma carga, o engine SHALL processar, na própria requisição, cada curva cuja **origem principal** tem a fonte e o produto da carga e um código na fonte presente em `linhasPorCodigo`. A fonte e o produto da carga só **selecionam** as curvas: a construção SHALL usar a origem principal, como qualquer construção automática, e MUST NOT ser tratada como construção por origem secundária (sem o aviso `ORIGEM_SECUNDARIA`, e com `principal` verdadeiro na origem do `CURVA_GRAVADA`). Um mesmo código na fonte pode estar em mais de uma curva cadastrada (ex.: duas curvas de configurações diferentes sobre o mesmo código da B3): todas SHALL ser processadas, cada uma na sua transação. Uma curva que tem a carga só como origem secundária MUST NOT ser construída pela carga (o dado bruto fica gravado para construção pela API):
 - **curva com `cSitReg` = `INATIVO`, ou com a data-base fora da vigência da curva** (`dInicVgcia` a `dValidAte` em `tCurvaMercd`): MUST NOT ser construída, e é devolvida como `IGNORADA`, com o motivo `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA`. Não é erro: o usuário ainda pode construí-la por `POST .../construcao`;
 - **curva sem pontos gravados na data**: é construída (`CONSTRUIDA`);
 - **curva com pontos gravados na data**: MUST NOT ser reconstruída, e é devolvida como `EXISTENTE`.
 
-A carga nunca recalcula uma curva: recálculo só acontece por `POST .../construcao?forcarRecalculo=true`. Para cada curva `EXISTENTE`, o engine SHALL executar o modelo sobre os dados brutos atuais, sem gravar (como a simulação), e comparar o `hashPontos` resultante com o gravado. Se forem diferentes (a fonte republicou, os pontos foram editados à mão ou o cadastro mudou), a curva SHALL ser devolvida com o aviso `PONTOS_DIFERENTES_DA_FONTE`, com a quantidade de pontos diferentes, e o log SHALL ter o evento `PONTOS_DIFERENTES_DA_FONTE` com nível `AVISO`.
+A carga nunca recalcula uma curva: recálculo só acontece por `POST .../construcao?forcarRecalculo=true`. Para cada curva `EXISTENTE`, o engine SHALL executar o modelo sobre os dados brutos atuais, sem gravar (como a simulação), e comparar o `hashPontos` resultante com o gravado. Se forem diferentes (a fonte republicou, os pontos foram editados à mão ou o cadastro mudou), a curva SHALL ser devolvida com o aviso `PONTOS_DIFERENTES_DA_FONTE`, com a quantidade de pontos diferentes, e o log SHALL ter o evento `PONTOS_DIFERENTES_DA_FONTE` com nível `AVISO`. Se a comparação não puder ser feita (o modelo falha sobre os dados brutos atuais, a trava não é obtida, o dado bruto sumiu), a curva continua `EXISTENTE` (os pontos gravados não mudam), mas SHALL vir com o aviso `COMPARACAO_INDISPONIVEL`, com o `codigoErro` e a mensagem da falha, e o log SHALL ter o evento `COMPARACAO_INDISPONIVEL` com nível `AVISO`: a falha MUST NOT ser escondida, nem virar erro da curva.
 
 Cada curva SHALL ser construída de forma independente: a falha de uma MUST NOT impedir as outras. A resposta SHALL ser 200 com o `idCarga` e, por curva, o código, a situação ou o `codigoErro` e a mensagem, os avisos e o `hashPontos`. Falha de construção de uma curva é resultado de negócio, não erro do webhook. Um código na fonte presente na carga sem nenhuma curva cadastrada SHALL gerar um evento `AVISO` no log, sem erro.
+
+#### Scenario: Carga pela origem principal
+- **WHEN** a carga B3/`TS` de `2026-09-14` constrói a `PRE`, cuja origem principal é B3/`TS`/`PRE`
+- **THEN** a resposta e o `CURVA_GRAVADA` trazem a origem B3/`TS`/`PRE` com `principal` verdadeiro, sem o aviso `ORIGEM_SECUNDARIA`
+
+#### Scenario: Duas curvas no mesmo código
+- **WHEN** as curvas `PRE` e `PRE_252` têm como origem principal o mesmo código `PRE` da B3, e chega a carga com `PRE` em `linhasPorCodigo`
+- **THEN** as duas são construídas, cada uma com o seu resultado na resposta
+
+#### Scenario: Comparação que falha
+- **WHEN** a `DPL` de `2026-09-14` já tem pontos, e a construção da data compara com a fonte atual, mas o modelo falha com `INSUMO_INVALIDO`
+- **THEN** a `DPL` volta como `EXISTENTE` com o aviso `COMPARACAO_INDISPONIVEL` trazendo `INSUMO_INVALIDO`, e o log registra `COMPARACAO_INDISPONIVEL`
 
 #### Scenario: Retry do processor
 - **WHEN** o processor repete o webhook com o mesmo `idCarga` depois de um tempo esgotado, e a `PRE` já tinha sido construída com sucesso
@@ -58,25 +70,25 @@ Cada curva SHALL ser construída de forma independente: a falha de uma MUST NOT 
 - **THEN** as outras curvas da carga são construídas, a resposta é 200 com o erro da `DPL`, e o log tem `CONSTRUCAO_FALHOU` da `DPL`
 
 ### Requirement: Construção em cadeia das curvas derivadas
-Depois de processar as curvas de uma carga, na mesma requisição, o engine SHALL construir cada curva derivada (spec `curve-build-pipeline`), ativa e dentro da vigência, que ainda não tem pontos na data e cujas mães têm todas pontos gravados na data. Uma derivada construída pode liberar outra, que a tem como mãe: o processo SHALL repetir até não haver mais derivada a construir, na ordem das dependências. A cadeia segue as regras da carga: nunca recalcula, uma falha não impede as demais, e cada resultado entra na resposta do webhook e no log. Uma derivada que já tem pontos SHALL ser comparada como as demais: se os pontos que as mães atuais produziriam forem diferentes dos gravados, ela recebe o aviso `PONTOS_DIFERENTES_DA_FONTE`.
+Depois de processar as curvas de uma carga, na mesma requisição, o engine SHALL construir cada curva derivada (spec `curve-build-pipeline`), ativa e dentro da vigência, que ainda não tem pontos na data e cujas curvas componentes têm todas pontos gravados na data. Uma derivada construída pode liberar outra, que a tem como componente: o processo SHALL repetir até não haver mais derivada a construir, na ordem das dependências. A cadeia segue as regras da carga: nunca recalcula, uma falha não impede as demais, e cada resultado entra na resposta do webhook e no log. Uma derivada que já tem pontos SHALL ser comparada como as demais: se os pontos que as curvas componentes atuais produziriam forem diferentes dos gravados, ela recebe o aviso `PONTOS_DIFERENTES_DA_FONTE`.
 
-Recalcular ou editar à mão uma mãe MUST NOT reconstruir a derivada: ela fica com os pontos da construção anterior, e a diferença aparece na comparação com as mães atuais (painel do `services/curves`). Recalcular a derivada é ação do usuário, por `POST .../construcao?forcarRecalculo=true`.
+Recalcular ou editar à mão uma curva componente MUST NOT reconstruir a derivada: ela fica com os pontos da construção anterior, e a diferença aparece na comparação com as curvas componentes atuais (painel do `services/curves`). Recalcular a derivada é ação do usuário, por `POST .../construcao?forcarRecalculo=true`.
 
-#### Scenario: Derivada construída depois das mães
-- **WHEN** existe uma curva derivada com mães `DIxPRE` (carga B3) e `NTN-B` (carga ANBIMA), e a carga B3 chega antes da ANBIMA
-- **THEN** a derivada não é construída na carga B3, e é construída na carga ANBIMA, logo depois da `NTN-B`, com as mães e os seus `hashPontos` na proveniência
+#### Scenario: Derivada construída depois das curvas componentes
+- **WHEN** existe uma curva derivada com componentes `DIxPRE` (carga B3) e `NTN-B` (carga ANBIMA), e a carga B3 chega antes da ANBIMA
+- **THEN** a derivada não é construída na carga B3, e é construída na carga ANBIMA, logo depois da `NTN-B`, com as curvas componentes e os seus `hashPontos` na proveniência
 
-#### Scenario: Mãe recalculada depois
+#### Scenario: Curva componente recalculada depois
 - **WHEN** a `DIxPRE` de uma data é recalculada depois da construção da derivada, com valores diferentes
 - **THEN** a derivada não é reconstruída, e a sua simulação passa a dar pontos diferentes dos gravados
 
 ### Requirement: Construção automática da data pelo orquestrador
-O engine SHALL expor `POST /api/v1/construcoes/{dataBase}`, sem corpo e sem parâmetros de query, exigindo o papel `Curvas.Orquestrador`. A rota é o segundo gatilho automático, ao lado do webhook do processor: o processor dispara as curvas de dado de mercado da carga que gravou, e o orquestrador dispara a data inteira, o que cobre as curvas derivadas cuja mãe foi construída ou recalculada fora de uma carga e serve de rede de segurança se o aviso de uma carga se perder.
+O engine SHALL expor `POST /api/v1/construcoes/{dataBase}`, sem corpo e sem parâmetros de query, exigindo o papel `Curvas.Orquestrador`. A rota é o segundo gatilho automático, ao lado do webhook do processor: o processor dispara as curvas de dado de mercado da carga que gravou, e o orquestrador dispara a data inteira, o que cobre as curvas derivadas cuja curva componente foi construída ou recalculada fora de uma carga e serve de rede de segurança se o aviso de uma carga se perder.
 
 Ao receber a chamada, o engine SHALL processar, na própria requisição, toda curva com código não nulo, com as mesmas regras da carga (requisito "Construção disparada pela carga"):
 - curva inativa ou com a data-base fora da vigência: `IGNORADA`, com o motivo;
 - curva com pontos gravados na data: `EXISTENTE`, sem reconstruir, com a comparação com a fonte atual e o aviso `PONTOS_DIFERENTES_DA_FONTE` quando diferirem;
-- curva sem pontos e com insumo (para origem de provedor, ao menos uma linha bruta da origem na data; para curva derivada, todas as mães com pontos gravados na data): construída (`CONSTRUIDA`);
+- curva sem pontos e com insumo (para origem de provedor, ao menos uma linha bruta da origem na data; para curva derivada, todas as curvas componentes com pontos gravados na data): construída (`CONSTRUIDA`);
 - curva sem pontos e sem insumo: MUST NOT ser construída, e é devolvida como `SEM_INSUMO`, sem erro e sem log de falha.
 
 Primeiro SHALL ser processadas as curvas com origem de provedor, em paralelo, com até `engine.construcao-data.paralelismo` (padrão 8) ao mesmo tempo; depois, as derivadas, em cadeia, na ordem das dependências, como no requisito "Construção em cadeia das curvas derivadas". Não há conferência de quantidade (`INSUMO_INCOMPLETO`), porque não há quantidade avisada: vale o que está gravado, como na construção pela API. A rota MUST NOT recalcular nenhuma curva e MUST NOT guardar registro da chamada. A falha de uma curva MUST NOT impedir as demais.
@@ -85,9 +97,9 @@ A resposta SHALL ser 200 com a data-base e, por curva, o código, a situação o
 
 Se o webhook do processor e esta rota construírem a mesma curva e data ao mesmo tempo, a trava da curva (spec `curve-build-pipeline`) serializa as duas: a existência de pontos SHALL ser conferida depois de obter a trava, e a segunda a obter a trava devolve `EXISTENTE`.
 
-#### Scenario: Derivada depois de uma mãe construída à mão
+#### Scenario: Derivada depois de uma curva componente construída à mão
 - **WHEN** a carga ANBIMA de `2026-09-14` falhou, o operador construiu a `NTN-B` pela API, e depois o orquestrador chama `POST /api/v1/construcoes/2026-09-14`
-- **THEN** a derivada com mães `DIxPRE` e `NTN-B` é construída com `acionadoPor` = `ORQUESTRADOR`, e as curvas já construídas vêm como `EXISTENTE`
+- **THEN** a derivada com componentes `DIxPRE` e `NTN-B` é construída com `acionadoPor` = `ORQUESTRADOR`, e as curvas já construídas vêm como `EXISTENTE`
 
 #### Scenario: Aviso de carga perdido
 - **WHEN** o processor gravou a carga B3 de `2026-09-14`, mas o webhook nunca chegou ao engine, e o orquestrador chama a rota da data
@@ -102,7 +114,7 @@ Se o webhook do processor e esta rota construírem a mesma curva e data ao mesmo
 - **THEN** uma das duas constrói a `PRE`, a outra espera a trava e devolve `EXISTENTE`, e `tDadoVertcCurva` tem uma única vez os 278 pontos
 
 ### Requirement: Dados brutos exigidos na construção
-A construção de uma curva com origem de provedor, pela carga ou por `POST .../construcao`, SHALL ler os dados brutos da origem na data-base diretamente do banco: como o processor grava cada carga numa única transação, dado bruto presente é carga completa. Sem nenhuma linha da origem na data, a construção MUST falhar com `INSUMO_AUSENTE`. A construção de uma curva derivada MUST falhar com `CURVA_MAE_NAO_CONSTRUIDA`, listando as mães sem pontos na data, quando alguma mãe não tiver pontos gravados na data. A simulação SHALL rodar nas mesmas condições e mostrar o erro no `Resumo`.
+A construção de uma curva com origem de provedor, pela carga ou por `POST .../construcao`, SHALL ler os dados brutos da origem na data-base diretamente do banco: como o processor grava cada carga numa única transação, dado bruto presente é carga completa. Sem nenhuma linha da origem na data, a construção MUST falhar com `INSUMO_AUSENTE`. A construção de uma curva derivada MUST falhar com `CURVA_COMPONENTE_NAO_CONSTRUIDA`, listando as curvas componentes sem pontos na data, quando alguma curva componente não tiver pontos gravados na data. A simulação SHALL rodar nas mesmas condições e mostrar o erro no `Resumo`.
 
 #### Scenario: Construção antes da carga
 - **WHEN** a construção da `PRE` de `2026-09-15` é pedida antes de o processor gravar a carga B3 dessa data

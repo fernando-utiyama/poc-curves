@@ -102,24 +102,24 @@ spring:
 ### 1.3 Erros, avisos e enums: `domain/`
 
 ```java
-public record Texto(String rotulo, String descricao) {}              // igual ao engine: rótulo e descrição pt-BR
-
-public enum CodigoErro {                                              // (http, new Texto(...)), com http() e texto()
-  PARAMETRO_INVALIDO(400, ...), NAO_AUTENTICADO(401, ...), SEM_PERMISSAO(403, ...), NAO_ENCONTRADO(404, ...),
-  CODIGO_EM_USO(409, ...), NOME_EM_USO(409, ...), LIGACAO_DUPLICADA(409, ...), PRIORIDADE_EM_USO(409, ...),
-  ALTERADO_POR_OUTRO(412, ...), DADOS_INVALIDOS(422, ...), PONTOS_INVALIDOS(422, ...), IF_MATCH_AUSENTE(428, ...),
-  ERRO_INTERNO(500, ...);
-  public final int http; ...
+public enum CodigoErro implements ErrorCode {                         // interface do projeto; textos em messages.properties
+  PARAMETRO_INVALIDO, NAO_AUTENTICADO, SEM_PERMISSAO, NAO_ENCONTRADO,
+  CODIGO_EM_USO, NOME_EM_USO, LIGACAO_DUPLICADA, PRIORIDADE_EM_USO,
+  ALTERADO_POR_OUTRO, DADOS_INVALIDOS, PONTOS_INVALIDOS, IF_MATCH_AUSENTE, ERRO_INTERNO;
+  public String getCode() { return name(); }
+  public String getMessage() { return name(); }
 }
-public enum CodigoAviso { /* new Texto(...) e texto(); os 19 códigos da tabela "Avisos do serviço" da spec cadastro-curva-mercado, na ordem da tabela */ }
-public record Detalhe(String campo, Integer linha, String valor, String motivo) {}
-public record Aviso(CodigoAviso codigo, String mensagem, List<Detalhe> detalhes) {}
-public class ErroCurves extends RuntimeException { public final CodigoErro codigo; public final List<Detalhe> detalhes; ... }
+public enum CodigoAvisoCurva { /* os 19 códigos da tabela "Avisos do serviço" da spec cadastro-curva-mercado, na ordem da tabela */ }
+public record DetalheAviso(String campo, Integer linha, String valor, String motivo) {}
+public record AvisoCurva(CodigoAvisoCurva codigo, String mensagem, List<DetalheAviso> detalhes) {}
+public record DetalheErro(String campo, Integer linha, String valor, String motivo) {}   // detalhes de erro (Problem Details)
 ```
 
-Enums da tabela "Enums do serviço" da spec `cadastro-curva-mercado` (`Unidade`, `DayCounterCotacao`, `CompoundingCotacao`, `SituacaoCurva`, `SituacaoPainel`, `MotivoPainel`, `TipoAlteracao`, `OperacaoAlteracao`, `OperacaoPontos`, `OrigemPontos`, `ModoImportacao`, `ResultadoLinha`), todos com um `Texto` no construtor e o acessor `texto()`, sem interface comum. O catálogo de `GET /curvas-mercado/valores` lista cada enum de forma explícita com referência de método (`itens(Unidade.values(), Unidade::texto)`), como no engine.
+Exceção do projeto por código (o status vem da classe): `InvalidInputException` 400 (`PARAMETRO_INVALIDO`); `NotFoundException` 404 (`NAO_ENCONTRADO`); `ConflictException` 409 (`CODIGO_EM_USO`, `NOME_EM_USO`, `LIGACAO_DUPLICADA`, `PRIORIDADE_EM_USO`); `PreconditionFailedException` 412 (`ALTERADO_POR_OUTRO`); `BusinessException` 422 (`DADOS_INVALIDOS`, `PONTOS_INVALIDOS`); `PreconditionRequiredException` 428 (`IF_MATCH_AUSENTE`); `InfrastructureException` 500 (`ERRO_INTERNO`). `ConflictException`, `PreconditionFailedException` e `PreconditionRequiredException` são **acrescentadas** no molde das demais, com o método de cada uma no `ApplicationExceptionHandler`.
 
-Handler (`@RestControllerAdvice`): `ErroCurves` → `codigo.http` e corpo `{ codigoErro, mensagem, correlationId, detalhes }`; JSON malformado → 400 `PARAMETRO_INVALIDO`; `AccessDeniedException` → 403; falha de autenticação → 401; qualquer outro → 500 `ERRO_INTERNO` sem stack trace.
+Enums da tabela "Enums do serviço" da spec `cadastro-curva-mercado` (`Unidade`, `DayCounterCotacao`, `CompoundingCotacao`, `SituacaoCurva`, `SituacaoPainel`, `MotivoPainel`, `TipoAlteracao`, `OperacaoAlteracao`, `OperacaoPontos`, `OrigemPontos`, `ModoImportacao`, `ResultadoLinha`): enums simples, com rótulo e descrição em `messages.properties` (`poc.valores.<Enum>.<CONSTANTE>.rotulo` e `.descricao`), lidos pelo `MessageSource`, como no engine (guia do `engine-modelos-curva`, seção 1.5). O catálogo de `GET /curvas-mercado/valores` lista cada enum de forma explícita (`itens(Unidade.class)`). Teste obrigatório: toda constante tem as suas chaves.
+
+Erros no padrão do projeto, como no engine (guia do `engine-modelos-curva`, seção 1.5): o enum acima implementando `ErrorCode`; lançar as exceções do projeto da tabela acima; o `ApplicationExceptionHandler` do projeto responde em Problem Details com `code`, `correlationId` e `detalhes` (acréscimos, sem reescrever o que existe); textos em `messages.properties`. JSON malformado → 400 `PARAMETRO_INVALIDO`; 401/403 pelo Spring Security no mesmo formato. Nada de `@RestControllerAdvice` nem exceção própria (`ErroCurves` sai).
 
 Filtro de correlação: `X-Correlation-Id` recebido ou `UUID.randomUUID()`, no MDC e em toda resposta (inclusive `xlsx` e erro).
 
@@ -178,11 +178,11 @@ Tabela "Campos da curva de mercado" da spec, campo a campo:
 - `unidade` obrigatória; `dayCounterCotacao` e `compounding` obrigatórios só com `TAXA` e nulos nos demais (preenchido com `PRECO`/`PONTOS` → 422 no campo).
 - `moeda` ISO 4217 (`Currency.getInstance`), `pais` ISO 3166-1 alfa-2 (`Locale.getISOCountries()`).
 - `fimVigencia` ≥ `inicioVigencia`.
-- Todos os problemas de campo juntos numa única 422 `DADOS_INVALIDOS`, um `Detalhe` por campo.
+- Todos os problemas de campo juntos numa única 422 `DADOS_INVALIDOS`, um `DetalheAviso` por campo.
 - Criação: `cSitReg = ATIVO`, `dCriacReg` e `dUltAtulz` = agora, `cUsuarAtulz` = usuário. Inativação e reativação só trocam `cSitReg` (com `ETag` e log).
 - Linhas com `cTickerIdtfdUnic` nulo nunca aparecem (`WHERE cTickerIdtfdUnic IS NOT NULL` em toda consulta).
 - Coerência com a configuração (spec `configuracao-calculo-curva`): mudança de `unidade`, `dayCounterCotacao` ou `compounding` que invalide a versão vigente ou futura → 422 citando a versão.
-- Inativar uma mãe de derivada ativa → aviso `CURVA_COM_FILHAS` (filhas: ligações `TCEN` com `cTickerPrvdr` = nome desta curva).
+- Inativar uma curva componente de derivada ativa → aviso `CURVA_COM_FILHAS` (filhas: ligações `TCEN` com `cTickerPrvdr` = nome desta curva).
 
 Listagem: filtros `nome` (trecho normalizado), `codigo` (exato), `unidade`, `situacao`; paginação `pagina` (≥ 0) e `tamanho` (padrão 50, máximo 500); ordem por código.
 
@@ -219,7 +219,7 @@ Entidade `CurvaPrvdrEntity` (`tCurvaPrvdr`, `@Id cldtfdUnic`): `cldtfdUnic`, `cT
 SELECT ISNULL(MAX(cldtfdUnic), 0) + 1 FROM tCurvaPrvdr WITH (UPDLOCK, HOLDLOCK);
 ```
 
-Regras: provedor inexistente → 404 `NAO_ENCONTRADO`; (curva, provedor, produto) repetido → 409 `LIGACAO_DUPLICADA`; prioridade repetida na curva → 409 `PRIORIDADE_EM_USO`; trocar provedor não existe (excluir e incluir). `TCEN`: `codigoNaFonte` = nome de curva existente, diferente da própria, sem ciclo (DFS pelas ligações `TCEN` a partir da mãe; achando a curva atual → 422 com o caminho `B → A → B`).
+Regras: provedor inexistente → 404 `NAO_ENCONTRADO`; (curva, provedor, produto) repetido → 409 `LIGACAO_DUPLICADA`; prioridade repetida na curva → 409 `PRIORIDADE_EM_USO`; trocar provedor não existe (excluir e incluir). `TCEN`: `codigoNaFonte` = nome de curva existente, diferente da própria, sem ciclo (DFS pelas ligações `TCEN` a partir da curva componente; achando a curva atual → 422 com o caminho `B → A → B`).
 
 Avisos depois da alteração: `CURVA_SEM_ORIGEM` (nenhuma ligação); `ORIGEM_INCOMPATIVEL_COM_MODELO` (a de menor prioridade não bate com o modelo nativo da configuração vigente: `PRONTA_TS_B3` = `B3`/`TS`, `NTNB_BOOTSTRAP_ANBIMA` = `ANBIMA`/`MS`, `SOFR_ZERO_BLOOMBERG` = `BLOOMBERG`/`BLC2`); `MODELO_POR_ORIGEM_SEM_LIGACAO` (chave de `MODELOS_POR_ORIGEM` da vigente ou futura sem ligação).
 
@@ -250,7 +250,7 @@ Uma tabela única em código (a mesma usada na cópia embutida de valores, seç�
 | `VERSAO_SCRIPT_CONSTRUCAO`, `VERSAO_SCRIPT_INTERPOLACAO`, `VERSAO_SCRIPT_CALENDARIO` | inteiro | não | ≥ 1 |
 | `MODELOS_POR_ORIGEM` | objeto | não | chave `^[^/]+/[^/]+$`, valor texto 1–100 |
 
-Combinações: `Price` só com `PRECO`/`PONTOS`, e as outras bases de interpolação só com `TAXA`; `FlatForward` só com interpolador `Linear` ou `LogLinear`. Chave desconhecida, tipo errado, valor fora da lista (com caixa) ou obrigatório ausente → 422 `DADOS_INVALIDOS`, um `Detalhe` por problema. Avisos: `MODELO_NAO_NATIVO` (modelo, interpolador ou calendário fora dos nativos), `ORIGEM_INCOMPATIVEL_COM_MODELO`, `MODELO_POR_ORIGEM_SEM_LIGACAO`.
+Combinações: `Price` só com `PRECO`/`PONTOS`, e as outras bases de interpolação só com `TAXA`; `FlatForward` só com interpolador `Linear` ou `LogLinear`. Chave desconhecida, tipo errado, valor fora da lista (com caixa) ou obrigatório ausente → 422 `DADOS_INVALIDOS`, um `DetalheAviso` por problema. Avisos: `MODELO_NAO_NATIVO` (modelo, interpolador ou calendário fora dos nativos), `ORIGEM_INCOMPATIVEL_COM_MODELO`, `MODELO_POR_ORIGEM_SEM_LIGACAO`.
 
 Gravação de `cModDado`: JSON compacto, chaves na **ordem da tabela acima** (não alfabética), `EXTRAPOLACAO_*` gravadas mesmo quando `Disabled`; mais de 1.024 caracteres → 422.
 
@@ -269,7 +269,7 @@ Rotas: as da tabela "Rotas da configuração" da spec. `validacao` roda as regra
 ## 5. Valores aceitos (`GET /api/v1/curvas-mercado/valores`)
 
 1. Engine: `valoresCadastro()` (seção 1.6), com cache local de 5 minutos.
-2. Acrescentar os provedores de `tPrvdrDadoMercd` (pela `ProvedorEntity`: `nomeProvedor` e `descricao`) e os enums e catálogos do serviço (seção 1.3), cada valor com o `rotulo` e a `descricao` do seu `texto()`.
+2. Acrescentar os provedores de `tPrvdrDadoMercd` (pela `ProvedorEntity`: `nomeProvedor` e `descricao`) e os enums e catálogos do serviço (seção 1.3), cada valor com o `rotulo` e a `descricao` do `messages.properties`.
 3. Engine fora: devolver a **cópia embutida** (a tabela da seção 4.1, com os modelos nativos e os rótulos em código) com o aviso `VALORES_SEM_ENGINE`. Nunca falha por causa do engine.
 4. OpenAPI: `enum` em `unidade`, `dayCounterCotacao`, `compounding`, `situacao` e em cada chave de `parametros`; `modeloConstrucao`, `interpolador` e `CALENDARIO` como `string` com os nativos na descrição.
 
@@ -280,7 +280,7 @@ Rotas: as da tabela "Rotas da configuração" da spec. `validacao` roda as regra
 1. `dataBase`: a informada; sem ela, hoje se for útil no `Brazil`/`Settlement` (feriados do engine, seção 1.6), senão o dia útil anterior. Engine fora: só sábado e domingo recuam.
 2. Uma chamada a `situacao(dataBase)` e uma a `feriados` por consulta. Engine fora → todas as linhas `SITUACAO_INDISPONIVEL` e aviso `ENGINE_INDISPONIVEL`; nunca falha.
 3. Por curva com código (ativas ou não), montar a linha com os campos da tabela "Colunas de cada linha" da spec: curva, origem principal, `origensSecundarias` (ligações de prioridade maior, com o modelo de `MODELOS_POR_ORIGEM` ou `modeloConstrucao`), configuração vigente na data, `ultimaDataPublicada`/`calculadoPor` (`dBaseReft`/`cUsuarCalc`), `quantidadePontos` e `hashPontos` (de `tDadoVertcCurva`), `insumo`, `interpolada` e `conferencia` (do engine).
-4. Situação: a **primeira** regra da tabela "Situação na data-base" da spec que se aplica, nesta ordem: `NAO_E_DIA_UTIL`, `IGNORADA`, `SITUACAO_INDISPONIVEL`, `INTERPOLADA_DESATUALIZADA`, `CONSTRUIDA`, `DIVERGENTE_DA_FONTE`, `AGUARDANDO_MAES`, `AGUARDANDO_CARGA`, `COM_ERRO`, `NAO_CONSTRUIDA`, com `motivo` e `atencao` da tabela.
+4. Situação: a **primeira** regra da tabela "Situação na data-base" da spec que se aplica, nesta ordem: `NAO_E_DIA_UTIL`, `IGNORADA`, `SITUACAO_INDISPONIVEL`, `INTERPOLADA_DESATUALIZADA`, `CONSTRUIDA`, `DIVERGENTE_DA_FONTE`, `AGUARDANDO_COMPONENTES`, `AGUARDANDO_CARGA`, `COM_ERRO`, `NAO_CONSTRUIDA`, com `motivo` e `atencao` da tabela.
 5. `atrasada`: situação `AGUARDANDO_CARGA` ou `NAO_CONSTRUIDA` e (data-base passada, ou data-base hoje e `LocalTime.now()` depois de `curves.painel.horario-esperado.{provedor}`; provedor sem horário → `false` hoje).
 6. Contadores sobre todas as curvas antes dos filtros; depois aplicar `situacao`, `provedor`, `nome`, `somenteAtencao`; ordenar por código.
 
@@ -336,15 +336,16 @@ Importação: planilha sem a coluna `DiasUteis` é aceita como vazia; colunas ex
 
 ## 10. Edição manual dos pontos (`PUT .../pontos/{dataBase}`)
 
-### 10.1 Validação (recusa só por consistência de banco → 422 `PONTOS_INVALIDOS`, um `Detalhe` por ponto)
+### 10.1 Validação (recusa só por consistência de banco → 422 `PONTOS_INVALIDOS`, um `DetalheAviso` por ponto)
 
 Lista vazia; ponto sem data ou valor; data inválida; valor não decimal; `diasUteis` não inteiro; datas repetidas; valor arredondado que não cabe em `DECIMAL(28,12)` (mais de 16 dígitos inteiros), ou, sem configuração vigente, com mais de 12 casas. Curva inexistente → 404 `NAO_ENCONTRADO`.
 
-### 10.2 Gravação (uma transação, até 60 s)
+### 10.2 Gravação (uma transação; até 60 s para obter a trava)
+
+Os 60 s são só para obter a trava, no próprio comando: `query.setHint("jakarta.persistence.query.timeout", 60000)` (vai ao JDBC como `Statement.setQueryTimeout` e não fica na conexão do pool). O estouro desse comando (`jakarta.persistence.QueryTimeoutException`) responde `ERRO_INTERNO` com a mensagem "trava da curva não obtida em 60 segundos" (a spec `pontos-curva-manual` não tem código próprio para isso); outra falha de banco, `ERRO_INTERNO` com a própria mensagem. **Proibido** `SET LOCK_TIMEOUT` e `@Transactional(timeout = ...)` (a mesma regra do engine, spec `curve-engine-resilience`).
 
 ```sql
-SET LOCK_TIMEOUT 60000;
-SELECT cTickerIndcd FROM tCurvaMercd WITH (UPDLOCK, ROWLOCK) WHERE cTickerIndcd = ?;     -- a mesma trava do engine
+SELECT cTickerIndcd FROM tCurvaMercd WITH (UPDLOCK, ROWLOCK) WHERE cTickerIndcd = ?;     -- a mesma trava do engine; tempo limite do comando: 60 s
 SELECT dVertcReft, vPrecoTx, cDiaUtil FROM tDadoVertcCurva WHERE cTickerIndcd = ? AND dBaseReft = ?;
 ```
 1. Arredondar cada valor pela configuração vigente na data-base (`CASAS_DECIMAIS`, `MODO_ARREDONDAMENTO`); mudou → aviso `VALOR_ARREDONDADO` (enviado e gravado). Sem configuração → grava como enviado, aviso `SEM_CONFIGURACAO`.
@@ -397,7 +398,7 @@ Nada a remover no serviço (é novo ou é do outro dev). Conferir que nenhum có
 
 ## 13. Testes (ao final)
 
-Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUnit 5 com testes parametrizados, Mockito, AssertJ, MockMvc) e ArchUnit se o serviço já tiver. **Sem banco nem engine reais**: repositórios e `EngineClient` com Mockito. Fuso dos testes como no `main`: `FusoBrasiliaExtension` registrada por autodetecção do JUnit (`junit-platform.properties` + `META-INF/services`), com `TimeZone.setDefault` no `beforeAll`. Quem depende de "hoje" (vigência, atraso do painel) recebe a data ou a hora por parâmetro do método testado.
+Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUnit 5 com testes parametrizados, Mockito, AssertJ, MockMvc) e ArchUnit se o serviço já tiver. **Sem banco nem engine reais**: repositórios e `EngineClient` com Mockito. Fuso dos testes como no `main`: `TimeZoneExtension` registrada por autodetecção do JUnit (`junit-platform.properties` + `META-INF/services`), com `TimeZone.setDefault` no `beforeAll`. Quem depende de "hoje" (vigência, atraso do painel) recebe a data ou a hora por parâmetro do método testado.
 
 ### 13.1 Verificar
 

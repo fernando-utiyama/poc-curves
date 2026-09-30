@@ -327,8 +327,8 @@ public interface B3CurvaPrimariaPort {                                          
   Map<String, List<String>> curvasPorCodigo();
   void gravar(LocalDate dataBase, Map<String, List<String>> curvasPorCodigo, Map<String, List<B3CurvaPrimaria>> porCodigo);
 }
-public interface EngineCargaPort { RespostaEngine avisar(AvisoEngine corpo, String correlationId); }  // engine
-public record AvisoEngine(String idCarga, String fonte, String produto, LocalDate dataBase, Map<String, Integer> linhasPorCodigo) {}
+public interface EngineCargaPort { RespostaEngine avisar(NotificacaoCarga corpo, String correlationId); }  // engine
+public record NotificacaoCarga(String idCarga, String fonte, String produto, LocalDate dataBase, Map<String, Integer> linhasPorCodigo) {}
 public record RespostaEngine(int status, String corpo) {}
 ```
 
@@ -377,7 +377,7 @@ SELECT COUNT(*) FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;  
 
 ### 2.8 Aviso ao engine: `adapter/out/client/EngineCargaClient.java` (implementa `EngineCargaPort`)
 
-`RespostaEngine avisar(AvisoEngine corpo, String correlationId)` com `RestClient` (um só, criado na subida; o `DefaultAzureCredential` também é um bean único, que já guarda o token até perto de expirar):
+`RespostaEngine avisar(NotificacaoCarga corpo, String correlationId)` com `RestClient` (um só, criado na subida; o `DefaultAzureCredential` também é um bean único, que já guarda o token até perto de expirar):
 - `POST {processor.engine.url}/api/v1/cargas`, JSON `{ idCarga, fonte:"B3", produto:"TS", dataBase:"AAAA-MM-DD", linhasPorCodigo:{ código: quantidade } }`;
 - cabeçalhos `Authorization: Bearer <token>` (`DefaultAzureCredential.getTokenSync(new TokenRequestContext().addScopes(escopo))`) e `X-Correlation-Id`;
 - tempo limite de leitura `timeout-segundos`;

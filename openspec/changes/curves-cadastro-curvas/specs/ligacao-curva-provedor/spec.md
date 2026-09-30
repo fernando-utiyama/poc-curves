@@ -35,15 +35,15 @@ Como `cldtfdUnic` não tem identity nem sequência e o schema não pode mudar, o
 - **WHEN** duas ligações de curvas diferentes são incluídas ao mesmo tempo
 - **THEN** cada uma recebe um `idLigacao` diferente
 
-### Requirement: Ligação com curvas mães
-O provedor interno `TCEN` (que precisa existir em `tPrvdrDadoMercd`) SHALL ligar uma curva derivada às suas curvas mães (spec `curve-build-pipeline` do change `engine-modelos-curva`): `codigoNaFonte` = nome de uma curva de mercado existente, e `produto` = papel da mãe no cálculo (ex.: `NUMERADOR`, `DENOMINADOR`). Além das regras gerais, a ligação com `TCEN` MUST ser rejeitada com 422 `DADOS_INVALIDOS` quando a curva mãe não existir, for a própria curva, ou criar um ciclo (a mãe, direta ou indiretamente, já tem esta curva como mãe), citando o caminho do ciclo. Inativar uma curva que é mãe de curva ativa SHALL trazer o aviso `CURVA_COM_FILHAS`, com as filhas, sem bloquear.
+### Requirement: Ligação com curvas componentes
+O provedor interno `TCEN` (que precisa existir em `tPrvdrDadoMercd`) SHALL ligar uma curva derivada às suas curvas componentes (spec `curve-build-pipeline` do change `engine-modelos-curva`): `codigoNaFonte` = nome de uma curva de mercado existente, e `produto` = papel da curva componente no cálculo (ex.: `NUMERADOR`, `DENOMINADOR`). Além das regras gerais, a ligação com `TCEN` MUST ser rejeitada com 422 `DADOS_INVALIDOS` quando a curva componente não existir, for a própria curva, ou criar um ciclo (a curva componente, direta ou indiretamente, já tem esta curva como componente), citando o caminho do ciclo. Inativar uma curva que é componente de curva ativa SHALL trazer o aviso `CURVA_COM_FILHAS`, com as filhas, sem bloquear.
 
-#### Scenario: Inflação implícita ligada às mães
+#### Scenario: Inflação implícita ligada às curvas componentes
 - **WHEN** o cliente liga a curva `IPCA_IMPLICITA` a (`TCEN`, `NUMERADOR`, `DIxPRE`, prioridade 1) e (`TCEN`, `DENOMINADOR`, `NTN-B`, prioridade 2)
 - **THEN** as duas ligações são gravadas, e `GET /api/v1/ligacoes?provedor=TCEN&codigoNaFonte=NTN-B` lista a `IPCA_IMPLICITA`
 
 #### Scenario: Ciclo recusado
-- **WHEN** a curva `A` tem `B` como mãe, e o cliente liga `B` a (`TCEN`, `NUMERADOR`, `A`)
+- **WHEN** a curva `A` tem `B` como componente, e o cliente liga `B` a (`TCEN`, `NUMERADOR`, `A`)
 - **THEN** a resposta é 422 com `DADOS_INVALIDOS`, citando o ciclo `B` → `A` → `B`
 
 ### Requirement: Rotas das ligações

@@ -19,7 +19,15 @@ Toda chamada a dependência SHALL ter tempo limite configurável, com estes padr
 | Construção automática da data, requisição inteira | `engine.timeout.construcao-data-segundos` | 300 |
 | Rota de situação, requisição inteira | `engine.timeout.situacao-segundos` | 60 |
 
-Estourar um tempo limite MUST encerrar a operação com erro explícito: `CONSTRUCAO_EM_ANDAMENTO` para a trava, `MODELO_FALHOU` para o Groovy e `ERRO_INTERNO` para banco e requisição. Tempo esgotado no Blob segue a regra de Blob fora (nunca bloqueia construção nem consulta). Na rota de situação, o tempo esgotado de uma curva vira `ERRO` só daquela curva. Na construção da data, esgotado o tempo da requisição, as curvas já gravadas ficam gravadas (cada uma tem a sua transação), as que faltavam não são iniciadas, e a resposta é `ERRO_INTERNO`; uma nova chamada completa o que faltou. Uma transação encerrada por tempo limite MUST ser desfeita por inteiro.
+O tempo da trava da curva vale **só para obter a trava**: depois de obtida, a construção segue limitada pelo tempo de cada comando no banco e pelo tempo da requisição, e MUST NOT ter um limite de 30 segundos para a transação inteira. O tempo da trava SHALL ser aplicado ao próprio comando que trava (tempo limite do comando), e MUST NOT alterar configuração da sessão do banco (`SET LOCK_TIMEOUT`), que ficaria na conexão devolvida ao pool. Só o estouro do tempo do comando da trava SHALL virar `CONSTRUCAO_EM_ANDAMENTO`; qualquer outra falha de banco nesse passo é `ERRO_INTERNO`. Estourar um tempo limite MUST encerrar a operação com erro explícito: `CONSTRUCAO_EM_ANDAMENTO` para a trava, `MODELO_FALHOU` para o Groovy e `ERRO_INTERNO` para banco e requisição. Tempo esgotado no Blob segue a regra de Blob fora (nunca bloqueia construção nem consulta). Na rota de situação, o tempo esgotado de uma curva vira `ERRO` só daquela curva. Na construção da data, esgotado o tempo da requisição, as curvas já gravadas ficam gravadas (cada uma tem a sua transação), as que faltavam não são iniciadas, e a resposta é `ERRO_INTERNO`; uma nova chamada completa o que faltou. Uma transação encerrada por tempo limite MUST ser desfeita por inteiro.
+
+#### Scenario: Trava obtida no limite
+- **WHEN** a construção da `PRE` espera 25 segundos pela trava, e depois leva 20 segundos para calcular e gravar
+- **THEN** a construção termina com sucesso: os 30 segundos valem só para obter a trava
+
+#### Scenario: Banco fora ao travar
+- **WHEN** a conexão com o banco cai no comando da trava
+- **THEN** a resposta é `ERRO_INTERNO`, e não `CONSTRUCAO_EM_ANDAMENTO`
 
 #### Scenario: Banco lento na construção
 - **WHEN** a gravação dos pontos passa de 30 segundos

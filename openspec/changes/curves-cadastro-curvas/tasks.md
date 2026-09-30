@@ -17,7 +17,7 @@ Guia de implementação passo a passo (entidades, regras, SQL, `ETag`, planilhas
 - [ ] 3.1 Criar as rotas de ligação com as regras da spec (provedor existente, unicidade por curva e por prioridade, mesmo código em várias curvas) e o `idLigacao` por `MAX + 1` com `UPDLOCK, HOLDLOCK`; verificar os cenários da spec com o acesso ao banco simulado; duas inclusões simultâneas são conferidas na homologação
 - [ ] 3.2 Criar `GET /ligacoes?provedor=&produto=&codigoNaFonte=` e os avisos `CURVA_SEM_ORIGEM` e `ORIGEM_INCOMPATIVEL_COM_MODELO`; verificar os dois avisos
 
-- [ ] 3.3 Criar as regras da ligação com o provedor `TCEN` (mãe existente, não a própria, sem ciclo com o caminho na mensagem) e o aviso `CURVA_COM_FILHAS` na inativação; verificar os dois cenários da spec e um ciclo de três curvas
+- [ ] 3.3 Criar as regras da ligação com o provedor `TCEN` (componente existente, não a própria, sem ciclo com o caminho na mensagem) e o aviso `CURVA_COM_FILHAS` na inativação; verificar os dois cenários da spec e um ciclo de três curvas
 
 ## 4. Configuração de cálculo
 

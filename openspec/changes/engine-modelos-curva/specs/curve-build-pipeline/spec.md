@@ -58,28 +58,28 @@ Os valores de enum SHALL ser comparados exatamente como escritos nesta spec, com
 - **THEN** a construção falha com `CADASTRO_INVALIDO` informando a chave `EXTRAPOLACAO_FINAL`
 
 ### Requirement: Curva derivada de outras curvas
-Uma curva SHALL poder ser derivada de outras curvas de mercado já construídas (ex.: inflação implícita = PRE sobre a NTN-B bootstrapada), sem mudança de schema. Uma curva é **derivada** quando a sua ligação de menor `cPriorCsumo` em `tCurvaPrvdr` tem `iPrvdrDados` = `TCEN`, um provedor interno. Nesse caso, **todas** as ligações da curva com `iPrvdrDados` = `TCEN` são as **curvas mães**: `cTickerPrvdr` = nome da curva mãe (`tCurvaMercd.cTickerIndcd`) e `cPrvdrMercd` = papel da mãe no cálculo (ex.: `NUMERADOR`, `DENOMINADOR`), definido pelo modelo de construção. Ligações de outros provedores na mesma curva são ignoradas nesta fase.
+Uma curva SHALL poder ser derivada de outras curvas de mercado já construídas (ex.: inflação implícita = PRE sobre a NTN-B bootstrapada), sem mudança de schema. Uma curva é **derivada** quando a sua ligação de menor `cPriorCsumo` em `tCurvaPrvdr` tem `iPrvdrDados` = `TCEN`, um provedor interno. Nesse caso, **todas** as ligações da curva com `iPrvdrDados` = `TCEN` são as **curvas componentes**: `cTickerPrvdr` = nome da curva componente (`tCurvaMercd.cTickerIndcd`) e `cPrvdrMercd` = papel da curva componente no cálculo (ex.: `NUMERADOR`, `DENOMINADOR`), definido pelo modelo de construção. Ligações de outros provedores na mesma curva são ignoradas nesta fase.
 
 O cadastro de uma curva derivada MUST ser rejeitado com `CADASTRO_INVALIDO` quando:
-- uma curva mãe não existir;
-- a curva for mãe dela mesma, direta ou indiretamente (ciclo);
+- uma curva componente não existir;
+- a curva for componente dela mesma, direta ou indiretamente (ciclo);
 - o modelo de construção não aceitar a fonte `TCEN`, ou os papéis cadastrados não forem exatamente os que o modelo declara.
 
-Nenhum modelo de construção nativo desta fase aceita a fonte `TCEN`: a estrutura existe para que um modelo derivado (Java numa mudança futura ou script Groovy) seja incluído só com cadastro e o modelo. O modelo derivado lê as mães pelo contexto de construção (spec `curve-extension-models`), nunca pelas tabelas brutas. A disparada em cadeia e a exigência de mães construídas estão na spec `curve-load-trigger`. A proveniência da construção de uma curva derivada SHALL trazer, para cada mãe, nome, papel e `hashPontos` dos pontos usados.
+Nenhum modelo de construção nativo desta fase aceita a fonte `TCEN`: a estrutura existe para que um modelo derivado (Java numa mudança futura ou script Groovy) seja incluído só com cadastro e o modelo. O modelo derivado lê as curvas componentes pelo contexto de construção (spec `curve-extension-models`), nunca pelas tabelas brutas. A disparada em cadeia e a exigência de componentes construídas estão na spec `curve-load-trigger`. A proveniência da construção de uma curva derivada SHALL trazer, para cada curva componente, nome, papel e `hashPontos` dos pontos usados.
 
 #### Scenario: Inflação implícita cadastrada sem modelo
 - **WHEN** a curva `IPCA_IMPLICITA` é cadastrada com as ligações (`TCEN`, `NUMERADOR`, `DIxPRE`, 1) e (`TCEN`, `DENOMINADOR`, `NTN-B`, 2) e um modelo de construção que ainda não existe
 - **THEN** a construção falha com `CADASTRO_INVALIDO` informando o modelo, e nenhuma outra curva é afetada
 
 #### Scenario: Ciclo entre curvas
-- **WHEN** a curva `A` tem `B` como mãe, e `B` é cadastrada com `A` como mãe
+- **WHEN** a curva `A` tem `B` como componente, e `B` é cadastrada com `A` como componente
 - **THEN** a construção de qualquer das duas falha com `CADASTRO_INVALIDO`, citando o ciclo `A` → `B` → `A`
 
 ### Requirement: Construção por uma origem secundária
 Uma curva MAY ter mais de uma ligação de provedor em `tCurvaPrvdr`: a de menor `cPriorCsumo` é a origem principal, e as demais são **origens secundárias**, cujos dados brutos também são gravados pelos feeders (o processor grava os vértices para toda curva ligada ao código, principal ou não). A construção automática (carga e construção da data pelo orquestrador) SHALL usar sempre a origem principal. O usuário SHALL poder construir ou recalcular a curva a partir de uma origem secundária, informando `fonte` e `produto` em `POST .../construcao` (spec `curve-engine-api`), e simular por ela da mesma forma.
 
 Com `fonte` e `produto` informados:
-- a origem usada SHALL ser a ligação da curva em `tCurvaPrvdr` com `iPrvdrDados` = `fonte` e `cPrvdrMercd` = `produto`, e `cTickerPrvdr` dela é o código na fonte. Sem nenhuma ligação assim, MUST falhar com `CADASTRO_INVALIDO`, listando as origens cadastradas da curva; com mais de uma, também `CADASTRO_INVALIDO`. A fonte `TCEN` MUST NOT ser informada: as mães de uma curva derivada não são uma origem selecionável;
+- a origem usada SHALL ser a ligação da curva em `tCurvaPrvdr` com `iPrvdrDados` = `fonte` e `cPrvdrMercd` = `produto`, e `cTickerPrvdr` dela é o código na fonte. Sem nenhuma ligação assim, MUST falhar com `CADASTRO_INVALIDO`, listando as origens cadastradas da curva; com mais de uma, também `CADASTRO_INVALIDO`. A fonte `TCEN` MUST NOT ser informada: as curvas componentes de uma curva derivada não são uma origem selecionável;
 - o modelo de construção SHALL ser `MODELOS_POR_ORIGEM["{fonte}/{produto}"]` do `cModDado` quando a chave existir, e `cMotorCalc` quando não existir. O modelo escolhido SHALL aceitar a fonte e o produto informados, senão `CADASTRO_INVALIDO`;
 - todo o resto do cadastro (unidade, cotação, base de interpolação, interpolador, calendário, extrapolação, horizonte e arredondamento) SHALL ser o da curva, o mesmo da origem principal: a curva é uma só, e muda só de onde vêm os pontos;
 - as regras de gravação, trava, recálculo e situação são as da construção pela API. Com pontos gravados e sem `forcarRecalculo=true`, a resposta é `EXISTENTE`, e a comparação SHALL ser feita contra o que a origem informada produz.
@@ -140,7 +140,7 @@ Os dias úteis de um ponto que vierem da fonte ou do usuário SHALL ser obedecid
 
 Quando o modelo publica os dias úteis de um ponto e eles diferem de `DU(d)` pelo calendário cadastrado, ou quando a data do ponto não é dia útil no calendário, a construção MUST NOT falhar por isso: SHALL gravar os dias úteis publicados e trazer o aviso `CALENDARIO_DIVERGENTE`, listando cada ponto com a data, os dias úteis publicados e os calculados, na resposta, no log e na memória de cálculo. O aviso serve para corrigir o calendário; a curva segue a fonte.
 
-**No uso dos pontos gravados** (consulta, interpolação, simulação, comparação com a fonte e curvas mães), os dias úteis de cada ponto, `DUp`, SHALL ser o `cDiaUtil` do ponto em `tDadoVertcCurva`, quando não for nulo (gravado pelo engine na construção ou informado pelo usuário no `services/curves`), e `DU(d)` pelo calendário quando for nulo. Para um prazo que não é ponto, com os pontos mantidos (requisito "Pontos no mesmo prazo do eixo") em ordem de data, os dias úteis SHALL ser ancorados no ponto anterior, e o calendário só conta dentro do trecho:
+**No uso dos pontos gravados** (consulta, interpolação, simulação, comparação com a fonte e curvas componentes), os dias úteis de cada ponto, `DUp`, SHALL ser o `cDiaUtil` do ponto em `tDadoVertcCurva`, quando não for nulo (gravado pelo engine na construção ou informado pelo usuário no `services/curves`), e `DU(d)` pelo calendário quando for nulo. Para um prazo que não é ponto, com os pontos mantidos (requisito "Pontos no mesmo prazo do eixo") em ordem de data, os dias úteis SHALL ser ancorados no ponto anterior, e o calendário só conta dentro do trecho:
 - entre os pontos `i` e `i+1` (`d_i < d < d_{i+1}`): `DUp_i` + dias úteis do calendário em `(d_i, d]`, no máximo `DUp_{i+1}`;
 - antes do primeiro ponto: dias úteis do calendário em `(B, d]`, no máximo `DUp_1`;
 - depois do último ponto `n`: `DUp_n` + dias úteis do calendário em `(d_n, d]`.

@@ -1,0 +1,162 @@
+CADASTROS SUGERIDOS DAS TAREFAS DE CURVA (orquestrador)
+Change: orquestrador-curvas | Sugestão de 2026-09-30
+
+Os cadastros serão feitos à mão, pela tela, depois. Este arquivo só sugere o conteúdo.
+Formato: o corpo de POST /api/v1/tarefas (TarefaRequestDto), papel Curvas.Operador.
+
+DEPOIS DE CADASTRAR, AGENDAR: a tarefa nasce PRONTA (parada) e só dispara
+sozinha depois de POST /api/v1/agendador/tarefas/{id}/agendar. Desagendar
+(DELETE /api/v1/agendador/tarefas/{id}/agendamento) é o desliga.
+
+--------------------------------------------------------------------------------
+REGRAS DO CADASTRO (valem para todas)
+--------------------------------------------------------------------------------
+- nome até 255, descricao até 1024, action até 100 caracteres.
+- Só UMA regra por tarefa: regraCron (cron do Spring, 6 campos, até 15
+  caracteres) OU regraIntervalo (ISO-8601, até 20 caracteres). As quatro
+  tarefas de curva usam regraIntervalo PT10M com janela.
+- regraIntervalo em duração (ex.: PT10M) conta a partir da meia-noite de
+  Brasília: 00h00, 00h10, 00h20... igual nas duas instâncias.
+- Horários (inicioHorario, limiteHorario, cron) em America/Sao_Paulo.
+- Parâmetro calendarios: a ocorrência só executa se hoje (Brasília) for dia
+  útil em TODOS os calendários listados; por isso as regras podem valer para
+  todos os dias. Calendários iguais aos do engine; o Brazil/Settlement bate
+  com a planilha oficial de feriados nacionais da ANBIMA.
+- parametros: cada um com nome, valor e tipo (os três obrigatórios).
+- {dataBase} nos caminhos é trocado pela data-base (AAAA-MM-DD).
+- Uma tarefa por fonte: o sucesso, as tentativas e o alerta de uma fonte
+  não interferem nos da outra.
+- O limiteHorario da construção da data (tarefa 4) TEM de ficar depois do
+  limiteHorario de todos os downloads: é nele que sai o alerta
+  CURVAS_PENDENTES.
+
+HORÁRIOS: todos marcados [A CONFIRMAR] são sugestão, não informação da
+operação. Confirmar com a operação antes de cadastrar.
+
+--------------------------------------------------------------------------------
+1. DOWNLOAD B3 (TaxaSwap)                          pode cadastrar já
+--------------------------------------------------------------------------------
+Depende de: rotas do conector B3 (change conector-b3-webhook-ingest).
+
+{
+  "nome": "download-b3-taxa-swap",
+  "descricao": "Baixa o TaxaSwap da B3 do dia pelo conector, a cada 10 minutos dentro da janela, até o arquivo do dia chegar; no limite sem sucesso, gera o alerta CARGA_NAO_RECEBIDA.",
+  "action": "download-carga-dia",
+  "regraIntervalo": "PT10M",
+  "parametros": [
+    { "nome": "calendarios",            "valor": "Brazil/Settlement",                                      "tipo": "TEXTO" },
+    { "nome": "fonte",                  "valor": "B3",                                                     "tipo": "TEXTO" },
+    { "nome": "destino",                "valor": "conector",                                               "tipo": "TEXTO" },
+    { "nome": "caminhoDownload",        "valor": "/api/b3/taxa-swap/download?date={dataBase}",             "tipo": "TEXTO" },
+    { "nome": "caminhoReprocessamento", "valor": "/api/b3/taxa-swap/reprocessamento?dataBase={dataBase}",  "tipo": "TEXTO" },
+    { "nome": "inicioHorario",          "valor": "18:00",                                                  "tipo": "HORARIO" },
+    { "nome": "limiteHorario",          "valor": "22:00",                                                  "tipo": "HORARIO" }
+  ]
+}
+
+inicioHorario 18:00 e limiteHorario 22:00: [A CONFIRMAR]
+Tentativas no dia: no máximo 25 (18h00 a 22h00, a cada 10 min; a das 22h é a
+última e, sem o arquivo do dia, gera CARGA_NAO_RECEBIDA).
+
+--------------------------------------------------------------------------------
+2. DOWNLOAD ANBIMA (arquivo ms{AAMMDD}.txt, produto MS)
+                                        só depois da rota no conector
+--------------------------------------------------------------------------------
+Depende de: rota do arquivo ms no conector (change própria, ainda não criada),
+respondendo no mesmo contrato do download B3 (200 com dataBase e idCarga).
+Os dois caminhos abaixo são SUGESTÃO de nome de rota; trocar pelos da change
+do conector ANBIMA quando ela existir.
+
+{
+  "nome": "download-anbima-ms",
+  "descricao": "Baixa o arquivo de mercado secundário da ANBIMA (ms) do dia pelo conector, a cada 10 minutos dentro da janela, até o arquivo do dia chegar; no limite sem sucesso, gera o alerta CARGA_NAO_RECEBIDA.",
+  "action": "download-carga-dia",
+  "regraIntervalo": "PT10M",
+  "parametros": [
+    { "nome": "calendarios",            "valor": "Brazil/Settlement",                                 "tipo": "TEXTO" },
+    { "nome": "fonte",                  "valor": "ANBIMA",                                            "tipo": "TEXTO" },
+    { "nome": "destino",                "valor": "conector",                                          "tipo": "TEXTO" },
+    { "nome": "caminhoDownload",        "valor": "/api/anbima/ms/download?date={dataBase}",           "tipo": "TEXTO" },
+    { "nome": "caminhoReprocessamento", "valor": "/api/anbima/ms/reprocessamento?dataBase={dataBase}", "tipo": "TEXTO" },
+    { "nome": "inicioHorario",          "valor": "18:00",                                             "tipo": "HORARIO" },
+    { "nome": "limiteHorario",          "valor": "22:00",                                             "tipo": "HORARIO" }
+  ]
+}
+
+inicioHorario 18:00 e limiteHorario 22:00: [A CONFIRMAR]
+Caminhos /api/anbima/ms/...: [A CONFIRMAR na change do conector ANBIMA]
+
+--------------------------------------------------------------------------------
+3. DOWNLOAD BLOOMBERG (SOFR, BLC2)
+                                        só depois da rota no conector
+--------------------------------------------------------------------------------
+Depende de: rota de carga Bloomberg no conector (a lista de tickers
+S0490Z <tenor> BLC2 Curncy fica fixa no conector), respondendo no mesmo
+contrato do download B3 (200 com dataBase e idCarga).
+Os dois caminhos abaixo são SUGESTÃO de nome de rota.
+
+{
+  "nome": "download-bloomberg-sofr",
+  "descricao": "Busca os nós da SOFR (Bloomberg, BLC2) do dia pelo conector, a cada 10 minutos dentro da janela, até os dados do dia chegarem; no limite sem sucesso, gera o alerta CARGA_NAO_RECEBIDA.",
+  "action": "download-carga-dia",
+  "regraIntervalo": "PT10M",
+  "parametros": [
+    { "nome": "calendarios",            "valor": "Brazil/Settlement,UnitedStates/FederalReserve",          "tipo": "TEXTO" },
+    { "nome": "fonte",                  "valor": "BLOOMBERG",                                              "tipo": "TEXTO" },
+    { "nome": "destino",                "valor": "conector",                                               "tipo": "TEXTO" },
+    { "nome": "caminhoDownload",        "valor": "/api/bloomberg/sofr/download?date={dataBase}",           "tipo": "TEXTO" },
+    { "nome": "caminhoReprocessamento", "valor": "/api/bloomberg/sofr/reprocessamento?dataBase={dataBase}", "tipo": "TEXTO" },
+    { "nome": "inicioHorario",          "valor": "18:00",                                                  "tipo": "HORARIO" },
+    { "nome": "limiteHorario",          "valor": "22:00",                                                  "tipo": "HORARIO" }
+  ]
+}
+
+inicioHorario 18:00 e limiteHorario 22:00: [A CONFIRMAR]
+Caminhos /api/bloomberg/sofr/...: [A CONFIRMAR na change do conector Bloomberg]
+calendarios com os dois: só busca em dia útil no Brasil E nos Estados Unidos.
+Num feriado só americano (ex.: 2026-11-26, Ação de Graças), não busca nada e não alerta; a
+SOFR da data sai como SEM_INSUMO na última construção do dia (CURVAS_PENDENTES).
+[A CONFIRMAR] se nesse caso a SOFR deve reaproveitar o dado do dia útil
+americano anterior (é regra do modelo SOFR no engine, não do orquestrador).
+
+--------------------------------------------------------------------------------
+4. CONSTRUÇÃO DA DATA (engine)                     pode cadastrar já
+--------------------------------------------------------------------------------
+Depende de: POST /api/v1/construcoes/{dataBase} do engine
+(change engine-modelos-curva). Constrói toda curva da data que tem insumo e
+ainda não tem pontos; nunca recalcula, então rodar várias vezes é seguro.
+
+Papel: rede de segurança. O caminho principal é o webhook do processor (cada
+carga constrói as suas curvas e, em cadeia, as filhas). Esta tarefa pega, o
+quanto antes, o que o webhook não cobre: engine fora além da janela de
+repetição do processor, e filha de componente construída à mão pela API.
+
+{
+  "nome": "construcao-curvas-data",
+  "descricao": "Rede de segurança do webhook: a cada 10 minutos dentro da janela, constrói no engine as curvas da data-base que já têm insumo e ainda não têm pontos; sem pendência, para no dia; no limite com pendência, gera o alerta CURVAS_PENDENTES.",
+  "action": "construcao-curvas-data",
+  "regraIntervalo": "PT10M",
+  "parametros": [
+    { "nome": "calendarios",   "valor": "Brazil/Settlement", "tipo": "TEXTO" },
+    { "nome": "destino",       "valor": "engine",            "tipo": "TEXTO" },
+    { "nome": "inicioHorario", "valor": "18:00",             "tipo": "HORARIO" },
+    { "nome": "limiteHorario", "valor": "23:00",             "tipo": "HORARIO" }
+  ]
+}
+
+inicioHorario 18:00 e limiteHorario 23:00: [A CONFIRMAR]
+O limiteHorario da construção TEM de ficar depois do limiteHorario de todos
+os downloads (22:00 na sugestão): é nele que sai CURVAS_PENDENTES. Antes
+disso, curva SEM_INSUMO é esperada (a fonte pode não ter publicado).
+Quando nenhuma curva estiver pendente, grava "data completa" e para de chamar
+o engine naquele dia.
+
+--------------------------------------------------------------------------------
+ORDEM SUGERIDA DE CADASTRO
+--------------------------------------------------------------------------------
+1. Construção da data (4) e download B3 (1): já têm as rotas.
+2. Download ANBIMA (2): quando a change do conector ANBIMA estiver no ar.
+3. Download Bloomberg (3): quando a change do conector Bloomberg estiver no ar.
+Enquanto 2 e 3 não existirem, as curvas ANBIMA e Bloomberg saem como
+SEM_INSUMO na última construção do dia, e o alerta CURVAS_PENDENTES vai
+listá-las todo dia. Isso é esperado até os conectores existirem.
