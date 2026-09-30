@@ -1,5 +1,6 @@
 package br.com.poc.adapter.out.persistence.entity;
 
+import java.math.BigDecimal;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -89,12 +90,9 @@ public class CurvaMercdEntity {
     @Column(name = "dBaseReft")
     private LocalDate dBaseReft;
 
-    @Column(name = "cldtfdConfg")
-    private Integer cldtfdConfg;
-
     @Column(name = "cIndxdAtivo", length = 50)
     private String cIndxdAtivo;
 
-    @Column(name = "vFatorMultiAtivo")
-    private Double vFatorMultiAtivo;
+    @Column(name = "vFatorMultiAtivo", precision = 28, scale = 12)
+    private BigDecimal vFatorMultiAtivo;
 }

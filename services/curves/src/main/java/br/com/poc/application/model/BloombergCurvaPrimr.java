@@ -1,5 +1,6 @@
 package br.com.poc.application.model;
 
+import java.math.BigDecimal;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -12,9 +13,9 @@ public class BloombergCurvaPrimr {
 
     private Integer cldtfdUnic;
     private String cTickerIndcd;
-    private Double vPrecoLiqdc;
-    private Double vPrecoMed;
-    private Double vPrecoUlt;
+    private BigDecimal vPrecoLiqdc;
+    private BigDecimal vPrecoMed;
+    private BigDecimal vPrecoUlt;
     private Integer cDiaVcto;
     private LocalDate dLiqdcFincr;
     private String cTickerBberg;

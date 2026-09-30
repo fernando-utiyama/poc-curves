@@ -1,5 +1,6 @@
 package br.com.poc.application.model;
 
+import java.math.BigDecimal;
 import lombok.Builder;
 import lombok.Data;
 
@@ -23,7 +24,7 @@ public class CurvaMercd {
     private String cTickerIdtfdUnic;
     private String cClasfInstt;
     private Integer cConfgIdtfd;
-    private String cPrioDado;
+    private String cPprioDado;
     private String rAtivoIndcd;
     private LocalDateTime dCriacReg;
     private LocalDateTime dUltAtulz;
@@ -33,7 +34,6 @@ public class CurvaMercd {
     private String iPrvdrDados;
     private LocalDate dInicVgcia;
     private LocalDate dBaseReft;
-    private Integer cldtfdConfg;
     private String cIndxdAtivo;
-    private Double vFatorMultiAtivo;
+    private BigDecimal vFatorMultiAtivo;
 }

@@ -1,14 +1,15 @@
 package br.com.poc.application.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public interface BloombergCurvaPrimrUpdatableRequest {
 
-    Double vPrecoLiqdc();
+    BigDecimal vPrecoLiqdc();
 
-    Double vPrecoMed();
+    BigDecimal vPrecoMed();
 
-    Double vPrecoUlt();
+    BigDecimal vPrecoUlt();
 
     Integer cDiaVcto();
 

@@ -25,6 +25,6 @@ public class ProvedorEntity {
     @Column(name = "cProdt", length = 1024)
     private String produto;
 
-    @Column(name = "iCopIt", length = 50)
+    @Column(name = "iCoplt", length = 50)
     private String nomeCompletoAtivoOuInstrumento;
 }

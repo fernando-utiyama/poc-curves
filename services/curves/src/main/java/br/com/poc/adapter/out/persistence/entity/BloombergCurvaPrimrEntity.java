@@ -1,5 +1,6 @@
 package br.com.poc.adapter.out.persistence.entity;
 
+import java.math.BigDecimal;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,14 +26,14 @@ public class BloombergCurvaPrimrEntity {
     @JoinColumn(name = "cTickerIndcd", referencedColumnName = "cTickerIndcd", insertable = false, updatable = false)
     private CurvaMercdEntity curvaMercd;
 
-    @Column(name = "vPrecoLiqdc")
-    private Double vPrecoLiqdc;
+    @Column(name = "vPrecoLiqdc", precision = 28, scale = 12)
+    private BigDecimal vPrecoLiqdc;
 
-    @Column(name = "vPrecoMed")
-    private Double vPrecoMed;
+    @Column(name = "vPrecoMed", precision = 28, scale = 12)
+    private BigDecimal vPrecoMed;
 
-    @Column(name = "vPrecoUlt")
-    private Double vPrecoUlt;
+    @Column(name = "vPrecoUlt", precision = 28, scale = 12)
+    private BigDecimal vPrecoUlt;
 
     @Column(name = "cDiaVcto")
     private Integer cDiaVcto;
