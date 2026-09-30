@@ -25,12 +25,13 @@ openspec/changes/
 ├── conector-b3-webhook-ingest   # conector B3 e processor: carga do TaxaSwap
 ├── engine-construcao-curvas     # engine, parte 1: as 7 curvas e as rotas usadas pelos outros serviços
 ├── engine-modelos-curva         # engine, parte 2: Groovy, memória de cálculo, auditoria, resiliência
-├── curves-cadastro-curvas       # curves: cadastro, painel, pontos manuais, bruto B3
+├── curves-cadastro-curvas       # curves, parte 1: CRUD de curva, ligações, configuração e bruto B3
+├── curves-operacao-curvas       # curves, parte 2: planilhas, painel, pontos manuais, origens secundárias
 ├── orquestrador-curvas          # orquestrador: tarefas e disparos
 └── banco-curvas-ajustes         # ALTER de tBbergCurvaPrimr e DROP de tCurvaData
 ```
 
-Cada change tem `proposal.md`, `design.md`, `specs/`, `tasks.md` e, quando há, `implementacao.md` (guia passo a passo).
+Cada change tem `proposal.md`, `specs/` e `tasks.md`. O `design.md` e o `implementacao.md` (guia passo a passo) ficam na primeira parte de cada serviço e valem para a segunda.
 
 ```bash
 openspec list

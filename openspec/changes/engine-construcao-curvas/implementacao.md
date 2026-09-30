@@ -1,6 +1,6 @@
-# Guia de implementação: engine-modelos-curva
+# Guia de implementação: engine (changes `engine-construcao-curvas` e `engine-modelos-curva`)
 
-Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec manda; este guia diz onde e como.** Siga a ordem da seção 15. Os testes são escritos só na seção 16, depois de tudo compilar.
+Guia passo a passo para aplicar as duas changes do engine com o mínimo de decisões: a `engine-construcao-curvas` (primeira parte, a construção das 7 curvas) e a `engine-modelos-curva` (segunda parte). Cada `tasks.md` diz quais tarefas são dele; as tarefas mantêm a numeração deste guia. **A spec manda; este guia diz onde e como.** Siga a ordem da seção 15. Os testes são escritos só na seção 16, depois de tudo compilar.
 
 > **O código real manda nos detalhes.** Este guia foi escrito sobre a cópia do serviço no poc (`services/engine`, pacote `br.com.poc`). No repositório real, o pacote raiz, as classes de exceção, o tratador de erro que de fato responde, o formato do corpo de erro, a biblioteca de log, a configuração do Jackson, os caches e o registro de beans **são os que o serviço já tem**: onde este guia cita uma classe ou configuração do código, leia "a equivalente do serviço" e confira antes de usar. O que não muda é o comportamento das specs (rotas, códigos de erro e de aviso, regras, formatos, vetores de teste). Divergência entre o guia e o código real não é motivo para parar: siga o código real e cumpra a spec.
 >
@@ -1161,4 +1161,4 @@ Ordem: **verificar, adaptar, criar, rodar**. Só o que já existe no pom (`sprin
 4. Alterar um ponto direto em `tDadoVertcCurva` → consulta com `INTERPOLADA_DESATUALIZADA` → `POST .../interpolada` → atualizada.
 5. `POST /api/v1/construcoes/2026-09-14` → as 5 `EXISTENTE`, NTN-B e SOFR `SEM_INSUMO`.
 6. Baixar `formato=xlsx` e `formato=zip` da simulação da `PRE`.
-7. `openspec validate engine-modelos-curva --strict`.
+7. `openspec validate engine-construcao-curvas --strict` e `openspec validate engine-modelos-curva --strict`.

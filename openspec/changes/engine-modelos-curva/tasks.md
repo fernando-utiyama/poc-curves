@@ -1,4 +1,4 @@
-Segunda parte do engine (operação e extensões); a primeira, a construção das 7 curvas, está na change [`engine-construcao-curvas`](../engine-construcao-curvas/tasks.md) e vem antes. Guia de implementação passo a passo (arquivos, assinaturas, código das partes difíceis, SQL, configuração e vetores de teste reais): [`implementacao.md`](implementacao.md). Siga a ordem da seção 15 do guia. Os "verificar" de cada tarefa viram testes escritos ao final, na seção 16 do guia; durante a implementação, cada tarefa termina com `mvn -q compile`.
+Segunda parte do engine (operação e extensões); a primeira, a construção das 7 curvas, está na change [`engine-construcao-curvas`](../engine-construcao-curvas/tasks.md) e vem antes. Guia de implementação passo a passo (arquivos, assinaturas, código das partes difíceis, SQL, configuração e vetores de teste reais): [`implementacao.md`](../engine-construcao-curvas/implementacao.md). Siga a ordem da seção 15 do guia. Os "verificar" de cada tarefa viram testes escritos ao final, na seção 16 do guia; durante a implementação, cada tarefa termina com `mvn -q compile`.
 
 ## 4. Cadastro
 

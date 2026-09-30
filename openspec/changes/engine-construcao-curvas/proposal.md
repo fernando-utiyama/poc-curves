@@ -1,6 +1,6 @@
 ## Why
 
-O primeiro objetivo do projeto é entregar 7 curvas: DIxPRE, DCL, PTAX, DPL e IBOVESPA (Taxa Swap B3), NTN-B (ANBIMA) e SOFR (Bloomberg). A change `engine-modelos-curva` cobre isso e muito mais (scripts Groovy, memória de cálculo em planilha, auditoria, resiliência, calendário por planilha), e ficou grande demais para uma entrega. Esta change é a primeira parte: o mínimo para construir, gravar, consultar e interpolar as 7 curvas com os modelos e calendários nativos, mais as rotas básicas que os outros serviços chamam. O resto fica na `engine-modelos-curva`, que vem depois e mantém o design e o guia de implementação comuns.
+O primeiro objetivo do projeto é entregar 7 curvas: DIxPRE, DCL, PTAX, DPL e IBOVESPA (Taxa Swap B3), NTN-B (ANBIMA) e SOFR (Bloomberg). A change `engine-modelos-curva` cobre isso e muito mais (scripts Groovy, memória de cálculo em planilha, auditoria, resiliência, calendário por planilha), e ficou grande demais para uma entrega. Esta change é a primeira parte: o mínimo para construir, gravar, consultar e interpolar as 7 curvas com os modelos e calendários nativos, mais as rotas básicas que os outros serviços chamam. O resto fica na `engine-modelos-curva`, que vem depois. O design e o guia de implementação, comuns às duas, estão nesta change.
 
 ## What Changes
 
@@ -35,7 +35,7 @@ O primeiro objetivo do projeto é entregar 7 curvas: DIxPRE, DCL, PTAX, DPL e IB
 
 ## Impact
 
-- **services/engine:** as seções da primeira parte do guia da change `engine-modelos-curva` (tipos, calendários nativos, interpolação, cadastro, modelos nativos, pipeline, carga, API básica). Sem Blob, sem Groovy e sem POI nesta parte.
+- **services/engine:** as seções da primeira parte do guia (`implementacao.md` desta change) (tipos, calendários nativos, interpolação, cadastro, modelos nativos, pipeline, carga, API básica). Sem Blob, sem Groovy e sem POI nesta parte.
 - **Banco:** sem mudança de schema; escreve `tDadoVertcCurva`, `tDadoCurva` e, em `tCurvaMercd`, só `dBaseReft` e `cUsuarCalc`.
 - **Autenticação:** adiada; os papéis nas tabelas de rota documentam o alvo e entram com a segunda parte.
 - **Outros serviços:** o processor (change `conector-b3-webhook-ingest`), o `services/curves` (change `curves-cadastro-curvas`) e o orquestrador (change `orquestrador-curvas`) já têm, com esta parte, as rotas do engine de que dependem.

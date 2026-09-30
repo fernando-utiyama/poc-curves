@@ -195,7 +195,7 @@ A rota por código SHALL buscar `tCurvaMercd.cTickerIdtfdUnic` igual ao código,
 - `interpolada`: quantidade de linhas em `tDadoCurva` na data e `atualizada` (`true` quando todo dia da grade confere com a interpolação dos pontos atuais; `false` com a quantidade de dias diferentes; nulo sem pontos);
 - `conferencia`: quando há insumo (linhas brutas, ou todas as curvas componentes com pontos), o resultado de executar o modelo como a simulação, sem gravar: `status` (`OK` ou `ERRO`), `codigoErro` e mensagem, `hashPontosFonte` e, se houver pontos gravados, `pontosDiferentes` (quantidade de pontos que diferem, que só existem de um lado ou do outro); nula sem insumo.
 
-A rota MUST NOT construir nem gravar nada. As curvas SHALL ser conferidas em paralelo, com até `engine.situacao.paralelismo` (padrão 8) ao mesmo tempo, e a falha ou o tempo esgotado de uma MUST NOT impedir as outras: a curva sai com `conferencia.status` = `ERRO` e o código correspondente. Quem monta o painel, com o cadastro e as regras de situação, é o `services/curves` (spec `painel-curvas` do change `curves-cadastro-curvas`).
+A rota MUST NOT construir nem gravar nada. As curvas SHALL ser conferidas em paralelo, com até `engine.situacao.paralelismo` (padrão 8) ao mesmo tempo, e a falha ou o tempo esgotado de uma MUST NOT impedir as outras: a curva sai com `conferencia.status` = `ERRO` e o código correspondente. Quem monta o painel, com o cadastro e as regras de situação, é o `services/curves` (spec `painel-curvas` do change `curves-operacao-curvas`).
 
 #### Scenario: Situação depois da carga B3
 - **WHEN** a carga B3 de `2026-09-14` construiu `PRE`, `DCL`, `INP` e `PTX`, a `DPL` falhou por `INSUMO_INVALIDO`, e a ANBIMA e a Bloomberg ainda não carregaram

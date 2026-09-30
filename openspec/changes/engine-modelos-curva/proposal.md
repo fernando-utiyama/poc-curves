@@ -1,6 +1,6 @@
 ## Why
 
-> **Dividida em 2026-09-30.** A primeira parte (construir, gravar, consultar e interpolar as 7 curvas com os modelos e calendários nativos, e as rotas básicas usadas pelos outros serviços) está na change `engine-construcao-curvas`, que vem antes. Esta change mantém o design e o guia de implementação comuns e entrega o resto: origem secundária, curvas derivadas, scripts Groovy no Blob, simulação e memória de cálculo, auditoria, calendário por planilha, resiliência, autenticação e testes em massa. O texto abaixo descreve o engine inteiro, como contexto das duas partes.
+> **Dividida em 2026-09-30.** A primeira parte (construir, gravar, consultar e interpolar as 7 curvas com os modelos e calendários nativos, e as rotas básicas usadas pelos outros serviços) está na change `engine-construcao-curvas`, que vem antes. O design e o guia de implementação, comuns às duas, estão na change `engine-construcao-curvas`. Esta change entrega o resto: origem secundária, curvas derivadas, scripts Groovy no Blob, simulação e memória de cálculo, auditoria, calendário por planilha, resiliência, autenticação e testes em massa. O texto abaixo descreve o engine inteiro, como contexto das duas partes.
 
 O primeiro objetivo do projeto é entregar 7 curvas: DIxPRE, DCL, PTAX, DPL e IBOVESPA (Taxa Swap B3), NTN-B (ANBIMA) e SOFR (Bloomberg). As três fontes pedem tratamento diferente:
 - as curvas B3 chegam prontas no `TaxaSwap.txt` (278 vértices por curva, com 7 casas decimais);

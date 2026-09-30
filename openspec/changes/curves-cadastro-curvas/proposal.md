@@ -1,5 +1,7 @@
 ## Why
 
+> **Dividida em 2026-09-30.** Esta change entrega a primeira parte: CRUD da curva de mercado, das ligações, da configuração de cálculo (com os valores aceitos) e do bruto da B3. A planilha do cadastro, o painel, os pontos, a planilha de pontos e as origens secundárias estão na change `curves-operacao-curvas`, que vem depois. O design e o guia de implementação continuam aqui e valem para as duas. O texto abaixo descreve o curves inteiro, como contexto.
+
 O engine só lê o cadastro das curvas (`tCurvaMercd`, `tCurvaPrvdr` e `tConfgCurva` com os parâmetros em `cModDado`), e o processor só lê as ligações em `tCurvaPrvdr` para saber sob qual curva gravar os dados brutos. Ninguém cria nem mantém esse cadastro, e o banco começa vazio. No sistema real, o cadastro é do serviço de curvas (`acts-srv-curvas`), que no poc é o `services/curves`, já transcrito. Nele já existem o CRUD de provedores (`tPrvdrDadoMercd`, de outro dev) e o CRUD do bruto Bloomberg (`tBbergCurvaPrimr`); faltam as curvas de mercado, as ligações com provedores e a configuração de cálculo.
 
 Além disso, quando a fonte falha ou traz um valor errado, o gestor da curva precisa corrigir ou digitar os pontos à mão (a curva construída, em `tDadoVertcCurva`), pelo front, e acompanhar a situação de todas as curvas. A decisão é separar ao máximo do engine: o engine constrói, recalcula e interpola; o curves cuida do cadastro, da edição manual dos pontos e do painel. A edição manual é contingência: não pode ser bloqueada nem pelo engine nem por uma dependência fora do ar, e tem preferência sobre a construção automática.
@@ -35,10 +37,6 @@ Além disso, quando a fonte falha ou traz um valor errado, o gestor da curva pre
 - `cadastro-curva-mercado`: CRUD da curva de mercado e as regras comuns do serviço (rotas, autenticação, erros, concorrência, auditoria, horário).
 - `ligacao-curva-provedor`: CRUD das ligações entre curva e provedor e consulta por código na fonte.
 - `configuracao-calculo-curva`: versões da configuração de cálculo com vigência, validação dos parâmetros e coerência com a curva.
-- `cadastro-curvas-planilha`: exportação e importação em lote por planilha, com simulação e aplicação atômica.
-- `painel-curvas`: painel de acompanhamento das curvas por data-base, com situação, atraso, erros e avisos.
-- `pontos-curva-manual`: edição manual dos pontos de uma curva numa data-base, validação, preferência sobre o engine, trava e `hashPontos` compartilhados, log.
-- `pontos-curva-planilha`: exportação e importação em lote dos pontos por planilha, com simulação e aplicação atômica.
 - `curva-primaria-b3`: listagem geral para seleção e CRUD linha a linha do dado bruto da B3 (`tBtrsCurvaPrimr`), com avisos do efeito no engine e log.
 
 ### Modified Capabilities
