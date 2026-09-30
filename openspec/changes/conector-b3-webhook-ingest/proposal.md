@@ -9,7 +9,7 @@ O `.ex_` é o único download da B3, e o `b3/taxa-swap/reprocessamento` só proc
 ## What Changes
 
 - **Conector só obtém e entrega.** Em todos os caminhos, o conector obtém o arquivo, converte para uma forma canônica (Latin-1, fim de linha `\n`, sem linhas vazias), calcula o hash e o `idCarga`, arquiva essa forma canônica no Blob (`b3/{AAAAMMDD}/cargas/{idCarga}/TaxaSwap.txt`), sem alterar o conteúdo das linhas, e publica um aviso de carga que aponta para ele. Não interpreta o conteúdo, não calcula fatores e nunca grava no banco. Saem do caminho de publicação o parser em Node, `normalizeCurveType`, `shouldPublishB3Curve` e `curveB3Factors`.
-- **Uma mensagem por carga no tópico que já existe**, `tp-event-b3-curve`, no lugar de uma por vértice: `idCarga`, data-base, caminho e SHA-256 do arquivo e a origem. A chave é a data (`B3-TS-{AAAAMMDD}`), para que as cargas de uma data sejam processadas em ordem. Nenhum tópico novo é criado.
+- **Uma mensagem por carga no tópico que já existe**, `tp-event-b3-curve` (no poc; no real, o tópico configurado em `spring.kafka.topics.b3.name`), no lugar de uma por vértice: `idCarga`, data-base, caminho e SHA-256 do arquivo e a origem. A chave é a data (`B3-TS-{AAAAMMDD}`), para que as cargas de uma data sejam processadas em ordem. Nenhum tópico novo é criado.
 - **`idCarga` determinístico** a partir da data de geração e do hash do arquivo: o mesmo arquivo gera sempre o mesmo `idCarga`, por qualquer caminho, e um arquivo novo da B3 para a mesma data gera outro.
 - **Três caminhos equivalentes**, sem nenhum tratado como exceção:
   - download do `.ex_` (`b3TaxaSwapDownloadHttpTrigger`, rota `b3/taxa-swap/download`, renomeados; o termo "contingência" sai de nomes, rotas e logs), o único download da B3, que passa a publicar sozinho e a gravar na pasta da data do arquivo;
@@ -46,5 +46,5 @@ O `.ex_` é o único download da B3, e o `b3/taxa-swap/reprocessamento` só proc
 - **Kafka:** sem tópico novo; muda o formato da mensagem em `tp-event-b3-curve`.
 - **Blob:** pasta `b3/{AAAAMMDD}/cargas/{idCarga}/`, escrita pelo conector e lida pelo processor.
 - **Banco:** sem mudança de schema; o processor lê `tCurvaPrvdr` e grava `tBtrsCurvaPrimr` sob o nome da curva de mercado; a geração de `cldtfdUnic` no banco real está em aberto (ver design).
-- **Engine:** o aviso segue o contrato da spec `curve-load-trigger` do change `engine-modelos-curva`.
+- **Engine:** o aviso segue o contrato da spec `curve-load-trigger` do change `engine-construcao-curvas`.
 - **Orquestrador:** é quem dispara o download e, quando preciso, o `b3/taxa-swap/reprocessamento` de uma data (horário, novas tentativas e alerta de carga não recebida); configurar essas tarefas é do change do orquestrador.

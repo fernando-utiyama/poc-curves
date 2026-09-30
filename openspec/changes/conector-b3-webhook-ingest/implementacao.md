@@ -236,17 +236,17 @@ Casos de teste (escritos na seção 3; um arquivo por rota, dependências mockad
 | `B3_SWAP_URL`, `B3_SWAP_LOCAL_FILE` | **remover** |
 | `B3_SWAP_EX_URL`, `B3_LOCAL_FILE_ENABLED`, `B3_SWAP_EX_LOCAL_FILE` | manter |
 | `B3_BLOB_CONTAINER`, `B3_BLOB_ACCOUNT_URL`, `B3_BLOB_CONNECTION_STRING` (só local) | manter |
-| `KAFKA_TOPIC` (= `tp-event-b3-curve`), `KAFKA_BROKERS`, `KAFKA_CLIENT_ID`, credenciais Kafka | manter |
+| `KAFKA_TOPIC` (= `tp-event-b3-curve` (no poc; no real, o tópico configurado em `spring.kafka.topics.b3.name`)), `KAFKA_BROKERS`, `KAFKA_CLIENT_ID`, credenciais Kafka | manter |
 | `B3_ORQUESTRADOR_APP_ID` | **nova**: `appid` da identidade do orquestrador |
 
 ---
 
 ## 2. Processor (`services/processor`, Java 21, Spring Boot)
 
-Pacote base: `br.com.poc.starter.srv.hex`. **Mesma base do engine** (guia do `engine-modelos-curva`, seção 0):
+Pacote base: no poc, `br.com.poc.starter.srv.hex`; no real, o do serviço. **O código real manda nos detalhes** (mesma regra dos guias do engine e do curves): classes, configuração do Kafka, nome do tópico, biblioteca de log e registro de beans são os que o serviço já tem; o que não muda é o comportamento das specs. **Mesma base do engine** (guia do `engine-modelos-curva`, seção 0):
 - **Hexagonal, no layout que o serviço já tem:** `application/model` é o domínio (Java puro, sem Spring, JPA, Jackson ou Azure); `application/port/in` e `application/port/out` são as portas; `application/service` implementa os casos de uso; `adapter/in` (Kafka) e `adapter/out` (Blob, banco, cliente do engine) implementam as portas. O serviço só conhece as portas, nunca o adaptador.
 - **Java 21 nativo:** records para todo dado, sealed para as falhas, `switch` com pattern matching, `HexFormat` e `MessageDigest` para o SHA-256, `String.lines()`, `Thread.sleep(Duration)`, `ThreadLocalRandom`. Nada de tipo próprio de data, relógio ou "utils".
-- **Virtual threads:** `spring.threads.virtual.enabled: true`; o listener do Kafka roda numa virtual thread, então as esperas das novas tentativas (`Thread.sleep`) não prendem thread do sistema. Sem `synchronized`.
+- **Virtual threads:** `spring.threads.virtual.enabled: true`. Conferir se o listener do Kafka de fato roda em virtual thread: uma fábrica de listener própria que não passa pelo configurador do Spring Boot (`ConcurrentKafkaListenerContainerFactoryConfigurer`) ignora essa propriedade e as `spring.kafka.listener.*` (é o caso do processor real). Nesse caso, configurar a fábrica pelo configurador; o comportamento das novas tentativas não depende disso, só o uso de thread do sistema durante a espera. Sem `synchronized`.
 - **Fuso da JVM:** o `main` faz `TimeZone.setDefault(TimeZone.getTimeZone("America/Sao_Paulo"))` antes do Spring, e um `ApplicationRunner` impede a subida com outro fuso. Os instantes de log (`CARGA_FALHOU` etc.) saem de `OffsetDateTime.now()`, já com `-03:00`.
 - **Sem Lombok nem MapStruct no código novo:** conversões em métodos estáticos dos records.
 
@@ -292,7 +292,7 @@ spring:
       ack-mode: manual
 ```
 
-Verificar em `adapter/common/json/config/KafkaConfig.java` que o bean `kafkaListenerContainerFactory` usa `AckMode.MANUAL`; se não usar, ajustar só o `AckMode`.
+Verificar na configuração do Kafka do serviço (no poc, `adapter/common/json/config/KafkaConfig.java`) que a fábrica de listener usa `AckMode.MANUAL` e tem o tratador de erro ligado (`setCommonErrorHandler`); se não, ajustar só isso.
 
 ### 2.4 Modelo `application/model/AvisoCargaB3.java`
 
@@ -421,7 +421,7 @@ O tratamento final usa `switch` com pattern matching sobre a falha (`case FalhaD
 
 Qualquer `FalhaDefinitivaException` → log `CARGA_FALHOU` (nível `ERRO`, campos: `idCarga`, `dataBase`, `motivo`, `etapa`, `estado` = `GRAVADA_SEM_AVISO` se a etapa for `AVISO`, senão `NAO_GRAVADA`, `tentativas`, instante de Brasília) + métrica, e **retornar normalmente** (a mensagem é confirmada).
 
-`B3KafkaConsumer`: mantém `@KafkaListener(topics = "tp-event-b3-curve", groupId = "tp-event-extraction-group", containerFactory = "kafkaListenerContainerFactory")`; recebe `String message`, o cabeçalho `X-Correlation-Id` (`@Header(name = "X-Correlation-Id", required = false) byte[]`, na falta `UUID.randomUUID()`) e `Acknowledgment`; chama `processar` e depois `ack.acknowledge()` sempre, a não ser que `processar` lance exceção inesperada (aí não confirma e relança).
+`B3KafkaConsumer`: mantém o `@KafkaListener` que já existe, com o tópico pela propriedade (`topics = "${spring.kafka.topics.b3.name}"`; no poc o valor é `tp-event-b3-curve`), o `groupId` e a fábrica que o serviço já usa; recebe `String message`, o cabeçalho `X-Correlation-Id` (`@Header(name = "X-Correlation-Id", required = false) byte[]`, na falta `UUID.randomUUID()`) e `Acknowledgment`; chama `processar` e depois `ack.acknowledge()` sempre, a não ser que `processar` lance exceção inesperada (aí não confirma e relança).
 
 Métricas (Micrometer): `processor_b3_carga_total{resultado}` (`SUCESSO`, `SUCESSO_COM_CODIGOS_INVALIDOS`, `FALHOU`), `processor_b3_carga_falhou_total{etapa,estado}`, `processor_b3_aviso_atrasado_total`, `processor_b3_carga_duracao_segundos`.
 

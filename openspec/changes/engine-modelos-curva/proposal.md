@@ -1,5 +1,7 @@
 ## Why
 
+> **Dividida em 2026-09-30.** A primeira parte (construir, gravar, consultar e interpolar as 7 curvas com os modelos e calendários nativos, e as rotas básicas usadas pelos outros serviços) está na change `engine-construcao-curvas`, que vem antes. Esta change mantém o design e o guia de implementação comuns e entrega o resto: origem secundária, curvas derivadas, scripts Groovy no Blob, simulação e memória de cálculo, auditoria, calendário por planilha, resiliência, autenticação e testes em massa. O texto abaixo descreve o engine inteiro, como contexto das duas partes.
+
 O primeiro objetivo do projeto é entregar 7 curvas: DIxPRE, DCL, PTAX, DPL e IBOVESPA (Taxa Swap B3), NTN-B (ANBIMA) e SOFR (Bloomberg). As três fontes pedem tratamento diferente:
 - as curvas B3 chegam prontas no `TaxaSwap.txt` (278 vértices por curva, com 7 casas decimais);
 - a NTN-B exige bootstrap, porque a taxa indicativa da ANBIMA é a taxa de um título com cupom, não taxa zero;
@@ -60,20 +62,17 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
 ## Capabilities
 
 ### New Capabilities
-- `curve-build-pipeline`: cadastro e itens obrigatórios, unidades, contagem de tempo, cotação, bases de interpolação, interpoladores, extrapolação, domínio, arredondamento, gravação dos pontos com trava, reconstrução, interpolação sob demanda, proveniência, `hashPontos` e log.
-- `curve-extension-models`: contratos dos modelos, nomes QuantLib, modelos e calendários nativos, ordem de resolução, versões e estados de script, validação e contenção.
-- `curve-engine-api`: rotas, parâmetros, códigos de erro, correlação, resolução por código e nome, catálogo, construção, consulta, interpolação, saída `xlsx` e `zip`, auditoria montada na hora, situação para o painel, valores aceitos, rotas de calendário, autenticação e papéis, e gestão de scripts.
-- `curve-calculation-memory`: simulação sem gravação, comparação com os pontos gravados e planilha de memória de cálculo com abas e colunas fixas.
-- `curve-load-trigger`: webhook de carga concluída, construção automática da data pelo orquestrador, construção disparada só para curvas sem pontos, comparação com a fonte atual sem recálculo automático, construção em cadeia das derivadas e conferência da quantidade lida.
-- `curve-audit-history`: auditoria de construções e recálculos no log; resumo em `tCurvaMercd`; arquivo de auditoria montado na hora.
-- `calendar-management`: calendário por lista, importação de planilha de feriados gerando script Groovy versionado, validação e exportação no mesmo formato.
+- `curve-calculation-memory`: simulação sem gravação, comparação com os pontos gravados e planilha de memória de cálculo com abas e colunas fixas, e pacote zip.
 - `curve-engine-resilience`: tempos limite, repetição, degradação com o Blob fora, saúde e prontidão, logs de requisição e de dependência, e métricas.
-- `b3-ready-curve-model`: `PRONTA_TS_B3`, validação das linhas do `TaxaSwap.txt`, cadastro das 5 curvas B3 e oráculo contra o arquivo.
-- `ntnb-anbima-curve-model`: `NTNB_BOOTSTRAP_ANBIMA`, leitura de `tAnbmaCurvaPrimr`, fluxo de caixa com cupom fixo, cotação, bootstrap por bisseção e cadastro da NTN-B.
-- `sofr-bloomberg-curve-model`: `SOFR_ZERO_BLOOMBERG`, leitura dos nós por tenor, conversão de tenor em data, duplicidade e cadastro da SOFR.
 
 ### Modified Capabilities
-<!-- Nenhuma: não há specs arquivadas na develop. -->
+Acrescentam requisitos às capabilities criadas pela change `engine-construcao-curvas`:
+- `curve-build-pipeline`: curva derivada e construção por origem secundária.
+- `curve-extension-models`: ordem de resolução, scripts no Blob, mesma versão em todas as instâncias, versões e estados, validação e contenção.
+- `curve-engine-api`: rotas de operação e extensões, autenticação e papéis, saída em planilha e gestão de scripts.
+- `curve-load-trigger`: construção em cadeia das derivadas.
+- `curve-audit-history`: auditoria no log e arquivo de auditoria montado na hora.
+- `calendar-management`: calendário por lista, importação e validação da planilha, exportação em planilha e por versão.
 
 ## Impact
 

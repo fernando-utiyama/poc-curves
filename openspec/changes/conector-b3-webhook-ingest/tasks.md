@@ -4,7 +4,7 @@ Guia de implementação passo a passo (arquivos, assinaturas, SQL, configuraçã
 
 - [ ] 1.1 Converter o texto na forma canônica (linhas por `\r\n`, `\n` ou `\r`, sem linhas vazias, junção por `\n`, Latin-1, rejeitando caractere fora do Latin-1), calcular `hashArquivo` sobre ela, ler a data de geração (posições 12–19 da primeira linha não vazia) e gerar `idCarga`, interrompendo sem publicar se o arquivo for vazio ou a data inválida; verificar que o mesmo conteúdo com `\r\n` e com `\n` gera o mesmo `idCarga`, que um caractere diferente gera outro, e os casos de interrupção
 - [ ] 1.2 Arquivar o arquivo em `b3/{AAAAMMDD}/cargas/{idCarga}/TaxaSwap.txt` com `If-None-Match: *`, tratando arquivo existente como sucesso; verificar com o cliente do Blob simulado a primeira gravação, a repetição (409) e a falha do Blob interrompendo antes da publicação
-- [ ] 1.3 Publicar o aviso de carga em `tp-event-b3-curve` (`KAFKA_TOPIC`) com chave `B3-TS-{AAAAMMDD}`, produtor idempotente, `acks=all` e `geradoEm` no horário de Brasília; verificar o corpo contra a spec, que duas cargas da mesma data usam a mesma chave e que nenhuma mensagem por vértice é publicada
+- [ ] 1.3 Publicar o aviso de carga em `tp-event-b3-curve` (no poc; no real, o tópico configurado em `spring.kafka.topics.b3.name`) (`KAFKA_TOPIC`) com chave `B3-TS-{AAAAMMDD}`, produtor idempotente, `acks=all` e `geradoEm` no horário de Brasília; verificar o corpo contra a spec, que duas cargas da mesma data usam a mesma chave e que nenhuma mensagem por vértice é publicada
 
 ## 2. Conector: rotas
 

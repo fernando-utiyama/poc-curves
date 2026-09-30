@@ -44,13 +44,3 @@ O nome do arquivo SHALL ser `{codigo}_{dataBase}_AUDITORIA_{AAAAMMDDHHmmss}.xlsx
 - **WHEN** o gestor pede pelo front a auditoria da `PRE` de `2026-09-14`, que teve um ponto editado à mão depois da construção
 - **THEN** o arquivo é montado na hora, com os 278 pontos gravados, a aba `Conferencia` mostrando o ponto `DIFERENTE` entre o gravado e o que a fonte produz, e nada é gravado no Blob nem no banco
 
-### Requirement: Resumo da última construção em tCurvaMercd
-Na mesma transação de uma construção ou reconstrução bem-sucedida, o engine SHALL atualizar, na linha da curva em `tCurvaMercd` (já travada pela construção):
-- `dBaseReft` = a maior entre a data-base construída e o valor atual (nunca retrocede);
-- `cUsuarCalc` = usuário ou identidade de serviço que construiu.
-
-O engine MUST NOT alterar nenhuma outra coluna de `tCurvaMercd`. A edição manual de pontos no `services/curves` também não altera essas colunas. O catálogo de curvas SHALL devolver `dBaseReft` como `ultimaDataBase`.
-
-#### Scenario: Reconstrução de data antiga
-- **WHEN** a `PRE` tem `dBaseReft` = `2026-09-14` e a data `2026-09-10` é reconstruída
-- **THEN** `dBaseReft` continua `2026-09-14`, e `cUsuarCalc` passa a ser o usuário da reconstrução

@@ -36,8 +36,8 @@ Além da validação comum de calendário, a validação de uma versão gerada p
 - **WHEN** a versão gerada de uma planilha com 1.000 feriados é validada
 - **THEN** a validação percorre toda a cobertura e aprova a versão
 
-### Requirement: Exportação dos feriados
-`GET /api/v1/calendarios/{nome}?mercado=&anoInicial=&anoFinal=&versao=&formato=` SHALL exigir o papel `Curvas.Leitura` e devolver os feriados do calendário no intervalo: os dias de segunda a sexta que não são úteis. Sem `versao`, o calendário SHALL ser resolvido como numa construção (versão ativa ou nativo). Com `versao`, SHALL usar aquela versão. Em `formato=xlsx`, a planilha SHALL ter a aba `Feriados` no mesmo formato da importação e uma aba `Resumo` com nome, mercado, origem, versão, hash, `estadoScript` e cobertura. Em `formato=json`, o mesmo conteúdo. O intervalo MUST ter no máximo 150 anos, e, para calendário por lista, estar dentro da cobertura; senão, 400 `PARAMETRO_INVALIDO`.
+### Requirement: Exportação dos feriados em planilha e por versão
+A exportação de feriados da change `engine-construcao-curvas` SHALL aceitar também `versao` e `formato=xlsx`, e valer para calendários Groovy e por lista. Sem `versao`, o calendário SHALL ser resolvido como numa construção (versão ativa ou nativo). Com `versao`, SHALL usar aquela versão. Em `formato=xlsx`, a planilha SHALL ter a aba `Feriados` no mesmo formato da importação e uma aba `Resumo` com nome, mercado, origem, versão, hash, `estadoScript` e cobertura. Em `formato=json`, o mesmo conteúdo. O intervalo MUST ter no máximo 150 anos, e, para calendário por lista, estar dentro da cobertura; senão, 400 `PARAMETRO_INVALIDO`.
 
 #### Scenario: Ida e volta
 - **WHEN** o `Brazil`/`Settlement` nativo é exportado de 2001 a 2100 e a planilha é importada sem alteração com a mesma cobertura

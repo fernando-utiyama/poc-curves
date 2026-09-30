@@ -194,7 +194,7 @@ O SOFR é publicado pelo Fed de Nova York nos dias úteis do Federal Reserve. Os
 - Números como células numéricas, para que a planilha possa ser recalculada, com a limitação de 15 dígitos significativos do Excel registrada no `Resumo`. A precisão completa está no JSON.
 
 ### D21. Observabilidade e roteiro de investigação
-Logs JSON (o engine já tem `logstash-logback-encoder`) com `correlationId`, código, nome e data-base nos eventos da spec `curve-build-pipeline`. O histórico de quem gravou o quê está no log (`CURVA_GRAVADA` no engine, `PONTOS_EDITADOS` no `services/curves`), e o estado de agora, no arquivo de auditoria montado na hora (D23).
+Logs JSON (pela biblioteca de log que o serviço já usa) com `correlationId`, código, nome e data-base nos eventos da spec `curve-build-pipeline`. O histórico de quem gravou o quê está no log (`CURVA_GRAVADA` no engine, `PONTOS_EDITADOS` no `services/curves`), e o estado de agora, no arquivo de auditoria montado na hora (D23).
 
 Roteiro para "a curva X da data D está errada":
 1. Baixar `GET /curvas/X/D/auditoria?formato=xlsx`: pontos gravados, cadastro vigente, e a aba `Conferencia` com o que a fonte produz agora, ponto a ponto. Pontos `DIFERENTE` indicam edição manual, republicação da fonte ou cadastro alterado depois da construção.

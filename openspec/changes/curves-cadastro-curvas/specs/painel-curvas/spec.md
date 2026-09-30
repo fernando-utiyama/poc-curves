@@ -87,7 +87,7 @@ A situação SHALL ser decidida nesta ordem, pela primeira regra que se aplica:
 - **THEN** a `SOFR` aparece como `NAO_E_DIA_UTIL`, sem `atencao`, e as curvas B3 seguem as demais regras
 
 ### Requirement: Dados do engine sem bloquear o painel
-O serviço SHALL obter o insumo e a conferência por `GET /api/v1/curvas/situacao?dataBase=` do engine (spec `curve-engine-api` do change `engine-modelos-curva`), calculados na hora, e os calendários pela exportação de calendário do engine, com token de serviço, numa chamada de cada por consulta do painel, com tempo limite de 60 segundos para a situação e 10 segundos para o calendário. O painel MUST NOT falhar por causa do engine: se ele não responder, as linhas SHALL vir com o que o curves tem (cadastro, última data publicada, pontos gravados), `situacao` = `SITUACAO_INDISPONIVEL`, e o aviso geral `ENGINE_INDISPONIVEL`.
+O serviço SHALL obter o insumo e a conferência por `GET /api/v1/curvas/situacao?dataBase=` do engine (spec `curve-engine-api` do change `engine-construcao-curvas`), calculados na hora, e os calendários pela exportação de calendário do engine, com token de serviço, numa chamada de cada por consulta do painel, com tempo limite de 60 segundos para a situação e 10 segundos para o calendário. O painel MUST NOT falhar por causa do engine: se ele não responder, as linhas SHALL vir com o que o curves tem (cadastro, última data publicada, pontos gravados), `situacao` = `SITUACAO_INDISPONIVEL`, e o aviso geral `ENGINE_INDISPONIVEL`.
 
 #### Scenario: Engine fora
 - **WHEN** o engine não responde e o gestor abre o painel

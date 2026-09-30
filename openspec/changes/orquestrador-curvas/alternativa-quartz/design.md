@@ -9,7 +9,7 @@
 - **Mapeamento trocado.** Em `TarefaJpaMapper`, `domain.descricao` vem de `cAcaoOperSist` e `domain.action` vem de `rTrefa`, ao contrário do que os nomes das colunas sugerem.
 - **Limite de cron.** `tTrefaAgnda.cRegraAgnda` é `VARCHAR(15)`, e `TarefaRequestDto` valida `@Size(max = 15)`.
 - **Conector B3** (change `conector-b3-webhook-ingest`): `POST /api/b3/taxa-swap/download?date=AAAA-MM-DD` responde 200 com `dataBase` e `idCarga` (a busca de dias anteriores pode devolver um arquivo antigo), 502/503 em falha; `POST /api/b3/taxa-swap/reprocessamento?dataBase=` reprocessa.
-- **Engine** (change `engine-modelos-curva`): `POST /api/v1/construcoes/{dataBase}` (papel `Curvas.Orquestrador`), idempotente; `GET /api/v1/calendarios/Brazil?mercado=Settlement&anoInicial=&anoFinal=` (papel `Curvas.Leitura`).
+- **Engine** (change `engine-construcao-curvas`): `POST /api/v1/construcoes/{dataBase}` (papel `Curvas.Orquestrador`), idempotente; `GET /api/v1/calendarios/Brazil?mercado=Settlement&anoInicial=&anoFinal=` (papel `Curvas.Leitura`).
 
 ## Goals / Non-Goals
 

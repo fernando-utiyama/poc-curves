@@ -52,6 +52,6 @@ Além disso, quando a fonte falha ou traz um valor errado, o gestor da curva pre
 - **Entra ID:** papel novo `Curvas.Cadastro` no mesmo registro de aplicação do engine; a identidade do curves recebe `Curvas.Leitura` e `Curvas.Operador` do engine (este para regravar a curva interpolada depois de uma edição manual).
 - **Depende de:**
   - CRUD de provedores (`tPrvdrDadoMercd`), de outro dev, com os identificadores `B3`, `ANBIMA` e `BLOOMBERG` que o engine e o processor usam, e o provedor interno `TCEN` das curvas derivadas;
-  - do change `engine-modelos-curva`: regras de parâmetros e fórmula do `hashPontos` da spec `curve-build-pipeline`, e rotas `GET /api/v1/valores-cadastro`, `GET /api/v1/curvas/situacao` e de exportação de calendário.
+  - do change `engine-construcao-curvas`: regras de parâmetros e fórmula do `hashPontos` da spec `curve-build-pipeline`, e rotas `GET /api/v1/valores-cadastro`, `GET /api/v1/curvas/situacao` e de exportação de calendário.
 - **Fora de escopo:** CRUD de provedores (outro dev); construção, recálculo e interpolação (engine).
 - **Efeito no engine:** inativar a curva, ou deixar a data-base fora da vigência dela, faz a carga não construí-la automaticamente; o usuário ainda pode construí-la pelo engine. A edição de pontos sai do engine, que passa a tratar na interpolação os pontos gravados à mão fora das regras de negócio.

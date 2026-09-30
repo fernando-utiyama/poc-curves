@@ -57,7 +57,7 @@ Antes de publicar, o conector SHALL gravar a forma canônica no container `B3_BL
 - **THEN** as duas cópias são gravadas em `b3/20260914/`, e a mensagem sai com `dataBase` = `2026-09-14`
 
 ### Requirement: Aviso de carga no tópico existente
-O conector SHALL publicar uma única mensagem por carga no tópico já existente `KAFKA_TOPIC` (`tp-event-b3-curve`), substituindo o formato atual de uma mensagem por vértice. A mensagem SHALL ter:
+O conector SHALL publicar uma única mensagem por carga no tópico já existente `KAFKA_TOPIC` (`tp-event-b3-curve` (no poc; no real, o tópico configurado em `spring.kafka.topics.b3.name`)), substituindo o formato atual de uma mensagem por vértice. A mensagem SHALL ter:
 - chave `B3-TS-{AAAAMMDD}` (texto UTF-8), para que todas as cargas de uma data caiam na mesma partição e sejam processadas em ordem;
 - cabeçalho `X-Correlation-Id` com o identificador de correlação da execução (o recebido na requisição ou um UUID gerado);
 - valor em JSON UTF-8, com todos os campos obrigatórios:

@@ -23,7 +23,8 @@ Banco: o schema real está em `db/migration/001_SCRIPT_INICIAL.sql`. Nenhum serv
 ```
 openspec/changes/
 ├── conector-b3-webhook-ingest   # conector B3 e processor: carga do TaxaSwap
-├── engine-modelos-curva         # engine: modelos, construção, API, auditoria
+├── engine-construcao-curvas     # engine, parte 1: as 7 curvas e as rotas usadas pelos outros serviços
+├── engine-modelos-curva         # engine, parte 2: Groovy, memória de cálculo, auditoria, resiliência
 ├── curves-cadastro-curvas       # curves: cadastro, painel, pontos manuais, bruto B3
 ├── orquestrador-curvas          # orquestrador: tarefas e disparos
 └── banco-curvas-ajustes         # ALTER de tBbergCurvaPrimr e DROP de tCurvaData

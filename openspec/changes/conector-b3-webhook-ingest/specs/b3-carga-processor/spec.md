@@ -1,6 +1,6 @@
 ## Purpose
 
-No `services/processor`, consumir o aviso de carga do `TaxaSwap.txt` publicado pelo conector no tópico existente `tp-event-b3-curve`, ler o arquivo bruto arquivado no Blob, interpretá-lo pelo leiaute oficial da B3, gravar os vértices em `tBtrsCurvaPrimr` sob as curvas de mercado ligadas a cada código em `tCurvaPrvdr`, numa única transação, e, depois do commit, avisar o engine de que a carga está completa. O processor é o único ponto que interpreta e grava o arquivo.
+No `services/processor`, consumir o aviso de carga do `TaxaSwap.txt` publicado pelo conector no tópico existente `tp-event-b3-curve` (no poc; no real, o tópico configurado em `spring.kafka.topics.b3.name`), ler o arquivo bruto arquivado no Blob, interpretá-lo pelo leiaute oficial da B3, gravar os vértices em `tBtrsCurvaPrimr` sob as curvas de mercado ligadas a cada código em `tCurvaPrvdr`, numa única transação, e, depois do commit, avisar o engine de que a carga está completa. O processor é o único ponto que interpreta e grava o arquivo.
 
 ## ADDED Requirements
 
@@ -109,7 +109,7 @@ A FK de `tBtrsCurvaPrimr.cTickerIndcd` fica satisfeita porque `tCurvaPrvdr.cTick
 - **THEN** as duas curvas recebem os 278 vértices do `PRE` em `tBtrsCurvaPrimr`
 
 ### Requirement: Aviso ao engine depois do commit
-Depois do commit, o processor SHALL chamar `POST {processor.engine.url}/api/v1/cargas` (spec `curve-load-trigger` do change `engine-modelos-curva`) com o corpo:
+Depois do commit, o processor SHALL chamar `POST {processor.engine.url}/api/v1/cargas` (spec `curve-load-trigger` do change `engine-construcao-curvas`) com o corpo:
 
 ```json
 { "idCarga": "B3-TS-20260914-1a2b3c4d5e6f", "fonte": "B3", "produto": "TS", "dataBase": "2026-09-14", "linhasPorCodigo": { "PRE": 278, "DCL": 278 } }

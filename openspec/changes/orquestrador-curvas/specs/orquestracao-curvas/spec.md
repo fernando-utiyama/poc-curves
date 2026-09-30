@@ -55,7 +55,7 @@ Cada fonte tem a sua tarefa, então as tentativas, o sucesso e o alerta de uma f
 - **THEN** a ocorrência das 18h10 roda na instância B
 
 ### Requirement: `action` de construção da data
-O caminho principal da construção é o webhook do processor: cada carga gravada avisa o engine, que constrói na hora as curvas da carga e, em cadeia, as derivadas cujas curvas componentes ficaram completas (change `engine-modelos-curva`, spec `curve-load-trigger`). `ConstrucaoDataTaskActionAdapter` (`action` = `construcao-curvas-data`) é a rede de segurança, com a mesma prioridade de construir o quanto antes, para o que o webhook não cobre: engine fora além da janela de repetição do processor, e curva derivada cuja curva componente foi construída à mão pela API (a construção manual não dispara a cadeia).
+O caminho principal da construção é o webhook do processor: cada carga gravada avisa o engine, que constrói na hora as curvas da carga e, em cadeia, as derivadas cujas curvas componentes ficaram completas (changes `engine-construcao-curvas` e `engine-modelos-curva`, spec `curve-load-trigger`). `ConstrucaoDataTaskActionAdapter` (`action` = `construcao-curvas-data`) é a rede de segurança, com a mesma prioridade de construir o quanto antes, para o que o webhook não cobre: engine fora além da janela de repetição do processor, e curva derivada cuja curva componente foi construída à mão pela API (a construção manual não dispara a cadeia).
 
 A execução SHALL chamar `POST {destino=engine}/api/v1/construcoes/{dataBase}`, que constrói toda curva da data com insumo e sem pontos e nunca recalcula. A tarefa SHALL ter `regraIntervalo` (ex.: `PT10M`, ocorrências alinhadas à meia-noite de Brasília) e os parâmetros `inicioHorario` e `limiteHorario` (`HH:mm`, Brasília).
 

@@ -1,6 +1,6 @@
 ## Why
 
-As changes `engine-modelos-curva`, `curves-cadastro-curvas` e `conector-b3-webhook-ingest` foram escritas sem mudar o banco, porque o schema oficial não podia ser alterado nesta fase. Dois pontos do schema, porém, atrapalham diretamente o que vem a seguir e precisam ser levados ao dono do schema:
+As changes `engine-construcao-curvas`, `engine-modelos-curva`, `curves-cadastro-curvas` e `conector-b3-webhook-ingest` foram escritas sem mudar o banco, porque o schema oficial não podia ser alterado nesta fase. Dois pontos do schema, porém, atrapalham diretamente o que vem a seguir e precisam ser levados ao dono do schema:
 
 - **Ticker Bloomberg curto demais.** `tBbergCurvaPrimr.cTickerBberg` é `CHAR(20)`. Os nós da SOFR são publicados como `S0490Z <tenor> BLC2 Curncy`, e `S0490Z 15M BLC2 Curncy` tem 22 caracteres. Sem aumentar a coluna, o feeder Bloomberg teria de guardar uma forma encurtada e inventada do ticker, diferente do que a Bloomberg publica.
 - **`tCurvaData` sobrando.** A curva construída (os vértices, com dias e fatores) fica em `tDadoVertcCurva`, e a curva interpolada, em `tDadoCurva`. `tCurvaData` não é usada por ninguém e tem uma FK para `tDadoCurva` que só confunde o modelo; sai.
@@ -22,7 +22,7 @@ As changes `engine-modelos-curva`, `curves-cadastro-curvas` e `conector-b3-webho
 ## Impact
 
 - **Banco:** `ALTER` em `tBbergCurvaPrimr` e `DROP` de `tCurvaData`, no banco ainda vazio. Nenhuma tabela nova.
-- **Engine (`engine-modelos-curva`):** o modelo `SOFR_ZERO_BLOOMBERG` lê os nós em `tBbergCurvaPrimr` (sem tabela `mkt.SofrCurveRaw`), com o ticker completo depois desta change. O engine grava a curva construída em `tDadoVertcCurva` e a interpolada em `tDadoCurva`, e não usa `tCurvaData`.
+- **Engine (`engine-construcao-curvas`):** o modelo `SOFR_ZERO_BLOOMBERG` lê os nós em `tBbergCurvaPrimr` (sem tabela `mkt.SofrCurveRaw`), com o ticker completo depois desta change. O engine grava a curva construída em `tDadoVertcCurva` e a interpolada em `tDadoCurva`, e não usa `tCurvaData`.
 - **Feeder e processor Bloomberg:** gravam `cTickerBberg` com o ticker completo.
 - **Leitores de `tCurvaData`:** nenhum. A curva interpolada vem de `tDadoCurva`, gravada pelo engine.
 - **Dono do schema:** precisa aprovar e aplicar no ambiente real.

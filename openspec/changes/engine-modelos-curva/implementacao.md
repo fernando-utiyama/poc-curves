@@ -940,6 +940,8 @@ Por tipo (`construcao`, `interpolacao`, `calendario`): versão fixada no cadastr
 
 ### 11.3 `adapter/out/groovy/CarregadorGroovy` (implementa `CompiladorScriptsPort`)
 
+Os pacotes permitidos são os do `domain` do serviço, pelo pacote raiz real (no poc, `br.com.poc.domain.*`): montar a lista a partir do pacote de uma classe do domínio (`Calendario.class.getPackageName()` e irmãos), não por texto fixo, para os scripts funcionarem igual no poc e no real.
+
 ```java
 var s = new SecureASTCustomizer();
 s.setIndirectImportCheckEnabled(true);

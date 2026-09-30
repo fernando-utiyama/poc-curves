@@ -1,6 +1,6 @@
 ## Purpose
 
-No `services/curves`, listar, consultar, incluir, alterar e apagar à mão as linhas do dado bruto da B3 (`tBtrsCurvaPrimr`), como contingência para corrigir ou digitar o que o processor grava do `TaxaSwap.txt`. O front primeiro mostra uma listagem geral, uma linha por curva e data-base com dado bruto, para o gestor selecionar; depois abre as linhas da curva naquela data e faz a manutenção linha a linha. O serviço só grava o bruto: nada é disparado no engine, e a curva construída muda só numa construção posterior (spec `curve-load-trigger` e `curve-engine-api` do change `engine-modelos-curva`).
+No `services/curves`, listar, consultar, incluir, alterar e apagar à mão as linhas do dado bruto da B3 (`tBtrsCurvaPrimr`), como contingência para corrigir ou digitar o que o processor grava do `TaxaSwap.txt`. O front primeiro mostra uma listagem geral, uma linha por curva e data-base com dado bruto, para o gestor selecionar; depois abre as linhas da curva naquela data e faz a manutenção linha a linha. O serviço só grava o bruto: nada é disparado no engine, e a curva construída muda só numa construção posterior (spec `curve-load-trigger` e `curve-engine-api` do change `engine-construcao-curvas`).
 
 ## ADDED Requirements
 

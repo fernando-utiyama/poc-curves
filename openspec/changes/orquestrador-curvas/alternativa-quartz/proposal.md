@@ -35,5 +35,5 @@ O orquestrador (`services/orchestrator`) já foi transcrito do código real: é 
 - **Banco:** terceiro script, `scripts/quartz-orquestrador.sql` (11 tabelas `QRTZ_*`, com volta), a pedir ao DBA.
 - **Entra ID:** identidade de serviço do orquestrador com `Curvas.Orquestrador` e `Curvas.Leitura` no engine; `Curvas.Operador`/`Curvas.Leitura` para quem chama a API do orquestrador.
 - **Front/BFF:** o dashboard passa a consumir `GET /api/v1/alertas` (change do front, futura).
-- **Dependências:** `b3/taxa-swap/download` e `b3/taxa-swap/reprocessamento` do conector (change `conector-b3-webhook-ingest`); `POST /api/v1/construcoes/{dataBase}` e a exportação de calendário do engine (change `engine-modelos-curva`).
+- **Dependências:** `b3/taxa-swap/download` e `b3/taxa-swap/reprocessamento` do conector (change `conector-b3-webhook-ingest`); `POST /api/v1/construcoes/{dataBase}` e a exportação de calendário do engine (change `engine-construcao-curvas`).
 - **Fora de escopo:** download ANBIMA e Bloomberg, a tela do dashboard, lógica de curva, alteração de tabela existente.
