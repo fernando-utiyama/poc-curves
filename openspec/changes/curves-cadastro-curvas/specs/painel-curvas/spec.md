@@ -56,7 +56,7 @@ A situação SHALL ser decidida nesta ordem, pela primeira regra que se aplica:
 | `COM_ERRO` | sem pontos gravados, com insumo, e a conferência dá erro (é o erro que a construção dá) | sim |
 | `NAO_CONSTRUIDA` | sem pontos gravados, com insumo, e a conferência está `OK`: a curva poderia ser construída e não foi | sim |
 
-`atrasada` SHALL ser `true` quando a situação for `AGUARDANDO_CARGA` ou `NAO_CONSTRUIDA`, a data-base for hoje, e o horário atual (Brasília) tiver passado do horário esperado do provedor da origem, configurado em `curves.painel.horario-esperado.{provedor}` (ex.: `curves.painel.horario-esperado.B3=20:00`). Para data-base passada, `AGUARDANDO_CARGA` e `NAO_CONSTRUIDA` são sempre `atrasada`. Sem horário configurado para o provedor, `atrasada` é `false` na data de hoje.
+`atrasada` SHALL ser `true` quando a situação for `AGUARDANDO_CARGA` ou `NAO_CONSTRUIDA` e a data-base for anterior a hoje (horário de Brasília). Na data-base de hoje, `atrasada` é sempre `false`: o serviço não guarda horário de publicação por provedor, e a carga do dia ainda pode chegar.
 
 #### Scenario: Curva editada à mão
 - **WHEN** a `PRE` de `2026-09-14` foi construída pelo engine e depois teve um ponto alterado no `services/curves`
@@ -75,8 +75,12 @@ A situação SHALL ser decidida nesta ordem, pela primeira regra que se aplica:
 - **THEN** a derivada aparece como `DIVERGENTE_DA_FONTE`, com `motivo` = `PONTOS_DIFERENTES`
 
 #### Scenario: Carga atrasada
-- **WHEN** às 20h30 de hoje a SOFR ainda não tem linhas brutas, e o horário esperado da `BLOOMBERG` é `19:00`
+- **WHEN** a SOFR não tem linhas brutas na data-base de ontem, dia útil nos Estados Unidos
 - **THEN** a linha da `SOFR` tem `situacao` = `AGUARDANDO_CARGA`, `atrasada` = `true` e `atencao` = `true`
+
+#### Scenario: Carga de hoje ainda não chegou
+- **WHEN** a SOFR não tem linhas brutas na data-base de hoje
+- **THEN** a linha da `SOFR` tem `situacao` = `AGUARDANDO_CARGA`, `atrasada` = `false` e `atencao` = `false`
 
 #### Scenario: Feriado americano
 - **WHEN** a data-base é `2026-11-26` (Thanksgiving, dia útil no Brasil)

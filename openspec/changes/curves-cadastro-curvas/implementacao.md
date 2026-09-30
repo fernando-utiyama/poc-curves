@@ -75,11 +75,6 @@ curves:
     timeout-situacao-segundos: 60
     timeout-interpolada-segundos: 60
     cache-valores-minutos: 5
-  painel:
-    horario-esperado:                            # sem padrão: provedor sem horário → atrasada=false hoje
-      B3: ${CURVES_HORARIO_B3:}
-      ANBIMA: ${CURVES_HORARIO_ANBIMA:}
-      BLOOMBERG: ${CURVES_HORARIO_BLOOMBERG:}
   timeout:
     requisicao-segundos: 60
     importacao-pontos-segundos: 120
@@ -318,7 +313,7 @@ Rotas: as da tabela "Rotas da configuração" da spec. `validacao` roda as regra
 2. Uma chamada a `situacao(dataBase)` e uma a `feriados` por consulta. Engine fora → todas as linhas `SITUACAO_INDISPONIVEL` e aviso `ENGINE_INDISPONIVEL`; nunca falha.
 3. Por curva com código (ativas ou não), montar a linha com os campos da tabela "Colunas de cada linha" da spec: curva, origem principal, `origensSecundarias` (ligações de prioridade maior, com o modelo de `MODELOS_POR_ORIGEM` ou `modeloConstrucao`), configuração vigente na data, `ultimaDataPublicada`/`calculadoPor` (`dBaseReft`/`cUsuarCalc`), `quantidadePontos` e `hashPontos` (de `tDadoVertcCurva`), `insumo`, `interpolada` e `conferencia` (do engine).
 4. Situação: a **primeira** regra da tabela "Situação na data-base" da spec que se aplica, nesta ordem: `NAO_E_DIA_UTIL`, `IGNORADA`, `SITUACAO_INDISPONIVEL`, `INTERPOLADA_DESATUALIZADA`, `CONSTRUIDA`, `DIVERGENTE_DA_FONTE`, `AGUARDANDO_COMPONENTES`, `AGUARDANDO_CARGA`, `COM_ERRO`, `NAO_CONSTRUIDA`, com `motivo` e `atencao` da tabela.
-5. `atrasada`: situação `AGUARDANDO_CARGA` ou `NAO_CONSTRUIDA` e (data-base passada, ou data-base hoje e `LocalTime.now()` depois de `curves.painel.horario-esperado.{provedor}`; provedor sem horário → `false` hoje).
+5. `atrasada`: situação `AGUARDANDO_CARGA` ou `NAO_CONSTRUIDA` e `dataBase.isBefore(LocalDate.now())`; na data de hoje, sempre `false`. Sem configuração de horário.
 6. Contadores sobre todas as curvas antes dos filtros; depois aplicar `situacao`, `provedor`, `nome`, `somenteAtencao`; ordenar por código.
 
 ---
@@ -462,11 +457,11 @@ Nada a remover no serviço (é novo ou é do outro dev). Conferir que nenhum có
 ## 13. Ordem de implementação (uma tarefa de `tasks.md` por vez; `mvn -q compile` ao fim de cada uma)
 
 1. Seção 1 (tarefas 1.x).
-2. Seção 2 (2.x), seção 3 (3.x), seção 4 (4.x), seção 5 (4.4).
-3. Seção 7 (5.x).
-4. Seções 8 e 10 (7.x), seção 9 (8.x), origens e dias úteis (9.x).
-5. Seção 6 (6.1).
-6. Seção 11 (10.x).
+2. Seção 2 (2.x), seção 3 (3.x), seção 4 (4.x), seção 5 (4.4). Ao fim: CRUD completo de curva de mercado, ligações com provedor e configuração de cálculo.
+3. Seção 11, curva primária B3 (tarefas 5.x).
+4. Seção 7, planilha do cadastro (6.x).
+5. Seção 6, painel (7.1).
+6. Seções 8 e 10, pontos (8.x), seção 9, planilha de pontos (9.x), origens e dias úteis (10.x).
 7. Seção 14 (testes), seção 15 (homologação).
 
 ## 14. Testes (ao final)
@@ -488,7 +483,7 @@ Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUn
 | `ConfiguracaoCurvaServiceTest` | cenários da spec `configuracao-calculo-curva` (troca a partir de amanhã, correção retroativa, desistência, vigente em data antiga, unidade que invalida, `MODELOS_POR_ORIGEM` com e sem ligação) |
 | `ValoresServiceTest` | engine respondendo; engine fora com `VALORES_SEM_ENGINE`; todo valor com `rotulo` e `descricao`; tabela embutida igual à parte fixa da resposta do engine (resposta gravada em `src/test/resources/valores-engine.json`) |
 | `CadastroPlanilhaServiceTest` | exportar e importar sem editar → zero mudanças; 30 prioridades trocadas; ligação removida; versão existente editada → erro; erro impede o lote; `Controle` antigo → `ALTERADO_POR_OUTRO`; vírgula e ponto juntos → erro; `MODELOS_POR_ORIGEM` malformado |
-| `PainelServiceTest` | todos os cenários da spec `painel-curvas`, uma linha por situação e por `motivo`, engine fora, feriado americano, carga atrasada, origem secundária |
+| `PainelServiceTest` | todos os cenários da spec `painel-curvas`, uma linha por situação e por `motivo`, engine fora, feriado americano, carga atrasada (ontem) e carga de hoje não atrasada, origem secundária |
 | `DadoVerticeCurvaServiceTest` | vetores da seção 0.2 (`hashPontos`, arredondamento, `diasUteis` 76 com 30/360 = 110); cenários da spec `pontos-curva-manual` (um valor, ponto retirado, casas a mais, lista igual sem escrita, conferência divergente desfaz, data sem construção, engine fora com `INTERPOLADA_DESATUALIZADA`, feriado, sábado, repetida); regravação chamada também com `SEM_MUDANCA` |
 | `BtrsCurvaPrimrServiceTest` | cenários da spec `curva-primaria-b3` (listagem da carga, consulta da PRE, linha de outra data → 404, repetidos, valor com 13 casas → 422, correção depois da construção, data sem carga digitada); nenhuma chamada à `EnginePort`; `MAX + 1` com `UPDLOCK, HOLDLOCK` enviado ao repositório; log sem o evento quando o commit falha |
 | `DadoVerticeCurvaPlanilhaServiceTest` | cenários da spec `pontos-curva-planilha`; planilha sem `DiasUteis`; `DiasUteis` apagado → `ALTERACAO`; valor da `PTX` 56,3772259 numérico |
