@@ -118,6 +118,8 @@ Fonte: `docs/TaxaSwap.txt` (data-base `B` = `2026-09-14`), conferidos por uma re
 
 ### 1.1 `pom.xml`: o mínimo de coisas novas
 
+> Na primeira parte (`engine-construcao-curvas`), nenhuma destas dependências entra: sem Blob, Groovy, planilha nem autenticação. Só a meta `build-info`, se for usada na proveniência.
+
 | Acrescentar | Por quê |
 |---|---|
 | `org.springframework.boot:spring-boot-starter-oauth2-resource-server` (versão do Spring Boot) | JWT do Entra ID |
@@ -1083,12 +1085,22 @@ Tabela da spec `curve-engine-resilience`, com as propriedades da seção 1.2. Gr
 
 ## 15. Ordem de implementação (uma tarefa de `tasks.md` por vez; `mvn -q compile` ao fim de cada uma)
 
-1. Seções 1, 2, 3, 4 (tarefas 1.x, 2.x e 15.1).
-2. Seção 6 (3.x). Seção 5 (4.x).
-3. Seção 11 (5.x). Seções 10.1 e 7.6 (6.x). Seção 8 (7.x).
-4. Seção 7 (8.x). Seção 9 (9.x). Seção 14.1 (10.1). Seção 13 (10.4, 12.x). Seções 10.2/10.3 (13.x, 14.6). Seção 12 (14.1–14.4). Seções 14.2–14.4 (11.x, 14.5).
-5. Seção 13.5 (remoções), `mvn compile` limpo.
-6. Seção 16 (testes). Seção 17 (homologação).
+### 15.1 Primeira parte (change `engine-construcao-curvas`)
+
+1. Seções 1, 2, 3, 4 (tarefas 1.x, 2.x e 15.1). Na seção 1, **pular** o que é da segunda parte: no `pom.xml`, nada de Blob, `azure-identity`, POI nem Resource Server; no `application.yml`, nada de `engine.blob`, `engine.groovy` nem `spring.security` (autenticação adiada).
+2. Seção 6 (3.x). Seção 5 (4.1, 4.1b, 4.2, 4.3; a 5.4, origem secundária, é da segunda parte).
+3. Seção 7.6 (6.2). Seção 8 (7.x): o contrato recebe a `MemoriaCalculo` da seção 10.1, só como acumulador, sem planilha.
+4. Seção 7 (8.1, 8.3, 8.2b, 8.4, 8.5, 8.6; a 8.2, simulação como rota, é da segunda parte). Seção 9 (9.1, 9.2, 9.3, 9.3b, 9.4; a 9.5, derivadas, é da segunda parte). Leitura em `READ COMMITTED` (10.3).
+5. Seção 13 (12.0, 12.1, 12.2, 12.4; sem a gestão de scripts, sem segurança). Seção 12, só a exportação de feriados em JSON (14.4).
+6. Seção 13.5 (remoções) e as correções 17.1, 17.2, 17.4, 17.6 a 17.10; `mvn compile` limpo.
+7. Seção 16, só os testes do que foi feito (os de Groovy, Blob, planilha, auditoria e resiliência ficam para a segunda parte). Tarefas 16.1 e 16.2.
+
+### 15.2 Segunda parte (change `engine-modelos-curva`)
+
+1. Seção 1, o que ficou: dependências de Blob, `azure-identity`, POI e Resource Server; `engine.blob`, `engine.groovy`, `spring.security`.
+2. Seção 5.4 (4.2b). Seção 11 (5.x). Seção 10.1 completa (6.1).
+3. Seção 7 (8.2, 8.3b). Seção 9.3 (9.5). Seção 14.1 (10.1). Seção 13 (10.4, 12.3). Seções 10.2/10.3 (13.x, 14.6). Seção 12 (14.1–14.3, e a planilha e a `versao` da 14.4). Seções 14.2–14.4 (11.x, 14.5).
+4. Correções 17.3 e 17.5; testes da segunda parte (seção 16); homologação (seção 17).
 
 ---
 
