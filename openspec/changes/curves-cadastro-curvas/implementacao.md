@@ -12,6 +12,20 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
   - a forma de registrar os serviços (no poc, `@Bean` em `infrastructure/config/BeanConfig`): os serviços novos são registrados **do mesmo jeito** que os existentes; o utilitário de normalização de nome, se houver;
   - entidades já existentes: `CurvaMercdEntity`, `ProvedorEntity` (CRUD de provedores do outro dev, não tocar) e `BloombergCurvaPrimrEntity`. Não criar outra entidade para a mesma tabela; conferir as colunas e os tipos contra o `001_SCRIPT_INICIAL.sql` (seção 2.1).
 - **Classes novas** ficam nos mesmos pacotes e têm o nome da tabela: `CurvaPrvdrEntity`, `ConfgCurvaEntity`, `DadoVertcCurvaEntity`, `DadoCurvaEntity`, `BtrsCurvaPrimrEntity`; portas `CurvaPrvdrRepositoryPort`, `ConfgCurvaRepositoryPort`, `DadoVertcCurvaRepositoryPort`, `DadoCurvaRepositoryPort`, `BtrsCurvaPrimrRepositoryPort`; a `CurvaMercdRepositoryPort` existente ganha os métodos novos. Nomes de infraestrutura (cliente do engine, filtro, planilha) podem ser em inglês.
+- **Onde fica cada tipo de classe** (vale para todo código novo; conferir antes de cada commit):
+
+| Tipo | Camada | Exemplos |
+|---|---|---|
+| regra, `record` de dado, enum, validador, `ETag`, documento canônico, `Input` de caso de uso, resultado | `domain` | `CurvaMercado`, `CurvaMercadoInput`, `CriarCurvaProvedorInput`, `EtagCurvaMercado`, `ValidadorParametros`, `CurvaAuditoria` (o dado) |
+| caso de uso (interface) | `application/port/in/usecase` | `CurvaMercadoUseCase`, `CurvaProvedorUseCase` |
+| porta de saída | `application/port/out` | `CurvaMercdRepositoryPort`, `CurvaPrvdrRepositoryPort`, `ConfgCurvaRepositoryPort`, `BtrsCurvaPrimrRepositoryPort`, `EnginePort`, `EventosPort` |
+| implementação do caso de uso | `application/service` | `CurvaMercadoService`, `CurvaProvedorService`, `ConfiguracaoCurvaService`, `BtrsCurvaPrimrService`, **um só** `ValoresService` |
+| exceção e códigos de erro | `application/exception` | `CadastroErrorCode`, `ConflictException` |
+| controller, `Request`, `Response`, filtro, tratador de erro, serializador JSON | `adapter/in/api/rest` | `CurvaMercadoController`, `CriarCurvaProvedorRequest`, `CorrelationIdFilter` |
+| entidade JPA, repositório Spring Data, adaptador de persistência | `adapter/out/persistence` | `CurvaPrvdrEntity`, `CurvaPrvdrRepository`, `CurvaPrvdrPersistenceAdapter` |
+| cliente do engine, log de eventos, gerador de planilha (POI) | `adapter/out/...` | `EngineHttpClient`, o adaptador de log, `CurvaAuditoriaExcelGenerator` |
+
+  Regras que não se quebram: entidade JPA nunca fora de `adapter/out/persistence`; porta nunca em `adapter`; nada de POI, Jackson, Spring ou JPA no `domain`; `Request`/`Response` só no adaptador de entrada, e o `Input` correspondente no domínio. Portas de saída levam o nome da tabela (`ConfgCurvaRepositoryPort`, não `ConfiguracaoCurvaRepositoryPort`); casos de uso e serviços levam o nome de negócio. Nenhum resquício do nome antigo "ligação" (ex.: `LigacaoCanonicoState` → `CurvaProvedorCanonicoState`).
 - **Dois modelos, sem misturar:** `application/model` (`CurvaMercd`, `Provedor`, `BloombergCurvaPrimr`) é do código existente (beans mutáveis com Lombok) e não é reescrito. O código novo põe as regras em **`br.com.poc.domain`**, Java puro, com `record`s; as portas novas recebem e devolvem esses `record`s. As conversões entidade ↔ `record` ficam no adaptador de persistência.
 - **Mesma base do engine** (guia do `engine-construcao-curvas`, seção 0):
   - **hexagonal:** `domain` em Java puro (regras de campo, vigência, `ETag`, validador de parâmetros, `hashPontos`, 30/360, situação do painel), sem Spring, JPA, Jackson ou POI; `application/port/in/usecase` (um caso de uso por área) e `application/port/out`, uma porta por tabela mais `EnginePort`, `PlanilhaPort` e `EventosPort`; `application/service` implementa os casos de uso; os adaptadores implementam as portas. O serviço conhece só as portas. Dependências: `adapter → application → domain`, nunca o contrário (conferido na seção 14.1);
@@ -444,6 +458,17 @@ SELECT cldtfdUnic, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia FROM tBt
 ## 12. Remover e conferir
 
 Nada a remover no serviço (é novo ou é do outro dev). Conferir que nenhum código do curves grava `dBaseReft`, `cUsuarCalc`, `tDadoCurva` (fora do `DELETE`) nem usa Blob.
+
+### 12.1 Conferência da primeira parte (tarefas 1 a 5), antes do commit
+
+- **Só o que é das tarefas 1 a 5:** curva de mercado, provedores da curva, configuração de cálculo com valores aceitos, curva primária B3 e a base comum (erros, correlação, `ETag`, log `CADASTRO_ALTERADO` e `CURVA_PRIMARIA_EDITADA`, contrato de tipos, catálogo de enums). Os enums de painel e de pontos entram porque o catálogo de `/valores` lista todos (tarefa 1.2b); o evento `PONTOS_EDITADOS`, as rotas de pontos, painel e planilha ficam para a change `curves-operacao-curvas`.
+- **Camadas:** cada classe no lugar da tabela "Onde fica cada tipo de classe" (seção 0).
+- **`ETag`:** o documento canônico usa as chaves `provedores` e `idCurvaProvedor`; o teste do vetor espera `aba7591e409470d609462fc0e077257728f4757e382987712fe7cdb4d4c8ade9` (seção 0.2).
+- **`pom.xml`:** sem Resource Server nem `azure-identity` enquanto a autenticação estiver adiada; `poi-ooxml` só se a auditoria em `xlsx` (tarefa 2.2) entrar agora.
+- **Jackson:** a configuração de `BigDecimal` como texto está no mapper que o Spring MVC usa (Jackson 3); conferido por um teste de rota.
+- **Um serviço de valores só:** nada de dois serviços para `/valores`.
+- **Arquivos gerados fora do código** (cópia do script do banco, documentos `.md` do assistente na raiz): não vão no commit sem decisão do time.
+
 
 ## 13. Ordem de implementação (uma tarefa de `tasks.md` por vez; `mvn -q compile` ao fim de cada uma)
 
