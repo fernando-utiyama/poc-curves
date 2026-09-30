@@ -137,7 +137,6 @@ Quando a carga da B3 falha ou traz um vértice errado, o gestor corrige o bruto 
 - **Fórmula do `hashPontos` em dois serviços.** → Forma canônica do valor definida na spec do engine (sem zeros à direita, independente da escala do banco) e um vetor de teste comum aos dois.
 - **Bruto editado à mão e depois reprocessado.** → O processor substitui as linhas da data inteira; a edição anterior fica no log `CURVA_PRIMARIA_EDITADA` com a linha antes e depois.
 - **Bruto corrigido numa curva já construída não muda nada sozinho.** → Aviso `CURVA_JA_CONSTRUIDA` na resposta; o gestor pede o recálculo forçado no engine.
-- **Serviço ainda não transcrito.** → A change define comportamento, não estrutura; a implementação se encaixa no código real quando ele existir.
 
 ## Migration Plan
 
