@@ -140,7 +140,7 @@ Quando a carga da B3 falha ou traz um vértice errado, o gestor corrige o bruto 
 
 ## Migration Plan
 
-1. Entra ID: criar o papel `Curvas.Cadastro` e atribuí-lo a quem cadastra; atribuir `Curvas.Leitura` e `Curvas.Operador` do engine à identidade gerenciada do curves (o `Curvas.Operador` só para regravar a curva interpolada depois de uma edição manual), que chama o engine para os valores aceitos, a situação do painel e os calendários.
+1. Entra ID (quando a autenticação entrar, numa change própria): criar o papel `Curvas.Cadastro` e atribuí-lo a quem cadastra; atribuir `Curvas.Leitura` e `Curvas.Operador` do engine à identidade gerenciada do curves (o `Curvas.Operador` só para regravar a curva interpolada depois de uma edição manual), que chama o engine para os valores aceitos, a situação do painel e os calendários.
 2. Log: retenção dos eventos `CADASTRO_ALTERADO`, `PONTOS_EDITADOS` e `CURVA_PRIMARIA_EDITADA` definida pela área de risco. O serviço não usa o Blob.
 3. Deploy do serviço junto com o engine sem a edição de pontos. O banco começa vazio: o cadastro entra pela API ou pela planilha (ex.: `exemplo-cadastro-7-curvas.txt`). Linhas de `tCurvaMercd` sem código, se existirem, ficam invisíveis nas rotas.
 4. **Rollback:** voltar os deploys do curves e do engine; os dados gravados continuam válidos para o engine.

@@ -70,6 +70,8 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 
 ### 1.1 `pom.xml`: o mínimo de coisas novas
 
+> **Adiado:** a autenticação (Entra ID, papéis, 401/403 e o token de serviço para o engine) entra numa change própria, depois. Até lá, não acrescentar `spring-boot-starter-oauth2-resource-server` nem `azure-identity`.
+
 O `pom.xml` do serviço já tem JPA, o driver do SQL Server, validação, springdoc, actuator, a biblioteca de log JSON do serviço e `spring-boot-starter-test`. Conferir e acrescentar **só** o que faltar:
 
 | Dependência | Por quê |
@@ -81,6 +83,8 @@ O `pom.xml` do serviço já tem JPA, o driver do SQL Server, validação, spring
 Nada mais: o cliente do engine usa o `java.net.http.HttpClient` do JDK (o `openfeign` do pom fica para as integrações que já o usam), sem ArchUnit e sem dependência de teste além do `spring-boot-starter-test` (seção 14).
 
 ### 1.2 `application.yml` (conferir e acrescentar)
+
+> **Adiado:** a autenticação (Entra ID, papéis, 401/403 e o token de serviço para o engine) entra numa change própria, depois. Até lá, ficam de fora `spring.security` e `curves.engine.escopo`.
 
 ```yaml
 curves:
@@ -167,6 +171,8 @@ Igual ao engine (seção 1.4 do guia do engine): o `main` (`Application.java`) f
 
 ### 1.5 Segurança
 
+> **Adiado** (change própria, depois): esta seção descreve o alvo e não se implementa agora. Até lá, nenhuma rota exige token.
+
 ```java
 .requestMatchers("/actuator/health/**").permitAll()
 .requestMatchers(HttpMethod.GET, "/api/v1/**").hasAnyAuthority("Curvas.Leitura", "Curvas.Cadastro", "Curvas.Operador")
@@ -179,6 +185,8 @@ Igual ao engine (seção 1.4 do guia do engine): o `main` (`Application.java`) f
 A ordem importa: as regras de `GET` e de pontos vêm antes da regra geral de escrita. Usuário: `preferred_username`, senão `appid`.
 
 ### 1.6 Cliente do engine: porta `EnginePort` e adaptador `adapter/out/client/engine/EngineHttpClient.java`
+
+> **Adiado:** a autenticação (Entra ID, papéis, 401/403 e o token de serviço para o engine) entra numa change própria, depois. Até lá, o cliente chama o engine sem `Authorization`; o resto desta seção vale.
 
 `EnginePort` (em `application/port/out`) devolve um `sealed interface RespostaEngine<T>` com `Disponivel<T>(T valor)` e `Indisponivel<T>(String motivo)` (records). O adaptador usa o **`java.net.http.HttpClient`** do JDK (uma instância, `Version.HTTP_1_1`, `connectTimeout` 5 s), com `HttpRequest.timeout(...)` por chamada, `X-Correlation-Id` do MDC e `Authorization: Bearer` do token de serviço: `new DefaultAzureCredentialBuilder().build().getTokenSync(new TokenRequestContext().addScopes(escopo))`, guardado em um `volatile record Token(String valor, Instant expira)` e renovado 5 minutos antes de expirar (renovação em `ReentrantLock`, sem `synchronized`). O JSON do engine é lido com o `ObjectMapper` do Spring para `record`s do adaptador. Chamadas e tempos:
 
