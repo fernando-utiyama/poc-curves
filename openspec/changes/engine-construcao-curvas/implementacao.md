@@ -591,15 +591,15 @@ O `cModDado` é lido pelo adaptador com o Jackson e entregue ao domínio como `M
 2. Obrigatórios presentes; valores nas listas, com caixa exata. Padrão só em `EXTRAPOLACAO_INICIO`/`FIM` (`Disabled`).
 3. `cTpoVlr` ∈ `TAXA|PRECO|PONTOS`; com `TAXA`, `cNormaDia` ∈ constantes de `DayCounter` (`DayCounter.valueOf`) e `cTpoJuro` ∈ `Simple|Compounded|Continuous`.
 4. Combinações: `Price` só com `PRECO`/`PONTOS` e o contrário; `FREQUENCY` só com `Compounded` (e obrigatória nele), nunca `NoFrequency|Once|OtherFrequency`; `MERCADO_CALENDARIO` = `mercado()` do calendário resolvido; `FlatForward` só com `Linear|LogLinear`; `CASAS_DECIMAIS` 0..12; `HORIZONTE` por `Periodos.parse`.
-5. `MODELOS_POR_ORIGEM`: chave `^[^/]+/[^/]+$`, valor texto não vazio; chave sem ligação ou da principal é ignorada.
+5. `MODELOS_POR_ORIGEM`: chave `^[^/]+/[^/]+$`, valor texto não vazio; chave sem provedor ou da principal é ignorada.
 6. O modelo de construção da origem usada aceita a fonte e o produto dela.
-7. Derivada: componentes existem, sem ciclo (busca em profundidade pelas ligações `TCEN`), papéis iguais aos declarados pelo modelo.
+7. Derivada: componentes existem, sem ciclo (busca em profundidade pelos provedores da curva `TCEN`), papéis iguais aos declarados pelo modelo.
 
 `cSitReg` ≠ `ATIVO` (inclusive nulo) → `ativa = false`. Situação e vigência nunca geram `CADASTRO_INVALIDO`.
 
 ### 5.4 Origem secundária
 
-`fonte` e `produto` juntos ou nenhum (só um → `PARAMETRO_INVALIDO`); `fonte = TCEN` → `PARAMETRO_INVALIDO`. Ligação com `iPrvdrDados = fonte` e `cPrvdrMercd = produto`; nenhuma ou mais de uma → `CADASTRO_INVALIDO` com as origens. Modelo = `modelosPorOrigem.get(fonte + "/" + produto)` ou `cMotorCalc`. Aviso `ORIGEM_SECUNDARIA` (fonte, produto, código na fonte, prioridade).
+`fonte` e `produto` juntos ou nenhum (só um → `PARAMETRO_INVALIDO`); `fonte = TCEN` → `PARAMETRO_INVALIDO`. Provedor da curva com `iPrvdrDados = fonte` e `cPrvdrMercd = produto`; nenhuma ou mais de uma → `CADASTRO_INVALIDO` com as origens. Modelo = `modelosPorOrigem.get(fonte + "/" + produto)` ou `cMotorCalc`. Aviso `ORIGEM_SECUNDARIA` (fonte, produto, código na fonte, prioridade).
 
 ---
 
@@ -1137,7 +1137,7 @@ Ordem: **verificar, adaptar, criar, rodar**. Só o que já existe no pom (`sprin
 | `CurvaInterpoladaTest` | vetores de `2030-06-10` (valores exatos nas 7 casas) e fatores com tolerância `1e-14` (seção 0.3); domínio; `FlatValue` da `INP`; `PTX` depois do último ponto |
 | `InterpolacaoDadoCurvaTest` | `PRE`: 12.390 dias, fim de semana = sexta, cada dia = `avaliar` da mesma data |
 | `HashPontosTest` | vetor comum e os 5 `hashPontos`; valor com 12 casas dá o mesmo hash |
-| `ValidadorCadastroTest` | um caso por regra de `CADASTRO_INVALIDO`; `'ATIVO' + espaços`; `business252` recusado; `MODELOS_POR_ORIGEM` sem ligação ignorado |
+| `ValidadorCadastroTest` | um caso por regra de `CADASTRO_INVALIDO`; `'ATIVO' + espaços`; `business252` recusado; `MODELOS_POR_ORIGEM` sem provedor ignorado |
 | `ProntaTsB3Test`, `SofrZeroBloombergTest`, `NtnbBootstrapAnbimaTest` | tabelas "Regras do arquivo"; `15M` → `2027-12-14`; bootstrap sintético que recupera uma curva zero conhecida |
 | `ConstruirCurvaServiceTest` (portas simuladas) | `PRE`: 278 pontos e 12.390 linhas enviados às portas; recálculo; `Existente` com e sem `PONTOS_DIFERENTES_DA_FONTE`; `dBaseReft` não retrocede; falha no commit sem `CURVA_GRAVADA`; trava → `CONSTRUCAO_EM_ANDAMENTO`; `CALENDARIO_DIVERGENTE` |
 | `RegravarInterpoladaServiceTest`, `ProcessarCargaServiceTest`, `ConstruirDataServiceTest`, `OrigemSecundariaTest` | cenários das specs `curve-engine-api`, `curve-load-trigger` e `curve-build-pipeline`; no paralelo, uma curva lenta estourando o prazo sem afetar as outras |

@@ -25,7 +25,7 @@ O engine SHALL montar o cadastro de uma curva na data-base a partir das tabelas 
 | `CASAS_DECIMAIS` | número | sim | inteiro de 0 a 12 |
 | `MODO_ARREDONDAMENTO` | string | sim | `HALF_UP`, `HALF_EVEN`, `DOWN` (`DOWN` = truncamento) |
 | `VERSAO_SCRIPT_CONSTRUCAO`, `VERSAO_SCRIPT_INTERPOLACAO`, `VERSAO_SCRIPT_CALENDARIO` | número | não | versão validada do script Groovy |
-| `MODELOS_POR_ORIGEM` | objeto | não | modelo de construção por origem secundária: chave `{fonte}/{produto}` de uma ligação da curva em `tCurvaPrvdr`, valor o nome de um modelo de construção (ex.: `{"B3/TS":"PRONTA_TS_B3"}`); chave fora do formato `{fonte}/{produto}` ou valor que não seja texto não vazio é inválido; entrada de uma origem que a curva não tem, ou da principal, é ignorada, porque só a entrada da origem pedida é usada |
+| `MODELOS_POR_ORIGEM` | objeto | não | modelo de construção por origem secundária: chave `{fonte}/{produto}` de um provedor da curva em `tCurvaPrvdr`, valor o nome de um modelo de construção (ex.: `{"B3/TS":"PRONTA_TS_B3"}`); chave fora do formato `{fonte}/{produto}` ou valor que não seja texto não vazio é inválido; entrada de uma origem que a curva não tem, ou da principal, é ignorada, porque só a entrada da origem pedida é usada |
 
 Para unidade `TAXA`, `cNormaDia` e `cTpoJuro` SHALL ser obrigatórios; para `PRECO` e `PONTOS`, SHALL ser ignorados. O cadastro MUST ser rejeitado com erro `CADASTRO_INVALIDO`, informando o código, o item e o motivo, quando:
 - faltar um item obrigatório;

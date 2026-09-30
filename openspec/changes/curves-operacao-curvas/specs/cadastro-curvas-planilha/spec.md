@@ -1,6 +1,6 @@
 ## Purpose
 
-No `services/curves`, exportar o cadastro de curvas (curvas, ligações e configurações) para uma planilha e importá-la de volta, editada, para alterar várias curvas de uma vez. A importação pode ser simulada, mostrando exatamente o que vai mudar, e é aplicada inteira numa transação ou não é aplicada.
+No `services/curves`, exportar o cadastro de curvas (curvas, provedores da curva e configurações) para uma planilha e importá-la de volta, editada, para alterar várias curvas de uma vez. A importação pode ser simulada, mostrando exatamente o que vai mudar, e é aplicada inteira numa transação ou não é aplicada.
 
 ## ADDED Requirements
 
@@ -8,7 +8,7 @@ No `services/curves`, exportar o cadastro de curvas (curvas, ligações e config
 A planilha (`.xlsx`) SHALL ter as abas abaixo, nesta ordem, com o cabeçalho na primeira linha, exatamente com estes nomes de coluna. Em todas as abas, a curva é identificada pelo **nome** (imutável), na coluna `Curva`.
 
 1. **`Curvas`**: `Curva`, `Codigo`, `Unidade`, `DayCounterCotacao`, `Compounding`, `Moeda`, `Pais`, `Classificacao`, `ClasseAtivo`, `Situacao`, `InicioVigencia`, `FimVigencia`, `Controle`.
-2. **`Ligacoes`**: `Curva`, `Provedor`, `Produto`, `CodigoNaFonte`, `Prioridade`.
+2. **`Provedores`**: `Curva`, `Provedor`, `Produto`, `CodigoNaFonte`, `Prioridade`.
 3. **`Configuracoes`**: `Curva`, `Versao`, `InicioVigencia`, `FimVigencia`, `ModeloConstrucao`, `Interpolador` e uma coluna por chave de parâmetro da spec `configuracao-calculo-curva`, com o nome exato da chave (`BASE_INTERPOLACAO`, `DAY_COUNTER_TEMPO` e as demais). `MODELOS_POR_ORIGEM` é uma célula de texto no formato `{provedor}/{produto}={modelo}`, com as entradas separadas por `;` e sem espaços (ex.: `B3/TS=PRONTA_TS_B3;BLOOMBERG/BLC2=SOFR_ZERO_BLOOMBERG`); célula vazia significa sem a chave. Na exportação, as entradas saem em ordem alfabética da chave, para que a planilha exportada e reimportada não gere alteração.
 4. **`Valores`**: só informativa, gerada de `GET /api/v1/curvas-mercado/valores` (spec `configuracao-calculo-curva`), com os valores aceitos de cada campo e a descrição de cada um; ignorada na importação.
 
@@ -25,29 +25,29 @@ Datas SHALL ser células de data, números SHALL ser células numéricas, e cél
 - **THEN** a aba `Configuracoes` tem uma coluna para cada chave de parâmetro, e cada versão ocupa uma linha, com o valor de cada parâmetro na sua coluna
 
 ### Requirement: Exportação
-`GET /api/v1/curvas-mercado/exportacao?nome=&codigo=&situacao=` (papel `Curvas.Leitura`) SHALL devolver a planilha com as curvas filtradas (todas, sem filtro), com todas as suas ligações e todas as versões de configuração, passadas incluídas. O nome do arquivo SHALL ser `cadastro-curvas_{AAAAMMDDHHmmss}.xlsx`, no horário de Brasília.
+`GET /api/v1/curvas-mercado/exportacao?nome=&codigo=&situacao=` (papel `Curvas.Leitura`) SHALL devolver a planilha com as curvas filtradas (todas, sem filtro), com todas as seus provedores e todas as versões de configuração, passadas incluídas. O nome do arquivo SHALL ser `cadastro-curvas_{AAAAMMDDHHmmss}.xlsx`, no horário de Brasília.
 
 #### Scenario: Exportar uma curva
 - **WHEN** o cliente exporta com `codigo=PRE`
-- **THEN** a planilha tem uma linha em `Curvas` para `DIxPRE`, as ligações dela em `Ligacoes` e todas as versões dela em `Configuracoes`
+- **THEN** a planilha tem uma linha em `Curvas` para `DIxPRE`, os provedores da curva dela em `Provedores` e todas as versões dela em `Configuracoes`
 
 ### Requirement: Semântica da importação
 `POST /api/v1/curvas-mercado/importacao?modo=SIMULACAO|APLICACAO` (papel `Curvas.Cadastro`, `multipart/form-data`, campo `arquivo`, até 5 MB e até 1.000 curvas) SHALL tratar a planilha como o **estado desejado das curvas listadas na aba `Curvas`**:
 - **Curvas:** linha com nome inexistente cria a curva; linha com nome existente altera os campos diferentes do atual, inclusive o código. Curvas fora da aba `Curvas` MUST NOT ser tocadas. Não há exclusão de curva: inativa-se pela coluna `Situacao`.
-- **Ligações:** para cada curva listada, as linhas de `Ligacoes` dela são o conjunto completo de ligações. Ligação existente com o mesmo (`Provedor`, `Produto`) é alterada, se `CodigoNaFonte` ou `Prioridade` mudaram; ligação nova é incluída; ligação existente ausente da aba é excluída.
+- **Provedores da curva:** para cada curva listada, as linhas de `Provedores` dela são o conjunto completo de provedores da curva. Provedor da curva existente com o mesmo (`Provedor`, `Produto`) é alterada, se `CodigoNaFonte` ou `Prioridade` mudaram; provedor novo é incluído; provedor da curva existente ausente da aba é excluído.
 - **Configurações:** linha com `Versao` preenchida MUST ser igual à versão existente em todos os campos (versões não se alteram); linha com `Versao` vazia cria uma versão nova, pelas regras de vigência da spec `configuracao-calculo-curva`; a última versão existente que ainda não começou e está ausente da aba é excluída. Várias versões novas da mesma curva são criadas em ordem de `InicioVigencia`.
-- Linha de `Ligacoes` ou `Configuracoes` de uma curva que não está na aba `Curvas` MUST ser erro.
+- Linha de `Provedores` ou `Configuracoes` de uma curva que não está na aba `Curvas` MUST ser erro.
 - `FimVigencia` de `Configuracoes` é só informativa e ignorada.
 
-Todas as regras de campo, unicidade e vigência das specs `cadastro-curva-mercado`, `ligacao-curva-provedor` e `configuracao-calculo-curva` SHALL valer linha a linha. Importar a planilha exportada sem nenhuma edição MUST resultar em zero alterações.
+Todas as regras de campo, unicidade e vigência das specs `cadastro-curva-mercado`, `provedor-curva` e `configuracao-calculo-curva` SHALL valer linha a linha. Importar a planilha exportada sem nenhuma edição MUST resultar em zero alterações.
 
 #### Scenario: Troca de prioridade em lote
-- **WHEN** a planilha exportada tem a `Prioridade` de 30 ligações trocada, e é importada
-- **THEN** só essas 30 ligações são alteradas, e nenhuma outra linha do cadastro muda
+- **WHEN** a planilha exportada tem a `Prioridade` de 30 provedores trocada, e é importada
+- **THEN** só essas 30 provedores são alteradas, e nenhuma outra linha do cadastro muda
 
-#### Scenario: Ligação removida da aba
-- **WHEN** a curva `DI_MERCADO` está na aba `Curvas`, mas a sua ligação `B3`/`TS` foi apagada da aba `Ligacoes`
-- **THEN** a importação exclui essa ligação e informa o aviso `CURVA_SEM_ORIGEM`, se ela era a única
+#### Scenario: Provedor removido da aba
+- **WHEN** a curva `DI_MERCADO` está na aba `Curvas`, mas a seu provedor `B3`/`TS` foi apagada da aba `Provedores`
+- **THEN** a importação exclui esse provedor e informa o aviso `CURVA_SEM_ORIGEM`, se ela era a única
 
 #### Scenario: Versão existente editada
 - **WHEN** a linha da versão 1 da `PRE` tem o `Interpolador` trocado na planilha

@@ -2,8 +2,8 @@ Segunda parte do curves (planilha do cadastro, painel, pontos, planilha de ponto
 
 ## 6. Planilha
 
-- [ ] 6.1 Criar a exportação (`.xlsx` com as abas `Curvas`, `Ligacoes`, `Configuracoes` e `Valores`, colunas exatas da spec, `Controle` com o `ETag`, listas suspensas restritivas e só com aviso conforme a spec); verificar a exportação de uma curva e de todas, e que a lista de `Interpolador` aceita um nome fora dela com aviso
-- [ ] 6.2 Criar a importação (datas e números em texto no formato pt-BR aceitos, como na spec) com a semântica de estado desejado (inclusão, alteração e exclusão de ligações, versões novas, exclusão da última versão futura, erro em versão existente editada, erro em linha de curva ausente da aba `Curvas`) e a conferência do `Controle`; verificar que exportar e importar sem editar dá zero mudanças, e os cenários da spec
+- [ ] 6.1 Criar a exportação (`.xlsx` com as abas `Curvas`, `Provedores`, `Configuracoes` e `Valores`, colunas exatas da spec, `Controle` com o `ETag`, listas suspensas restritivas e só com aviso conforme a spec); verificar a exportação de uma curva e de todas, e que a lista de `Interpolador` aceita um nome fora dela com aviso
+- [ ] 6.2 Criar a importação (datas e números em texto no formato pt-BR aceitos, como na spec) com a semântica de estado desejado (inclusão, alteração e exclusão de provedores da curva, versões novas, exclusão da última versão futura, erro em versão existente editada, erro em linha de curva ausente da aba `Curvas`) e a conferência do `Controle`; verificar que exportar e importar sem editar dá zero mudanças, e os cenários da spec
 - [ ] 6.3 Criar os modos `SIMULACAO` (sem gravar) e `APLICACAO` (transação única, `idLote` nos eventos `CADASTRO_ALTERADO`, nada aplicado se houver erro), com resposta em JSON ou na planilha marcada (`Resultado` por linha e aba `Resumo`); verificar a simulação de 30 prioridades trocadas, um erro impedindo o lote inteiro e uma curva alterada depois da exportação
 
 ## 7. Painel
@@ -27,7 +27,7 @@ Segunda parte do curves (planilha do cadastro, painel, pontos, planilha de ponto
 
 ## 10. Origens secundárias
 
-- [ ] 10.1 Aceitar `MODELOS_POR_ORIGEM` em `parametros` (formato da chave, valor de 1 a 100 caracteres) com os avisos `MODELO_POR_ORIGEM_SEM_LIGACAO`, `ORIGEM_INCOMPATIVEL_COM_MODELO` e `MODELO_NAO_NATIVO`, e o aviso na exclusão de ligação; verificar os dois cenários da spec `configuracao-calculo-curva` e a entrada da tabela embutida no teste de contrato com o engine
+- [ ] 10.1 Aceitar `MODELOS_POR_ORIGEM` em `parametros` (formato da chave, valor de 1 a 100 caracteres) com os avisos `MODELO_POR_ORIGEM_SEM_PROVEDOR`, `ORIGEM_INCOMPATIVEL_COM_MODELO` e `MODELO_NAO_NATIVO`, e o aviso na exclusão de provedor da curva; verificar os dois cenários da spec `configuracao-calculo-curva` e a entrada da tabela embutida no teste de contrato com o engine
 - [ ] 10.2 Ler e escrever `MODELOS_POR_ORIGEM` na planilha (`{provedor}/{produto}={modelo}` separados por `;`, em ordem alfabética na exportação); verificar o cenário da spec `cadastro-curvas-planilha`, célula malformada e exportar-importar sem alteração
 - [ ] 10.3 Acrescentar `origensSecundarias` às linhas do painel; verificar o cenário da data construída pela origem secundária
 

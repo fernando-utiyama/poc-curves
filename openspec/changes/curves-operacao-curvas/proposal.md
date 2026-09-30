@@ -1,10 +1,10 @@
 ## Why
 
-A change `curves-cadastro-curvas` ficou grande demais para uma entrega e foi dividida em 2026-09-30. A primeira parte, que fica lá, entrega os CRUDs de que o engine e o processor precisam: curva de mercado, ligações com provedores, configuração de cálculo e bruto da B3. Esta segunda parte entrega o que o gestor usa no dia a dia depois do cadastro pronto: a edição em lote por planilha, a edição manual dos pontos da curva construída (e a planilha de pontos), o painel de acompanhamento e as origens secundárias. O motivo, as decisões e o guia de implementação são os da change `curves-cadastro-curvas` (`design.md` e `implementacao.md`).
+A change `curves-cadastro-curvas` ficou grande demais para uma entrega e foi dividida em 2026-09-30. A primeira parte, que fica lá, entrega os CRUDs de que o engine e o processor precisam: curva de mercado, provedores da curva, configuração de cálculo e bruto da B3. Esta segunda parte entrega o que o gestor usa no dia a dia depois do cadastro pronto: a edição em lote por planilha, a edição manual dos pontos da curva construída (e a planilha de pontos), o painel de acompanhamento e as origens secundárias. O motivo, as decisões e o guia de implementação são os da change `curves-cadastro-curvas` (`design.md` e `implementacao.md`).
 
 ## What Changes
 
-- **Planilha do cadastro:** exportar curvas, ligações e configurações num `.xlsx`, editar e importar de volta, com simulação e aplicação atômica.
+- **Planilha do cadastro:** exportar curvas, provedores da curva e configurações num `.xlsx`, editar e importar de volta, com simulação e aplicação atômica.
 - **Edição manual dos pontos** (`tDadoVertcCurva`), com preferência sobre o engine, recusa só por consistência de banco, avisos de regra de negócio, `hashPontos` e regravação da interpolada pedida ao engine.
 - **Planilha de pontos** com simulação e aplicação atômica.
 - **Painel de acompanhamento** por data-base, com a situação de cada curva, atraso (só para data-base passada) e o que precisa de atenção.

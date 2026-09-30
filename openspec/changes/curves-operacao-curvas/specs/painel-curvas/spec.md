@@ -24,7 +24,7 @@ Cada linha SHALL trazer:
 | Campo | Fonte |
 |---|---|
 | `codigo`, `nome`, `unidade`, `situacaoCadastro` (`ATIVO`/`INATIVO`) | `tCurvaMercd` |
-| `origem` (provedor, produto, código na fonte; ou as curvas componentes, para curva derivada) | `tCurvaPrvdr`, ligação de menor prioridade |
+| `origem` (provedor, produto, código na fonte; ou as curvas componentes, para curva derivada) | `tCurvaPrvdr`, provedor da curva de menor prioridade |
 | `origensSecundarias` (provedor, produto, código na fonte, prioridade e o modelo que a lê, de `MODELOS_POR_ORIGEM` ou `modeloConstrucao`), lista vazia quando não há | `tCurvaPrvdr` e configuração vigente |
 | `modeloConstrucao`, `interpolador`, `versaoConfiguracao` | configuração vigente na data-base em `tConfgCurva` |
 | `ultimaDataPublicada`, `calculadoPor` | `tCurvaMercd.dBaseReft` e `cUsuarCalc` |

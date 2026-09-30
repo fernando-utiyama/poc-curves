@@ -30,7 +30,7 @@ Linhas de `tCurvaMercd` sem código MUST NOT aparecer. A curva inexistente, e a 
 | `codigo`, `nome`, `situacao` | `tCurvaMercd` |
 | `dataBase` | `tBtrsCurvaPrimr.dBaseReft` |
 | `quantidadeLinhas` | quantidade de linhas da curva na data-base |
-| `codigosNaFonte` | `cTickerPrvdr` das ligações da curva com provedor `B3` e produto `TS` em `tCurvaPrvdr` (lista vazia se não houver) |
+| `codigosNaFonte` | `cTickerPrvdr` dos provedores da curva com provedor `B3` e produto `TS` em `tCurvaPrvdr` (lista vazia se não houver) |
 | `curvaConstruida` | `true` se a curva tem pontos em `tDadoVertcCurva` na data-base |
 
 Filtros: intervalo `de`..`ate` de datas-base (padrão: `ate` = hoje, `de` = `ate` − 30 dias; intervalo máximo de 366 dias, acima → 400 `PARAMETRO_INVALIDO`), `codigo` exato e trecho de `nome` (normalizado, como na listagem de curvas). A listagem MUST ser feita por uma consulta agregada no banco, sem ler as linhas uma a uma.
@@ -60,7 +60,7 @@ Os valores são gravados exatamente como enviados, sem arredondamento (é o dado
 | `DIAS_CORRIDOS_NAO_POSITIVO` | `diasCorridos` menor que 1 | a construção falha com `INSUMO_INVALIDO` até a correção |
 | `DIAS_UTEIS_INCOERENTES` | `diasUteis` menor que 1 ou maior que `diasCorridos` | a construção falha com `INSUMO_INVALIDO` até a correção |
 | `DIAS_CORRIDOS_REPETIDOS` | duas linhas da data com os mesmos `diasCorridos` | a construção falha com `INSUMO_INVALIDO` até a correção |
-| `CURVA_SEM_LIGACAO_B3` | a curva não tem ligação com provedor `B3` e produto `TS` | o processor não grava nem substitui essa curva; o engine só lê o bruto quando o modelo da curva é o da B3 |
+| `CURVA_SEM_PROVEDOR_B3` | a curva não tem provedor com provedor `B3` e produto `TS` | o processor não grava nem substitui essa curva; o engine só lê o bruto quando o modelo da curva é o da B3 |
 | `CURVA_JA_CONSTRUIDA` | a curva já tem pontos em `tDadoVertcCurva` na data-base | a curva construída não muda; a correção só vale num recálculo forçado pelo engine (`forcarRecalculo=true`) |
 
 #### Scenario: Dias corridos repetidos

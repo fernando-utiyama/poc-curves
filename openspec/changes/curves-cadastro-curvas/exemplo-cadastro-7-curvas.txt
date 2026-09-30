@@ -54,7 +54,7 @@ If-Match com o ETag mais recente da curva (cada alteração muda o ETag; a
 resposta de cada alteração traz o novo).
 
   1) POST /api/v1/curvas-mercado                         -> 201, ETag
-  2) POST /api/v1/curvas-mercado/{codigo}/ligacoes       (If-Match) -> 201, ETag novo
+  2) POST /api/v1/curvas-mercado/{codigo}/provedores       (If-Match) -> 201, ETag novo
   3) POST /api/v1/curvas-mercado/{codigo}/configuracoes  (If-Match) -> 201, versão 1
 
 Antes de 3), dá para conferir sem gravar:
@@ -64,7 +64,7 @@ Depois, conferir no engine sem gravar nada (papel Curvas.Leitura):
      GET  /api/v1/curvas/{codigo}/{dataBase}/simulacao
      -> não pode dar CADASTRO_INVALIDO.
 
-Alternativa em lote: preencher as abas Curvas, Ligacoes e Configuracoes da
+Alternativa em lote: preencher as abas Curvas, Provedores e Configuracoes da
 planilha (seção 4) e importar com modo=SIMULACAO e depois modo=APLICACAO.
 
 
@@ -90,7 +90,7 @@ POST /api/v1/curvas-mercado
   "inicioVigencia": "2026-01-01"
 }
 
-POST /api/v1/curvas-mercado/PRE/ligacoes
+POST /api/v1/curvas-mercado/PRE/provedores
 { "provedor": "B3", "produto": "TS", "codigoNaFonte": "PRE", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/PRE/configuracoes
@@ -126,7 +126,7 @@ POST /api/v1/curvas-mercado
   "inicioVigencia": "2026-01-01"
 }
 
-POST /api/v1/curvas-mercado/DCL/ligacoes
+POST /api/v1/curvas-mercado/DCL/provedores
 { "provedor": "B3", "produto": "TS", "codigoNaFonte": "DCL", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/DCL/configuracoes
@@ -161,7 +161,7 @@ POST /api/v1/curvas-mercado
   "inicioVigencia": "2026-01-01"
 }
 
-POST /api/v1/curvas-mercado/DPL/ligacoes
+POST /api/v1/curvas-mercado/DPL/provedores
 { "provedor": "B3", "produto": "TS", "codigoNaFonte": "DPL", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/DPL/configuracoes
@@ -195,7 +195,7 @@ POST /api/v1/curvas-mercado
   "inicioVigencia": "2026-01-01"
 }
 
-POST /api/v1/curvas-mercado/INP/ligacoes
+POST /api/v1/curvas-mercado/INP/provedores
 { "provedor": "B3", "produto": "TS", "codigoNaFonte": "INP", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/INP/configuracoes
@@ -228,7 +228,7 @@ POST /api/v1/curvas-mercado
   "inicioVigencia": "2026-01-01"
 }
 
-POST /api/v1/curvas-mercado/PTX/ligacoes
+POST /api/v1/curvas-mercado/PTX/provedores
 { "provedor": "B3", "produto": "TS", "codigoNaFonte": "PTX", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/PTX/configuracoes
@@ -263,7 +263,7 @@ POST /api/v1/curvas-mercado
   "inicioVigencia": "2026-01-01"
 }
 
-POST /api/v1/curvas-mercado/NTNB/ligacoes
+POST /api/v1/curvas-mercado/NTNB/provedores
 { "provedor": "ANBIMA", "produto": "MS", "codigoNaFonte": "NTN-B", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/NTNB/configuracoes
@@ -299,7 +299,7 @@ POST /api/v1/curvas-mercado
   "inicioVigencia": "2026-01-01"
 }
 
-POST /api/v1/curvas-mercado/SOFR/ligacoes
+POST /api/v1/curvas-mercado/SOFR/provedores
 { "provedor": "BLOOMBERG", "produto": "BLC2", "codigoNaFonte": "S0490Z", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/SOFR/configuracoes
@@ -337,7 +337,7 @@ PTAX - USD             PTX     PRECO                                    BRL    B
 NTN-B                  NTNB    TAXA     Business252        Compounded   BRL    BR    ATIVO     2026-01-01
 SOFR                   SOFR    TAXA     Actual360          Simple       USD    US    ATIVO     2026-01-01
 
-Aba Ligacoes:
+Aba Provedores:
 
 Curva                  Provedor   Produto  CodigoNaFonte  Prioridade
 DIxPRE                 B3         TS       PRE            1
@@ -455,7 +455,7 @@ POST /api/v1/curvas-mercado
   "dayCounterCotacao": "Business252", "compounding": "Compounded",
   "moeda": "BRL", "pais": "BR", "inicioVigencia": "2026-01-01" }
 
-POST /api/v1/curvas-mercado/IPCA_IMPLICITA/ligacoes
+POST /api/v1/curvas-mercado/IPCA_IMPLICITA/provedores
 { "provedor": "TCEN", "produto": "NUMERADOR",   "codigoNaFonte": "DIxPRE", "prioridade": 1 }
 { "provedor": "TCEN", "produto": "DENOMINADOR", "codigoNaFonte": "NTN-B",  "prioridade": 2 }
 

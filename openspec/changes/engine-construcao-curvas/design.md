@@ -263,7 +263,7 @@ O painel de acompanhamento fica no `services/curves` (change `curves-cadastro-cu
 
 ### D34. Curva derivada de outras curvas, sem modelo nesta fase
 Curvas como a inflação implícita (PRE sobre a NTN-B bootstrapada) não vêm de fonte: vêm de outras curvas já construídas. A estrutura fica pronta agora, sem nenhum modelo derivado:
-- **Cadastro sem schema novo:** as curvas componentes são ligações em `tCurvaPrvdr` com o provedor interno `TCEN`, o nome da curva componente em `cTickerPrvdr` e o papel (ex.: `NUMERADOR`, `DENOMINADOR`) em `cPrvdrMercd`.
+- **Cadastro sem schema novo:** as curvas componentes são provedores em `tCurvaPrvdr` com o provedor interno `TCEN`, o nome da curva componente em `cTickerPrvdr` e o papel (ex.: `NUMERADOR`, `DENOMINADOR`) em `cPrvdrMercd`.
 - **O modelo lê as curvas componentes pelo contexto**, já montadas para interpolar com o cadastro de cada uma, e nunca pelas tabelas brutas.
 - **Construção em cadeia na carga:** depois das curvas da carga, o engine constrói as derivadas cujas curvas componentes já estão prontas, em ordem de dependência. As curvas componentes de fontes diferentes se resolvem sozinhas: a derivada sai na carga que completa as curvas componentes.
 - **Nada é recalculado em cascata.** A curva componente recalculada ou editada deixa a derivada diferente do que as curvas componentes atuais produzem, o que aparece na conferência do painel, e o recálculo é do usuário, como em toda curva.

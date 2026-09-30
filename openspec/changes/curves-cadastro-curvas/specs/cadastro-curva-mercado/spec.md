@@ -42,7 +42,7 @@ O serviço SHALL expor (prefixo `/api/v1`), identificando a curva pelo código:
 | Rota | Uso | Papel |
 |---|---|---|
 | `GET /curvas-mercado?nome=&codigo=&unidade=&situacao=&pagina=&tamanho=` | listar, com filtros por trecho de nome (normalizado), código exato, unidade e situação; paginado (tamanho padrão 50, máximo 500), ordenado por código | `Curvas.Leitura` |
-| `GET /curvas-mercado/{codigo}` | consultar a curva, com as ligações e a configuração vigente hoje | `Curvas.Leitura` |
+| `GET /curvas-mercado/{codigo}` | consultar a curva, com os provedores da curva e a configuração vigente hoje | `Curvas.Leitura` |
 | `POST /curvas-mercado` | criar | `Curvas.Cadastro` |
 | `PUT /curvas-mercado/{codigo}` | alterar os campos, menos `nome` e `situacao` | `Curvas.Cadastro` |
 | `POST /curvas-mercado/{codigo}/inativacao` | inativar | `Curvas.Cadastro` |
@@ -56,10 +56,10 @@ Não há exclusão física: a curva pode ter pontos, dados brutos e configuraç�
 
 #### Scenario: Inativação
 - **WHEN** a curva `SLP` é inativada
-- **THEN** `cSitReg` passa a `INATIVO`, a curva continua consultável, as ligações e configurações são mantidas, e a carga deixa de construí-la automaticamente
+- **THEN** `cSitReg` passa a `INATIVO`, a curva continua consultável, os provedores da curva e as configurações são mantidos, e a carga deixa de construí-la automaticamente
 
 ### Requirement: Concorrência otimista
-Toda resposta de consulta de uma curva SHALL trazer o cabeçalho `ETag` = SHA-256, em hexadecimal minúsculo, do JSON canônico (chaves em ordem alfabética, sem espaços) formado pelos campos da API da curva, pelas suas ligações (ordenadas por `idLigacao`) e pelas suas versões de configuração (ordenadas por `versao`). Os campos gravados pelo engine (`dBaseReft`, `cUsuarCalc`) e os de controle (`cUsuarAtulz`, `dCriacReg`, `dUltAtulz`) MUST NOT entrar no cálculo, para que uma construção do engine não invalide a edição de ninguém. Toda alteração (`PUT`, inativação, reativação e as alterações de ligações e configurações da curva) MUST exigir o cabeçalho `If-Match` com esse valor. Ausente, a resposta MUST ser 428; diferente do atual, 412 com `ALTERADO_POR_OUTRO`, sem gravar nada.
+Toda resposta de consulta de uma curva SHALL trazer o cabeçalho `ETag` = SHA-256, em hexadecimal minúsculo, do JSON canônico (chaves em ordem alfabética, sem espaços) formado pelos campos da API da curva, pelas seus provedores (ordenadas por `idCurvaProvedor`) e pelas suas versões de configuração (ordenadas por `versao`). Os campos gravados pelo engine (`dBaseReft`, `cUsuarCalc`) e os de controle (`cUsuarAtulz`, `dCriacReg`, `dUltAtulz`) MUST NOT entrar no cálculo, para que uma construção do engine não invalide a edição de ninguém. Toda alteração (`PUT`, inativação, reativação e as alterações de provedores da curva e configurações da curva) MUST exigir o cabeçalho `If-Match` com esse valor. Ausente, a resposta MUST ser 428; diferente do atual, 412 com `ALTERADO_POR_OUTRO`, sem gravar nada.
 
 #### Scenario: Duas pessoas editando a mesma curva
 - **WHEN** duas pessoas leem a curva `PRE` e as duas enviam alterações com o mesmo `ETag`
@@ -73,8 +73,8 @@ Toda rota MUST exigir token JWT do Entra ID, no mesmo registro de aplicação do
 | `PARAMETRO_INVALIDO` | 400 | parâmetro ou JSON malformado |
 | `NAO_AUTENTICADO` | 401 | token ausente ou inválido |
 | `SEM_PERMISSAO` | 403 | sem o papel exigido |
-| `NAO_ENCONTRADO` | 404 | curva, ligação, versão ou provedor inexistente |
-| `CODIGO_EM_USO`, `NOME_EM_USO`, `LIGACAO_DUPLICADA`, `PRIORIDADE_EM_USO` | 409 | unicidade violada |
+| `NAO_ENCONTRADO` | 404 | curva, provedor da curva, versão ou provedor inexistente |
+| `CODIGO_EM_USO`, `NOME_EM_USO`, `PROVEDOR_DUPLICADO`, `PRIORIDADE_EM_USO` | 409 | unicidade violada |
 | `ALTERADO_POR_OUTRO` | 412 | `If-Match` diferente do estado atual |
 | `DADOS_INVALIDOS` | 422 | regra de campo violada; `detalhes` lista cada campo |
 | `IF_MATCH_AUSENTE` | 428 | alteração sem `If-Match` |
@@ -87,9 +87,9 @@ Toda resposta SHALL trazer `X-Correlation-Id` (o recebido ou um UUID gerado).
 - **THEN** a resposta é 403 com `SEM_PERMISSAO`
 
 ### Requirement: Auditoria do cadastro
-Nada do cadastro SHALL ser gravado no Blob Storage, que guarda só os arquivos originais dos feeders e os scripts Groovy. Toda alteração do cadastro (curva, ligação ou configuração, pela API ou pela planilha) SHALL emitir, depois do commit, o evento de log `CADASTRO_ALTERADO` com nível `AVISO`: `idAuditoria`, código, nome, tipo (`CURVA`, `LIGACAO` ou `CONFIGURACAO`), operação (`CRIACAO`, `ALTERACAO`, `INATIVACAO`, `REATIVACAO`, `EXCLUSAO`), usuário, instante (horário de Brasília), `correlationId`, `idLote` (quando vier da planilha), estado anterior e estado novo completos. O evento traz sempre o nome, que é imutável, para o histórico sobreviver a uma troca de código. O destino dos logs SHALL ter retenção definida pela área de risco.
+Nada do cadastro SHALL ser gravado no Blob Storage, que guarda só os arquivos originais dos feeders e os scripts Groovy. Toda alteração do cadastro (curva, provedor da curva ou configuração, pela API ou pela planilha) SHALL emitir, depois do commit, o evento de log `CADASTRO_ALTERADO` com nível `AVISO`: `idAuditoria`, código, nome, tipo (`CURVA`, `PROVEDOR` ou `CONFIGURACAO`), operação (`CRIACAO`, `ALTERACAO`, `INATIVACAO`, `REATIVACAO`, `EXCLUSAO`), usuário, instante (horário de Brasília), `correlationId`, `idLote` (quando vier da planilha), estado anterior e estado novo completos. O evento traz sempre o nome, que é imutável, para o histórico sobreviver a uma troca de código. O destino dos logs SHALL ter retenção definida pela área de risco.
 
-`GET /api/v1/curvas-mercado/{codigo}/auditoria?formato=xlsx|json` (papel `Curvas.Leitura`), pedido pelo front, SHALL montar na hora, sem guardar nada, o arquivo de auditoria do cadastro da curva: a curva com todos os campos, inclusive `cUsuarAtulz`, `dCriacReg`, `dUltAtulz`, `dBaseReft` e `cUsuarCalc`; todas as ligações; todas as versões de configuração, com vigência e parâmetros; e o `ETag` atual. O nome do arquivo SHALL ser `{codigo}_CADASTRO_AUDITORIA_{AAAAMMDDHHmmss}.xlsx`, no horário de Brasília. Quem alterou o quê antes está nos eventos `CADASTRO_ALTERADO` do log.
+`GET /api/v1/curvas-mercado/{codigo}/auditoria?formato=xlsx|json` (papel `Curvas.Leitura`), pedido pelo front, SHALL montar na hora, sem guardar nada, o arquivo de auditoria do cadastro da curva: a curva com todos os campos, inclusive `cUsuarAtulz`, `dCriacReg`, `dUltAtulz`, `dBaseReft` e `cUsuarCalc`; todos os provedores da curva; todas as versões de configuração, com vigência e parâmetros; e o `ETag` atual. O nome do arquivo SHALL ser `{codigo}_CADASTRO_AUDITORIA_{AAAAMMDDHHmmss}.xlsx`, no horário de Brasília. Quem alterou o quê antes está nos eventos `CADASTRO_ALTERADO` do log.
 
 #### Scenario: Quem mudou a unidade
 - **WHEN** a unidade de uma curva é alterada
@@ -97,7 +97,7 @@ Nada do cadastro SHALL ser gravado no Blob Storage, que guarda só os arquivos o
 
 #### Scenario: Arquivo de auditoria pedido pelo front
 - **WHEN** o gestor pede a auditoria do cadastro da `PRE`
-- **THEN** o arquivo é montado na hora, com a curva, as ligações e todas as versões de configuração, e `cUsuarAtulz` e `dUltAtulz` mostram quem fez a última alteração e quando
+- **THEN** o arquivo é montado na hora, com a curva, os provedores da curva e todas as versões de configuração, e `cUsuarAtulz` e `dUltAtulz` mostram quem fez a última alteração e quando
 
 ### Requirement: Contrato de tipos para o front
 Toda resposta JSON do serviço SHALL seguir o mesmo contrato de tipos do engine (spec `curve-engine-api` do change `engine-construcao-curvas`): decimais como string em notação simples, datas `AAAA-MM-DD`, instantes em ISO-8601 com o deslocamento de Brasília, enums como string exatamente como nas specs, com diferença entre maiúsculas e minúsculas, e `avisos` como lista de `{ "codigo", "mensagem", "detalhes" }`, vazia quando não há aviso. O front é pt-BR: a API troca valores em formato de máquina e o front formata para pt-BR na tela (vírgula decimal, `dd/mm/aaaa`, horário de Brasília); mensagens de erro e de aviso, rótulos e descrições SHALL estar em pt-BR, com acentuação, em UTF-8; os códigos não são traduzidos. Na entrada, enum com caixa diferente (`taxa`, `business252`) MUST ser recusado com 422 `DADOS_INVALIDOS`, e decimal SHALL ser aceito como string.
@@ -112,11 +112,11 @@ Enums do serviço:
 | `dayCounterCotacao` | `Business252`, `Actual360`, `Actual365Fixed`, `Thirty360` |
 | `compounding` | `Simple`, `Compounded`, `Continuous` |
 | `situacao` da curva | `ATIVO`, `INATIVO` |
-| `provedor` da ligação | os de `tPrvdrDadoMercd`; o engine e o processor reconhecem `B3`, `ANBIMA`, `BLOOMBERG` e o interno `TCEN` |
-| `produto` da ligação | `TS` (B3, arquivo Taxas de Mercado para Swaps), `MS` (ANBIMA, arquivo de Mercado Secundário de títulos públicos, `ms{AAMMDD}.txt`), `BLC2` (Bloomberg, fonte de preço do curve member no ticker); para `TCEN`, o papel da curva componente declarado pelo modelo derivado (ex.: `NUMERADOR`, `DENOMINADOR`) |
+| `provedor` do provedor da curva | os de `tPrvdrDadoMercd`; o engine e o processor reconhecem `B3`, `ANBIMA`, `BLOOMBERG` e o interno `TCEN` |
+| `produto` do provedor da curva | `TS` (B3, arquivo Taxas de Mercado para Swaps), `MS` (ANBIMA, arquivo de Mercado Secundário de títulos públicos, `ms{AAMMDD}.txt`), `BLC2` (Bloomberg, fonte de preço do curve member no ticker); para `TCEN`, o papel da curva componente declarado pelo modelo derivado (ex.: `NUMERADOR`, `DENOMINADOR`) |
 | situação no painel | `NAO_E_DIA_UTIL`, `IGNORADA`, `SITUACAO_INDISPONIVEL`, `INTERPOLADA_DESATUALIZADA`, `CONSTRUIDA`, `DIVERGENTE_DA_FONTE`, `AGUARDANDO_COMPONENTES`, `AGUARDANDO_CARGA`, `COM_ERRO`, `NAO_CONSTRUIDA` |
 | `motivo` no painel | `PONTOS_DIFERENTES`, `FONTE_COM_ERRO`, `SEM_INSUMO` |
-| tipo no `CADASTRO_ALTERADO` | `CURVA`, `LIGACAO`, `CONFIGURACAO` |
+| tipo no `CADASTRO_ALTERADO` | `CURVA`, `PROVEDOR`, `CONFIGURACAO` |
 | operação no `CADASTRO_ALTERADO` | `CRIACAO`, `ALTERACAO`, `INATIVACAO`, `REATIVACAO`, `EXCLUSAO` |
 | operação no `PONTOS_EDITADOS` | `SUBSTITUICAO`, `EXCLUSAO` |
 | `origem` no `PONTOS_EDITADOS` | `API`, `PLANILHA` |
@@ -129,10 +129,10 @@ Avisos do serviço:
 
 | `codigo` | Onde | Significado |
 |---|---|---|
-| `CURVA_SEM_ORIGEM` | ligações, planilha | curva sem ligação: o engine não a constrói |
-| `ORIGEM_INCOMPATIVEL_COM_MODELO` | ligações, configuração | provedor ou produto diferente do esperado pelo modelo nativo |
+| `CURVA_SEM_ORIGEM` | provedores da curva, planilha | curva sem provedor: o engine não a constrói |
+| `ORIGEM_INCOMPATIVEL_COM_MODELO` | provedores da curva, configuração | provedor ou produto diferente do esperado pelo modelo nativo |
 | `MODELO_NAO_NATIVO` | configuração | modelo, interpolador ou calendário que depende de script Groovy |
-| `MODELO_POR_ORIGEM_SEM_LIGACAO` | ligações, configuração, planilha | chave de `MODELOS_POR_ORIGEM` sem ligação correspondente, ou da origem principal: ignorada pelo engine |
+| `MODELO_POR_ORIGEM_SEM_PROVEDOR` | provedores da curva, configuração, planilha | chave de `MODELOS_POR_ORIGEM` sem provedor correspondente, ou da origem principal: ignorada pelo engine |
 | `CURVA_COM_FILHAS` | inativação | curva é componente de curva derivada ativa |
 | `VALORES_SEM_ENGINE` | valores aceitos | engine fora: valores da cópia embutida, só com modelos nativos |
 | `ENGINE_INDISPONIVEL` | painel | engine fora: situação sem conferência |

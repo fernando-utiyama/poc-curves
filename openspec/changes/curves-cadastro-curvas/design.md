@@ -38,16 +38,16 @@ Alterar uma versão que já começou mudaria o resultado de um reprocessamento d
 ### D4. Validação de parâmetros igual à do engine, com modelos como aviso
 Os parâmetros seguem a tabela da spec do engine (chaves, tipos, valores e combinações), para que o engine não encontre `CADASTRO_INVALIDO` depois. Os nomes de modelo não são bloqueados: um script Groovy pode criar um modelo novo sem deploy, e só o engine sabe o que está ativo. Nome fora dos nativos gera o aviso `MODELO_NAO_NATIVO`, e a simulação do engine confirma antes da produção.
 
-### D5. `idLigacao` sem sequência
+### D5. `idCurvaProvedor` sem sequência
 `tCurvaPrvdr.cldtfdUnic` não tem geração automática, e o schema não pode mudar. O serviço lê `MAX + 1` com `UPDLOCK, HOLDLOCK` na mesma transação da inserção, o que serializa inserções simultâneas. Uma sequência no banco é o alvo ideal quando o schema puder mudar.
 
 ### D6. Concorrência otimista por curva
-Curva, ligações e configurações são editadas juntas, muitas vezes por pessoas diferentes. O `ETag` da curva cobre os três, e toda alteração exige `If-Match`. É um hash do conteúdo, e não o `dUltAtulz`: o `datetime` do SQL Server tem precisão de cerca de 3 ms, e o hash deixa de fora os campos que o engine grava (`dBaseReft`, `cUsuarCalc`), para uma construção não invalidar a edição de ninguém. A planilha guarda esse `ETag` na coluna `Controle`, então uma importação de planilha antiga não sobrescreve uma alteração feita depois da exportação.
+Curva, provedores da curva e configurações são editadas juntas, muitas vezes por pessoas diferentes. O `ETag` da curva cobre os três, e toda alteração exige `If-Match`. É um hash do conteúdo, e não o `dUltAtulz`: o `datetime` do SQL Server tem precisão de cerca de 3 ms, e o hash deixa de fora os campos que o engine grava (`dBaseReft`, `cUsuarCalc`), para uma construção não invalidar a edição de ninguém. A planilha guarda esse `ETag` na coluna `Controle`, então uma importação de planilha antiga não sobrescreve uma alteração feita depois da exportação.
 
 ### D7. Planilha como estado desejado, com simulação
-A importação trata cada curva listada como estado completo desejado (curva, ligações e configurações), e compara com o banco:
+A importação trata cada curva listada como estado completo desejado (curva, provedores da curva e configurações), e compara com o banco:
 - exportar e importar sem editar dá zero mudanças;
-- apagar uma linha de ligação a exclui;
+- apagar uma linha de provedor da curva a exclui;
 - editar uma versão existente é erro, porque versões não se alteram.
 
 A simulação devolve a própria planilha marcada linha a linha, e a aplicação é uma transação única: ou todo o lote entra, ou nada entra.
@@ -58,7 +58,7 @@ A simulação devolve a própria planilha marcada linha a linha, e a aplicação
 O Blob guarda só os originais dos feeders e os scripts Groovy, e o banco não pode mudar. Cada alteração do cadastro sai no log (`CADASTRO_ALTERADO`), com estado anterior e novo, e sempre com o nome, que é imutável, para o histórico sobreviver a uma troca de código. O front pede o arquivo de auditoria do cadastro de uma curva, que o serviço monta na hora com o estado atual completo, inclusive quem fez a última alteração (`cUsuarAtulz`, `dUltAtulz`). **Alvo ideal, quando o banco puder mudar:** tabela de histórico do cadastro, consultável pela API.
 
 ### D9. Avisos de coerência com engine e processor, sem bloquear
-O serviço sinaliza curva sem ligação, origem incompatível com o modelo de construção nativo e modelo não nativo, mas não bloqueia, porque são estados válidos durante uma configuração em etapas. O engine e o processor continuam sendo quem rejeita no uso.
+O serviço sinaliza curva sem provedor, origem incompatível com o modelo de construção nativo e modelo não nativo, mas não bloqueia, porque são estados válidos durante uma configuração em etapas. O engine e o processor continuam sendo quem rejeita no uso.
 
 ### D10. Efeito do cadastro no engine
 Inativar a curva, ou deixar a data-base fora da vigência dela (`dInicVgcia`..`dValidAte`), faz a construção automática (carga e construção da data pelo orquestrador) não construir a curva naquela data. O usuário ainda pode construí-la pela rota de construção do engine, que responde com aviso. Os pontos já gravados continuam consultáveis. A edição manual dos pontos está em D13 a D18.
@@ -104,11 +104,11 @@ Ao gravar ou apagar pontos, o serviço regrava em `tDadoVertcCurva` só a linha 
 
 **Alternativa rejeitada:** apagar e inserir tudo a cada gravação. Chega ao mesmo estado, mas reescreve pontos que não mudaram, segura a trava por mais tempo e gera log de edição sem edição.
 
-### D19. Curvas derivadas pelo mesmo cadastro de ligações
+### D19. Curvas derivadas pelo mesmo cadastro de provedores da curva
 Uma curva derivada de outras (ex.: inflação implícita = PRE sobre a NTN-B bootstrapada) liga-se às curvas componentes em `tCurvaPrvdr` pelo provedor interno `TCEN`, com o nome da curva componente no código na fonte e o papel no produto, como definido no engine (D34 do change `engine-construcao-curvas`). O cadastro recusa componente inexistente e ciclo, porque um ciclo deixaria as curvas sem ordem de construção; inativar uma curva componente só avisa. O painel mostra a derivada `AGUARDANDO_COMPONENTES` enquanto falta componente e `DIVERGENTE_DA_FONTE` quando uma curva componente mudou depois da construção. Nenhum modelo derivado é construído nesta fase: a estrutura fica pronta para ele.
 
 ### Origens secundárias e modelo por origem
-As ligações de prioridade maior são fontes de reserva. O curves não constrói nada: guarda as ligações e, na configuração, a chave opcional `MODELOS_POR_ORIGEM`, que diz ao engine qual modelo lê cada reserva (change `engine-construcao-curvas`, D38). Chave sem ligação correspondente é só aviso (`MODELO_POR_ORIGEM_SEM_LIGACAO`), porque o engine ignora a entrada e a curva continua construindo pela principal; recusar obrigaria a criar uma versão nova de configuração só para excluir uma ligação. O painel lista as reservas de cada curva para o front oferecer a escolha na construção.
+Os provedores da curva de prioridade maior são fontes de reserva. O curves não constrói nada: guarda os provedores da curva e, na configuração, a chave opcional `MODELOS_POR_ORIGEM`, que diz ao engine qual modelo lê cada reserva (change `engine-construcao-curvas`, D38). Chave sem provedor correspondente é só aviso (`MODELO_POR_ORIGEM_SEM_PROVEDOR`), porque o engine ignora a entrada e a curva continua construindo pela principal; recusar obrigaria a criar uma versão nova de configuração só para excluir um provedor da curva. O painel lista as reservas de cada curva para o front oferecer a escolha na construção.
 
 ### Dias úteis informados pelo gestor
 Os dias úteis que vêm da fonte ou do usuário são obedecidos pelo engine (change `engine-construcao-curvas`, D39). A edição manual e a planilha de pontos aceitam `diasUteis` opcional por ponto; o curves grava a linha do ponto em `tDadoVertcCurva` com esses dias, os dias corridos e 30/360 (contas de data, sem calendário) e fatores nulos, porque fatores são do engine. Os pontos que não mudaram mantêm a linha do engine, com os dias publicados pela fonte; por isso a consulta e a exportação devolvem os dias úteis, e reenviá-los sem mudança não altera nada. Dias informados diferentes do calendário, incoerentes ou fora de ordem são avisos, nunca recusa.
@@ -126,7 +126,7 @@ Quando a carga da B3 falha ou traz um vértice errado, o gestor corrige o bruto 
 ## Risks / Trade-offs
 
 - **Regras de parâmetros duplicadas entre curves e engine.** → A spec do engine é a fonte; os testes do curves usam os mesmos casos da tabela. Uma chave nova no engine exige atualizar os dois.
-- **`MAX + 1` com trava serializa inserções de ligações.** → O volume é baixo (dezenas de ligações), e a trava dura só a transação.
+- **`MAX + 1` com trava serializa inserções de provedores da curva.** → O volume é baixo (dezenas de provedores da curva), e a trava dura só a transação.
 - **Importação grande trava muitas linhas numa transação.** → Limite de 1.000 curvas e 5 MB; a simulação roda sem trava.
 - **Painel depende do engine para a conferência com a fonte, calculada a cada consulta.** → Com o engine fora, mostra cadastro, última data publicada e pontos, com `SITUACAO_INDISPONIVEL` e aviso; uma chamada por consulta, com tempo limite de 60 segundos; o engine confere as curvas em paralelo.
 - **Sem histórico do cadastro consultável pela API.** → Os eventos `CADASTRO_ALTERADO` no log têm o histórico completo; o arquivo de auditoria mostra o estado atual e a última alteração; a tabela de histórico entra quando o banco puder mudar.
@@ -147,4 +147,4 @@ Quando a carga da B3 falha ou traz um vértice errado, o gestor corrige o bruto 
 
 ## Open Questions
 
-- Com o CRUD de provedores (outro dev): cadastrar o provedor interno `TCEN`, usado pelas curvas derivadas; os identificadores dos provedores (`iPrvdrDados`, o `nomeProvedor` da `ProvedorEntity` do CRUD de provedores) precisam ser exatamente `B3`, `ANBIMA` e `BLOOMBERG`, que o engine e o processor usam. O produto da ligação (`tCurvaPrvdr.cPrvdrMercd`) não é conferido contra `tPrvdrDadoMercd.cProdt`, porque a tabela tem uma linha por provedor e uma fonte pode ter vários produtos.
+- Com o CRUD de provedores (outro dev): cadastrar o provedor interno `TCEN`, usado pelas curvas derivadas; os identificadores dos provedores (`iPrvdrDados`, o `nomeProvedor` da `ProvedorEntity` do CRUD de provedores) precisam ser exatamente `B3`, `ANBIMA` e `BLOOMBERG`, que o engine e o processor usam. O produto do provedor da curva (`tCurvaPrvdr.cPrvdrMercd`) não é conferido contra `tPrvdrDadoMercd.cProdt`, porque a tabela tem uma linha por provedor e uma fonte pode ter vários produtos.

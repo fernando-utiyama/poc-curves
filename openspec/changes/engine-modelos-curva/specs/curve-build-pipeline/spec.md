@@ -5,7 +5,7 @@ Constrói e grava os pontos de uma curva numa data a partir do cadastro da curva
 ## ADDED Requirements
 
 ### Requirement: Curva derivada de outras curvas
-Uma curva SHALL poder ser derivada de outras curvas de mercado já construídas (ex.: inflação implícita = PRE sobre a NTN-B bootstrapada), sem mudança de schema. Uma curva é **derivada** quando a sua ligação de menor `cPriorCsumo` em `tCurvaPrvdr` tem `iPrvdrDados` = `TCEN`, um provedor interno. Nesse caso, **todas** as ligações da curva com `iPrvdrDados` = `TCEN` são as **curvas componentes**: `cTickerPrvdr` = nome da curva componente (`tCurvaMercd.cTickerIndcd`) e `cPrvdrMercd` = papel da curva componente no cálculo (ex.: `NUMERADOR`, `DENOMINADOR`), definido pelo modelo de construção. Ligações de outros provedores na mesma curva são ignoradas nesta fase.
+Uma curva SHALL poder ser derivada de outras curvas de mercado já construídas (ex.: inflação implícita = PRE sobre a NTN-B bootstrapada), sem mudança de schema. Uma curva é **derivada** quando a seu provedor de menor `cPriorCsumo` em `tCurvaPrvdr` tem `iPrvdrDados` = `TCEN`, um provedor interno. Nesse caso, **todas** os provedores da curva com `iPrvdrDados` = `TCEN` são as **curvas componentes**: `cTickerPrvdr` = nome da curva componente (`tCurvaMercd.cTickerIndcd`) e `cPrvdrMercd` = papel da curva componente no cálculo (ex.: `NUMERADOR`, `DENOMINADOR`), definido pelo modelo de construção. Provedores da curva de outros provedores na mesma curva são ignoradas nesta fase.
 
 O cadastro de uma curva derivada MUST ser rejeitado com `CADASTRO_INVALIDO` quando:
 - uma curva componente não existir;
@@ -15,7 +15,7 @@ O cadastro de uma curva derivada MUST ser rejeitado com `CADASTRO_INVALIDO` quan
 Nenhum modelo de construção nativo desta fase aceita a fonte `TCEN`: a estrutura existe para que um modelo derivado (Java numa mudança futura ou script Groovy) seja incluído só com cadastro e o modelo. O modelo derivado lê as curvas componentes pelo contexto de construção (spec `curve-extension-models`), nunca pelas tabelas brutas. A disparada em cadeia e a exigência de componentes construídas estão na spec `curve-load-trigger`. A proveniência da construção de uma curva derivada SHALL trazer, para cada curva componente, nome, papel e `hashPontos` dos pontos usados.
 
 #### Scenario: Inflação implícita cadastrada sem modelo
-- **WHEN** a curva `IPCA_IMPLICITA` é cadastrada com as ligações (`TCEN`, `NUMERADOR`, `DIxPRE`, 1) e (`TCEN`, `DENOMINADOR`, `NTN-B`, 2) e um modelo de construção que ainda não existe
+- **WHEN** a curva `IPCA_IMPLICITA` é cadastrada com os provedores da curva (`TCEN`, `NUMERADOR`, `DIxPRE`, 1) e (`TCEN`, `DENOMINADOR`, `NTN-B`, 2) e um modelo de construção que ainda não existe
 - **THEN** a construção falha com `CADASTRO_INVALIDO` informando o modelo, e nenhuma outra curva é afetada
 
 #### Scenario: Ciclo entre curvas
@@ -23,10 +23,10 @@ Nenhum modelo de construção nativo desta fase aceita a fonte `TCEN`: a estrutu
 - **THEN** a construção de qualquer das duas falha com `CADASTRO_INVALIDO`, citando o ciclo `A` → `B` → `A`
 
 ### Requirement: Construção por uma origem secundária
-Uma curva MAY ter mais de uma ligação de provedor em `tCurvaPrvdr`: a de menor `cPriorCsumo` é a origem principal, e as demais são **origens secundárias**, cujos dados brutos também são gravados pelos feeders (o processor grava os vértices para toda curva ligada ao código, principal ou não). A construção automática (carga e construção da data pelo orquestrador) SHALL usar sempre a origem principal. O usuário SHALL poder construir ou recalcular a curva a partir de uma origem secundária, informando `fonte` e `produto` em `POST .../construcao` (spec `curve-engine-api`), e simular por ela da mesma forma.
+Uma curva MAY ter mais de um provedor em `tCurvaPrvdr`: o de menor `cPriorCsumo` é a origem principal, e as demais são **origens secundárias**, cujos dados brutos também são gravados pelos feeders (o processor grava os vértices para toda curva ligada ao código, principal ou não). A construção automática (carga e construção da data pelo orquestrador) SHALL usar sempre a origem principal. O usuário SHALL poder construir ou recalcular a curva a partir de uma origem secundária, informando `fonte` e `produto` em `POST .../construcao` (spec `curve-engine-api`), e simular por ela da mesma forma.
 
 Com `fonte` e `produto` informados:
-- a origem usada SHALL ser a ligação da curva em `tCurvaPrvdr` com `iPrvdrDados` = `fonte` e `cPrvdrMercd` = `produto`, e `cTickerPrvdr` dela é o código na fonte. Sem nenhuma ligação assim, MUST falhar com `CADASTRO_INVALIDO`, listando as origens cadastradas da curva; com mais de uma, também `CADASTRO_INVALIDO`. A fonte `TCEN` MUST NOT ser informada: as curvas componentes de uma curva derivada não são uma origem selecionável;
+- a origem usada SHALL ser o provedor da curva em `tCurvaPrvdr` com `iPrvdrDados` = `fonte` e `cPrvdrMercd` = `produto`, e `cTickerPrvdr` dela é o código na fonte. Sem nenhum provedor assim, MUST falhar com `CADASTRO_INVALIDO`, listando as origens cadastradas da curva; com mais de uma, também `CADASTRO_INVALIDO`. A fonte `TCEN` MUST NOT ser informada: as curvas componentes de uma curva derivada não são uma origem selecionável;
 - o modelo de construção SHALL ser `MODELOS_POR_ORIGEM["{fonte}/{produto}"]` do `cModDado` quando a chave existir, e `cMotorCalc` quando não existir. O modelo escolhido SHALL aceitar a fonte e o produto informados, senão `CADASTRO_INVALIDO`;
 - todo o resto do cadastro (unidade, cotação, base de interpolação, interpolador, calendário, extrapolação, horizonte e arredondamento) SHALL ser o da curva, o mesmo da origem principal: a curva é uma só, e muda só de onde vêm os pontos;
 - as regras de gravação, trava, recálculo e situação são as da construção pela API. Com pontos gravados e sem `forcarRecalculo=true`, a resposta é `EXISTENTE`, e a comparação SHALL ser feita contra o que a origem informada produz.

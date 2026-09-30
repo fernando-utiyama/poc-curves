@@ -20,7 +20,7 @@ A motivação está no proposal e o comportamento nas specs. Estado atual verifi
 **Non-Goals:**
 - ANBIMA e SOFR: seguem o mesmo contrato com o engine, em changes próprios.
 - Construção de curva: é do engine.
-- Cadastro em `tCurvaMercd` e `tCurvaPrvdr`: códigos sem ligação em `tCurvaPrvdr` são ignorados.
+- Cadastro em `tCurvaMercd` e `tCurvaPrvdr`: códigos sem provedor em `tCurvaPrvdr` são ignorados.
 - Infraestrutura nova: nenhum tópico, fila ou tabela novos, e nenhuma mudança de schema.
 
 ## Decisions
@@ -68,7 +68,7 @@ O processor grava os vértices de todos os códigos mapeados numa transação e 
 As rotas do conector publicam dado de mercado usado em risco. Passam a exigir o Entra ID (autenticação do App Service), com o papel `Curvas.Operador` ou a identidade do orquestrador, no mesmo registro de aplicação do engine.
 
 ### D11. Mapeamento pelo `tCurvaPrvdr`, sob o nome da curva de mercado
-`tCurvaPrvdr` liga a curva de mercado ao provedor e ao ticker da curva no provedor. O processor a usa para saber quais curvas de mercado recebem os vértices de cada código, e grava `tBtrsCurvaPrimr.cTickerIndcd` com o nome da curva de mercado. A FK para `tCurvaMercd` fica satisfeita pela própria ligação, sem linhas de "curva da fonte" em `tCurvaMercd` e sem convenção de nome. O processor só lê `tCurvaPrvdr`. **Alternativa rejeitada:** uma linha em `tCurvaMercd` por código da fonte (ex.: `B3_TAXA_SWAP_PRE`), que duplica o cadastro e depende de uma convenção de nome.
+`tCurvaPrvdr` liga a curva de mercado ao provedor e ao ticker da curva no provedor. O processor a usa para saber quais curvas de mercado recebem os vértices de cada código, e grava `tBtrsCurvaPrimr.cTickerIndcd` com o nome da curva de mercado. A FK para `tCurvaMercd` fica satisfeita pela próprio provedor, sem linhas de "curva da fonte" em `tCurvaMercd` e sem convenção de nome. O processor só lê `tCurvaPrvdr`. **Alternativa rejeitada:** uma linha em `tCurvaMercd` por código da fonte (ex.: `B3_TAXA_SWAP_PRE`), que duplica o cadastro e depende de uma convenção de nome.
 
 ### D12. Aviso ao engine por HTTP, com repetição curta e alerta cedo
 Não há tópico Kafka para o engine, então o aviso é o webhook `POST /api/v1/cargas`, chamado pelo endereço do serviço. O balanceador do Azure entrega cada chamada a uma instância pronta. Qual instância atende não importa, porque o estado está no banco e a trava por curva serializa as construções.

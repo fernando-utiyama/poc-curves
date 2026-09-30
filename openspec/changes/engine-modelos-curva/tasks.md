@@ -2,7 +2,7 @@ Segunda parte do engine (operação e extensões); a primeira, a construção da
 
 ## 4. Cadastro
 
-- [ ] 4.2b Implementar a origem secundária: `fonte` e `produto` na construção e na simulação (os dois ou nenhum), escolha da ligação em `tCurvaPrvdr` (nenhuma ou mais de uma → `CADASTRO_INVALIDO` com as origens cadastradas, `TCEN` recusada), modelo por `MODELOS_POR_ORIGEM` ou `cMotorCalc`, resto do cadastro da curva, aviso `ORIGEM_SECUNDARIA`, origem na proveniência, na memória e no `CURVA_GRAVADA`, e comparação do `EXISTENTE` contra a origem informada; verificar os quatro cenários da spec `curve-build-pipeline`, os dois da `curve-engine-api` e que a carga e a construção da data usam sempre a principal
+- [ ] 4.2b Implementar a origem secundária: `fonte` e `produto` na construção e na simulação (os dois ou nenhum), escolha do provedor da curva em `tCurvaPrvdr` (nenhum ou mais de uma → `CADASTRO_INVALIDO` com as origens cadastradas, `TCEN` recusada), modelo por `MODELOS_POR_ORIGEM` ou `cMotorCalc`, resto do cadastro da curva, aviso `ORIGEM_SECUNDARIA`, origem na proveniência, na memória e no `CURVA_GRAVADA`, e comparação do `EXISTENTE` contra a origem informada; verificar os quatro cenários da spec `curve-build-pipeline`, os dois da `curve-engine-api` e que a carga e a construção da data usam sempre a principal
 
 ## 5. Registro de modelos e Groovy
 

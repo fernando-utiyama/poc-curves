@@ -12,7 +12,7 @@ Toda construção e toda reconstrução por recálculo que gravar pontos SHALL e
 - `idCarga`, quando a construção veio do webhook (nulo nas demais);
 - `hashPontos` gravado e `hashPontosAnterior` (nulo na primeira construção), quantidade de pontos;
 - `pontosAnteriores`: lista completa (data e valor) dos pontos substituídos (vazia na primeira construção);
-- `origem`: fonte, produto, código na fonte e prioridade da ligação usada, e se é a principal ou uma secundária;
+- `origem`: fonte, produto, código na fonte e prioridade do provedor usado, e se é o principal ou um secundário;
 - `proveniencia`: versão do engine, `estadoScript`, avisos, modelos (nome, origem, versão, hash), todos os itens do cadastro vigente e, para curva derivada, as curvas componentes (nome, papel e `hashPontos` usado).
 
 Os modelos da `proveniencia` (construção, interpolação e calendário) SHALL ser os que de fato executaram: modelo nativo com origem `JAVA` e a versão do engine; script com origem `GROOVY`, a versão e o hash do script usado. Valores fixos (ex.: sempre `JAVA` versão 1) MUST NOT ser gravados. Se o commit falhar, o evento MUST NOT ser emitido; o erro sai em `CONSTRUCAO_FALHOU`. A construção sem recálculo que devolve `EXISTENTE` e a simulação MUST NOT gerar `CURVA_GRAVADA`. A edição manual de pontos é feita pelo `services/curves` (change `curves-cadastro-curvas`), como operação de contingência, e registrada no log dele (`PONTOS_EDITADOS`). O engine MUST NOT gravar registro de auditoria no Blob Storage nem em tabela.
