@@ -1,0 +1,277 @@
+---
+#######################################################################################
+# Configurações comuns da aplicação
+#######################################################################################
+
+poc.starter:
+  caching:
+    enabled: true
+    required: false
+    defaults:
+      ttl: ${APP_CACHING_DEFAULT_TTL_SECONDS:30s}
+
+#######################################################################################
+# Configurações do Spring Boot
+# https://docs.spring.io/spring-boot/appendix/application-properties/index.html
+#######################################################################################
+
+####################################
+# Informações arbitrárias para o endpoint de 'info'.
+info:
+  app:
+    name: '@project.name@'
+    description: '@project.description@'
+    version: '@project.version@'
+  api:
+    title: "acts-srv-curvas"
+
+####################################
+# Propriedades do Spring.
+spring:
+  datasource:
+    # DATABASE_* vêm do ConfigMap; usuário/senha resolvidos do Azure Key Vault (configtree /mnt/secrets-store/)
+    url: ${DATABASE_URL:jdbc:sqlserver://${DATABASE_HOST:localhost}:${DATABASE_PORT:1433};databaseName=${DATABASE_NAME:acts_curvas};encrypt=false;trustServerCertificate=true}
+    username: ${DATABASE_USERNAME:sa}
+    password: ${DATABASE_PASSWORD:LocalSql#2026}
+    driver-class-name: ${DATABASE_DRIVER:com.microsoft.sqlserver.jdbc.SQLServerDriver}
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: dbo
+        dialect: org.hibernate.dialect.SQLServerDialect
+
+  # Aplicação.
+  application:
+    name: '@project.name@'
+  # Banner (start-up).
+  banner:
+    charset: UTF-8
+    location: banner.txt
+  # Configurações externas.
+  config:
+    import: "optional:configtree:/mnt/secrets-store/"
+  # Timeout para shutdown
+  lifecycle.timeout-per-shutdown-phase: "2s"
+  # Configurações gerais do Spring.
+  main:
+    allow-bean-definition-overriding: true
+    banner-mode: CONSOLE
+    lazy-initialization: false
+    log-startup-info: true
+  servlet:
+    encoding:
+      charset: UTF-8
+
+  ####################
+  # Json
+  jackson:
+    serialization:
+      INDENT_OUTPUT: true
+    time-zone: UTC
+    date-format: yyyy-MM-dd'T'HH:mm:ss
+    default-property-inclusion: NON_NULL
+    datatype.datetime.write-dates-as-timestamps: false
+
+  ####################
+  # i18n - Internacionalização
+  messages:
+    #basename: messages
+    fallback-to-system-locale: false
+    #common-messages:
+    #cache-duration: 3600
+
+  ####################
+  # Virtual Threads - Java 21
+  threads:
+    virtual:
+      enabled: false # ative com cautela, pode impactar em bibliotecas que não suportam virtual threads
+
+  ####################
+  # Spring Web MVC
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+  ####################
+  # RFC-9457 - Problem Details for HTTP APIs
+  problemdetails:
+    enabled: true
+
+  ####################
+  # Spring Data
+  data:
+
+  ####################
+  # Spring Cloud
+  cloud:
+    compatibility-verifier:
+      enabled: false
+
+    ###################################################################################
+    # OpenFeign
+    # ---------------------------------------------------------------------------------
+    # Documentação do OpenFeign:
+    # https://cloud.spring.io/spring-cloud-openfeign/reference/html/#spring-cloud-feign-features
+    # https://docs.spring.io/spring-cloud-openfeign/reference/configprops.html
+    # ---------------------------------------------------------------------------------
+    openfeign:
+      # Habilita o suporte ao OkHttp como cliente HTTP do Feign.
+      # Se ambos estiverem habilitados, o OkHttp terá prioridade.
+      httpclient:
+        connection-timeout: ${OPENFEIGN_HTTPCLIENT_CONNECTION_TIMEOUT:2000} # Default = 2000 - Time in milliseconds to establish a connection
+        connection-timer-repeat: ${OPENFEIGN_HTTPCLIENT_CONNECTION_TIMER_REPEAT:3000} # Default = 3000 - Interval in milliseconds for connection manager
+        follow-redirects: true
+        max-connections: ${OPENFEIGN_HTTPCLIENT_MAX_CONNECTIONS:200} # Default = 200 - Max connections in the pool
+        max-connections-per-route: ${OPENFEIGN_HTTPCLIENT_MAX_CONNECTIONS_PER_ROUTE:50} # Default = 50 - Max connections per host/route
+        time-to-live: ${OPENFEIGN_TIME_TO_LIVE:900} # Default = 900 - Time in seconds before a connection is evicted from the pool
+        time-to-live-unit: seconds
+        hc5:
+          connectionRequestTimeout: ${HC5_CONNECTION_REQUEST_TIMEOUT_POOL:3}
+      lazy-attributes-resolution: true
+      # Configurações de Retry com Backoff Exponencial
+      retry:
+        period: ${OPENFEIGN_RETRY_PERIOD:100} # Intervalo inicial entre tentativas em milissegundos
+        max-period: ${OPENFEIGN_RETRY_MAX_PERIOD:2000} # Intervalo máximo entre tentativas em milissegundos
+        max-attempts: ${OPENFEIGN_RETRY_MAX_ATTEMPTS:3} # Número máximo de tentativas
+      client:
+        config:
+          default:
+            connectTimeout: ${OPENFEIGN_HTTPCLIENT_CONNECT_TIMEOUT:6000} #Time in milliseconds to establish a TCP connection
+            readTimeout: ${OPENFEIGN_HTTPCLIENT_READ_TIMEOUT:6000} #Time in milliseconds to wait for data after connection is established, default is 60000 ms
+            loggerLevel: ${OPENFEIGN_HTTPCLIENT_LOGGER_LEVEL:BASIC} # NONE, BASIC, HEADERS, FULL
+            dismiss404: false
+            micrometer:
+              enabled: true
+
+####################################
+# Propriedades de Servidor Web.
+server:
+  # Porta do Servidor HTTP
+  port: ${SERVER_PORT:8080}
+  # Tamanho máximo para headers
+  max-request-http-header-size: ${SERVER_MAX_HTTP_HEADER_SIZE:8KB}
+  # Tipo de shutdown que o servidor suporta.
+  shutdown: "immediate"
+  tomcat:
+    uri-encoding: UTF-8
+    # Paralelismo máximo de processamento de requisições (SERVER_PARALELISM do ConfigMap)
+    threads:
+      max: ${SERVER_PARALELISM:200}
+
+####################################
+# Spring Boot Actuator
+management:
+  endpoints:
+    web:
+      # ALTERANDO O PATH DO ACTUATOR DE /actuator/<endpoint-actuator> PARA /<endpoint-actuator>
+      base-path: /
+      exposure:
+        # HABILITA APENAS O ENDPOINT HEALTH
+        include: health
+    access:
+      # DESABILITA TODOS OS ENDPOINTS DO ACTUATOR POR PADRÃO
+      default: NONE
+  endpoint:
+    # /health do Actuator.
+    health:
+      access: UNRESTRICTED
+      # Mostrar detalhes dos componentes no /health. Utilizar o <show-details> por padrão.
+      show-components: "always"
+      # Mostrar todos detalhes do serviço no /health.
+      show-details: "never"
+      # HABILITA PROBES - LIVENESS CHECK e READINESS CHECK
+      # https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+      probes:
+        enabled: true
+      # Definir os grupos do Health (sub paths).
+      group:
+        liveness:
+          include: livenessState, ping
+        readiness:
+          include: readinessState, ping
+
+  ####################
+  # Configurações do /health
+  health:
+    # Ping simples da aplicação
+    ping:
+      enabled: true
+
+    # Verificar saúde do Redis
+    # Em caso de uso como cache, manter desabilitado para evitar acoplar a saúde da aplicação à saúde do cache.
+    # Cache deve ser opcional e não impactar a disponibilidade da aplicação.
+    redis:
+      enabled: false
+
+    # DESABILITA PARA NÃO RETORNAR INFORMAÇÕES DO ATRIBUTO 'diskspace' AO REQUISITAR /health
+    diskspace:
+      enabled: false
+
+    # HABILITA LIVENESS CHECK PARA O KUBERNETES
+    # https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+
+  # Exportar métricas Redis para Actuator
+  simple:
+    metrics:
+      export:
+        enabled: true
+
+  ####################
+  # Métricas do Cache Redis
+  metrics:
+    cache:
+      # Habilitar métricas de cache
+      instrument-cache: true
+      # Métricas específicas do Redis
+      redis:
+        enabled: true
+
+  ####################
+  # Telemetria
+  opentelemetry:
+    resource-attributes:
+      service.name: ${info.app.name}
+      service.version: ${info.app.version}
+      service.instance.id: ${HOSTNAME:unknown}
+      service.namespace: ${NAMESPACE:local}
+      deployment.environment: ${ENVIRONMENT:local}
+  tracing:
+    sampling:
+      # Instrumentar 100% das requisições
+      probability: 1.0
+    propagation:
+      # Formato do cabeçalho de propagação das informações de rastreamento
+      consume: w3c,b3,b3_multi
+      produce: w3c
+
+####################################
+# Níveis dos loggers.
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:${LOG_LEVEL:INFO}}
+    br.com.poc: ${LOG_LEVEL_BR_COM_POC:${LOG_LEVEL:INFO}}
+    org.springframework: ${LOG_LEVEL_ORG_SPRINGFRAMEWORK:INFO}
+    feign.Retryer: ${LOG_LEVEL_FEIGN_RETRYER:INFO}
+    org.hibernate.type: ${LOG_LEVEL_ORG_HIBERNATE_TYPE:WARN}
+
+#######################################################################################
+# SpringDoc OpenAPI
+springdoc:
+  pathsToMatch: /**
+  show-actuator: true
+  ### Swagger UI ###
+  swagger-ui:
+    enabled: true
+    tagsSorter: alpha
+#######################################################################################

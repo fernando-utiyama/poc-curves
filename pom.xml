@@ -51,7 +51,6 @@
 
     <modules>
         <module>services/curve-engine-legado</module>
-        <module>services/curve-api-legado</module>
         <module>services/curve-bff</module>
     </modules>
 
