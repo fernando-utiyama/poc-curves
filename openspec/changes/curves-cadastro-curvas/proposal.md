@@ -15,6 +15,7 @@ Além disso, quando a fonte falha ou traz um valor errado, o gestor da curva pre
   - **Só a consistência do banco barra:** lista vazia, data ou valor malformado, data repetida, valor que não cabe na coluna. Toda regra de negócio (fim de semana, feriado, data antes da data-base, preço não positivo, sem configuração, engine fora) vira aviso, e o ponto é gravado; o engine trata esses pontos na interpolação.
   - **Mesma trava e mesmo `hashPontos` do engine**, pelo banco; a única chamada ao engine depois de gravar é a regravação da curva interpolada, e a edição nunca depende dela; sem auditoria (contingência), com o log `PONTOS_EDITADOS`.
   - **Planilha de pontos** com 5 colunas (`Curva`, `DataBase`, `DataPonto`, `Valor` e `DiasUteis` opcional, obedecido pelo engine), simulação ponto a ponto e aplicação atômica.
+- **Manutenção do dado bruto da B3** (`tBtrsCurvaPrimr`), como contingência para a carga que falhou ou veio errada: uma listagem geral, uma linha por curva e data-base com bruto (quantidade de linhas, código na fonte, se a curva já foi construída), para o gestor selecionar no front; depois, o CRUD linha a linha da curva na data (incluir, alterar, apagar uma linha ou a data inteira). Só grava o bruto: nada é disparado no engine; a curva usa as linhas na próxima construção, ou num recálculo forçado se já estiver construída (aviso `CURVA_JA_CONSTRUIDA`). Recusa só o que não cabe nas colunas; o que faria o modelo da B3 falhar (dias corridos repetidos, dias úteis incoerentes) vira aviso. Mesma trava por curva, `cldtfdUnic` como o processor, log `CURVA_PRIMARIA_EDITADA`, sem auditoria.
 - **Proteções de produção:**
   - concorrência otimista (`ETag`/`If-Match`), para duas pessoas não sobrescreverem a alteração uma da outra;
   - auditoria de toda alteração no log (`CADASTRO_ALTERADO`, com estado anterior e novo) e arquivo de auditoria do cadastro montado na hora, a pedido do front, sem nada no Blob;
@@ -38,6 +39,7 @@ Além disso, quando a fonte falha ou traz um valor errado, o gestor da curva pre
 - `painel-curvas`: painel de acompanhamento das curvas por data-base, com situação, atraso, erros e avisos.
 - `pontos-curva-manual`: edição manual dos pontos de uma curva numa data-base, validação, preferência sobre o engine, trava e `hashPontos` compartilhados, log.
 - `pontos-curva-planilha`: exportação e importação em lote dos pontos por planilha, com simulação e aplicação atômica.
+- `curva-primaria-b3`: listagem geral para seleção e CRUD linha a linha do dado bruto da B3 (`tBtrsCurvaPrimr`), com avisos do efeito no engine e log.
 
 ### Modified Capabilities
 <!-- Nenhuma. -->
@@ -45,7 +47,7 @@ Além disso, quando a fonte falha ou traz um valor errado, o gestor da curva pre
 ## Impact
 
 - **services/curves:** rotas novas de curvas de mercado, ligações, configurações, auditoria montada na hora, planilha, valores aceitos, painel, pontos e planilha de pontos. O serviço ainda será transcrito do sistema real; esta change define o comportamento, e a implementação segue a estrutura que o serviço tiver.
-- **Banco:** sem mudança de schema. O serviço escreve `tCurvaMercd` (menos `dBaseReft` e `cUsuarCalc`, que são do engine), `tCurvaPrvdr`, `tConfgCurva` e `tDadoVertcCurva` (edição manual, com a mesma trava por curva do engine); em `tDadoCurva`, só apaga a interpolada da data quando os pontos da data são apagados.
+- **Banco:** sem mudança de schema. O serviço escreve `tCurvaMercd` (menos `dBaseReft` e `cUsuarCalc`, que são do engine), `tCurvaPrvdr`, `tConfgCurva`, `tDadoVertcCurva` (edição manual, com a mesma trava por curva do engine) e `tBtrsCurvaPrimr` (manutenção do bruto da B3, com a mesma trava; uma nova carga ou reprocessamento da data pelo processor substitui as linhas editadas); em `tDadoCurva`, só apaga a interpolada da data quando os pontos da data são apagados.
 - **Blob:** nenhum uso; o Blob fica só com os originais dos feeders e os scripts Groovy do engine.
 - **Entra ID:** papel novo `Curvas.Cadastro` no mesmo registro de aplicação do engine; a identidade do curves recebe `Curvas.Leitura` e `Curvas.Operador` do engine (este para regravar a curva interpolada depois de uma edição manual).
 - **Depende de:**

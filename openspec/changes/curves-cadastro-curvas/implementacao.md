@@ -1,12 +1,12 @@
 # Guia de implementação: curves-cadastro-curvas
 
-Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec manda; este guia diz onde e como.** Siga as seções na ordem. Os testes são escritos só na seção 13, depois de tudo compilar.
+Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec manda; este guia diz onde e como.** Siga as seções na ordem. Os testes são escritos só na seção 14, depois de tudo compilar.
 
 ## 0. Regras para quem implementa
 
 - **Serviço:** `services/curves` (no sistema real, `acts-srv-curvas`, onde outro dev já faz o CRUD de provedores). Se o serviço já existir transcrito, encaixe as classes na estrutura dele. Se não existir, crie-o com a mesma estrutura do `services/engine`: Java 21, Spring Boot 4 (Jackson 3, `tools.jackson`), pacote `br.com.poc`, camadas `adapter/in/api/rest`, `application/service`, `domain`, `adapter/out/persistence/entity` (entidades) e `adapter/out/persistence/repository`, `adapter/out/client/engine`, `adapter/out/planilha`. No serviço real, as entidades ficam em `br.com.poc.adapter.out.persistence.entity`, com Lombok (`@Getter`, `@Setter`, `@NoArgsConstructor`), como a `ProvedorEntity` do CRUD de provedores: siga o mesmo padrão.
 - **Mesma base do engine** (guia do `engine-modelos-curva`, seção 0):
-  - **hexagonal:** `domain` em Java puro (regras de campo, vigência, `ETag`, validador de parâmetros, `hashPontos`, 30/360, situação do painel), sem Spring, JPA, Jackson ou POI; `application/port/in` (casos de uso) e `application/port/out`, uma porta por tabela (`CurvaMercadoPort`, com a trava da curva; `CurvaProvedorPort`; `ConfiguracaoCurvaPort`; `PrvdrDadoMercadoPort`; `DadoVerticeCurvaPort`; `DadoCurvaPort`) mais `EnginePort`, `PlanilhaPort` e `EventosPort`; `application/service` implementa os casos de uso; os adaptadores implementam as portas. O serviço conhece só as portas;
+  - **hexagonal:** `domain` em Java puro (regras de campo, vigência, `ETag`, validador de parâmetros, `hashPontos`, 30/360, situação do painel), sem Spring, JPA, Jackson ou POI; `application/port/in` (casos de uso) e `application/port/out`, uma porta por tabela (`CurvaMercadoPort`, com a trava da curva; `CurvaProvedorPort`; `ConfiguracaoCurvaPort`; `PrvdrDadoMercadoPort`; `DadoVerticeCurvaPort`; `DadoCurvaPort`; `B3CurvaPrimariaPort`) mais `EnginePort`, `PlanilhaPort` e `EventosPort`; `application/service` implementa os casos de uso; os adaptadores implementam as portas. O serviço conhece só as portas;
   - **Java 21 nativo:** records para todo dado (domínio, DTOs, eventos, linhas de planilha), sealed e `switch` com pattern matching onde há variações fechadas (resultado de linha da importação, situação do painel), `java.time`, `RoundingMode`, `HexFormat`, `MessageDigest`, `Normalizer`. Nada de tipo próprio de data, relógio, arredondamento ou "utils";
   - **virtual threads:** `spring.threads.virtual.enabled: true`; sem `synchronized`;
   - **exceção:** as entidades JPA seguem o padrão do serviço real (Lombok, como a `ProvedorEntity`); fora delas, sem Lombok nem MapStruct no código novo.
@@ -27,6 +27,7 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 | `tPrvdrDadoMercd` | só lê (provedores, do CRUD do outro dev) |
 | `tDadoVertcCurva` | **pontos da curva** (curva construída): edição manual |
 | `tDadoCurva` | curva interpolada: só **apaga** a da data quando os pontos da data são apagados; quem grava é o engine |
+| `tBtrsCurvaPrimr` | **dado bruto da B3**: listagem geral e CRUD por linha (seção 11); `cldtfdUnic` por `MAX + 1` com trava, como o processor |
 
 ### 0.2 Vetores de teste reais
 
@@ -55,7 +56,7 @@ Acrescentar só o que faltar:
 | `org.apache.poi:poi-ooxml` **5.5.1** | planilhas |
 | `org.springframework.boot:spring-boot-starter-data-jpa` e `com.microsoft.sqlserver:mssql-jdbc` (se o serviço ainda não tiver) | banco |
 
-Nada de dependência de teste além do `spring-boot-starter-test` (seção 13).
+Nada de dependência de teste além do `spring-boot-starter-test` (seção 14).
 
 ### 1.2 `application.yml` (conferir e acrescentar)
 
@@ -383,28 +384,64 @@ Nível `AVISO`: `correlationId`, `usuario`, `codigo`, `nome`, `dataBase`, `opera
 
 ---
 
-## 11. Remover e conferir
+## 11. Curva primária B3 (`B3CurvaPrimariaService`, spec `curva-primaria-b3`)
+
+Entidade `BtrsCurvaPrimrEntity` (`tBtrsCurvaPrimr`: `cldtfdUnic` `@Id` sem geração, `cTickerIndcd`, `dBaseReft`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx`, `vFatorAcum`, `vFatorDia`), porta `B3CurvaPrimariaPort` (o mesmo nome da porta do processor, cada serviço com a sua). Record do domínio `B3CurvaPrimaria(Integer id, int diasCorridos, int diasUteis, BigDecimal valor, BigDecimal fatorAcumulado, BigDecimal fatorDia)`.
+
+Listagem geral (uma consulta; `codigosNaFonte` numa segunda consulta só para as curvas da página):
+```sql
+SELECT m.cTickerIdtfdUnic, m.cTickerIndcd, m.cSitReg, b.dBaseReft, COUNT(*) AS quantidade,
+       CASE WHEN EXISTS (SELECT 1 FROM tDadoVertcCurva v WHERE v.cTickerIndcd = b.cTickerIndcd AND v.dBaseReft = b.dBaseReft) THEN 1 ELSE 0 END AS construida
+  FROM tBtrsCurvaPrimr b JOIN tCurvaMercd m ON m.cTickerIndcd = b.cTickerIndcd
+ WHERE b.dBaseReft BETWEEN ? AND ? AND m.cTickerIdtfdUnic IS NOT NULL   -- + filtros de código e nome
+ GROUP BY m.cTickerIdtfdUnic, m.cTickerIndcd, m.cSitReg, b.dBaseReft
+ ORDER BY b.dBaseReft DESC, m.cTickerIdtfdUnic
+OFFSET ? ROWS FETCH NEXT ? ROWS ONLY;
+SELECT cTickerIndcd, cTickerPrvdr FROM tCurvaPrvdr WHERE iPrvdrDados = 'B3' AND cPrvdrMercd = 'TS' AND cTickerIndcd IN (...);
+```
+
+Escrita (uma transação, trava como na seção 10.2, com o mesmo tempo limite de 60 s no comando e a mesma proibição de `SET LOCK_TIMEOUT` e `@Transactional(timeout)`):
+```sql
+SELECT cTickerIndcd FROM tCurvaMercd WITH (UPDLOCK, ROWLOCK) WHERE cTickerIndcd = ?;
+SELECT ISNULL(MAX(cldtfdUnic), 0) FROM tBtrsCurvaPrimr WITH (UPDLOCK, HOLDLOCK);          -- só no POST
+INSERT INTO tBtrsCurvaPrimr (cldtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+UPDATE tBtrsCurvaPrimr SET cDiaCorri = ?, cDiaUtil = ?, vPrecoTx = ?, vFatorAcum = ?, vFatorDia = ? WHERE cldtfdUnic = ? AND cTickerIndcd = ? AND dBaseReft = ?;
+DELETE FROM tBtrsCurvaPrimr WHERE cldtfdUnic = ? AND cTickerIndcd = ? AND dBaseReft = ?;   -- 0 linhas → 404
+DELETE FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;                       -- data inteira
+SELECT cldtfdUnic, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ? ORDER BY cDiaCorri, cldtfdUnic;
+```
+`PUT` e `DELETE` de linha filtram por id, nome e data-base: linha de outra curva ou data dá 0 linhas → 404 `NAO_ENCONTRADO`.
+
+1. Validação de coluna (422 `DADOS_INVALIDOS`, um `DetalheErro` por campo): `diasCorridos`, `diasUteis` e `valor` obrigatórios; inteiros em `INT`; `valor` com `precision() - scale() <= 16` e `scale() <= 12`; fatores com `precision() - scale() <= 12` e `scale() <= 16`. Nada é arredondado.
+2. Avisos (seção 1.3, `AvisoCurva`), sobre as linhas relidas da data: `DIAS_CORRIDOS_NAO_POSITIVO` (< 1), `DIAS_UTEIS_INCOERENTES` (< 1 ou > dias corridos), `DIAS_CORRIDOS_REPETIDOS` (agrupar por dias corridos, um aviso por grupo com mais de uma linha, citando os ids), `CURVA_SEM_LIGACAO_B3` (nenhuma ligação `B3`/`TS`), `CURVA_JA_CONSTRUIDA` (`EXISTS` em `tDadoVertcCurva` na data). A consulta calcula os mesmos avisos.
+3. Depois do commit: log `CURVA_PRIMARIA_EDITADA` (nível `AVISO`: `correlationId`, `usuario`, `fonte` = `B3`, `codigo`, `nome`, `dataBase`, `operacao` `INCLUSAO`/`ALTERACAO`/`EXCLUSAO`/`EXCLUSAO_DATA`, `linhaAntes`, `linhaDepois` ou `linhasApagadas`, `quantidadeAntes`, `quantidadeDepois`). Sem auditoria, sem chamada ao engine, sem escrita em `tDadoVertcCurva`, `tDadoCurva` ou `tCurvaMercd`.
+4. Resposta: `POST` 201 com a linha gravada e `avisos`; `PUT` 200 com a linha e `avisos`; `DELETE` 200 com `avisos` da data (vazio se a data ficou sem linhas).
+
+---
+
+## 12. Remover e conferir
 
 Nada a remover no serviço (é novo ou é do outro dev). Conferir que nenhum código do curves grava `dBaseReft`, `cUsuarCalc`, `tDadoCurva` (fora do `DELETE`) nem usa Blob.
 
-## 12. Ordem de implementação (uma tarefa de `tasks.md` por vez; `mvn -q compile` ao fim de cada uma)
+## 13. Ordem de implementação (uma tarefa de `tasks.md` por vez; `mvn -q compile` ao fim de cada uma)
 
 1. Seção 1 (tarefas 1.x).
 2. Seção 2 (2.x), seção 3 (3.x), seção 4 (4.x), seção 5 (4.4).
 3. Seção 7 (5.x).
 4. Seções 8 e 10 (7.x), seção 9 (8.x), origens e dias úteis (9.x).
 5. Seção 6 (6.1).
-6. Seção 13 (testes), seção 14 (homologação).
+6. Seção 11 (10.x).
+7. Seção 14 (testes), seção 15 (homologação).
 
-## 13. Testes (ao final)
+## 14. Testes (ao final)
 
 Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUnit 5 com testes parametrizados, Mockito, AssertJ, MockMvc) e ArchUnit se o serviço já tiver. **Sem banco nem engine reais**: repositórios e `EngineClient` com Mockito. Fuso dos testes como no `main`: `TimeZoneExtension` registrada por autodetecção do JUnit (`junit-platform.properties` + `META-INF/services`), com `TimeZone.setDefault` no `beforeAll`. Quem depende de "hoje" (vigência, atraso do painel) recebe a data ou a hora por parâmetro do método testado.
 
-### 13.1 Verificar
+### 14.1 Verificar
 
 `mvn -q compile` limpo. Buscas sem resultado em `src/main`: `class Relogio`, `NOLOCK`, `synchronized`, `BlobServiceClient`, gravação de `dBaseReft` ou `cUsuarCalc`.
 
-### 13.2 Criar
+### 14.2 Criar
 
 | Teste | Casos |
 |---|---|
@@ -417,20 +454,21 @@ Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUn
 | `CadastroPlanilhaServiceTest` | exportar e importar sem editar → zero mudanças; 30 prioridades trocadas; ligação removida; versão existente editada → erro; erro impede o lote; `Controle` antigo → `ALTERADO_POR_OUTRO`; vírgula e ponto juntos → erro; `MODELOS_POR_ORIGEM` malformado |
 | `PainelServiceTest` | todos os cenários da spec `painel-curvas`, uma linha por situação e por `motivo`, engine fora, feriado americano, carga atrasada, origem secundária |
 | `DadoVerticeCurvaServiceTest` | vetores da seção 0.2 (`hashPontos`, arredondamento, `diasUteis` 76 com 30/360 = 110); cenários da spec `pontos-curva-manual` (um valor, ponto retirado, casas a mais, lista igual sem escrita, conferência divergente desfaz, data sem construção, engine fora com `INTERPOLADA_DESATUALIZADA`, feriado, sábado, repetida); regravação chamada também com `SEM_MUDANCA` |
+| `B3CurvaPrimariaServiceTest` | cenários da spec `curva-primaria-b3` (listagem da carga, consulta da PRE, linha de outra data → 404, repetidos, valor com 13 casas → 422, correção depois da construção, data sem carga digitada); nenhuma chamada ao `EngineClient`; `MAX + 1` com `UPDLOCK, HOLDLOCK` enviado ao repositório; log sem o evento quando o commit falha |
 | `DadoVerticeCurvaPlanilhaServiceTest` | cenários da spec `pontos-curva-planilha`; planilha sem `DiasUteis`; `DiasUteis` apagado → `ALTERACAO`; valor da `PTX` 56,3772259 numérico |
 | `ApiContratoTest` (MockMvc) | um teste por rota com 401, 403 e papel certo; um por `codigoErro`; `X-Correlation-Id` em sucesso, erro e `xlsx`; decimais como string |
 | `FusoTest` | `OffsetDateTime.ofInstant(Instant.parse("2026-09-15T01:30:00Z"), ZoneId.systemDefault())` → `2026-09-14T22:30-03:00`; subida recusada com outro fuso |
 
-### 13.3 Rodar
+### 14.3 Rodar
 
 `mvn verify` passa sem banco nem engine. Teste que falha e reflete a spec → corrigir o código.
 
-## 14. Conferido na homologação (não é teste automatizado)
+## 15. Conferido na homologação (não é teste automatizado)
 
 Com o banco, o engine e o Entra ID do projeto:
 - as 7 curvas do `exemplo-cadastro-7-curvas.txt` cadastradas pela API e pela planilha, e a simulação do engine sem `CADASTRO_INVALIDO` em nenhuma;
 - `ETag` real depois da criação da `PRE` igual ao vetor da seção 0.2 (se o `idLigacao` for 1);
 - duas inclusões de ligação simultâneas com `idLigacao` diferentes;
 - edição de pontos enquanto o engine constrói a mesma curva: espera e grava por cima;
-- tarefa 10.2 do `tasks.md` (construir, editar, interpolar, carga sem sobrescrever, painel `DIVERGENTE_DA_FONTE`, recálculo forçado);
+- tarefa 11.2 do `tasks.md` (construir, editar, interpolar, carga sem sobrescrever, painel `DIVERGENTE_DA_FONTE`, recálculo forçado);
 - `openspec validate curves-cadastro-curvas --strict`.

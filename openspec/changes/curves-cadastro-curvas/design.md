@@ -113,6 +113,16 @@ As ligações de prioridade maior são fontes de reserva. O curves não constró
 ### Dias úteis informados pelo gestor
 Os dias úteis que vêm da fonte ou do usuário são obedecidos pelo engine (change `engine-modelos-curva`, D39). A edição manual e a planilha de pontos aceitam `diasUteis` opcional por ponto; o curves grava a linha do ponto em `tDadoVertcCurva` com esses dias, os dias corridos e 30/360 (contas de data, sem calendário) e fatores nulos, porque fatores são do engine. Os pontos que não mudaram mantêm a linha do engine, com os dias publicados pela fonte; por isso a consulta e a exportação devolvem os dias úteis, e reenviá-los sem mudança não altera nada. Dias informados diferentes do calendário, incoerentes ou fora de ordem são avisos, nunca recusa.
 
+### D20. Dado bruto da B3 mantido à mão, sem disparar o engine
+Quando a carga da B3 falha ou traz um vértice errado, o gestor corrige o bruto (`tBtrsCurvaPrimr`) em vez dos pontos, e a curva sai pelo modelo `PRONTA_TS_B3` como sempre (memória de cálculo, dias úteis publicados, curvas que usam o mesmo código). O front abre uma listagem geral (curva, data-base, quantidade de linhas, código na fonte, curva construída ou não), feita por uma consulta agregada, e o gestor seleciona uma curva e data para o CRUD linha a linha.
+- **Só grava o bruto:** nada é disparado no engine. A data ainda não construída sai na próxima construção (manual ou pelo orquestrador); a já construída só muda num recálculo forçado, e a resposta avisa `CURVA_JA_CONSTRUIDA`.
+- **Mesmas regras da edição de pontos (D14, D15):** trava da curva em `tCurvaMercd` (o engine lê o bruto sob ela, então nunca constrói com a edição pela metade), sem `If-Match`, recusa só do que não cabe nas colunas ou falta para ser um vértice; o que faria o modelo falhar (`INSUMO_INVALIDO`) vira aviso, com o efeito descrito.
+- **`cldtfdUnic` como o processor** (`MAX + 1` com `UPDLOCK, HOLDLOCK`), para os dois não colidirem.
+- **Sem arredondamento:** é o dado da fonte, gravado como enviado.
+- **Reprocessamento vence:** o processor apaga e insere as linhas da curva na data; a edição fica no log `CURVA_PRIMARIA_EDITADA`.
+
+**Alternativa rejeitada:** substituir a lista completa da data, como nos pontos. O gestor quer corrigir um vértice entre 278 sem reenviar tudo, e a listagem mais o CRUD por linha é o que a tela pede.
+
 ## Risks / Trade-offs
 
 - **Regras de parâmetros duplicadas entre curves e engine.** → A spec do engine é a fonte; os testes do curves usam os mesmos casos da tabela. Uma chave nova no engine exige atualizar os dois.
@@ -125,12 +135,14 @@ Os dias úteis que vêm da fonte ou do usuário são obedecidos pelo engine (cha
 - **Preço ou pontos não positivos gravados.** → Aviso `VALOR_NAO_POSITIVO`; a interpolação `LogLinear` dessa data falha no engine com `PONTOS_NAO_INTERPOLAVEIS` até a correção, mas a consulta dos pontos continua funcionando.
 - **Importação grande de pontos trava muitas curvas.** → Limite de 100.000 pontos; travas em ordem fixa; a simulação não trava.
 - **Fórmula do `hashPontos` em dois serviços.** → Forma canônica do valor definida na spec do engine (sem zeros à direita, independente da escala do banco) e um vetor de teste comum aos dois.
+- **Bruto editado à mão e depois reprocessado.** → O processor substitui as linhas da data inteira; a edição anterior fica no log `CURVA_PRIMARIA_EDITADA` com a linha antes e depois.
+- **Bruto corrigido numa curva já construída não muda nada sozinho.** → Aviso `CURVA_JA_CONSTRUIDA` na resposta; o gestor pede o recálculo forçado no engine.
 - **Serviço ainda não transcrito.** → A change define comportamento, não estrutura; a implementação se encaixa no código real quando ele existir.
 
 ## Migration Plan
 
 1. Entra ID: criar o papel `Curvas.Cadastro` e atribuí-lo a quem cadastra; atribuir `Curvas.Leitura` e `Curvas.Operador` do engine à identidade gerenciada do curves (o `Curvas.Operador` só para regravar a curva interpolada depois de uma edição manual), que chama o engine para os valores aceitos, a situação do painel e os calendários.
-2. Log: retenção dos eventos `CADASTRO_ALTERADO` e `PONTOS_EDITADOS` definida pela área de risco. O serviço não usa o Blob.
+2. Log: retenção dos eventos `CADASTRO_ALTERADO`, `PONTOS_EDITADOS` e `CURVA_PRIMARIA_EDITADA` definida pela área de risco. O serviço não usa o Blob.
 3. Deploy do serviço junto com o engine sem a edição de pontos. O banco começa vazio: o cadastro entra pela API ou pela planilha (ex.: `exemplo-cadastro-7-curvas.txt`). Linhas de `tCurvaMercd` sem código, se existirem, ficam invisíveis nas rotas.
 4. **Rollback:** voltar os deploys do curves e do engine; os dados gravados continuam válidos para o engine.
 

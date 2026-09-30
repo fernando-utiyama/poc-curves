@@ -66,7 +66,7 @@ Toda resposta de consulta de uma curva SHALL trazer o cabeçalho `ETag` = SHA-25
 - **THEN** a primeira é gravada, e a segunda recebe 412 com `ALTERADO_POR_OUTRO`
 
 ### Requirement: Autenticação, papéis e erros
-Toda rota MUST exigir token JWT do Entra ID, no mesmo registro de aplicação do engine. Leitura exige `Curvas.Leitura`; escrita, o papel novo `Curvas.Cadastro`. Token ausente ou inválido: 401 `NAO_AUTENTICADO`; sem papel: 403 `SEM_PERMISSAO`. Toda resposta de erro SHALL seguir o padrão do projeto, o mesmo do engine: Problem Details (RFC 9457, `application/problem+json`) pelo tratador de exceções padrão (`ApplicationExceptionHandler`), com `type`, `title`, `status`, `detail` (em português, do `MessageSource`), `instance`, e as propriedades `code` (o código abaixo), `correlationId` e, quando houver, `detalhes` (`campo`, `linha`, `valor`, `motivo`, com nulo no que não se aplica); sem stack trace. Os códigos:
+Toda rota MUST exigir token JWT do Entra ID, no mesmo registro de aplicação do engine. Leitura exige `Curvas.Leitura`; escrita, o papel novo `Curvas.Cadastro`. Token ausente ou inválido: 401 `NAO_AUTENTICADO`; sem papel: 403 `SEM_PERMISSAO`. Toda resposta de erro SHALL seguir o padrão do serviço `curves`: o `GlobalExceptionHandler` existente, com o corpo `ApiErrorResponse` (`timestamp`, `status`, `error` = o código abaixo, `message` em português, `path`, `details` com um texto por problema), acrescido de `correlationId` e, quando houver, `detalhes` (`campo`, `linha`, `valor`, `motivo`, com nulo no que não se aplica); sem stack trace. Os códigos:
 
 | `codigoErro` | HTTP | Quando |
 |---|---|---|

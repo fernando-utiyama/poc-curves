@@ -1,4 +1,4 @@
-Guia de implementação passo a passo (entidades, regras, SQL, `ETag`, planilhas, painel, pontos e vetores de teste reais): [`implementacao.md`](implementacao.md). Siga a ordem da seção 12 do guia. Os "verificar" de cada tarefa viram testes escritos ao final (seção 13 do guia), só com mocks; o que depende de banco ou do engine real é conferido na homologação (seção 14).
+Guia de implementação passo a passo (entidades, regras, SQL, `ETag`, planilhas, painel, pontos e vetores de teste reais): [`implementacao.md`](implementacao.md). Siga a ordem da seção 13 do guia. Os "verificar" de cada tarefa viram testes escritos ao final (seção 14 do guia), só com mocks; o que depende de banco ou do engine real é conferido na homologação (seção 15).
 
 ## 1. Base comum
 
@@ -60,8 +60,14 @@ Guia de implementação passo a passo (entidades, regras, SQL, `ETag`, planilhas
 
 - [ ] 9.4 Aceitar `diasUteis` opcional no `PUT` de pontos e a coluna `DiasUteis` na planilha de pontos (exportada com `tDadoVertcCurva.cDiaUtil`), regravando em `tDadoVertcCurva` só a linha dos pontos novos ou alterados (dias informados, dias corridos, 30/360, fatores nulos) e mantendo a do engine nos demais, com os avisos `DIAS_UTEIS_DIFERENTES_DO_CALENDARIO`, `DIAS_UTEIS_INCOERENTES` e `DIAS_UTEIS_FORA_DE_ORDEM`; verificar os cenários das specs `pontos-curva-manual` e `pontos-curva-planilha`, planilha antiga sem a coluna e exportar-importar sem mudança
 
-## 10. Verificação
+## 10. Curva primária B3
 
-- [ ] 10.1 Cadastrar pela API e pela planilha as 7 curvas do primeiro objetivo, exatamente como em `exemplo-cadastro-7-curvas.txt`, com ligações e configurações conforme as specs do engine, e conferir que o engine as lê sem `CADASTRO_INVALIDO` (simulação do engine para cada uma)
-- [ ] 10.2 Na homologação, com o engine e o curves apontando para o mesmo SQL Server: construir a `PRE` pelo engine, editar um ponto pelo curves, interpolar pelo engine com o valor novo, e confirmar que um webhook de carga não sobrescreve (e avisa `PONTOS_DIFERENTES_DA_FONTE`), que o painel mostra a `PRE` como `DIVERGENTE_DA_FONTE`, e que um recálculo forçado sobrescreve
-- [ ] 10.3 Rodar `openspec validate curves-cadastro-curvas --strict` e a suíte de testes do serviço; verificar que tudo passa
+- [ ] 10.1 Criar `GET /curvas-mercado/primaria-b3` (uma consulta agregada por curva e data-base em `tBtrsCurvaPrimr`, com `quantidadeLinhas`, `codigosNaFonte` das ligações `B3`/`TS`, `curvaConstruida`, filtros `de`/`ate` com padrão de 30 dias e máximo de 366, `codigo`, `nome`, paginação 50/500) e `GET .../{codigo}/primaria-b3/{dataBase}` (linhas ordenadas por dias corridos e id, `dataPonto`, avisos da data); verificar os cenários "Seleção depois da carga" e "Consulta das linhas da PRE", e que a listagem é uma consulta só
+- [ ] 10.2 Criar `POST .../linhas`, `PUT .../linhas/{id}`, `DELETE .../linhas/{id}` e `DELETE .../primaria-b3/{dataBase}`: transação com a trava da curva (`UPDLOCK, ROWLOCK`, 60 s só para obtê-la), `cldtfdUnic` por `MAX + 1` com `UPDLOCK, HOLDLOCK`, valores sem arredondamento, 404 para linha de outra curva ou data, recusa 422 `DADOS_INVALIDOS` só pelas regras de coluna, avisos `DIAS_CORRIDOS_NAO_POSITIVO`, `DIAS_UTEIS_INCOERENTES`, `DIAS_CORRIDOS_REPETIDOS`, `CURVA_SEM_LIGACAO_B3` e `CURVA_JA_CONSTRUIDA` sobre todas as linhas da data, nenhuma chamada ao engine e nenhuma escrita fora de `tBtrsCurvaPrimr`; verificar os cenários da spec `curva-primaria-b3`
+- [ ] 10.3 Emitir o log `CURVA_PRIMARIA_EDITADA` (nível `AVISO`, operação, linha antes e depois, quantidades, horário de Brasília) depois do commit, sem auditoria; verificar os campos e a ausência do evento quando o commit falha
+
+## 11. Verificação
+
+- [ ] 11.1 Cadastrar pela API e pela planilha as 7 curvas do primeiro objetivo, exatamente como em `exemplo-cadastro-7-curvas.txt`, com ligações e configurações conforme as specs do engine, e conferir que o engine as lê sem `CADASTRO_INVALIDO` (simulação do engine para cada uma)
+- [ ] 11.2 Na homologação, com o engine e o curves apontando para o mesmo SQL Server: construir a `PRE` pelo engine, editar um ponto pelo curves, interpolar pelo engine com o valor novo, e confirmar que um webhook de carga não sobrescreve (e avisa `PONTOS_DIFERENTES_DA_FONTE`), que o painel mostra a `PRE` como `DIVERGENTE_DA_FONTE`, e que um recálculo forçado sobrescreve
+- [ ] 11.3 Rodar `openspec validate curves-cadastro-curvas --strict` e a suíte de testes do serviço; verificar que tudo passa
