@@ -9,9 +9,6 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# Cópia de build de contracts/events, sincronizada por sync-contracts.mjs — nunca editar à mão
-services/function-marketdata/contracts/
-
 # Angular
 .angular/
 
@@ -33,7 +30,6 @@ Thumbs.db
 *.local.yaml
 data/local/
 .local-processes.json
-.kafka/
 .h2/
 
 # Logs

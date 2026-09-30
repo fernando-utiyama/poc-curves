@@ -46,7 +46,7 @@ Além disso, quando a fonte falha ou traz um valor errado, o gestor da curva pre
 
 ## Impact
 
-- **services/curves:** rotas novas de curvas de mercado, ligações, configurações, auditoria montada na hora, planilha, valores aceitos, painel, pontos e planilha de pontos. O serviço ainda será transcrito do sistema real; esta change define o comportamento, e a implementação segue a estrutura que o serviço tiver.
+- **services/curves:** rotas novas de curvas de mercado, ligações, configurações, auditoria montada na hora, planilha, valores aceitos, painel, pontos e planilha de pontos. O serviço já está transcrito; esta change define o comportamento, e a implementação acrescenta classes à estrutura existente (hexagonal, `application/port`, `adapter/out/persistence`).
 - **Banco:** sem mudança de schema. O serviço escreve `tCurvaMercd` (menos `dBaseReft` e `cUsuarCalc`, que são do engine), `tCurvaPrvdr`, `tConfgCurva`, `tDadoVertcCurva` (edição manual, com a mesma trava por curva do engine) e `tBtrsCurvaPrimr` (manutenção do bruto da B3, com a mesma trava; uma nova carga ou reprocessamento da data pelo processor substitui as linhas editadas); em `tDadoCurva`, só apaga a interpolada da data quando os pontos da data são apagados.
 - **Blob:** nenhum uso; o Blob fica só com os originais dos feeders e os scripts Groovy do engine.
 - **Entra ID:** papel novo `Curvas.Cadastro` no mesmo registro de aplicação do engine; a identidade do curves recebe `Curvas.Leitura` e `Curvas.Operador` do engine (este para regravar a curva interpolada depois de uma edição manual).

@@ -16,10 +16,9 @@
 -- 3. DECIMAL(28,16) em vFatorAcum/vFatorDia/vDiaFator/vFatorCalc/vAcumFator
 --    (vs. DECIMAL(28,12) nos demais campos vPreco*/vFator*) — CONFIRMADO.
 --
--- Ainda não feito: as aplicações Java (curve-processor/curve-api/
--- curve-orchestrator/curve-engine) NÃO foram adaptadas para este schema — só
--- a tabela física foi replicada aqui, a adaptação das aplicações é passo
--- seguinte, separado.
+-- Serviços que usam este schema: services/processor, services/engine,
+-- services/curves e services/orchestrator. Mudanças de schema vão como
+-- script para o dono do banco (change banco-curvas-ajustes).
 -- ============================================================================
 
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[tTesouCurvaPrimr]') AND type in (N'U'))

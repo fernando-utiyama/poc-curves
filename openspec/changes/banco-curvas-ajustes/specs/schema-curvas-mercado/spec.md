@@ -23,7 +23,7 @@ Ajusta o schema das tabelas de curvas de mercado em dois pontos: o ticker Bloomb
 - **THEN** `tCurvaData` não existe mais, e `tDadoCurva` e `tDadoVertcCurva` continuam com as colunas, PKs e FKs do `001_SCRIPT_INICIAL.sql`
 
 ### Requirement: Script único de alteração
-As alterações SHALL ser entregues num único script, `scripts/alter-banco-curvas.sql`, para o dono do schema aplicar no banco ainda sem uso, sem migração de dados: tudo numa transação e, comentada no final, a volta, que recria `tCurvaData` como no `001_SCRIPT_INICIAL.sql`. O schema de teste `db/h2/schema.sql` SHALL receber as mesmas alterações.
+As alterações SHALL ser entregues num único script, `scripts/alter-banco-curvas.sql`, para o dono do schema aplicar no banco ainda sem uso, sem migração de dados: tudo numa transação e, comentada no final, a volta, que recria `tCurvaData` como no `001_SCRIPT_INICIAL.sql`.
 
 #### Scenario: Aplicação no banco vazio
 - **WHEN** o script é executado no banco com o schema atual e sem dados

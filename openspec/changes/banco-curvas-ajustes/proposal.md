@@ -9,7 +9,7 @@ As changes `engine-modelos-curva`, `curves-cadastro-curvas` e `conector-b3-webho
 
 - **`tBbergCurvaPrimr.cTickerBberg`** passa de `CHAR(20)` para `VARCHAR(50)`, do tamanho de `cTickerIndcd`, guardando o ticker completo da Bloomberg sem espaços à direita.
 - **`tCurvaData` removida**, com a FK `FK_tDadoCurva_tCurvaData`. `tDadoCurva` e `tDadoVertcCurva` não mudam.
-- Um único script (`scripts/alter-banco-curvas.sql`) para o dono do schema aplicar no banco ainda sem uso, sem migração de dados, com a volta comentada no final; o schema H2 de teste recebe as mesmas alterações.
+- Um único script (`scripts/alter-banco-curvas.sql`) para o dono do schema aplicar no banco ainda sem uso, sem migração de dados, com a volta comentada no final. Não há schema de teste a ajustar: nenhum serviço usa H2.
 
 ## Capabilities
 
@@ -24,6 +24,6 @@ As changes `engine-modelos-curva`, `curves-cadastro-curvas` e `conector-b3-webho
 - **Banco:** `ALTER` em `tBbergCurvaPrimr` e `DROP` de `tCurvaData`, no banco ainda vazio. Nenhuma tabela nova.
 - **Engine (`engine-modelos-curva`):** o modelo `SOFR_ZERO_BLOOMBERG` lê os nós em `tBbergCurvaPrimr` (sem tabela `mkt.SofrCurveRaw`), com o ticker completo depois desta change. O engine grava a curva construída em `tDadoVertcCurva` e a interpolada em `tDadoCurva`, e não usa `tCurvaData`.
 - **Feeder e processor Bloomberg:** gravam `cTickerBberg` com o ticker completo.
-- **`curve-api-legado` (código da poc):** lê `tCurvaData`; deixa de ler, e a curva interpolada passa a vir de `tDadoCurva`.
+- **Leitores de `tCurvaData`:** nenhum. A curva interpolada vem de `tDadoCurva`, gravada pelo engine.
 - **Dono do schema:** precisa aprovar e aplicar no ambiente real.
 - **Fora de escopo:** os demais alvos registrados nos designs para quando o banco puder mudar (ver design, Open Questions).

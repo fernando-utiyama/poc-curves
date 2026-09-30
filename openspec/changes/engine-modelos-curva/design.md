@@ -219,7 +219,7 @@ O processor é quem sabe que terminou de gravar o bruto, então é ele que avisa
 ### D23. Auditoria sem mudar o schema e sem Blob: log, colunas de cálculo e arquivo montado na hora
 O banco não pode ser alterado, e o Blob é só para originais e scripts. A trilha fica em três lugares:
 - **Log:** cada construção e recálculo emite `CURVA_GRAVADA`, depois do commit, com usuário, carga, `hashPontos` antes e depois, proveniência e os pontos substituídos (spec `curve-audit-history`). O destino dos logs precisa de retenção definida pela área de risco.
-- **Resumo em `tCurvaMercd`:** a construção atualiza `dBaseReft` (maior data-base construída) e `cUsuarCalc` (quem calculou), colunas do schema oficial que não eram usadas por ninguém (o `curve-api-legado` só lê `cUsuarCalc`). É a mesma linha que a construção já trava (D6), então não há custo extra de concorrência.
+- **Resumo em `tCurvaMercd`:** a construção atualiza `dBaseReft` (maior data-base construída) e `cUsuarCalc` (quem calculou), colunas do schema oficial que não eram usadas por ninguém (o `services/curves` só as lê, no painel, e nunca as escreve). É a mesma linha que a construção já trava (D6), então não há custo extra de concorrência.
 - **Arquivo de auditoria sob demanda:** o front pede, e o engine monta na hora, sem guardar: pontos gravados, cadastro vigente, modelos, e a conferência ponto a ponto com o que a fonte produz agora.
 
 **Alvo ideal, quando o banco puder mudar:** tabelas `tAuditCurva` e `tHistDadoCurva` na mesma transação dos pontos, com o histórico consultável pela API. **Alternativa rejeitada:** registros de auditoria no Blob (fora do que o Blob guarda) e histórico consultável sem tabela.
@@ -360,3 +360,5 @@ Quando a fonte publica os dias úteis de um ponto (B3: `cDiaUtil`; ANBIMA: `vVer
 - Prazo de retenção dos logs com `CURVA_GRAVADA` (exigência regulatória ou interna).
 - Quando o banco puder mudar: `tParmConfgCurva` em chave/valor, tabelas de auditoria e `READ_COMMITTED_SNAPSHOT`.
 - Confirmar no Bloomberg Terminal que `S0490Z ... BLC2 Curncy` é zero rate, qual a convenção de cotação e a causa do `1D` duplicado.
+- **Calendário ANBIMA:** importar os feriados nacionais do arquivo `.xls` publicado pela ANBIMA para o calendário `Brazil`/`Settlement` (formato, periodicidade da atualização e quem importa). Vindo do `curves-cadastro-curvas`, a revisar na sequência.
+- **SOFR em dia útil só dos EUA:** data-base que é dia útil do `UnitedStates`/`FederalReserve` e feriado no Brasil (e o inverso): se a SOFR é construída, com qual data-base, e como o painel do curves a mostra. Vindo do `curves-cadastro-curvas`, a revisar na sequência.
