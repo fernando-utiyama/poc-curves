@@ -2,6 +2,19 @@
 
 Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec manda; este guia diz onde e como.** Siga a ordem da seção 15. Os testes são escritos só na seção 16, depois de tudo compilar.
 
+> **O código real manda nos detalhes.** Este guia foi escrito sobre a cópia do serviço no poc (`services/engine`, pacote `br.com.poc`). No repositório real, o pacote raiz, as classes de exceção, o tratador de erro que de fato responde, o formato do corpo de erro, a biblioteca de log, a configuração do Jackson, os caches e o registro de beans **são os que o serviço já tem**: onde este guia cita uma classe ou configuração do código, leia "a equivalente do serviço" e confira antes de usar. O que não muda é o comportamento das specs (rotas, códigos de erro e de aviso, regras, formatos, vetores de teste). Divergência entre o guia e o código real não é motivo para parar: siga o código real e cumpra a spec.
+>
+> Na aplicação do guia do curves no serviço real apareceram estas divergências, que valem como lista do que conferir aqui também:
+> - pacote raiz diferente do `br.com.poc` do guia, e o projeto na raiz do repositório (não em `services/...`);
+> - exceções existentes que só produzem um código genérico (`BAD_REQUEST`, `NOT_FOUND`) e não aceitam o código da spec;
+> - dois tratadores de erro no mesmo serviço (um em Problem Details e outro com record próprio), e `spring.mvc.problemdetails.enabled` não desliga um tratador próprio;
+> - o record de erro com cópias no projeto, só uma usada, e com tipo de `timestamp` diferente do que o guia supunha;
+> - entidade com coluna que não existe no script, nome de coluna errado e `Double` em coluna `DECIMAL`;
+> - biblioteca de log da empresa em vez de `logstash-logback-encoder`;
+> - configuração de Jackson 2 (`com.fasterxml.jackson.databind.Module`) que o Spring Boot 4 (Jackson 3) ignora;
+> - cache distribuído (Redis e starter de caching) já disponível;
+> - serviços registrados como `@Bean` numa classe de configuração, não por `@Service`.
+
 ## 0. Regras para quem implementa
 
 **Java 21, arquitetura hexagonal, código nativo.**
@@ -19,10 +32,10 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 - Todo número de curva é `BigDecimal`; `double` só dentro do `DecimalMath` (`StrictMath`) e na célula numérica da planilha.
 - Fuso: a JVM inteira roda em `America/Sao_Paulo` (seção 1.4). `LocalDate.now()` e `OffsetDateTime.now()` são usados direto.
 - Não invente rota, código de erro, aviso, coluna ou tabela fora deste guia e das specs. Não crie tabela, sequência, índice nem tópico.
-- Arquivos de configuração que já existem (`pom.xml`, `application*.yml`, `logback.xml`): **não reescrever**; conferir e acrescentar só o que faltar.
-- O serviço roda em no mínimo 2 instâncias: nenhum estado de negócio em memória local, além dos caches descritos aqui.
+- Arquivos de configuração que já existem (`pom.xml`, `application*.yml`, a configuração de log): **não reescrever**; conferir e acrescentar só o que faltar.
+- O serviço roda em no mínimo 2 instâncias: nenhum estado de negócio em memória local, além dos caches descritos aqui (feriados por ano e estado dos scripts, que são iguais em todas as instâncias e podem ficar em memória; se o serviço já tiver cache distribuído, usá-lo é aceitável, sem mudar o comportamento).
 
-### 0.1 Arquitetura hexagonal (pacote base `br.com.poc`)
+### 0.1 Arquitetura hexagonal (pacote raiz do serviço; no poc, `br.com.poc`)
 
 ```
 domain/                       Java puro: nada de Spring, JPA, Jackson, Azure, POI, Groovy
@@ -45,10 +58,10 @@ application/
                               MontarAuditoria
   port/out/                   uma porta por tabela: CurvaMercadoPort (com a trava e o resumo de tCurvaMercd),
                               CurvaProvedorPort, ConfiguracaoCurvaPort, DadoVerticeCurvaPort, DadoCurvaPort; e ScriptsPort, CompiladorScriptsPort, PlanilhaPort, EventosPort
-  service/                    uma classe por caso de uso (@Service; @Transactional quando grava);
+  service/                    uma classe por caso de uso, registrada do mesmo jeito que os serviços existentes (`@Service` ou `@Bean` numa configuração); @Transactional quando grava;
                               Paralelo (virtual threads), ResolverModelos
 adapter/
-  in/rest/                    controllers, DTOs (records), FiltroCorrelacao, SegurancaConfig, JsonConfig (erros: `ApplicationExceptionHandler` do projeto, seção 1.5)
+  in/rest/                    controllers, DTOs (records), FiltroCorrelacao, SegurancaConfig, configuração do Jackson (erros: o tratador do serviço, seção 1.5)
   out/persistence/            entidades JPA, repositórios Spring Data, adaptadores das portas
   out/blob/                   ScriptsBlobAdapter
   out/groovy/                 CarregadorGroovy
@@ -111,7 +124,7 @@ Fonte: `docs/TaxaSwap.txt` (data-base `B` = `2026-09-14`), conferidos por uma re
 | `com.azure:azure-storage-blob` e `com.azure:azure-identity`, pelo `com.azure:azure-sdk-bom` **1.3.8** importado em `dependencyManagement` (`<type>pom</type>`, `<scope>import</scope>`) | scripts Groovy no Blob, Managed Identity |
 | `org.apache.poi:poi-ooxml` **5.5.1** | planilhas `.xlsx` |
 
-No `spring-boot-maven-plugin` (já existe), acrescentar a meta `build-info`. Não remover nada do que já está no pom (MapStruct, Lombok, Feign, Redis ficam; o código novo só não os usa). Nenhuma dependência de teste nova: `spring-boot-starter-test` (JUnit 5, Mockito, AssertJ, MockMvc) e o `archunit-junit5` que já existe.
+No `spring-boot-maven-plugin` (já existe), acrescentar a meta `build-info`. Não remover nada do que já está no pom (MapStruct, Lombok, Feign, Redis ficam; o código novo só não os usa). Nenhuma dependência de teste nova: `spring-boot-starter-test` (JUnit 5, Mockito, AssertJ, MockMvc) e o `archunit-junit5`, se o serviço já tiver (senão, a regra de dependência do `ArquiteturaTest` vira busca de imports no pacote `domain`).
 
 ### 1.2 `application.yml` (conferir e acrescentar)
 
@@ -231,7 +244,9 @@ public class TimeZoneConfig {
 
 ### 1.5 Erros, avisos e rótulos: padrão do projeto
 
-Erros usam **o que o projeto já tem** em `application/exception` (as mesmas classes do orquestrador): `ErrorCode`, `BaseException` e as subclasses, tratadas pelo `ApplicationExceptionHandler`, que responde no formato Problem Details (RFC 9457) com textos do `MessageSource`. Nada de exceção nem tratador próprio do engine.
+Erros usam **o que o serviço já tem** (no poc, `application/exception`: `ErrorCode`, `BaseException` e as subclasses). O que a spec exige, e o que o teste confere, é só o conteúdo da resposta: o código da spec (`CURVA_NAO_ENCONTRADA`, não um código genérico), o título e o detalhe em português, a rota, o `correlationId` e, quando houver, os `detalhes`. Como chegar lá depende do código real:
+- **qual tratador responde:** o serviço pode ter mais de um (no poc, `ApplicationExceptionHandler` em Problem Details; em outros serviços do projeto há um segundo com record próprio). Deixar um formato só, decidindo qual prevalece (`@Order` ou retirar o outro), e conferir com um teste de rota por status;
+- **código da spec na exceção:** se uma exceção existente só produz um código genérico (ex.: `NOT_FOUND`), acrescentar a ela um construtor que recebe `ErrorCode`, ou lançar a que já aceita; não criar hierarquia paralela.
 
 ```java
 // domain/curva/CodigoErro.java — implementa a interface do projeto
@@ -245,9 +260,9 @@ public enum CodigoErro implements ErrorCode {
 }
 ```
 
-Qual exceção do projeto lançar para cada código (o status vem da classe, pelo `ApplicationExceptionHandler`):
+Status esperado para cada código, com a exceção equivalente no poc (no real, conferir a classe e o tratador):
 
-| Exceção do projeto | HTTP | Códigos |
+| Exceção (no poc) | HTTP | Códigos |
 |---|---|---|
 | `InvalidInputException` | 400 | `PARAMETRO_INVALIDO` |
 | `NotFoundException` | 404 | `CURVA_NAO_ENCONTRADA`, `CURVA_NAO_CONSTRUIDA` |
@@ -257,7 +272,7 @@ Qual exceção do projeto lançar para cada código (o status vem da classe, pel
 | `ServiceUnavailableException` | 503 | `BLOB_INDISPONIVEL` |
 | (Spring Security: ponto de entrada e tratador de acesso negado escrevendo o mesmo formato) | 401, 403 | `NAO_AUTENTICADO`, `SEM_PERMISSAO` |
 
-**Acrescentar** (sem reescrever nada que existe): em `BaseException`, a lista `detalhes` (`List<DetalheErro>`, com `comDetalhes(List<DetalheErro>)`); no `ApplicationExceptionHandler`, as propriedades `correlationId` (do MDC) e `detalhes` (quando houver) no Problem Details, e o `@ExceptionHandler(ConflictException.class)` com 409. A ArchUnit do projeto passa a permitir que `domain` dependa de `application.exception` (classes em Java puro), e de nada mais fora do domínio.
+**Acrescentar** (sem reescrever nada que existe): na exceção base do serviço, a lista `detalhes` (`List<DetalheErro>`, com `comDetalhes(List<DetalheErro>)`); no tratador que responde, `correlationId` (do MDC) e `detalhes` (quando houver) no corpo de erro, e o tratamento de 409. A ArchUnit do projeto passa a permitir que `domain` dependa de `application.exception` (classes em Java puro), e de nada mais fora do domínio.
 
 ```java
 public record DetalheErro(String campo, Integer linha, String valor, String motivo) {}       // item de detalhes de um erro
@@ -271,8 +286,8 @@ public record DetalheAviso(String campo, Integer linha, String valor, String mot
 public record AvisoCurva(CodigoAvisoCurva codigo, String mensagem, List<DetalheAviso> detalhes) {}
 ```
 
-**Textos (rótulos e descrições pt-BR) no `messages.properties`**, pelo `MessageSource` que o `ApplicationExceptionHandler` já usa, e não em record nem em interface:
-- erros: `poc.errors.title.<CODIGO>` (título) e `poc.errors.<CODIGO>` (detalhe padrão), como o handler do projeto espera;
+**Textos (rótulos e descrições pt-BR) no `messages.properties`**, pelo `MessageSource` que o tratador de erro já usa (conferir as chaves que ele espera), e não em record nem em interface:
+- erros: no poc, `poc.errors.title.<CODIGO>` (título) e `poc.errors.<CODIGO>` (detalhe padrão); no real, o prefixo que o tratador do serviço espera;
 - demais enums do cadastro, das respostas e dos avisos: `poc.valores.<Enum>.<CONSTANTE>.rotulo` e `.descricao`; o `GET /valores-cadastro` monta o catálogo lendo essas chaves;
 - teste obrigatório: toda constante de todo enum exposto tem as suas chaves (substitui a garantia de "sem texto não compila");
 - os três `RoundingMode` aceitos no cadastro: `poc.valores.RoundingMode.<CONSTANTE>.*`.
@@ -548,7 +563,7 @@ public record CurvaMercado(String codigo, String nome, Unidade unidade, DayCount
 
 ### 5.2 Persistência (`adapter/out/persistence/`, implementa `CurvaMercadoPort`, `CurvaProvedorPort` e `ConfiguracaoCurvaPort`)
 
-Entidades JPA (classes, só no adaptador) de `tCurvaMercd`, `tCurvaPrvdr` e `tConfgCurva` (a atual `ConfgCurvaEntity` é conferida contra o `001_SCRIPT_INICIAL.sql`). Texto sempre com `stripTrailing()` na leitura (colunas `CHAR`). O adaptador devolve os dados crus em records (`CurvaMercadoLida`); quem monta e valida o `CurvaMercado` é o domínio (5.3). Consultas (`@Query(nativeQuery = true)` quando o JPQL não expressa igual):
+Entidades JPA (classes, só no adaptador) de `tCurvaMercd`, `tCurvaPrvdr` e `tConfgCurva`. As que já existirem no serviço são reaproveitadas e **conferidas coluna a coluna contra o `001_SCRIPT_INICIAL.sql`** antes do uso (no curves real havia coluna inexistente mapeada, nome de coluna errado e `Double` em coluna `DECIMAL`): valor de curva sempre `BigDecimal` com a precisão e a escala da coluna. Entidade com `@Data` serve; getters de `CHAR` escritos à mão continuam valendo. Texto sempre com `stripTrailing()` na leitura (colunas `CHAR`). O adaptador devolve os dados crus em records (`CurvaMercadoLida`); quem monta e valida o `CurvaMercado` é o domínio (5.3). Consultas (`@Query(nativeQuery = true)` quando o JPQL não expressa igual):
 
 ```sql
 -- curva por código (0 → CURVA_NAO_ENCONTRADA; >1 → CODIGO_DUPLICADO)
@@ -989,8 +1004,8 @@ Controllers só convertem (records de entrada e saída) e chamam as portas de en
 ### 13.2 Erros, correlação e JSON
 
 - `FiltroCorrelacao` (`OncePerRequestFilter`, primeiro na cadeia): `X-Correlation-Id` recebido ou `UUID.randomUUID()`, no MDC e em toda resposta.
-- Erros: o `ApplicationExceptionHandler` do projeto (seção 1.5), com os acréscimos de `correlationId`, `detalhes` e 409. Nada de `@RestControllerAdvice` próprio do engine. Tempo esgotado da requisição → `InfrastructureException(ERRO_INTERNO)`; qualquer exceção não prevista cai no tratamento padrão do Spring, sem stack trace na resposta.
-- `JsonConfig` (Jackson 3): `BigDecimal` como string plana (`withConfigOverride(BigDecimal.class, o -> o.setFormat(JsonFormat.Value.forShape(JsonFormat.Shape.STRING)))` + `StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN`); datas `AAAA-MM-DD`; instantes `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`; `avisos` sempre presente.
+- Erros: o tratador do serviço (seção 1.5), com os acréscimos de `correlationId`, `detalhes` e 409. Nada de tratador novo além do que o serviço já tem. Tempo esgotado da requisição → `InfrastructureException(ERRO_INTERNO)`; qualquer exceção não prevista cai no tratamento padrão do Spring, sem stack trace na resposta.
+- JSON: `BigDecimal` como string plana, datas `AAAA-MM-DD`, instantes `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`, `avisos` sempre presente. A configuração tem de estar **no mapper que o Spring MVC usa**: o Spring Boot 4 usa Jackson 3 (`tools.jackson`: `withConfigOverride(BigDecimal.class, o -> o.setFormat(JsonFormat.Value.forShape(JsonFormat.Shape.STRING)))` + `StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN`), e um `Module` ou customizador de Jackson 2 (`com.fasterxml.jackson.databind`) que o serviço já tenha é ignorado. Conferir onde o serviço configura o Jackson e pôr ali. Teste de rota: um fator com 16 casas sai como string.
 
 ### 13.3 Segurança (`SegurancaConfig`)
 
@@ -1048,7 +1063,7 @@ Além disso: modelos por tipo (nativos + Groovy `ATIVA`), com fonte/produto e pa
 | `CARGA_RECEBIDA`, `CARGA_PROCESSADA`, `PONTOS_DIFERENTES_DA_FONTE` (AVISO), `CONSTRUCAO_DATA_RECEBIDA`, `CONSTRUCAO_DATA_PROCESSADA`, `INTERPOLADA_REGRAVADA` | | specs `curve-load-trigger` e `curve-engine-api` |
 | `REQUISICAO_CONCLUIDA`, `DEPENDENCIA_CHAMADA` (DEBUG), `DEPENDENCIA_LENTA` (AVISO), `DEPENDENCIA_FALHOU` (ERRO), `TEMPO_ESGOTADO` | | spec `curve-engine-resilience` |
 
-Cada evento é um record serializado; nunca token, connection string, script ou corpo inteiro; lista de pontos só em `CURVA_GRAVADA`.
+Cada evento é um record serializado pela biblioteca de log JSON que o serviço já usa (no poc, `logstash-logback-encoder`; no real, conferir, pode ser a biblioteca da empresa); conferir que os campos saem estruturados no JSON. Nunca token, connection string, script ou corpo inteiro; lista de pontos só em `CURVA_GRAVADA`.
 
 ### 14.2 Métricas (Micrometer)
 

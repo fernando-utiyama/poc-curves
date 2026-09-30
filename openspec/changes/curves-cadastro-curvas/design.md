@@ -7,7 +7,7 @@
 - O engine (`engine-modelos-curva`) grava as duas na construção e no recálculo, numa transação que trava a linha da curva em `tCurvaMercd` (até 30 segundos para obter a trava, senão `CONSTRUCAO_EM_ANDAMENTO`). A construção automática (webhook de carga, construção sem recálculo) nunca sobrescreve uma data que já tem pontos.
 - O `hashPontos` (SHA-256 das linhas `data;valor`) é definido na spec `curve-build-pipeline` do engine.
 - O calendário de feriados, inclusive os calendários Groovy, está no engine, que o expõe por `GET /api/v1/calendarios/{nome}` (spec `calendar-management`).
-- `services/curves` já está transcrito do sistema real (commit `b282670`): CRUD de provedores do outro dev, CRUD de `tBbergCurvaPrimr` e `CurvaMercdEntity`, com `GlobalExceptionHandler`/`ApiErrorResponse` e `BeanConfig`. Esta change acrescenta a ele, sem mudar a estrutura.
+- O serviço de curvas já existe (no poc, `services/curves`, transcrito do real): CRUD de provedores do outro dev, CRUD de `tBbergCurvaPrimr` e `CurvaMercdEntity`, com o tratamento de erro e o registro de beans próprios. Esta change acrescenta a ele, sem mudar a estrutura; os detalhes de implementação seguem o código real.
 
 ## Goals / Non-Goals
 

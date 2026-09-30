@@ -83,7 +83,7 @@ Token ausente ou inválido MUST resultar em 401 `NAO_AUTENTICADO`; token sem o p
 - **THEN** a resposta traz o mesmo valor de `2026-09-18` (sexta-feira), igual à linha de `2026-09-19` em `tDadoCurva`
 
 ### Requirement: Erros padronizados
-Toda resposta de erro SHALL seguir o padrão do projeto: Problem Details (RFC 9457, `application/problem+json`), produzido pelo tratador de exceções padrão (`ApplicationExceptionHandler`), com `type`, `title`, `status`, `detail` (mensagem em português, do `MessageSource`), `instance`, e as propriedades `code` (o código do erro abaixo), `correlationId` e, quando houver, `detalhes`: `[ { "campo", "linha", "valor", "motivo" } ]` (o que não se aplica vem nulo). Sem stack trace. O mesmo formato vale no `services/curves`. Os códigos e status SHALL ser:
+Toda resposta de erro SHALL seguir o formato de erro único do serviço (o padrão do projeto; no poc, Problem Details, RFC 9457), trazendo o código do erro abaixo, título e mensagem em português, a rota, o `correlationId` e, quando houver, `detalhes`: `[ { "campo", "linha", "valor", "motivo" } ]` (o que não se aplica vem nulo). Sem stack trace. Cada serviço usa o seu formato; o conteúdo exigido é o mesmo no `services/curves`. Os códigos e status SHALL ser:
 
 | `codigoErro` | HTTP | Quando |
 |---|---|---|
@@ -110,7 +110,7 @@ Toda resposta de erro SHALL seguir o padrão do projeto: Problem Details (RFC 94
 
 #### Scenario: Código desconhecido
 - **WHEN** o cliente chama `GET /api/v1/curvas/XYZ/2026-09-14`
-- **THEN** a resposta é 404 em Problem Details, com `code` = `CURVA_NAO_ENCONTRADA`, o `detail` informando `XYZ` e o `correlationId`
+- **THEN** a resposta é 404 com o código `CURVA_NAO_ENCONTRADA`, a mensagem informando `XYZ` e o `correlationId`
 
 ### Requirement: Contrato de tipos das respostas
 Para o front receber os valores sem perda nem ambiguidade, toda resposta JSON do engine SHALL seguir:

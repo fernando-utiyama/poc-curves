@@ -2,13 +2,15 @@
 
 Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec manda; este guia diz onde e como.** Siga as seções na ordem. Os testes são escritos só na seção 14, depois de tudo compilar.
 
+> **O código real manda nos detalhes.** Este guia foi escrito sobre a cópia transcrita do serviço (`services/curves`, pacote `br.com.poc`). No repositório real, o pacote raiz, as classes de exceção, o tratador de erro que de fato responde, o record de erro, a biblioteca de log, a configuração do Jackson, o cache e o registro de beans **são os que o serviço já tem**: onde este guia cita uma classe ou configuração do código, leia "a equivalente do serviço" e confira antes de usar. O que não muda é o comportamento das specs (rotas, códigos de erro, avisos, regras, formatos). Divergência entre o guia e o código real não é motivo para parar: siga o código real e cumpra a spec.
+
 ## 0. Regras para quem implementa
 
-- **Serviço:** `services/curves` (no sistema real, `acts-srv-curvas`). **Já está transcrito**: não se cria serviço nem se muda a estrutura, acrescenta-se. Pacote `br.com.poc`. O que existe e é reaproveitado:
-  - `adapter/in/api/rest/{controller,dto,handler,mapper,openapi}` (controllers, DTOs REST separados dos DTOs da aplicação, `GlobalExceptionHandler`), `adapter/out/persistence/{entity,repository,mapper}` e os adaptadores `*PersistenceAdapter`/`*RepositoryAdapter`;
-  - `application/{port/in/usecase,port/out,service,dto,mapper,model,exception}`: portas de saída `<Tabela>RepositoryPort`, casos de uso `<Nome>UseCase` com implementação em `application/service`, exceções `BaseException`/`ErrorCode`;
-  - `infrastructure/config/BeanConfig` (os serviços são registrados como `@Bean` ali), `shared/api/util/NormalizadorUtil` e o `ApiErrorResponse` (já existe na develop real, em `application/dto`, com `LocalDateTime timestamp`; a cópia transcrita o tem em `shared/api`: o local e o tipo de `timestamp` existentes **não mudam**, conferir o pacote ao encaixar);
-  - entidades já existentes e conferidas contra o `001_SCRIPT_INICIAL.sql`: `CurvaMercdEntity` (todas as colunas), `ProvedorEntity` (CRUD de provedores do outro dev, não tocar) e `BloombergCurvaPrimrEntity`. Não criar outra entidade para a mesma tabela.
+- **Serviço:** no poc, `services/curves`; no sistema real, `acts-srv-curvas` (a raiz do repositório). Já existe: não se cria serviço nem se muda a estrutura, acrescenta-se. Os caminhos abaixo são relativos ao pacote raiz do serviço (no poc, `br.com.poc`). O que existe e é reaproveitado (nomes do poc; no real, conferir):
+  - `adapter/in/api/rest/...` (controllers, DTOs REST, o tratador de erro), `adapter/out/persistence/{entity,repository,mapper}` e os adaptadores de persistência;
+  - `application/{port/in/usecase,port/out,service,dto,mapper,model,exception}`: portas de saída `<Tabela>RepositoryPort`, casos de uso `<Nome>UseCase` com implementação em `application/service`, exceções com `ErrorCode`;
+  - a forma de registrar os serviços (no poc, `@Bean` em `infrastructure/config/BeanConfig`): os serviços novos são registrados **do mesmo jeito** que os existentes; o utilitário de normalização de nome, se houver;
+  - entidades já existentes: `CurvaMercdEntity`, `ProvedorEntity` (CRUD de provedores do outro dev, não tocar) e `BloombergCurvaPrimrEntity`. Não criar outra entidade para a mesma tabela; conferir as colunas e os tipos contra o `001_SCRIPT_INICIAL.sql` (seção 2.1).
 - **Classes novas** ficam nos mesmos pacotes e têm o nome da tabela: `CurvaPrvdrEntity`, `ConfgCurvaEntity`, `DadoVertcCurvaEntity`, `DadoCurvaEntity`, `BtrsCurvaPrimrEntity`; portas `CurvaPrvdrRepositoryPort`, `ConfgCurvaRepositoryPort`, `DadoVertcCurvaRepositoryPort`, `DadoCurvaRepositoryPort`, `BtrsCurvaPrimrRepositoryPort`; a `CurvaMercdRepositoryPort` existente ganha os métodos novos. Nomes de infraestrutura (cliente do engine, filtro, planilha) podem ser em inglês.
 - **Dois modelos, sem misturar:** `application/model` (`CurvaMercd`, `Provedor`, `BloombergCurvaPrimr`) é do código existente (beans mutáveis com Lombok) e não é reescrito. O código novo põe as regras em **`br.com.poc.domain`**, Java puro, com `record`s; as portas novas recebem e devolvem esses `record`s. As conversões entidade ↔ `record` ficam no adaptador de persistência.
 - **Mesma base do engine** (guia do `engine-modelos-curva`, seção 0):
@@ -22,7 +24,7 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 - Fuso: a JVM inteira roda em `America/Sao_Paulo` (seção 1.4); `LocalDate.now()` e `OffsetDateTime.now()` são usados direto. Leitura em `READ COMMITTED`, nunca `NOLOCK`.
 - Mensagens em pt-BR com acentuação, UTF-8. Códigos (enums, `codigoErro`, avisos) não se traduzem.
 - Arquivos de configuração que já existem: não reescrever; conferir e acrescentar só o que faltar.
-- O serviço roda em no mínimo 2 instâncias: nenhum estado de negócio em memória local, além do cache de valores aceitos (seção 5, item 3).
+- O serviço roda em no mínimo 2 instâncias: nenhum estado de negócio em memória local. O cache de valores aceitos (seção 5) usa o mecanismo de cache que o serviço já tem.
 
 ### 0.1 Tabelas que o serviço usa
 
@@ -54,7 +56,7 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 
 ### 1.1 `pom.xml`: o mínimo de coisas novas
 
-O `pom.xml` do `services/curves` já tem `data-jpa`, `mssql-jdbc`, `validation`, `springdoc`, `actuator`, `logstash-logback-encoder`, `openfeign` e `spring-boot-starter-test`. Acrescentar **só**:
+O `pom.xml` do serviço já tem JPA, o driver do SQL Server, validação, springdoc, actuator, a biblioteca de log JSON do serviço e `spring-boot-starter-test`. Conferir e acrescentar **só** o que faltar:
 
 | Dependência | Por quê |
 |---|---|
@@ -110,22 +112,21 @@ Conferir no `application.yml` que já existe, ajustando só o que conflita (o re
 | `spring.jackson.time-zone: UTC` e `date-format` | os instantes da resposta saem `-03:00` (seção 1.4): o `record` leva `OffsetDateTime` já no fuso de Brasília, e o `time-zone` não se aplica a `OffsetDateTime` |
 | `spring.jpa.show-sql: true` | manter em `default`; nos demais perfis `false` (a escrita de pontos tem centenas de `INSERT`) |
 | `spring.jpa.properties.hibernate.dialect` | manter |
-| `spring.mvc.problemdetails.enabled: true` | `false`: um só formato de erro, o `ApiErrorResponse`; os erros do próprio Spring MVC (405, 415, 406) passam pelo `GlobalExceptionHandler` |
+| tratadores de erro | o serviço pode ter mais de um (no real há um tratador em Problem Details além do que usa o record de erro, e `spring.mvc.problemdetails.enabled` não desliga um tratador próprio). Deixar **um formato só** para as rotas desta change: decidir qual tratador responde (`@Order` ou retirar o outro) e conferir com um teste de rota que 400, 404, 409, 412, 422, 428 e os erros do próprio Spring MVC saem nesse formato |
 
 ### 1.3 Erros, avisos e enums: `domain/`
 
-Erros **no padrão que o `services/curves` já tem** (`application/exception` + `GlobalExceptionHandler` + `ApiErrorResponse`):
+Erros **no padrão que o serviço já tem**. O que a spec exige, e o que o teste confere, é só o conteúdo da resposta: o código da spec (`DADOS_INVALIDOS`, não um código genérico), a mensagem em português, a rota, o `correlationId` e, quando houver, os `detalhes` (`campo`, `linha`, `valor`, `motivo`). Como chegar lá depende do código real:
 
 ```java
-// application/exception/CadastroErrorCode.java: o mesmo molde de BusinessErrorCode/InfraErrorCode (código = name(), mensagem em pt-BR no construtor)
+// um enum de códigos no molde dos enums de erro que o serviço já tem (código = name(), mensagem em pt-BR)
 public enum CadastroErrorCode implements ErrorCode {
   PARAMETRO_INVALIDO("Parâmetro inválido"), NAO_AUTENTICADO("Token ausente ou inválido"), SEM_PERMISSAO("Sem permissão"),
   NAO_ENCONTRADO("Recurso não encontrado"), CODIGO_EM_USO("Código em uso"), NOME_EM_USO("Nome em uso"),
   LIGACAO_DUPLICADA("Ligação duplicada"), PRIORIDADE_EM_USO("Prioridade em uso"), ALTERADO_POR_OUTRO("Alterado por outra pessoa"),
   DADOS_INVALIDOS("Dados inválidos"), PONTOS_INVALIDOS("Pontos inválidos"), IF_MATCH_AUSENTE("Cabeçalho If-Match ausente"), ERRO_INTERNO("Erro interno");
-  // campos code/message, getCode()/getMessage() como os enums existentes
 }
-// domain/aviso: dados puros, sem Spring
+// domain: dados puros, sem Spring
 public enum CodigoAvisoCurva { /* os 19 códigos da tabela "Avisos do serviço" da spec cadastro-curva-mercado, na ordem da tabela */ }
 public record Detalhe(String campo, Integer linha, String valor, String motivo) {}     // usado em erros (detalhes) e em avisos
 public record AvisoCurva(CodigoAvisoCurva codigo, String mensagem, List<Detalhe> detalhes) {
@@ -133,26 +134,16 @@ public record AvisoCurva(CodigoAvisoCurva codigo, String mensagem, List<Detalhe>
 }
 ```
 
-Exceções, reaproveitando as existentes (o status vem do `GlobalExceptionHandler`, não da classe): `InvalidInputException` (`PARAMETRO_INVALIDO`, 400), `NotFoundException` (`NAO_ENCONTRADO`, 404), `BusinessException` (`DADOS_INVALIDOS`, `PONTOS_INVALIDOS`, 422), `InfrastructureException` (`ERRO_INTERNO`, 500). **Novas**, no mesmo molde (`extends BaseException`, construtores por `ErrorCode`): `ConflictException` (409: `CODIGO_EM_USO`, `NOME_EM_USO`, `LIGACAO_DUPLICADA`, `PRIORIDADE_EM_USO`), `PreconditionFailedException` (412: `ALTERADO_POR_OUTRO`) e `PreconditionRequiredException` (428: `IF_MATCH_AUSENTE`). A `BaseException` carrega o código e os `additionalDetails`; os `Detalhe` de 400/422 vão ali.
-
-O `GlobalExceptionHandler` (acrescentar, sem reescrever o que existe): um método por exceção nova e um para `InvalidInputException`, `InfrastructureException`, `HttpMessageNotReadableException` (JSON malformado → 400 `PARAMETRO_INVALIDO`) e `MissingServletRequestParameterException`/`MethodArgumentTypeMismatchException` (400). O corpo é o `ApiErrorResponse` existente, que ganha **dois componentes no fim** (o resto do record, inclusive o tipo de `timestamp`, fica como está) e um construtor de 6 argumentos para o que já o usa:
-
-```java
-public record ApiErrorResponse(LocalDateTime timestamp, int status, String error, String message, String path,
-                               List<String> details, String correlationId, List<Detalhe> detalhes) {
-  public ApiErrorResponse(LocalDateTime timestamp, int status, String error, String message, String path, List<String> details) {
-    this(timestamp, status, error, message, path, details, MDC.get("correlationId"), List.of());
-  }
-}
-```
-
-`error` = o código (`DADOS_INVALIDOS`); `message` em pt-BR; `details` = um texto `campo: motivo` por detalhe (o que já serve ao cliente simples); `detalhes` = a estrutura completa. `Detalhe` mora em `br.com.poc.domain` (é um `record` sem dependência) e o `ApiErrorResponse` o importa; o sentido contrário (domínio importando `shared`) é proibido. 401 e 403 saem do Spring Security (`AuthenticationEntryPoint` e `AccessDeniedHandler` escrevendo o mesmo `ApiErrorResponse` com `NAO_AUTENTICADO`/`SEM_PERMISSAO`). Sem stack trace, sem `@RestControllerAdvice` novo e sem `ExcecaoNegocio` no código novo (a existente é do CRUD de provedores e continua).
+- **Exceções:** lançar as exceções do serviço **com o código da spec**. Se uma exceção existente só produz um código genérico (ex.: uma de "não encontrado" que sempre responde `NOT_FOUND`), acrescentar a ela um construtor que recebe `ErrorCode`, ou lançar a exceção que já aceita `ErrorCode`; não criar uma segunda hierarquia. Os status: 400 `PARAMETRO_INVALIDO`, 404 `NAO_ENCONTRADO`, 409 `CODIGO_EM_USO`/`NOME_EM_USO`/`LIGACAO_DUPLICADA`/`PRIORIDADE_EM_USO`, 412 `ALTERADO_POR_OUTRO`, 422 `DADOS_INVALIDOS`/`PONTOS_INVALIDOS`, 428 `IF_MATCH_AUSENTE`, 500 `ERRO_INTERNO`. Para 409, 412 e 428, criar a exceção que faltar no mesmo molde das existentes.
+- **Tratador:** no tratador que responde (tabela da seção 1.2), acrescentar o que faltar para esses status e para JSON malformado e parâmetro inválido (400 `PARAMETRO_INVALIDO`), sem reescrever o que existe.
+- **Record de erro:** o que o tratador **realmente usa** (conferir; pode haver cópias sem uso) ganha `correlationId` e `detalhes` no fim, com um construtor no formato antigo para o código que já o chama. Os demais componentes, inclusive o tipo do `timestamp`, ficam como estão. `detalhes` usa o `record Detalhe` do domínio; o domínio nunca importa o pacote do record de erro.
+- Sem stack trace na resposta.
 
 Enums da tabela "Enums do serviço" da spec `cadastro-curva-mercado` (`Unidade`, `DayCounterCotacao`, `CompoundingCotacao`, `SituacaoCurva`, `SituacaoPainel`, `MotivoPainel`, `TipoAlteracao`, `OperacaoAlteracao`, `OperacaoPontos`, `OrigemPontos`, `ModoImportacao`, `ResultadoLinha`): enums simples em `domain`, com rótulo e descrição em `messages.properties` (`poc.valores.<Enum>.<CONSTANTE>.rotulo` e `.descricao`), lidos pelo `MessageSource` no adaptador da API (o `application.yml` já tem `spring.messages`, hoje sem `basename`: definir `basename: messages`). O catálogo de `GET /curvas-mercado/valores` lista cada enum de forma explícita (`itens(Unidade.class)`). Teste obrigatório: toda constante tem as suas chaves. Os enums de resultado fechado (`ResultadoLinha`, `SituacaoPainel`) são lidos com `switch` por pattern, sem `default`.
 
 Filtro de correlação (`OncePerRequestFilter`): `X-Correlation-Id` recebido ou `UUID.randomUUID()`, no MDC (`correlationId`) e em toda resposta (inclusive `xlsx` e erro); limpar o MDC no `finally`.
 
-Serialização: `BigDecimal` como string plana, datas `AAAA-MM-DD`, instantes `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`, `avisos` sempre presente. O Spring Boot 4 do serviço usa **Jackson 3** (`tools.jackson.core:jackson-databind` 3.1.6, conferido com `mvn dependency:tree`); o `jackson-databind` 2.22.2 do pom é só transitivo (CVE) e não serve o MVC. Usar `tools.jackson` (`JsonMapper`, `withConfigOverride(BigDecimal.class, o -> o.setFormat(JsonFormat.Value.forShape(STRING)))`, `StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN`) e as anotações `com.fasterxml.jackson.annotation` (`@JsonInclude`, `@JsonFormat`), que o Jackson 3 continua usando. Nunca importar `com.fasterxml.jackson.databind`.
+Serialização: `BigDecimal` como string plana, datas `AAAA-MM-DD`, instantes `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`, `avisos` sempre presente. A configuração tem de estar **no mapper que o Spring MVC usa**: o Spring Boot 4 usa Jackson 3 (`tools.jackson`), e um `Module` ou customizador de Jackson 2 (`com.fasterxml.jackson.databind`) que o serviço já tenha é ignorado pelo MVC. Conferir onde o serviço configura o Jackson e pôr ali, no pacote do Jackson que o MVC usa, o formato `STRING` para `BigDecimal` e a escrita sem notação científica; as anotações (`@JsonInclude`, `@JsonFormat`) continuam em `com.fasterxml.jackson.annotation`. Teste de rota: um decimal sai como `"13.900000000000"`.
 
 Enum de entrada com caixa diferente (`taxa`) → 422 `DADOS_INVALIDOS` com o campo e os valores aceitos: ler enums como `String` no `record` de entrada e converter com `Enum.valueOf` em `try/catch`, nunca com a desserialização tolerante do Jackson (`READ_UNKNOWN_ENUM_VALUES_AS_NULL` e semelhantes ficam desligados).
 
@@ -188,7 +179,7 @@ Toda falha (rede, tempo, 4xx, 5xx, JSON ilegível) vira `Indisponivel` com o mot
 
 ### 1.7 Log
 
-JSON com `correlationId`. `REQUISICAO_CONCLUIDA` (usuário, rota com molde, status, `codigoErro`, duração) em toda requisição. `CADASTRO_ALTERADO` (seção 2.5), `PONTOS_EDITADOS` (seção 10.5) e `CURVA_PRIMARIA_EDITADA` (seção 11) depois do commit (`TransactionSynchronizationManager.registerSynchronization` com `afterCommit`), emitidos pelo adaptador de `EventosPort` com a API fluente do SLF4J (`log.atWarn().addKeyValue("codigo", ...).log("CADASTRO_ALTERADO")`), que o `LogstashEncoder` do `logback-spring.xml` já serializa em JSON nos perfis de container. Nunca token nem corpo inteiro.
+JSON com `correlationId`. `REQUISICAO_CONCLUIDA` (usuário, rota com molde, status, `codigoErro`, duração) em toda requisição. `CADASTRO_ALTERADO` (seção 2.5), `PONTOS_EDITADOS` (seção 10.5) e `CURVA_PRIMARIA_EDITADA` (seção 11) depois do commit (`TransactionSynchronizationManager.registerSynchronization` com `afterCommit`), emitidos pelo adaptador de `EventosPort` com a API fluente do SLF4J (`log.atWarn().addKeyValue("codigo", ...).log("CADASTRO_ALTERADO")`), pela biblioteca de log JSON que o serviço já usa (no poc, `LogstashEncoder`; no real, a do serviço). Conferir que os pares chave-valor saem como campos do JSON; se a biblioteca não os levar, usar o mecanismo dela para campos estruturados. Nunca token nem corpo inteiro.
 
 ---
 
@@ -196,7 +187,7 @@ JSON com `correlationId`. `REQUISICAO_CONCLUIDA` (usuário, rota com molde, stat
 
 ### 2.1 Entidade `CurvaMercdEntity` (já existe)
 
-A `CurvaMercdEntity` do serviço mapeia todas as colunas de `tCurvaMercd` e está conferida contra o `001_SCRIPT_INICIAL.sql` (`vFatorMultiAtivo` em `BigDecimal` 28,12). Não criar outra. Acrescentar apenas, nela:
+A `CurvaMercdEntity` do serviço já existe; não criar outra. Conferir contra o `001_SCRIPT_INICIAL.sql` antes de usar (no poc foram corrigidos: coluna inexistente mapeada, nome de coluna errado em outra entidade e `Double` em coluna `DECIMAL`); no real, corrigir o que faltar, em especial `vFatorMultiAtivo` como `BigDecimal` (`DECIMAL(28,12)`). Se a entidade usar `@Data`, os getters escritos à mão continuam valendo. Acrescentar, nela:
 - `dBaseReft` e `cUsuarCalc` com `@Column(insertable = false, updatable = false)`: são do engine, o curves nunca os escreve;
 - os getters das colunas `CHAR` (`cNormaDia`, `cPaisInstt`, `cSitReg`, `cTpoJuro`, `cTpoCotac`, `cTpoVlr`) devolvendo `stripTrailing()`, escritos à mão (o Lombok não gera um getter que já existe). Gravar sem espaços.
 
@@ -300,7 +291,7 @@ Rotas: as da tabela "Rotas da configuração" da spec. `validacao` roda as regra
 
 ## 5. Valores aceitos (`GET /api/v1/curvas-mercado/valores`)
 
-1. Engine: `valoresCadastro()` (seção 1.6), com cache local de 5 minutos.
+1. Engine: `valoresCadastro()` (seção 1.6), com cache de 5 minutos no mecanismo de cache do serviço (com 2 instâncias, preferir o cache distribuído se o serviço já tiver um; senão, cache local, aceitável porque o dado é o mesmo em todas as instâncias).
 2. Acrescentar os provedores de `tPrvdrDadoMercd` (pela `ProvedorEntity`: `nomeProvedor` e `descricao`) e os enums e catálogos do serviço (seção 1.3), cada valor com o `rotulo` e a `descricao` do `messages.properties`.
 3. Engine fora: devolver a **cópia embutida** (a tabela da seção 4.1, com os modelos nativos e os rótulos em código) com o aviso `VALORES_SEM_ENGINE`. Nunca falha por causa do engine.
 4. OpenAPI: `enum` em `unidade`, `dayCounterCotacao`, `compounding`, `situacao` e em cada chave de `parametros`; `modeloConstrucao`, `interpolador` e `CALENDARIO` como `string` com os nativos na descrição.
@@ -470,7 +461,7 @@ Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUn
 
 ### 14.1 Verificar
 
-`mvn -q compile` limpo. Buscas sem resultado em `src/main`: `class Relogio`, `NOLOCK`, `synchronized`, `BlobServiceClient`, `double`/`Double` em valor de curva, gravação de `dBaseReft` ou `cUsuarCalc`; e em `src/main/java/br/com/poc/domain`: `import org.springframework`, `import jakarta`, `import com.fasterxml.jackson.databind`, `import tools.jackson`, `import org.apache.poi`, `import br.com.poc.adapter`, `import br.com.poc.application`.
+`mvn -q compile` limpo. Buscas sem resultado em `src/main`: `class Relogio`, `NOLOCK`, `synchronized`, `BlobServiceClient`, `double`/`Double` em valor de curva, gravação de `dBaseReft` ou `cUsuarCalc`; e no pacote `domain` do serviço (no poc, `src/main/java/br/com/poc/domain`; no real, o do pacote raiz): `import org.springframework`, `import jakarta`, `import com.fasterxml.jackson.databind`, `import tools.jackson`, `import org.apache.poi` e imports de `adapter` ou `application` do próprio serviço.
 
 ### 14.2 Criar
 
