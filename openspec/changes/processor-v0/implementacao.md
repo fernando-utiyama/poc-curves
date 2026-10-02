@@ -1,10 +1,10 @@
-# Guia de implementação: processor emergencial v0
+# Guia de implementação: processor v0
 
 A spec manda; este guia diz onde e como. Pacotes, nomes de exceção, handler de erro, log e configuração seguem o que o repositório real já usa. Os nomes abaixo são sugestão. Siga a ordem da seção 11. Os testes ficam para o fim.
 
 ## 1. Base comum: contrato hexagonal e onde fica cada coisa
 
-A base comum (tarefas 1.x) é feita primeiro, por uma pessoa. Ao fim dela, as nove rotas chegam ao caso de uso, o roteiro comum roda, e cada fonte responde 501 `PROVEDOR_NAO_IMPLEMENTADO`. Depois, cada dev implementa um provedor (tarefas 2, 3 ou 4) trocando só as classes da sua fonte.
+A base comum (tarefas 1.1 a 1.8) é feita primeiro, por uma pessoa. Ao fim dela, as nove rotas chegam ao caso de uso, o roteiro comum roda, e cada fonte responde 501 `PROVEDOR_NAO_IMPLEMENTADO`. Aí vem a **pausa** (tarefa 1.9, seção 11): parar e aguardar a revisão. Depois, cada dev implementa um provedor (tarefas 2, 3 ou 4) trocando só as classes da sua fonte.
 
 Em hexagonal, o "caso de uso" é a **porta de entrada** (interface em `application/port/in`), implementada por um serviço em `application/service`. Os controllers (adaptadores de entrada) só conhecem a porta. O que muda por fonte fica atrás de uma **porta de saída**, `ProvedorCargaPort`, com uma implementação por fonte.
 
@@ -19,9 +19,9 @@ adapter/out/blob/                   ArquivoOriginalBlobAdapter                  
 adapter/out/persistence/            CurvaPrimariaJdbcAdapter (comum)                                      (base)
                                     InsercaoB3, InsercaoAnbima, InsercaoBloomberg                         (uma por provedor)
 adapter/out/client/                 EngineCargaClient                                                     (base)
-adapter/out/provedor/b3/            B3ProvedorCarga, B3TaxaSwapClient, LeiauteTaxaSwap                    (dev B3)
-adapter/out/provedor/anbima/        AnbimaProvedorCarga, AnbimaMsClient, LeiauteAnbimaMs                  (dev ANBIMA)
-adapter/out/provedor/bloomberg/     BloombergProvedorCarga, BloombergDataLicenseClient,
+adapter/out/provedor/b3/            B3DownloadSiteProvedor, B3TaxaSwapClient, LeiauteTaxaSwap                    (dev B3)
+adapter/out/provedor/anbima/        AnbimaDownloadSiteProvedor, AnbimaMsClient, LeiauteAnbimaMs                  (dev ANBIMA)
+adapter/out/provedor/bloomberg/     BloombergDataLicenseProvedor, BloombergDataLicenseClient,
                                     LeiauteRespostaDataLicense, TickersSofrReserva                        (dev Bloomberg)
 domain/calendario/                  Calendario, Brazil, UnitedStates, CalendarioPorLista (cópia do engine) (dev ANBIMA)
 ```
@@ -125,12 +125,12 @@ spring.servlet.multipart.max-request-size: 11MB
 | idem `/api/anbima/ms/...` | idem com `ANBIMA` | idem |
 | idem `/api/bloomberg/sofr/...`; `tickers` no download (no reprocessamento, aceito e ignorado) | idem com `BLOOMBERG` e `ParametrosFonte(tickers)` | idem |
 
-Validação nos controllers: data `AAAA-MM-DD` e não futura (`LocalDate.now(ZoneId.of("America/Sao_Paulo"))`); `tickers` com `^[A-Za-z0-9]+( [A-Za-z0-9]+)*$`, até 50 caracteres cada, até 100, sem repetidos; `X-Usuario` obrigatório no upload. O mapeamento de exceção para código HTTP (seção "Rotas no contrato do orquestrador" da spec, mais 501 `PROVEDOR_NAO_IMPLEMENTADO`) fica no handler que o repositório já tem.
+O limite de 10 MB do multipart (`MaxUploadSizeExceededException`) é mapeado para 422 `ARQUIVO_INVALIDO` no handler. Validação nos controllers: data `AAAA-MM-DD` e não futura (`LocalDate.now(ZoneId.of("America/Sao_Paulo"))`); `tickers` com `^[A-Za-z0-9]+( [A-Za-z0-9]+)*$`, até 50 caracteres cada, até 100, sem repetidos; `X-Usuario` obrigatório no upload. O mapeamento de exceção para código HTTP (seção "Rotas no contrato do orquestrador" da spec, mais 501 `PROVEDOR_NAO_IMPLEMENTADO`) fica no handler que o repositório já tem.
 
 Roteiro do `CargaArquivoService`, igual para as três fontes:
 
 1. obter o arquivo: `provedor.baixar(...)`, `provedor.preparar(...)` (upload) ou o original mais recente do Blob (reprocessamento);
-2. `dataBase = provedor.dataBase(arquivo)`; no download, diferente da pedida = 503 `ARQUIVO_INDISPONIVEL`; no upload, futura = 422;
+2. `dataBase = provedor.dataBase(arquivo)`; no download, diferente da pedida = 503 `ARQUIVO_INDISPONIVEL` (sem arquivar); no upload, futura = 422. Se `dataBase(...)` lançar `ArquivoInvalidoException`: no download, arquivar sob a data pedida e responder 422; no upload, responder 422 sem arquivar (log com usuário e nome do arquivo);
 3. `hash` e `idCarga`; gravar o original no Blob (antes de interpretar, para o rejeitado ficar auditável; no reprocessamento, já existe);
 4. `provedor.interpretar(arquivo, dataBase)` (422 se o arquivo inteiro cai);
 5. gravar no banco (seção 8);
@@ -156,7 +156,8 @@ O que é "ainda não saiu" (503 antes de arquivar) é decidido dentro do `baixar
 
 - Ler em `StandardCharsets.ISO_8859_1`; quebrar em linhas; achar a primeira que começa com `Titulo@`; as colunas são localizadas pelo nome nessa linha: `Titulo`, `Data Referencia`, `Codigo SELIC`, `Data Vencimento`, `Tx. Indicativas`.
 - Linhas seguintes com `Titulo` = `NTN-B` e `Codigo SELIC` terminando em `99`.
-- Datas em `AAAAMMDD` (`DateTimeFormatter.BASIC_ISO_DATE`).
+- Datas em `AAAAMMDD` (`DateTimeFormatter.BASIC_ISO_DATE`); `dataBase(...)` devolve a `Data Referencia` (todas as linhas com a mesma, senão 422).
+- Chamadas à B3, à ANBIMA e ao Data License sem `X-Correlation-Id` (só o engine recebe).
 - Taxa: trocar `,` por `.` e `new BigDecimal(texto)`; vazio ou `--` = `null`.
 - Prazo: `P = brazil.ajustar(vencimento, Following)`; `vVertcCurva = brazil.diasUteisEntre(dataBase, P)`, com as mesmas funções que o engine usa (seção 4 do guia do engine).
 - Código na fonte: `NTN-B`; `linhasPorCodigo` = `{ "NTN-B": títulos gravados }`.
@@ -232,8 +233,9 @@ SELECT COUNT(*) FROM {tabela} WHERE cTickerIndcd = ? AND dBaseReft = ?;         
 ## 11. Ordem
 
 1. **Base comum (uma pessoa):** seções 1, 2, 3, 4, 8 (parte comum), 9 e o log (tarefas 1.1 a 1.8). Entregar com as nove rotas respondendo 501.
-2. **Provedores, em paralelo (um dev cada):** B3 (seção 5; tarefa 2.1), ANBIMA com o calendário (seção 6; 3.1 e 3.2), Bloomberg com a reserva (seção 7; 4.1 e 4.2). Cada um troca só a sua pasta `adapter/out/provedor/{fonte}/` e a sua `Insercao*`, e escreve os seus testes.
-3. **bff e front (em paralelo, depois da 1.2):** seção 10 (5.1 e 5.2).
-4. Fechamento (6.x) e homologação (7.x).
+2. **PAUSA (tarefa 1.9):** parar. Rodar `mvn compile` e os testes das tarefas 1.x, registrar o que foi feito e o que ficou pendente, e aguardar a revisão. Não começar nenhum provedor nem o bff e o front antes disso.
+3. **Provedores, em paralelo (um dev cada):** B3 (seção 5; tarefa 2.1), ANBIMA com o calendário (seção 6; 3.1 e 3.2), Bloomberg com a reserva (seção 7; 4.1 e 4.2). Cada um troca só a sua pasta `adapter/out/provedor/{fonte}/` e a sua `Insercao*`, e escreve os seus testes.
+4. **bff e front (em paralelo, depois da pausa):** seção 10 (5.1 e 5.2).
+5. Fechamento (6.x) e homologação (7.x).
 
 Testes: um por cenário da spec, com o `ms260928.txt` real e o `TaxaSwap.txt` de `docs/` nos recursos de teste; servidores simulados para B3, ANBIMA, Data License e engine; acesso ao banco e Blob simulados.

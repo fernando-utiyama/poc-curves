@@ -55,4 +55,4 @@ Verificado com o arquivo real `CurvaZero_25092026.txt`, gravado em SQL Server 20
 - PK de `tDadoCurva` clustered, agora que ela guarda a curva interpolada (o maior volume): pedir ou não ao dono do schema.
 
 ## Nota: ticker completo desde já
-Com o `001_SCRIPT_INICIAL.sql` já em `VARCHAR(50)`, o ticker da SOFR é gravado completo desde o início (processor emergencial v0). O modelo do engine continua aceitando também a forma curta (`S0490Z 15M`).
+Com o `001_SCRIPT_INICIAL.sql` já em `VARCHAR(50)`, o ticker da SOFR é gravado completo desde o início (processor v0). O modelo do engine continua aceitando também a forma curta (`S0490Z 15M`).

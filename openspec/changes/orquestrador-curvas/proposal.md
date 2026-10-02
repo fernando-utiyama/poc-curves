@@ -12,7 +12,7 @@ O orquestrador (`services/orchestrator`) já foi transcrito do código real: é 
   - **Segurança:** action `http` só chama destino cadastrado; o webhook de notificação (desligado por padrão e sem destinatário) é apagado;
   - **Alertas consultáveis:** `GET /api/v1/alertas`, para o dashboard do front;
   - **Correção** do mapeamento trocado de `action`/`descricao` no `TarefaJpaMapper` (não há cadastro em nenhum ambiente).
-- **Tarefas das curvas (capability `orquestracao-curvas`):** três tarefas cadastradas no motor, todas com uma só `action` nova (`TaskActionPort`), `download-carga-dia`, cada uma disparando a function da sua fonte com a data-base:
+- **Tarefas das curvas (capability `orquestracao-curvas`):** três tarefas cadastradas no motor, com uma implementação nova de `TaskActionPort` atendendo duas `actions`, `carga-download-site` (B3 e ANBIMA, arquivo do site) e `carga-data-license` (Bloomberg, API do Data License), cada tarefa disparando a function da sua fonte com a data-base:
   - **B3** (`TaxaSwap`) e **ANBIMA** (`ms`): a data-base; a Bloomberg (SOFR) recebe também os **tickers** (parâmetro da tarefa, editável sem redeploy);
   - a cada 10 minutos (intervalo alinhado) dentro da janela da fonte, até receber o arquivo do dia; no limite, faz a última tentativa e, sem o arquivo, grava `CARGA_NAO_RECEBIDA` com a fonte;
   - **o orquestrador não chama o engine:** depois do download, o fluxo da B3 segue sozinho (function grava no Blob e avisa, processor grava o bruto e chama o webhook do engine, que constrói as curvas da carga e as derivadas em cadeia).
@@ -32,7 +32,7 @@ O orquestrador (`services/orchestrator`) já foi transcrito do código real: é 
 
 ## Impact
 
-- **services/orchestrator:** `SpringSchedulerAdapter` agendando por ocorrência; reivindicação e transições atômicas no `TaskJpaPersistenceAdapter`; `ReconciliacaoAgendamentos`; remoção de `TarefaService`, `TarefaUseCase` e dos mapas em memória; `destino`/`caminho` na action `http`; remoção do webhook de notificação; rota de alertas; correção do `TarefaJpaMapper`; `DownloadCargaTaskActionAdapter`.
+- **services/orchestrator:** `SpringSchedulerAdapter` agendando por ocorrência; reivindicação e transições atômicas no `TaskJpaPersistenceAdapter`; `ReconciliacaoAgendamentos`; remoção de `TarefaService`, `TarefaUseCase` e dos mapas em memória; `destino`/`caminho` na action `http`; remoção do webhook de notificação; rota de alertas; correção do `TarefaJpaMapper`; `CargaFonteTaskActionAdapter`.
 - **Banco:** nenhum script; usa só `tTrefaAgnda`, `tParmTrefa` e `tLogTrefa`, que já existem.
 - **Front/BFF:** o dashboard passa a consumir `GET /api/v1/alertas` (change do front, futura).
 - **Dependências:** `b3/taxa-swap/download` e `b3/taxa-swap/reprocessamento` da function B3 (change `conector-b3-webhook-ingest`); rotas das functions ANBIMA (`ms`) e Bloomberg (nós da SOFR, com os tickers), no mesmo contrato (changes próprias); a exportação de calendário do engine (change `engine-construcao-curvas`).

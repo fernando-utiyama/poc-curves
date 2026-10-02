@@ -5,7 +5,7 @@ Define o que o orquestrador faz no processo das curvas: disparar, em cada functi
 ## ADDED Requirements
 
 ### Requirement: `action` de download da carga do dia
-`DownloadCargaTaskActionAdapter` (`action` = `download-carga-dia`) SHALL baixar a carga do dia de uma fonte pela function dela, com novas tentativas até um horário limite. Uma mesma `action` atende as três fontes; cada fonte é uma tarefa cadastrada com os parâmetros:
+`CargaFonteTaskActionAdapter` SHALL obter a carga do dia de uma fonte pela function dela, com novas tentativas até um horário limite. Ele atende duas `actions`, que dizem como a fonte entrega o dado: `carga-download-site` (arquivo público baixado do site: B3 e ANBIMA) e `carga-data-license` (pedido à API do Bloomberg Data License, com `tickers` obrigatório). O comportamento é o mesmo nas duas; cada fonte é uma tarefa cadastrada com os parâmetros:
 
 | Parâmetro | Uso |
 |---|---|
@@ -15,6 +15,7 @@ Define o que o orquestrador faz no processo das curvas: disparar, em cada functi
 | `caminhoReprocessamento` | opcional; caminho com `{dataBase}` (e `{tickers}`) usado na execução manual de data passada |
 | `tickers` | só na Bloomberg: lista separada por vírgula dos tickers a buscar (ex.: `S0490Z 1M BLC2 Curncy,S0490Z 3M BLC2 Curncy`), enviada à function junto com a data no lugar de `{tickers}`, com codificação de URL; obrigatório quando um caminho tem `{tickers}`, e MUST NOT ser exigido nas outras fontes |
 | `inicioHorario`, `limiteHorario` | janela de tentativas (`HH:mm`, Brasília) |
+| `defasagemDiasUteis` | opcional, 0 a 10 (padrão 0): a data-base padrão é hoje recuado essa quantidade de dias úteis nos `calendarios` da tarefa (como na change `orquestrador-v0-disparo-manual`) |
 
 A tarefa SHALL ter `regraIntervalo` com o intervalo entre tentativas (ex.: `PT10M`, ocorrências alinhadas à meia-noite de Brasília); o cron não é usado porque uma janela "a cada 10 minutos" não cabe nos 15 caracteres da coluna. A function de cada fonte MUST responder no contrato do download B3 (change `conector-b3-webhook-ingest`): 200 com a `dataBase` do arquivo e o `idCarga`.
 
@@ -73,7 +74,7 @@ Cada fonte tem a sua tarefa, então as tentativas, o sucesso e o alerta de uma f
 - **THEN** o alerta aparece na consulta de alertas do dia, com a fonte `ANBIMA`, a data-base e as tentativas
 
 ### Requirement: Data-base e dia útil
-A data-base de uma execução agendada SHALL ser a data de hoje no fuso `America/Sao_Paulo`, independente do fuso do servidor. O dia útil SHALL ser decidido pelo parâmetro `calendarios` de cada tarefa (requisito "Calendário de dias úteis por tarefa" da spec `agendamento-tarefas`): `Brazil/Settlement` nos downloads B3 e ANBIMA; `Brazil/Settlement,UnitedStates/FederalReserve` no download Bloomberg (a SOFR só tem dado novo em dia útil americano, e a curva só é construída em dia útil brasileiro).
+A data-base de uma execução agendada SHALL ser a data-base padrão da tarefa: a data de hoje no fuso `America/Sao_Paulo`, independente do fuso do servidor, recuada `defasagemDiasUteis` dias úteis (padrão 0) nos `calendarios` da tarefa. Nas regras de encerramento, "data-base de hoje" é essa data-base padrão. O dia útil SHALL ser decidido pelo parâmetro `calendarios` de cada tarefa (requisito "Calendário de dias úteis por tarefa" da spec `agendamento-tarefas`): `Brazil/Settlement` nos downloads B3 e ANBIMA; `Brazil/Settlement,UnitedStates/FederalReserve` no download Bloomberg (a SOFR só tem dado novo em dia útil americano, e a curva só é construída em dia útil brasileiro).
 
 #### Scenario: Servidor em UTC perto da meia-noite
 - **WHEN** a ocorrência é às 21h30 de Brasília e o servidor está em UTC
@@ -88,9 +89,9 @@ As tarefas SHALL ser cadastradas pela API de tarefas (`POST /api/v1/tarefas`), c
 
 | Tarefa | `action` | Parâmetros |
 |---|---|---|
-| Download B3 | `download-carga-dia` | `fonte`=`B3`, `destino` da function B3, `caminhoDownload`=`/api/b3/taxa-swap/download?date={dataBase}`, `caminhoReprocessamento`=`/api/b3/taxa-swap/reprocessamento?dataBase={dataBase}`, janela |
-| Download ANBIMA | `download-carga-dia` | `fonte`=`ANBIMA`, `destino` da function ANBIMA, caminhos da rota dela (change própria), janela |
-| Download Bloomberg | `download-carga-dia` | `fonte`=`BLOOMBERG`, `destino` da function Bloomberg, caminhos da rota dela (change própria) com `{dataBase}` e `{tickers}`, `tickers`, janela |
+| Carga B3 (site) | `carga-download-site` | `fonte`=`B3`, `destino` da function B3, `caminhoDownload`=`/api/b3/taxa-swap/download?date={dataBase}`, `caminhoReprocessamento`=`/api/b3/taxa-swap/reprocessamento?dataBase={dataBase}`, janela |
+| Carga ANBIMA (site) | `carga-download-site` | `fonte`=`ANBIMA`, `destino` da function ANBIMA, caminhos da rota dela (change própria), janela |
+| Carga Bloomberg (Data License) | `carga-data-license` | `fonte`=`BLOOMBERG`, `destino` da function Bloomberg, caminhos da rota dela (change própria) com `{dataBase}` e `{tickers}`, `tickers`, janela |
 
 Os cadastros são feitos pela tela; a sugestão de cada um está em `cadastros-sugeridos.txt` desta change. A tarefa de uma fonte só é cadastrada quando a rota da function dela existir. Depois de cadastrada (`PRONTA`), a tarefa SHALL ser agendada (`POST /api/v1/agendador/tarefas/{id}/agendar`) para disparar sozinha. Não há horário embutido no orquestrador: sem cadastro, a tarefa não existe. Mudar horário, intervalo, limite ou tickers SHALL ser um `PATCH`, sem redeploy; agendar e desagendar é o liga/desliga do disparo automático.
 
@@ -103,7 +104,7 @@ Os cadastros são feitos pela tela; a sugestão de cada um está em `cadastros-s
 - **THEN** a próxima ocorrência envia a nova lista à function
 
 ### Requirement: Execução manual
-A execução manual SHALL usar a rota do motor (`POST /api/v1/agendador/tarefas/{id}/executar`), aceitando uma `dataBase` opcional (padrão: hoje), inclusive passada ou não útil, e SHALL seguir as regras da `action`, registrando o usuário. Uma `dataBase` passada SHALL chamar o `caminhoReprocessamento` da tarefa (se houver; senão, o `caminhoDownload`) em vez do download, e a execução manual é uma tentativa só, sem `inicioHorario` nem `limiteHorario` e sem alerta. Execução manual nunca grava alerta.
+A execução manual SHALL usar a rota do motor (`POST /api/v1/agendador/tarefas/{id}/executar`), aceitando uma `dataBase` opcional, informada pelo front (padrão: a data-base padrão da tarefa), inclusive passada ou não útil, e SHALL seguir as regras da `action`, registrando o usuário. A execução manual SHALL aceitar também `incluirDownload` (padrão `false`): com ele, uma `dataBase` anterior à data-base padrão chama o `caminhoDownload` daquela data, buscando de novo na fonte. Sem ele, uma `dataBase` anterior à data-base padrão SHALL chamar o `caminhoReprocessamento` da tarefa (se houver; senão, o `caminhoDownload`) em vez do download, e a execução manual é uma tentativa só, sem `inicioHorario` nem `limiteHorario` e sem alerta. Execução manual nunca grava alerta.
 
 #### Scenario: Forçar uma data antiga
 - **WHEN** o operador executa a tarefa B3 com `dataBase` = `2026-09-10`

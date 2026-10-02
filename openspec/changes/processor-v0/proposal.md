@@ -2,14 +2,14 @@
 
 As curvas do primeiro objetivo precisam de insumo diário, e o caminho definitivo ainda não existe: as functions de download (B3, ANBIMA e Bloomberg) e o consumo do aviso de carga pelo processor (change `processor-carga-b3`) dependem de changes que não estão no ar. Sem dados brutos em `tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr` e `tBbergCurvaPrimr`, o engine não constrói nada.
 
-Esta é a **versão 0 emergencial**: o próprio `services/processor` busca os três arquivos, arquiva o original no Blob para auditoria e grava os dados no banco, chamado pelo orquestrador nas mesmas rotas que as functions teriam. Quando as functions existirem, o orquestrador passa a apontar para elas, só por configuração, e esta versão sai.
+Esta é a **versão 0**: o próprio `services/processor` busca os três arquivos, arquiva o original no Blob para auditoria e grava os dados no banco, chamado pelo orquestrador nas mesmas rotas que as functions teriam. Quando as functions existirem, o orquestrador passa a apontar para elas, só por configuração, e esta versão sai.
 
 ## What Changes
 
 - **Processor ganha três rotas de download e três de reprocessamento**, no mesmo contrato que o orquestrador já espera das functions (200 com `dataBase` e `idCarga`; 503 quando o arquivo do dia ainda não saiu):
-  - B3: `TS{AAMMDD}.ex_` da B3 → `TaxaSwap.txt` → `tBtrsCurvaPrimr`;
-  - ANBIMA: `ms{AAMMDD}.txt` (mercado secundário, só NTN-B inteira) → `tAnbmaCurvaPrimr`, com o prazo em dias úteis;
-  - Bloomberg: pedido de histórico (`HistoryRequest`) do Data License com os tickers da SOFR → `tBbergCurvaPrimr`.
+  - B3, por download do site: `TS{AAMMDD}.ex_` da B3 → `TaxaSwap.txt` → `tBtrsCurvaPrimr`;
+  - ANBIMA, por download do site: `ms{AAMMDD}.txt` (mercado secundário, só NTN-B inteira) → `tAnbmaCurvaPrimr`, com o prazo em dias úteis;
+  - Bloomberg, pela API do Data License: pedido de histórico (`HistoryRequest`) com os tickers da SOFR → `tBbergCurvaPrimr`.
 - **Upload pelo front**, pelo bff até o processor: o operador envia o arquivo da fonte (`TaxaSwap.txt` ou `.ex_`, `ms{AAMMDD}.txt`, ou o arquivo de resposta do Data License), e ele segue o mesmo caminho do download (`origem` = `UPLOAD`, com o usuário). Serve para quando a fonte está fora do ar ou o download falhou.
 - **Original no Blob para auditoria**, imutável, por carga: `{fonte}/{AAAAMMDD}/cargas/{idCarga}/{arquivo}`. O reprocessamento relê esse original sem baixar de novo.
 - **Gravação numa transação por carga**, sob a trava da curva em `tCurvaMercd`, pelo mapeamento de `tCurvaPrvdr`, com as mesmas regras da change `processor-carga-b3`.
@@ -20,7 +20,7 @@ Esta é a **versão 0 emergencial**: o próprio `services/processor` busca os tr
 ## Capabilities
 
 ### New Capabilities
-- `carga-emergencial-processor` (processor): rotas de download, upload e reprocessamento das três fontes, obtenção do arquivo, arquivamento do original no Blob, parse e validação, gravação transacional nas tabelas brutas, aviso ao engine e respostas no contrato do orquestrador.
+- `carga-arquivos-processor` (processor): rotas de download, upload e reprocessamento das três fontes, obtenção do arquivo, arquivamento do original no Blob, parse e validação, gravação transacional nas tabelas brutas, aviso ao engine e respostas no contrato do orquestrador.
 - `upload-carga-bff` (bff e front): tela de upload em pt-BR e rota autenticada do bff que repassa o arquivo ao processor com o usuário.
 
 ### Modified Capabilities

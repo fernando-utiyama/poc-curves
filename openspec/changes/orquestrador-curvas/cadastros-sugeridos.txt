@@ -4,8 +4,9 @@ Change: orquestrador-curvas | Sugestão de 2026-09-30, ajustada em 2026-10-01
 Os cadastros serão feitos à mão, pela tela, depois. Este arquivo só sugere o conteúdo.
 Formato: o corpo de POST /api/v1/tarefas (TarefaRequestDto).
 
-SÃO TRÊS TAREFAS, TODAS DE DOWNLOAD (action download-carga-dia): B3, ANBIMA e
-Bloomberg. Cada uma dispara a function da sua fonte com a data-base. O
+SÃO TRÊS TAREFAS DE CARGA: B3 e ANBIMA com a action carga-download-site
+(arquivo público baixado do site da fonte) e Bloomberg com a action
+carga-data-license (pedido à API do Data License, tickers obrigatório). Cada uma dispara a function da sua fonte com a data-base. O
 orquestrador NÃO chama o engine: depois do download, o fluxo da B3 segue
 sozinho (function grava no Blob e avisa, processor grava o bruto e chama o
 webhook do engine, que constrói as curvas e as derivadas em cadeia).
@@ -29,6 +30,9 @@ REGRAS DO CADASTRO (valem para todas)
   todos os dias. Calendários iguais aos do engine; o Brazil/Settlement bate
   com a planilha oficial de feriados nacionais da ANBIMA.
 - parametros: cada um com nome, valor e tipo (os três obrigatórios).
+- defasagemDiasUteis (0 a 10, padrão 0): sem data informada, a data-base é hoje
+  recuado essa quantidade de dias úteis nos calendarios da tarefa. [A CONFIRMAR]
+  o valor de cada fonte; 0 nas três por enquanto.
 - {dataBase} nos caminhos é trocado pela data-base (AAAA-MM-DD); {tickers}
   (só na Bloomberg) é trocado pelo parâmetro tickers, com codificação de URL.
 - destino: chave de orquestrador.http.destinos, uma por function (os nomes
@@ -45,9 +49,9 @@ operação. Confirmar com a operação antes de cadastrar.
 Depende de: rotas da function B3 (change conector-b3-webhook-ingest).
 
 {
-  "nome": "download-b3-taxa-swap",
+  "nome": "carga-b3-site-taxa-swap",
   "descricao": "Baixa o TaxaSwap da B3 do dia pela function, a cada 10 minutos dentro da janela, até o arquivo do dia chegar; no limite sem sucesso, gera o alerta CARGA_NAO_RECEBIDA.",
-  "action": "download-carga-dia",
+  "action": "carga-download-site",
   "regraIntervalo": "PT10M",
   "parametros": [
     { "nome": "calendarios",            "valor": "Brazil/Settlement",                                      "tipo": "TEXTO" },
@@ -55,6 +59,7 @@ Depende de: rotas da function B3 (change conector-b3-webhook-ingest).
     { "nome": "destino",                "valor": "conector-b3",                                            "tipo": "TEXTO" },
     { "nome": "caminhoDownload",        "valor": "/api/b3/taxa-swap/download?date={dataBase}",             "tipo": "TEXTO" },
     { "nome": "caminhoReprocessamento", "valor": "/api/b3/taxa-swap/reprocessamento?dataBase={dataBase}",  "tipo": "TEXTO" },
+    { "nome": "defasagemDiasUteis",     "valor": "0",     "tipo": "NUMERO" },
     { "nome": "inicioHorario",          "valor": "18:00",                                                  "tipo": "HORARIO" },
     { "nome": "limiteHorario",          "valor": "22:00",                                                  "tipo": "HORARIO" }
   ]
@@ -77,9 +82,9 @@ idCarga). Os dois caminhos abaixo são SUGESTÃO de nome de rota; trocar pelos
 da change da function quando ela existir.
 
 {
-  "nome": "download-anbima-ms",
+  "nome": "carga-anbima-site-ms",
   "descricao": "Baixa o arquivo de mercado secundário da ANBIMA (ms) do dia pela function, a cada 10 minutos dentro da janela, até o arquivo do dia chegar; no limite sem sucesso, gera o alerta CARGA_NAO_RECEBIDA.",
-  "action": "download-carga-dia",
+  "action": "carga-download-site",
   "regraIntervalo": "PT10M",
   "parametros": [
     { "nome": "calendarios",            "valor": "Brazil/Settlement",                                 "tipo": "TEXTO" },
@@ -87,6 +92,7 @@ da change da function quando ela existir.
     { "nome": "destino",                "valor": "conector-anbima",                                   "tipo": "TEXTO" },
     { "nome": "caminhoDownload",        "valor": "/api/anbima/ms/download?date={dataBase}",           "tipo": "TEXTO" },
     { "nome": "caminhoReprocessamento", "valor": "/api/anbima/ms/reprocessamento?dataBase={dataBase}", "tipo": "TEXTO" },
+    { "nome": "defasagemDiasUteis",     "valor": "0",     "tipo": "NUMERO" },
     { "nome": "inicioHorario",          "valor": "18:00",                                             "tipo": "HORARIO" },
     { "nome": "limiteHorario",          "valor": "22:00",                                             "tipo": "HORARIO" }
   ]
@@ -119,9 +125,9 @@ se aparecer alguma linha com a forma curta "S0490Z 15M", completar com
 " BLC2 Curncy" antes de usar a lista).
 
 {
-  "nome": "download-bloomberg-sofr",
+  "nome": "carga-bloomberg-dl-sofr",
   "descricao": "Busca os nós da SOFR (Bloomberg, BLC2) do dia pela function, com os tickers da tarefa, a cada 10 minutos dentro da janela, até os dados do dia chegarem; no limite sem sucesso, gera o alerta CARGA_NAO_RECEBIDA.",
-  "action": "download-carga-dia",
+  "action": "carga-data-license",
   "regraIntervalo": "PT10M",
   "parametros": [
     { "nome": "calendarios",            "valor": "Brazil/Settlement,UnitedStates/FederalReserve",                          "tipo": "TEXTO" },
@@ -130,6 +136,7 @@ se aparecer alguma linha com a forma curta "S0490Z 15M", completar com
     { "nome": "tickers",                "valor": "S0490Z 1D BLC2 Curncy,S0490Z 1M BLC2 Curncy,S0490Z 3M BLC2 Curncy,S0490Z 6M BLC2 Curncy,S0490Z 9M BLC2 Curncy,S0490Z 1Y BLC2 Curncy,S0490Z 15M BLC2 Curncy,S0490Z 2Y BLC2 Curncy,S0490Z 3Y BLC2 Curncy,S0490Z 4Y BLC2 Curncy,S0490Z 5Y BLC2 Curncy,S0490Z 7Y BLC2 Curncy,S0490Z 10Y BLC2 Curncy,S0490Z 12Y BLC2 Curncy,S0490Z 15Y BLC2 Curncy,S0490Z 20Y BLC2 Curncy,S0490Z 25Y BLC2 Curncy,S0490Z 30Y BLC2 Curncy,S0490Z 40Y BLC2 Curncy,S0490Z 50Y BLC2 Curncy", "tipo": "TEXTO" },
     { "nome": "caminhoDownload",        "valor": "/api/bloomberg/sofr/download?date={dataBase}&tickers={tickers}",         "tipo": "TEXTO" },
     { "nome": "caminhoReprocessamento", "valor": "/api/bloomberg/sofr/reprocessamento?dataBase={dataBase}&tickers={tickers}", "tipo": "TEXTO" },
+    { "nome": "defasagemDiasUteis",     "valor": "0",     "tipo": "NUMERO" },
     { "nome": "inicioHorario",          "valor": "18:00",                                                                  "tipo": "HORARIO" },
     { "nome": "limiteHorario",          "valor": "22:00",                                                                  "tipo": "HORARIO" }
   ]
