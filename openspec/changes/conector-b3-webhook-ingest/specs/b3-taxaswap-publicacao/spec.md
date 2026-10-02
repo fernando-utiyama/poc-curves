@@ -1,6 +1,6 @@
 ## Purpose
 
-No `services/conector`, obter o `TaxaSwap.txt` (pelo download do `.ex_` da B3, pela leitura do arquivo já gravado no Blob ou pelo upload), arquivá-lo no Blob e publicar no Kafka um aviso de carga que aponta para o arquivo. Os caminhos são equivalentes; nenhum é tratado como exceção. O conector não interpreta o conteúdo: parse, validação e gravação são do processor (spec `b3-carga-processor`).
+No `services/conector`, obter o `TaxaSwap.txt` (pelo download do `.ex_` da B3, pela leitura do arquivo já gravado no Blob ou pelo upload), arquivá-lo no Blob e publicar no Kafka um aviso de carga que aponta para o arquivo. Os caminhos são equivalentes; nenhum é tratado como exceção. O conector não interpreta o conteúdo: parse, validação e gravação são do processor (spec `b3-carga-processor` do change `processor-carga-b3`).
 
 ## ADDED Requirements
 
@@ -75,7 +75,7 @@ O conector SHALL publicar uma única mensagem por carga no tópico já existente
 }
 ```
 
-`usuario` SHALL ser o usuário autenticado (`preferred_username`) quando `origem` = `UPLOAD`, e nulo nos demais casos. O produtor SHALL ser idempotente, com `acks=all` e tempo limite de envio de 30 segundos. `geradoEm` SHALL estar no horário de Brasília, com o deslocamento. O conector MUST NOT publicar vértices, fatores nem tipos de curva.
+`usuario` SHALL ser o valor do cabeçalho `X-Usuario` da requisição (o usuário que o bff autenticou) quando `origem` = `UPLOAD`, e nulo nos demais casos ou se o cabeçalho não vier. O produtor SHALL ser idempotente, com `acks=all` e tempo limite de envio de 30 segundos. `geradoEm` SHALL estar no horário de Brasília, com o deslocamento. O conector MUST NOT publicar vértices, fatores nem tipos de curva.
 
 #### Scenario: Duas cargas da mesma data
 - **WHEN** duas cargas diferentes da mesma data são publicadas em seguida
@@ -86,7 +86,7 @@ O conector SHALL publicar uma única mensagem por carga no tópico já existente
 - `.txt`: o próprio `TaxaSwap.txt`, com os bytes lidos como Latin-1 (a codificação da B3);
 - `.ex_`: o arquivo compactado da B3, do qual o texto é extraído como no download.
 
-Outra extensão, arquivo vazio ou acima do limite MUST resultar em 400. Em seguida, o arquivo SHALL passar pela forma canônica, pela identidade da carga, pelo arquivamento (as duas cópias) e pela publicação, com `origem` = `UPLOAD` e o usuário na mensagem. Se `dataBase` for informado e diferente da data de geração do arquivo, a resposta MUST ser 422, sem arquivar nem publicar. O upload SHALL exigir o papel `Curvas.Operador`.
+Outra extensão, arquivo vazio ou acima do limite MUST resultar em 400. Em seguida, o arquivo SHALL passar pela forma canônica, pela identidade da carga, pelo arquivamento (as duas cópias) e pela publicação, com `origem` = `UPLOAD` e o usuário na mensagem. Se `dataBase` for informado e diferente da data de geração do arquivo, a resposta MUST ser 422, sem arquivar nem publicar.
 
 #### Scenario: Upload de um arquivo corrigido
 - **WHEN** um operador envia pelo upload o `TaxaSwap.txt` de `2026-09-14` com `dataBase` = `2026-09-14`
@@ -97,7 +97,7 @@ Outra extensão, arquivo vazio ou acima do limite MUST resultar em 400. Em segui
 - **THEN** a resposta é 422 informando as duas datas, e nada é arquivado nem publicado
 
 ### Requirement: Reprocessamento de um arquivo já gravado no Blob
-`b3/taxa-swap/reprocessamento` (`b3TaxaSwapReprocessamentoHttpTrigger`, hoje `b3HttpTrigger`) SHALL aceitar o parâmetro opcional `dataBase` (`AAAA-MM-DD`), informado pelo front (usuário com `Curvas.Operador`) ou pelo orquestrador:
+`b3/taxa-swap/reprocessamento` (`b3TaxaSwapReprocessamentoHttpTrigger`, hoje `b3HttpTrigger`) SHALL aceitar o parâmetro opcional `dataBase` (`AAAA-MM-DD`), informado pelo front ou pelo orquestrador:
 - **com `dataBase`:** SHALL ler `b3/{AAAAMMDD}/TaxaSwap.txt`, gravado antes pelo download do `.ex_`, pelo upload ou por um reprocessamento sem data;
 - **sem `dataBase`:** SHALL ler `recebidos/TaxaSwap.txt`, um arquivo colocado diretamente na pasta `recebidos/`, na raiz do container `B3_BLOB_CONTAINER`. A data-base é a data de geração do próprio arquivo, e a cópia de trabalho `b3/{AAAAMMDD}/TaxaSwap.txt` SHALL ser gravada, como no download e no upload. O arquivo em `recebidos/` MUST NOT ser alterado nem apagado pela rota.
 
@@ -129,21 +129,24 @@ Nos dois casos, o conteúdo SHALL passar pela forma canônica, pela identidade d
 As três rotas SHALL responder:
 - 200 com `{ "idCarga", "dataBase", "hashArquivo", "origem", "correlationId" }`;
 - 400 para parâmetro ou corpo inválido;
-- 401 sem token, 403 sem papel;
 - 404 no `b3/taxa-swap/reprocessamento`, se o arquivo a ler (`b3/{AAAAMMDD}/TaxaSwap.txt` ou `recebidos/TaxaSwap.txt`) não existir, informando o caminho;
 - 422 para arquivo sem linhas, sem data de geração válida ou com caractere fora do Latin-1, e, no `b3/taxa-swap/reprocessamento` e no upload, para data de geração diferente da `dataBase` pedida;
 - 502 se o download do `.ex_` na B3 falhar;
 - 503 se o Blob ou o Kafka estiverem indisponíveis.
 
-Toda resposta SHALL trazer o cabeçalho `X-Correlation-Id`. Erros MUST NOT expor stack trace. Como o front chama estas rotas (upload e `b3/taxa-swap/reprocessamento`), elas SHALL seguir o mesmo contrato do engine e do `services/curves`: `origem` é um de `DOWNLOAD`, `REPROCESSAMENTO` e `UPLOAD`; `dataBase` em `AAAA-MM-DD`; e todo erro tem o corpo `{ "codigoErro", "mensagem", "correlationId", "detalhes": [ { "campo", "linha", "valor", "motivo" } ] }`, com a mensagem em pt-BR, com acentuação, e os códigos `PARAMETRO_INVALIDO` (400), `NAO_AUTENTICADO` (401), `SEM_PERMISSAO` (403), `ARQUIVO_NAO_ENCONTRADO` (404), `ARQUIVO_INVALIDO` (422: sem linhas, sem data de geração válida ou fora do Latin-1), `DATA_BASE_DIVERGENTE` (422: data de geração diferente da pedida, com as duas datas em `detalhes`), `B3_INDISPONIVEL` (502) e `DEPENDENCIA_INDISPONIVEL` (503: Blob ou Kafka).
+Toda resposta SHALL trazer o cabeçalho `X-Correlation-Id`. Erros MUST NOT expor stack trace. Como o front chama estas rotas (upload e `b3/taxa-swap/reprocessamento`), elas SHALL seguir o mesmo contrato do engine e do `services/curves`: `origem` é um de `DOWNLOAD`, `REPROCESSAMENTO` e `UPLOAD`; `dataBase` em `AAAA-MM-DD`; e todo erro tem o corpo `{ "codigoErro", "mensagem", "correlationId", "detalhes": [ { "campo", "linha", "valor", "motivo" } ] }`, com a mensagem em pt-BR, com acentuação, e os códigos `PARAMETRO_INVALIDO` (400), `ARQUIVO_NAO_ENCONTRADO` (404), `ARQUIVO_INVALIDO` (422: sem linhas, sem data de geração válida ou fora do Latin-1), `DATA_BASE_DIVERGENTE` (422: data de geração diferente da pedida, com as duas datas em `detalhes`), `B3_INDISPONIVEL` (502) e `DEPENDENCIA_INDISPONIVEL` (503: Blob ou Kafka).
 
 #### Scenario: B3 indisponível
 - **WHEN** o download do `.ex_` falha na B3
 - **THEN** a rota `b3/taxa-swap/download` responde 502, e nada é arquivado nem publicado
 
-### Requirement: Segurança e rastreabilidade
-As três rotas MUST exigir autenticação do Entra ID (autenticação do App Service), aceitando só identidades com o papel `Curvas.Operador` ou a identidade de serviço do orquestrador (`services/orchestrator`), que é quem dispara os downloads; `authLevel: "anonymous"` MUST NOT ser usado. O acesso ao Blob SHALL usar Managed Identity (`B3_BLOB_ACCOUNT_URL`), com `B3_BLOB_CONNECTION_STRING` só no ambiente local. Cada execução SHALL registrar em log JSON, com `correlationId`, `idCarga` e horário de Brasília: origem, usuário, data-base, `hashArquivo`, tamanho em bytes, caminhos gravados, resultado e duração.
+### Requirement: Rastreabilidade e acesso ao Blob
+O conector não faz autenticação própria: quem expõe as rotas ao usuário (o bff e o `services/curves`) autentica, e o conector só recebe o `X-Usuario`. O acesso ao Blob SHALL usar Managed Identity (`B3_BLOB_ACCOUNT_URL`), com `B3_BLOB_CONNECTION_STRING` só no ambiente local. Cada execução SHALL registrar em log JSON, com `correlationId`, `idCarga` e horário de Brasília: origem, usuário, data-base, `hashArquivo`, tamanho em bytes, caminhos gravados, resultado e duração.
 
-#### Scenario: Chamada anônima
-- **WHEN** a rota `b3/taxa-swap/reprocessamento` é chamada sem token
-- **THEN** a resposta é 401, e nada é lido nem publicado
+#### Scenario: Upload com usuário
+- **WHEN** o bff envia o upload com o cabeçalho `X-Usuario` = `maria.silva`
+- **THEN** a mensagem publicada e o log da execução trazem `usuario` = `maria.silva`
+
+#### Scenario: Upload sem cabeçalho de usuário
+- **WHEN** o upload chega sem `X-Usuario`
+- **THEN** a carga é processada normalmente, com `usuario` nulo na mensagem e no log

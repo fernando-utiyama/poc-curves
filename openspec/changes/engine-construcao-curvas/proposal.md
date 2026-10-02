@@ -37,6 +37,6 @@ O primeiro objetivo do projeto é entregar 7 curvas: DIxPRE, DCL, PTAX, DPL e IB
 
 - **services/engine:** as seções da primeira parte do guia (`implementacao.md` desta change) (tipos, calendários nativos, interpolação, cadastro, modelos nativos, pipeline, carga, API básica). Sem Blob, sem Groovy e sem POI nesta parte.
 - **Banco:** sem mudança de schema; escreve `tDadoVertcCurva`, `tDadoCurva` e, em `tCurvaMercd`, só `dBaseReft` e `cUsuarCalc`.
-- **Autenticação:** adiada; os papéis nas tabelas de rota documentam o alvo e entram com a segunda parte.
-- **Outros serviços:** o processor (change `conector-b3-webhook-ingest`), o `services/curves` (change `curves-cadastro-curvas`) e o orquestrador (change `orquestrador-curvas`) já têm, com esta parte, as rotas do engine de que dependem.
-- **Fica para a `engine-modelos-curva`:** origem secundária, curvas derivadas, scripts Groovy no Blob, simulação e memória de cálculo em planilha e zip, auditoria no log e arquivo de auditoria, calendário por planilha, resiliência e métricas, autenticação, testes em massa.
+- **Sem autenticação:** o engine não autentica; quem expõe API ao front (`services/curves` e o BFF) autentica. O usuário da auditoria vem do cabeçalho opcional `X-Usuario`, e o `acionadoPor` vem da rota chamada.
+- **Outros serviços:** o processor (change `processor-carga-b3`), o `services/curves` (change `curves-cadastro-curvas`) e o orquestrador (change `orquestrador-curvas`) já têm, com esta parte, as rotas do engine de que dependem.
+- **Fica para a `engine-modelos-curva`:** origem secundária, curvas derivadas, scripts Groovy no Blob, simulação e memória de cálculo em planilha e zip, auditoria no log e arquivo de auditoria, calendário por planilha, resiliência e métricas, testes em massa.

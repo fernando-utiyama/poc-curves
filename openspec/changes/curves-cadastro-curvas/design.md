@@ -1,8 +1,8 @@
 ## Context
 
 - O cadastro que o engine lê está descrito na spec `curve-build-pipeline` do change `engine-construcao-curvas`: curva em `tCurvaMercd` (código em `cTickerIdtfdUnic`, nome em `cTickerIndcd`, unidade e cotação), origem em `tCurvaPrvdr` (menor `cPriorCsumo`), configuração vigente em `tConfgCurva` (uma por data) e parâmetros em JSON em `tConfgCurva.cModDado`.
-- O processor (change `conector-b3-webhook-ingest`) grava os dados brutos sob cada curva ligada em `tCurvaPrvdr` ao código da fonte.
-- O schema não pode mudar nesta fase. `tCurvaMercd.cTickerIndcd` é a PK e é referenciada por todas as FKs; `tCurvaPrvdr.cldtfdUnic` é `int NOT NULL` sem identity nem sequência; `tConfgCurva.cldtfdConfg` é identity.
+- O processor (change `processor-carga-b3`) grava os dados brutos sob cada curva ligada em `tCurvaPrvdr` ao código da fonte.
+- O schema não pode mudar nesta fase. `tCurvaMercd.cTickerIndcd` é a PK e é referenciada por todas as FKs; `tCurvaPrvdr.cIdtfdUnic` é `int NOT NULL` sem identity nem sequência; `tConfgCurva.cIdtfdConfg` é identity.
 - `tDadoVertcCurva` é a curva construída (os pontos, com dias e fatores) e `tDadoCurva` a curva interpolada (um valor por dia corrido), as duas com PK (`dBaseReft`, `cTickerIndcd`, `dVertcReft`), todas datas puras. `tCurvaData` sai do schema (change `banco-curvas-ajustes`).
 - O engine (`engine-construcao-curvas`) grava as duas na construção e no recálculo, numa transação que trava a linha da curva em `tCurvaMercd` (até 30 segundos para obter a trava, senão `CONSTRUCAO_EM_ANDAMENTO`). A construção automática (webhook de carga, construção sem recálculo) nunca sobrescreve uma data que já tem pontos.
 - O `hashPontos` (SHA-256 das linhas `data;valor`) é definido na spec `curve-build-pipeline` do engine.
@@ -16,7 +16,7 @@
 - Nunca deixar o cadastro num estado que o engine não consiga ler: uma configuração vigente por data, parâmetros válidos, versões passadas intactas.
 - Edição em lote segura por planilha, do cadastro e dos pontos.
 - O gestor corrige ou digita pontos à mão, sem ser bloqueado, com preferência sobre o engine, e acompanha as curvas num painel.
-- A edição nunca depende do engine: os dois compartilham o banco, e a única chamada de escrita do curves ao engine (regravar a curva interpolada depois de uma edição) não bloqueia a edição.
+- A edição nunca depende do engine: os dois compartilham o banco, e a única chamada de escrita do curves ao engine (regravar a curva interpolada depois de uma edição, na segunda parte) não bloqueia a edição. A primeira parte não chama o engine em lugar nenhum.
 
 **Non-Goals:**
 - CRUD de provedores (outro dev).
@@ -39,10 +39,10 @@ Alterar uma versão que já começou mudaria o resultado de um reprocessamento d
 Os parâmetros seguem a tabela da spec do engine (chaves, tipos, valores e combinações), para que o engine não encontre `CADASTRO_INVALIDO` depois. Os nomes de modelo não são bloqueados: um script Groovy pode criar um modelo novo sem deploy, e só o engine sabe o que está ativo. Nome fora dos nativos gera o aviso `MODELO_NAO_NATIVO`, e a simulação do engine confirma antes da produção.
 
 ### D5. `idCurvaProvedor` sem sequência
-`tCurvaPrvdr.cldtfdUnic` não tem geração automática, e o schema não pode mudar. O serviço lê `MAX + 1` com `UPDLOCK, HOLDLOCK` na mesma transação da inserção, o que serializa inserções simultâneas. Uma sequência no banco é o alvo ideal quando o schema puder mudar.
+`tCurvaPrvdr.cIdtfdUnic` não tem geração automática, e o schema não pode mudar. O serviço lê `MAX + 1` com `UPDLOCK, HOLDLOCK` na mesma transação da inserção, o que serializa inserções simultâneas. Uma sequência no banco é o alvo ideal quando o schema puder mudar.
 
-### D6. Concorrência otimista por curva
-Curva, provedores da curva e configurações são editadas juntas, muitas vezes por pessoas diferentes. O `ETag` da curva cobre os três, e toda alteração exige `If-Match`. É um hash do conteúdo, e não o `dUltAtulz`: o `datetime` do SQL Server tem precisão de cerca de 3 ms, e o hash deixa de fora os campos que o engine grava (`dBaseReft`, `cUsuarCalc`), para uma construção não invalidar a edição de ninguém. A planilha guarda esse `ETag` na coluna `Controle`, então uma importação de planilha antiga não sobrescreve uma alteração feita depois da exportação.
+### D6. Sem controle de concorrência no cadastro
+Curva, provedores da curva e configurações são editados por poucas pessoas (cerca de três), então o cadastro não faz controle de versão: quem salva por último vence, e o estado anterior de cada alteração fica no log `CADASTRO_ALTERADO` (D8), de onde se recupera. A numeração das decisões não muda.
 
 ### D7. Planilha como estado desejado, com simulação
 A importação trata cada curva listada como estado completo desejado (curva, provedores da curva e configurações), e compara com o banco:
@@ -63,13 +63,13 @@ O serviço sinaliza curva sem provedor, origem incompatível com o modelo de con
 ### D10. Efeito do cadastro no engine
 Inativar a curva, ou deixar a data-base fora da vigência dela (`dInicVgcia`..`dValidAte`), faz a construção automática (carga e construção da data pelo orquestrador) não construir a curva naquela data. O usuário ainda pode construí-la pela rota de construção do engine, que responde com aviso. Os pontos já gravados continuam consultáveis. A edição manual dos pontos está em D13 a D18.
 
-### D11. Valores aceitos vêm do engine
-Quem sabe o que é aceito no cálculo é o engine, e os modelos crescem com scripts Groovy sem deploy. Por isso o engine expõe os valores aceitos (`GET /api/v1/valores-cadastro`), gerados dos próprios enums do validador, e o curves os repassa em `GET /api/v1/curvas-mercado/valores`, acrescidos dos provedores. O front, a aba `Valores` e as listas suspensas da planilha usam só essa rota. O Swagger declara os `enum` fixos para quem integra por API. Com o engine fora, o curves responde com a cópia embutida e aviso, e um teste de contrato impede que essa cópia divirja do engine.
+### D11. Valores aceitos: tabela embutida na primeira parte, engine na segunda
+O curves já precisa ter a tabela de parâmetros aceitos para validar o `cModDado` (`ValidadorParametros`, cópia da regra do engine). Na primeira parte, `GET /api/v1/curvas-mercado/valores` serve essa tabela, com os modelos nativos, mais os provedores de `tPrvdrDadoMercd` e os enums e catálogos do serviço; não chama o engine, não tem cache e responde com o engine fora do ar. O front, a aba `Valores` e as listas suspensas da planilha usam só essa rota. O Swagger declara os `enum` fixos para quem integra por API. Só o engine sabe dos modelos Groovy ativos, que crescem sem deploy, e eles só existem na segunda parte do engine. Por isso a consulta ao engine (`GET /api/v1/valores-cadastro`, com cache e tempo limite curto), o aviso `VALORES_SEM_ENGINE` e o teste de contrato que impede a tabela embutida de divergir do engine entram com o cliente HTTP do engine na change `curves-operacao-curvas`.
 
 **Alternativa rejeitada:** só `enum` no Swagger. Não mostra os modelos Groovy ativos nem as regras de combinação, e o front acabaria repetindo as listas.
 
 ### D12. Painel no curves, conferência na hora pelo engine
-O painel é tela do gestor, e o gestor trabalha no curves (cadastro e pontos). O curves já sabe o cadastro, a última data publicada e os pontos gravados; falta o que só o engine sabe calcular: se há insumo na data, se o modelo roda, e se os pontos gravados batem com o que a fonte atual produz. O engine calcula isso na hora, numa rota só de leitura, sem guardar nada, e o curves compõe a situação. A comparação com a fonte atual revela de uma vez a edição manual, a republicação sem recálculo, a mudança de cadastro e, nas derivadas, a curva componente recalculada, sem nenhum registro guardado. Com o engine fora, o painel mostra o que o curves tem, com aviso, e nunca falha.
+O painel é tela do gestor, e o gestor trabalha no curves (cadastro e pontos). O curves já sabe o cadastro, a última data publicada e os pontos gravados; falta o que só o engine sabe calcular: se há insumo na data, se o modelo roda, e se os pontos gravados batem com o que a fonte atual produz. O engine calcula isso na hora, numa rota só de leitura, sem guardar nada, e o curves compõe a situação. A comparação com a fonte atual revela de uma vez a edição manual, a republicação sem recálculo, a mudança de cadastro e, nas derivadas, a curva componente recalculada, sem nenhum registro guardado. Com o engine fora, o painel mostra o que o curves tem, com aviso, e nunca falha. O painel é da segunda parte (`curves-operacao-curvas`); a primeira parte não chama o engine.
 
 O atraso vale só para data-base passada: dia útil anterior sem carga ou sem construção. Na data de hoje a carga ainda pode chegar, e o serviço não guarda horário de publicação por provedor (seria configuração a manter e fonte de falso alarme). **Alternativas rejeitadas:** horário esperado por provedor em configuração, para marcar atraso no próprio dia (falso alarme quando a fonte atrasa pouco, e mais uma configuração por ambiente); painel no engine (misturaria tela de gestão com cálculo e exigiria que o engine lesse o cadastro para a tela); guardar a última tentativa de cada curva (exigiria Blob ou tabela).
 
@@ -84,7 +84,7 @@ A preferência da edição manual resulta de regras que já existem:
 - **Construção automática nunca sobrescreve:** a regra do engine é "curva com pontos → `EXISTENTE`".
 - **Recálculo forçado:** só por ação explícita de um usuário.
 
-Não há `If-Match`: numa contingência, o gestor que salva vence, e o `hashPontos` anterior fica no log.
+Sem conferência de versão: numa contingência, o gestor que salva vence, e o `hashPontos` anterior fica no log.
 
 ### D15. Só a consistência do banco barra a edição; regra de negócio é aviso
 A edição manual é o caminho do gestor para contornar qualquer problema, inclusive de cadastro (um feriado errado, uma configuração ausente). Por isso o serviço só recusa o que não pode ser gravado de forma consistente em `tDadoVertcCurva`: lista vazia, data ou valor ausente ou malformado, data repetida (PK) e valor que não cabe em `DECIMAL(28,12)`. Toda regra de negócio vira aviso e o ponto é gravado: data igual ou anterior à data-base, fim de semana, feriado, preço ou pontos não positivos, sem configuração vigente, calendário não conferido. O engine trata esses pontos na interpolação (descarte de prazo não positivo e de ponto no mesmo prazo, com aviso), e o gestor vê os avisos na hora de salvar.
@@ -116,8 +116,8 @@ Os dias úteis que vêm da fonte ou do usuário são obedecidos pelo engine (cha
 ### D20. Dado bruto da B3 mantido à mão, sem disparar o engine
 Quando a carga da B3 falha ou traz um vértice errado, o gestor corrige o bruto (`tBtrsCurvaPrimr`) em vez dos pontos, e a curva sai pelo modelo `PRONTA_TS_B3` como sempre (memória de cálculo, dias úteis publicados, curvas que usam o mesmo código). O front abre uma listagem geral (curva, data-base, quantidade de linhas, código na fonte, curva construída ou não), feita por uma consulta agregada, e o gestor seleciona uma curva e data para o CRUD linha a linha.
 - **Só grava o bruto:** nada é disparado no engine. A data ainda não construída sai na próxima construção (manual ou pelo orquestrador); a já construída só muda num recálculo forçado, e a resposta avisa `CURVA_JA_CONSTRUIDA`.
-- **Mesmas regras da edição de pontos (D14, D15):** trava da curva em `tCurvaMercd` (o engine lê o bruto sob ela, então nunca constrói com a edição pela metade), sem `If-Match`, recusa só do que não cabe nas colunas ou falta para ser um vértice; o que faria o modelo falhar (`INSUMO_INVALIDO`) vira aviso, com o efeito descrito.
-- **`cldtfdUnic` como o processor** (`MAX + 1` com `UPDLOCK, HOLDLOCK`), para os dois não colidirem.
+- **Mesmas regras da edição de pontos (D14, D15):** trava da curva em `tCurvaMercd` (o engine lê o bruto sob ela, então nunca constrói com a edição pela metade), sem conferência de versão, recusa só do que não cabe nas colunas ou falta para ser um vértice; o que faria o modelo falhar (`INSUMO_INVALIDO`) vira aviso, com o efeito descrito.
+- **`cIdtfdUnic` como o processor** (`MAX + 1` com `UPDLOCK, HOLDLOCK`), para os dois não colidirem.
 - **Sem arredondamento:** é o dado da fonte, gravado como enviado.
 - **Reprocessamento vence:** o processor apaga e insere as linhas da curva na data; a edição fica no log `CURVA_PRIMARIA_EDITADA`.
 
@@ -125,10 +125,11 @@ Quando a carga da B3 falha ou traz um vértice errado, o gestor corrige o bruto 
 
 ## Risks / Trade-offs
 
-- **Regras de parâmetros duplicadas entre curves e engine.** → A spec do engine é a fonte; os testes do curves usam os mesmos casos da tabela. Uma chave nova no engine exige atualizar os dois.
+- **Regras de parâmetros duplicadas entre curves e engine.** → A spec do engine é a fonte; os testes do curves usam os mesmos casos da tabela. Uma chave nova no engine exige atualizar os dois. Na primeira parte, `GET /valores` serve só a tabela embutida e não há teste de contrato contra o engine; ele entra na change `curves-operacao-curvas`, junto com a consulta ao engine.
 - **`MAX + 1` com trava serializa inserções de provedores da curva.** → O volume é baixo (dezenas de provedores da curva), e a trava dura só a transação.
 - **Importação grande trava muitas linhas numa transação.** → Limite de 1.000 curvas e 5 MB; a simulação roda sem trava.
 - **Painel depende do engine para a conferência com a fonte, calculada a cada consulta.** → Com o engine fora, mostra cadastro, última data publicada e pontos, com `SITUACAO_INDISPONIVEL` e aviso; uma chamada por consulta, com tempo limite de 60 segundos; o engine confere as curvas em paralelo.
+- **Sem controle de concorrência no cadastro:** com poucos usuários, o último a salvar vence e o estado anterior fica no log `CADASTRO_ALTERADO`; ETag descrito em Extras do guia.
 - **Sem histórico do cadastro consultável pela API.** → Os eventos `CADASTRO_ALTERADO` no log têm o histórico completo; o arquivo de auditoria mostra o estado atual e a última alteração; a tabela de histórico entra quando o banco puder mudar.
 - **Recálculo forçado apaga pontos manuais.** → É ação explícita de um usuário; o log `PONTOS_EDITADOS` da edição anterior e o evento `CURVA_GRAVADA` do recálculo no engine (`pontosAnteriores`) preservam o que existia.
 - **Ponto fora das regras de negócio gravado.** → Aviso na gravação; o engine continua interpolando, descartando com aviso o ponto de prazo não positivo ou repetido no mesmo prazo; o gestor corrige depois.
@@ -140,7 +141,7 @@ Quando a carga da B3 falha ou traz um vértice errado, o gestor corrige o bruto 
 
 ## Migration Plan
 
-1. Entra ID (quando a autenticação entrar, numa change própria): criar o papel `Curvas.Cadastro` e atribuí-lo a quem cadastra; atribuir `Curvas.Leitura` e `Curvas.Operador` do engine à identidade gerenciada do curves (o `Curvas.Operador` só para regravar a curva interpolada depois de uma edição manual), que chama o engine para os valores aceitos, a situação do painel e os calendários.
+1. Entra ID (quando a autenticação entrar, numa change própria): criar o papel `Curvas.Cadastro` e atribuí-lo a quem cadastra. O engine não exige autenticação: na segunda parte, o curves chama o engine sem token para os modelos Groovy dos valores aceitos, a situação do painel, os calendários e a regravação da curva interpolada (a primeira parte não chama o engine).
 2. Log: retenção dos eventos `CADASTRO_ALTERADO`, `PONTOS_EDITADOS` e `CURVA_PRIMARIA_EDITADA` definida pela área de risco. O serviço não usa o Blob.
 3. Deploy do serviço junto com o engine sem a edição de pontos. O banco começa vazio: o cadastro entra pela API ou pela planilha (ex.: `exemplo-cadastro-7-curvas.txt`). Linhas de `tCurvaMercd` sem código, se existirem, ficam invisíveis nas rotas.
 4. **Rollback:** voltar os deploys do curves e do engine; os dados gravados continuam válidos para o engine.

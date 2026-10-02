@@ -7,7 +7,7 @@ Mantém em `tCurvaMercd` o resumo da última construção de cada curva (`dBaseR
 ### Requirement: Resumo da última construção em tCurvaMercd
 Na mesma transação de uma construção ou reconstrução bem-sucedida, o engine SHALL atualizar, na linha da curva em `tCurvaMercd` (já travada pela construção):
 - `dBaseReft` = a maior entre a data-base construída e o valor atual (nunca retrocede);
-- `cUsuarCalc` = usuário ou identidade de serviço que construiu.
+- `cUsuarCalc` = o `usuario` da requisição (cabeçalho `X-Usuario` do chamador; nulo quando ausente; a coluna aceita nulo).
 
 O engine MUST NOT alterar nenhuma outra coluna de `tCurvaMercd`. A edição manual de pontos no `services/curves` também não altera essas colunas. O catálogo de curvas SHALL devolver `dBaseReft` como `ultimaDataBase`.
 

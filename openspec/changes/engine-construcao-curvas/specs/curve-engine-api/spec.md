@@ -7,26 +7,33 @@ Define a API HTTP do engine para construir, consultar e interpolar curvas, ident
 ### Requirement: Rotas
 O engine SHALL expor estas rotas (prefixo `/api/v1`), mais as de operação e extensões da change `engine-modelos-curva` (simulação, auditoria, scripts e importação de calendário):
 
-| Método e rota | Uso | Papel exigido |
-|---|---|---|
-| `POST /cargas` | aviso de carga concluída (spec `curve-load-trigger`) | `Curvas.Processor` |
-| `POST /construcoes/{dataBase}` | construção automática de todas as curvas da data (spec `curve-load-trigger`) | `Curvas.Orquestrador` |
-| `GET /curvas?nome=` | catálogo | `Curvas.Leitura` |
-| `GET /curvas/situacao?dataBase=` | conferência de todas as curvas numa data-base contra a fonte atual, para o painel do `services/curves` | `Curvas.Leitura` |
-| `GET /valores-cadastro` | valores aceitos no cadastro, modelos ativos e regras de combinação | `Curvas.Leitura` |
-| `POST /curvas/{codigo}/{dataBase}/construcao?forcarRecalculo=&fonte=&produto=` | construir, pela origem principal ou por uma secundária | `Curvas.Operador` |
-| `GET /curvas/{codigo}/{dataBase}?formato=` | pontos gravados | `Curvas.Leitura` |
-| `GET /curvas/{codigo}/{dataBase}/interpolacao?du=&data=&formato=` | interpolar | `Curvas.Leitura` |
-| `POST /curvas/{codigo}/{dataBase}/interpolada` | regravar a curva interpolada a partir dos pontos atuais, depois de uma edição manual | `Curvas.Operador` |
-| `GET /curvas/por-nome/{dataBase}?nome=&formato=` | pontos gravados, pelo nome | `Curvas.Leitura` |
-| `GET /curvas/por-nome/{dataBase}/interpolacao?nome=&du=&data=&formato=` | interpolar, pelo nome | `Curvas.Leitura` |
-| `GET /calendarios/{nome}?mercado=&anoInicial=&anoFinal=&formato=` | exportar feriados (spec `calendar-management`) | `Curvas.Leitura` |
+| Método e rota | Uso |
+|---|---|
+| `POST /cargas` | aviso de carga concluída (spec `curve-load-trigger`) |
+| `POST /construcoes/{dataBase}` | construção automática de todas as curvas da data (spec `curve-load-trigger`) |
+| `GET /curvas?nome=` | catálogo |
+| `GET /curvas/situacao?dataBase=` | conferência de todas as curvas numa data-base contra a fonte atual, para o painel do `services/curves` |
+| `GET /valores-cadastro` | valores aceitos no cadastro, modelos ativos e regras de combinação |
+| `POST /curvas/{codigo}/{dataBase}/construcao?forcarRecalculo=&fonte=&produto=` | construir, pela origem principal ou por uma secundária |
+| `GET /curvas/{codigo}/{dataBase}?formato=` | pontos gravados |
+| `GET /curvas/{codigo}/{dataBase}/interpolacao?du=&data=&formato=` | interpolar |
+| `POST /curvas/{codigo}/{dataBase}/interpolada` | regravar a curva interpolada a partir dos pontos atuais, depois de uma edição manual |
+| `GET /curvas/por-nome/{dataBase}?nome=&formato=` | pontos gravados, pelo nome |
+| `GET /curvas/por-nome/{dataBase}/interpolacao?nome=&du=&data=&formato=` | interpolar, pelo nome |
+| `GET /calendarios/{nome}?mercado=&anoInicial=&anoFinal=&formato=` | exportar feriados (spec `calendar-management`) |
 
 As rotas antigas (`POST /api/v1/curvas/construir`, `POST /api/v1/calculo`, `POST /api/v1/modelos/upload`) MUST ser removidas. Construir MUST existir só pelo código. O engine não edita pontos: a edição manual é do `services/curves` (change `curves-cadastro-curvas`).
 
 #### Scenario: Escrita pelo nome não existe
 - **WHEN** o cliente chama `POST /api/v1/curvas/por-nome/2026-09-14/construcao?nome=DIxPRE`
 - **THEN** a resposta é 404
+
+### Requirement: Sem autenticação; origem do acionamento e usuário
+O engine MUST NOT autenticar nem autorizar requisições: quem expõe API ao front (`services/curves` e o BFF) autentica o usuário, e o engine só é chamado por serviços do projeto. O `acionadoPor` SHALL vir da rota chamada (`POST /cargas` = `CARGA`, `POST /construcoes/{dataBase}` = `ORQUESTRADOR`, as demais = `API`). O `usuario` gravado na auditoria e no log SHALL ser o valor do cabeçalho opcional `X-Usuario` enviado pelo chamador, e nulo quando ausente; o engine confia no chamador e não valida o valor.
+
+#### Scenario: Usuário vindo do chamador
+- **WHEN** o `services/curves` chama `POST /api/v1/curvas/PRE/2026-09-14/interpolada` com `X-Usuario: maria`
+- **THEN** o `INTERPOLADA_REGRAVADA` e o log trazem `usuario` = `maria`, e a chamada sem o cabeçalho traz `usuario` nulo
 
 ### Requirement: Parâmetros comuns
 - `{dataBase}` e `data` SHALL estar no formato `AAAA-MM-DD`.
@@ -52,8 +59,6 @@ Toda resposta de erro SHALL seguir o formato de erro único do serviço (o padr�
 | `codigoErro` | HTTP | Quando |
 |---|---|---|
 | `PARAMETRO_INVALIDO` | 400 | formato de data, `du`, `formato` ou parâmetro desconhecido |
-| `NAO_AUTENTICADO` | 401 | token ausente ou inválido |
-| `SEM_PERMISSAO` | 403 | token sem o papel exigido |
 | `CURVA_NAO_ENCONTRADA` | 404 | código ou nome sem cadastro |
 | `CURVA_NAO_CONSTRUIDA` | 404 | consulta ou interpolação sem pontos gravados na data |
 | `CODIGO_DUPLICADO` | 409 | código atribuído a mais de uma curva |
@@ -139,6 +144,14 @@ A rota por código SHALL buscar `tCurvaMercd.cTickerIdtfdUnic` igual ao código,
 - **WHEN** a `DCL` tem o nome `Cupom limpo de dólar` e o cliente chama `GET /api/v1/curvas/por-nome/2026-09-14?nome=CUPOM LIMPO DE DOLAR`
 - **THEN** a resposta traz os pontos da `DCL` em `2026-09-14` e o código `DCL`
 
+#### Scenario: Código atribuído a mais de uma curva
+- **WHEN** duas linhas de `tCurvaMercd` têm o código `PRE` e o cliente chama `GET /api/v1/curvas/PRE/2026-09-14`
+- **THEN** a resposta é 409 com `CODIGO_DUPLICADO`, e nada é construído nem gravado
+
+#### Scenario: Nome ambíguo
+- **WHEN** duas curvas têm nomes que, normalizados, são `cupom limpo de dolar`, e o cliente chama `GET /api/v1/curvas/por-nome/2026-09-14?nome=Cupom limpo de dólar`
+- **THEN** a resposta é 409 com `NOME_AMBIGUO`, e `detalhes` lista o código e o nome das duas curvas
+
 ### Requirement: Catálogo de curvas
 `GET /api/v1/curvas` SHALL listar as curvas com código não nulo, com código, nome, unidade e `ultimaDataBase` (`tCurvaMercd.dBaseReft`), ordenadas pelo código. O parâmetro opcional `nome` SHALL filtrar por trecho do nome, com a mesma normalização.
 
@@ -174,7 +187,7 @@ A rota por código SHALL buscar `tCurvaMercd.cTickerIdtfdUnic` igual ao código,
 
 
 ### Requirement: Regravar a curva interpolada
-`POST /curvas/{codigo}/{dataBase}/interpolada` SHALL regravar a curva interpolada (`tDadoCurva`) da curva e data a partir dos pontos atuais de `tDadoVertcCurva`, sem executar o modelo de construção e sem alterar os pontos, na mesma transação travada da construção (trava da curva em `tCurvaMercd`, 30 segundos, `CONSTRUCAO_EM_ANDAMENTO`). É chamada pelo `services/curves` depois de uma edição manual de pontos, com a identidade de serviço dele (que tem o papel `Curvas.Operador`), e pode ser chamada por um operador. A resposta SHALL ser 200 com a quantidade de linhas gravadas, o `hashPontos` dos pontos usados e os avisos da interpolação. Sem pontos na data, SHALL apagar a curva interpolada da data, se houver, e responder 404 `CURVA_NAO_CONSTRUIDA`. Se a interpolação falhar, nada é alterado, e a resposta é o erro (ex.: 422 `PONTOS_NAO_INTERPOLAVEIS`). O engine SHALL registrar `INTERPOLADA_REGRAVADA` (código, nome, data-base, usuário, `hashPontos`, quantidade de linhas).
+`POST /curvas/{codigo}/{dataBase}/interpolada` SHALL regravar a curva interpolada (`tDadoCurva`) da curva e data a partir dos pontos atuais de `tDadoVertcCurva`, sem executar o modelo de construção e sem alterar os pontos, na mesma transação travada da construção (trava da curva em `tCurvaMercd`, 30 segundos, `CONSTRUCAO_EM_ANDAMENTO`). É chamada pelo `services/curves` depois de uma edição manual de pontos, e pode ser chamada por um operador. A resposta SHALL ser 200 com a quantidade de linhas gravadas, o `hashPontos` dos pontos usados e os avisos da interpolação. Sem pontos na data, SHALL apagar a curva interpolada da data, se houver, e responder 404 `CURVA_NAO_CONSTRUIDA`. Se a interpolação falhar, nada é alterado, e a resposta é o erro (ex.: 422 `PONTOS_NAO_INTERPOLAVEIS`). O engine SHALL registrar `INTERPOLADA_REGRAVADA` (código, nome, data-base, usuário, `hashPontos`, quantidade de linhas) depois do commit da regravação, e MUST NOT registrá-lo quando a transação falha ou é desfeita.
 
 #### Scenario: Depois de uma edição manual
 - **WHEN** o gestor altera um ponto da `PRE` de `2026-09-14` no `services/curves`, e ele chama a regravação
@@ -185,7 +198,7 @@ A rota por código SHALL buscar `tCurvaMercd.cTickerIdtfdUnic` igual ao código,
 
 #### Scenario: Interpolação por dias úteis
 - **WHEN** o cliente chama `GET /api/v1/curvas/PRE/2026-09-14/interpolacao?du=21&du=252`
-- **THEN** a resposta traz os valores de 21 e 252 dias úteis, calculados com `Discount` + `LogLinear` em `Business252`, cada um com sua classificação
+- **THEN** a resposta traz os valores de 21 e 252 dias úteis, calculados com `Discount` + `FlatForward` em `Business252`, cada um com sua classificação
 
 ### Requirement: Situação das curvas numa data-base
 `GET /curvas/situacao?dataBase=` SHALL devolver, para cada curva com código não nulo, o que o engine calcula na hora e o `services/curves` não consegue calcular, sem ler nem gravar nenhum registro próprio:

@@ -1,7 +1,7 @@
 ## Context
 
 - Schema oficial, o do `001_SCRIPT_INICIAL.sql`:
-  - `tBbergCurvaPrimr`: `cldtfdUnic INT NOT NULL` (PK nonclustered, sem identity), `cTickerIndcd VARCHAR(50)` (FK para `tCurvaMercd`), `cTickerBberg CHAR(20)`, `dBaseReft`, `dVctoContr`, `vPrecoUlt DECIMAL(28,12)` e colunas de contrato futuro;
+  - `tBbergCurvaPrimr`: `cIdtfdUnic INT NOT NULL` (PK nonclustered, sem identity), `cTickerIndcd VARCHAR(50)` (FK para `tCurvaMercd`), `cTickerBberg CHAR(20)`, `dBaseReft`, `dVctoContr`, `vPrecoUlt DECIMAL(28,12)` e colunas de contrato futuro;
   - `tCurvaData`: `dBaseReft`, `cTickerIndcd`, `dVertcReft`, `vPrecoTx`, PK nonclustered nessas três colunas e `FK_tDadoCurva_tCurvaData` para a PK de `tDadoCurva`; não é usada.
   - `tDadoVertcCurva` (curva construída) e `tDadoCurva` (curva interpolada), com a mesma PK (`dBaseReft`, `cTickerIndcd`, `dVertcReft`).
 - As outras changes foram escritas sem mudança de schema e registraram "alvos ideais" nos seus designs.
@@ -46,7 +46,7 @@ Verificado com o arquivo real `CurvaZero_25092026.txt`, gravado em SQL Server 20
 
 - Incluir aqui, ou em change própria, os outros alvos já registrados para quando o banco puder mudar:
   - tabelas de auditoria (`tAuditCurva`, `tHistDadoCurva`) e de histórico do cadastro, hoje substituídas por log;
-  - `tParmConfgCurva` com PK (`cldtfdConfg`, `cConfgIdtfd`), no lugar do JSON em `tConfgCurva.cModDado`;
+  - `tParmConfgCurva` com PK (`cIdtfdConfg`, `cConfgIdtfd`), no lugar do JSON em `tConfgCurva.cModDado`;
   - `READ_COMMITTED_SNAPSHOT`, para leituras não esperarem uma reconstrução;
   - unicidade de `tCurvaMercd.cTickerIdtfdUnic` (código), hoje garantida só pelo serviço.
 - Tamanho de `cTickerBberg` para outros produtos Bloomberg além da SOFR, se algum passar de 50.

@@ -5,7 +5,7 @@ Constrói a curva NTN-B de taxa zero real a partir das taxas indicativas por tí
 ## ADDED Requirements
 
 ### Requirement: Leitura dos títulos
-O modelo `NTNB_BOOTSTRAP_ANBIMA` SHALL exigir origem com fonte `ANBIMA` e produto `MS`, e interpolador `Linear` ou `LogLinear`; caso contrário, `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tAnbmaCurvaPrimr` com `cTickerIndcd` = nome da curva e `dBaseReft` = data-base `B`. Cada linha é um título:
+O modelo `NTNB_BOOTSTRAP_ANBIMA` SHALL exigir origem com fonte `ANBIMA` e produto `MS`, e interpolador `Linear`, `LogLinear` ou `FlatForward`; caso contrário, `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tAnbmaCurvaPrimr` com `cTickerIndcd` = nome da curva e `dBaseReft` = data-base `B`. Cada linha é um título:
 - `vPrecoTx`: taxa indicativa em percentual ao ano; `y = vPrecoTx / 100`;
 - `vVertcCurva`: prazo do título em dias úteis a partir de `B`.
 
@@ -94,7 +94,7 @@ Os pontos da `NTN-B` SHALL estar nas datas de pagamento dos vencimentos dos tít
 A curva SHALL ser cadastrada com:
 - código `NTNB`, nome `NTN-B`, origem `ANBIMA`/`MS`/`NTN-B`;
 - construção `NTNB_BOOTSTRAP_ANBIMA`, unidade `TAXA`;
-- `Discount` + `LogLinear`, eixo `Business252`, cotação `Business252`/`Compounded`/`Annual`;
+- `Discount` + `FlatForward`, eixo `Business252`, cotação `Business252`/`Compounded`/`Annual`;
 - calendário `Brazil`/`Settlement`/`Following`;
 - extrapolação de início `FlatValue`: o primeiro vencimento pode estar a meses da data-base, e o bootstrap já trata esse trecho com a primeira taxa zero;
 - extrapolação de fim `FlatForward`;

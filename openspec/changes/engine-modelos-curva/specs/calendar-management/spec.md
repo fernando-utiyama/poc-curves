@@ -12,7 +12,7 @@ O engine SHALL ter uma base nativa `CalendarioPorLista`, que implementa o contra
 - **THEN** a construção falha com `MODELO_FALHOU`, informando a data e a cobertura 2001–2078
 
 ### Requirement: Importação da planilha de feriados
-`POST /api/v1/calendarios/{nome}/importacao?mercado=&anoInicial=&anoFinal=` SHALL receber um arquivo `.xlsx` (multipart, campo `arquivo`) e exigir o papel `Curvas.ModelosAutor`. A planilha SHALL ter a aba `Feriados` com o cabeçalho `Data` e `Descricao` na primeira linha e uma linha por feriado. `Data` SHALL ser célula de data (exibida como `dd/mm/aaaa`) ou texto `dd/mm/aaaa` ou `aaaa-mm-dd`. A importação MUST ser rejeitada com 400 `PARAMETRO_INVALIDO`, listando cada problema em `detalhes`, quando:
+`POST /api/v1/calendarios/{nome}/importacao?mercado=&anoInicial=&anoFinal=` SHALL receber um arquivo `.xlsx` (multipart, campo `arquivo`). A planilha SHALL ter a aba `Feriados` com o cabeçalho `Data` e `Descricao` na primeira linha e uma linha por feriado. `Data` SHALL ser célula de data (exibida como `dd/mm/aaaa`) ou texto `dd/mm/aaaa` ou `aaaa-mm-dd`. A importação MUST ser rejeitada com 400 `PARAMETRO_INVALIDO`, listando cada problema em `detalhes`, quando:
 - faltar a aba ou uma das colunas;
 - uma célula de `Data` não for data;
 - houver datas repetidas;

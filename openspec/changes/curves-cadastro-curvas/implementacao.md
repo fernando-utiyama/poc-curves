@@ -11,53 +11,51 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
   - `application/{port/in/usecase,port/out,service,dto,mapper,model,exception}`: portas de saída `<Tabela>RepositoryPort`, casos de uso `<Nome>UseCase` com implementação em `application/service`, exceções com `ErrorCode`;
   - a forma de registrar os serviços (no poc, `@Bean` em `infrastructure/config/BeanConfig`): os serviços novos são registrados **do mesmo jeito** que os existentes; o utilitário de normalização de nome, se houver;
   - entidades já existentes: `CurvaMercdEntity`, `ProvedorEntity` (CRUD de provedores do outro dev, não tocar) e `BloombergCurvaPrimrEntity`. Não criar outra entidade para a mesma tabela; conferir as colunas e os tipos contra o `001_SCRIPT_INICIAL.sql` (seção 2.1).
-- **Classes novas** ficam nos mesmos pacotes e têm o nome da tabela: `CurvaPrvdrEntity`, `ConfgCurvaEntity`, `DadoVertcCurvaEntity`, `DadoCurvaEntity`, `BtrsCurvaPrimrEntity`; portas `CurvaPrvdrRepositoryPort`, `ConfgCurvaRepositoryPort`, `DadoVertcCurvaRepositoryPort`, `DadoCurvaRepositoryPort`, `BtrsCurvaPrimrRepositoryPort`; a `CurvaMercdRepositoryPort` existente ganha os métodos novos. Nomes de infraestrutura (cliente do engine, filtro, planilha) podem ser em inglês.
+- **Classes novas** ficam nos mesmos pacotes e têm o nome da tabela: `CurvaPrvdrEntity`, `ConfgCurvaEntity`, `DadoVertcCurvaEntity`, `DadoCurvaEntity`, `BtrsCurvaPrimrEntity`; portas `CurvaPrvdrRepositoryPort`, a porta de configuração (no real já existe como `ConfiguracaoCurvaRepositoryPort` e mantém o nome), `DadoVertcCurvaRepositoryPort`, `DadoCurvaRepositoryPort`, `BtrsCurvaPrimrRepositoryPort`; a `CurvaMercdRepositoryPort` existente ganha os métodos novos. Nomes de infraestrutura (cliente do engine, filtro, planilha) podem ser em inglês.
 - **Onde fica cada tipo de classe** (vale para todo código novo; conferir antes de cada commit):
 
 | Tipo | Camada | Exemplos |
 |---|---|---|
-| regra, `record` de dado, enum, validador, `ETag`, documento canônico, `Input` de caso de uso, resultado | `domain` | `CurvaMercado`, `CurvaMercadoInput`, `CriarCurvaProvedorInput`, `EtagCurvaMercado`, `ValidadorParametros`, `CurvaAuditoria` (o dado) |
+| regra, `record` de dado, enum, validador, `Input` de caso de uso, resultado | `domain` | `CurvaMercado`, `CurvaMercadoInput`, `CriarCurvaProvedorInput`, `ValidadorParametros`, `CurvaAuditoria` (o dado) |
 | caso de uso (interface) | `application/port/in/usecase` | `CurvaMercadoUseCase`, `CurvaProvedorUseCase` |
-| porta de saída | `application/port/out` | `CurvaMercdRepositoryPort`, `CurvaPrvdrRepositoryPort`, a porta de configuração que já existir, `BtrsCurvaPrimrRepositoryPort`, `EnginePort`, `EventosPort` |
+| porta de saída | `application/port/out` | `CurvaMercdRepositoryPort`, `CurvaPrvdrRepositoryPort`, a porta de configuração que já existir, `BtrsCurvaPrimrRepositoryPort`, `EventosPort` (a `EnginePort` é da fase 2, seção 1.6) |
 | implementação do caso de uso | `application/service` | `CurvaMercadoService`, `CurvaProvedorService`, `ConfiguracaoCurvaService`, `BtrsCurvaPrimrService`, **um só** `ValoresService` |
 | exceção e códigos de erro | `application/exception` | `CadastroErrorCode`, `ConflictException` |
 | controller, `Request`, `Response`, filtro, tratador de erro, gerador da planilha de resposta (POI) | `adapter/in/api/rest` | `CurvaMercadoController`, `CriarCurvaProvedorRequest`, `CorrelationIdFilter`, `CurvaAuditoriaExcelGenerator` |
 | entidade JPA, repositório Spring Data, adaptador de persistência | `adapter/out/persistence` | `CurvaPrvdrEntity`, `CurvaPrvdrRepository`, `CurvaPrvdrPersistenceAdapter` |
-| cliente do engine, log de eventos, serializador do documento canônico do `ETag` | `adapter/out/...` | `EngineHttpClient`, o adaptador de log, `CurvaCanonicoJsonSerializer` |
+| log de eventos (e, na fase 2, o cliente do engine) | `adapter/out/...` | o adaptador de log (`EngineHttpClient` só na fase 2) |
 
   Regras que não se quebram: entidade JPA nunca fora de `adapter/out/persistence`; porta nunca em `adapter`; nada de POI, Jackson, Spring ou JPA no `domain`; `Request`/`Response` só no adaptador de entrada, e o `Input` correspondente no domínio. Portas de saída novas levam o nome da tabela; uma porta que já existia no serviço mantém o nome que tem (ex.: `ConfiguracaoCurvaRepositoryPort`). Casos de uso e serviços levam o nome de negócio. Nenhum resquício do nome antigo "ligação" (ex.: `LigacaoCanonicoState` → `CurvaProvedorCanonicoState`).
 - **Dois modelos, sem misturar:** `application/model` (`CurvaMercd`, `Provedor`, `BloombergCurvaPrimr`) é do código existente (beans mutáveis com Lombok) e não é reescrito. O código novo põe as regras em **`br.com.poc.domain`**, Java puro, com `record`s; as portas novas recebem e devolvem esses `record`s. As conversões entidade ↔ `record` ficam no adaptador de persistência.
 - **Mesma base do engine** (guia do `engine-construcao-curvas`, seção 0):
-  - **hexagonal:** `domain` em Java puro (regras de campo, vigência, `ETag`, validador de parâmetros, `hashPontos`, 30/360, situação do painel), sem Spring, JPA, Jackson ou POI; `application/port/in/usecase` (um caso de uso por área) e `application/port/out`, uma porta por tabela mais `EnginePort`, `PlanilhaPort` e `EventosPort`; `application/service` implementa os casos de uso; os adaptadores implementam as portas. O serviço conhece só as portas. Dependências: `adapter → application → domain`, nunca o contrário (conferido na seção 14.1);
+  - **hexagonal:** `domain` em Java puro (regras de campo, vigência, validador de parâmetros, `hashPontos`, 30/360, situação do painel), sem Spring, JPA, Jackson ou POI; `application/port/in/usecase` (um caso de uso por área) e `application/port/out`, uma porta por tabela mais `PlanilhaPort` e `EventosPort` (a `EnginePort` entra na fase 2, na change `curves-operacao-curvas`); `application/service` implementa os casos de uso; os adaptadores implementam as portas. O serviço conhece só as portas. Dependências: `adapter → application → domain`, nunca o contrário (conferido na seção 14.1);
   - **Java 21 nativo:** `record` para todo dado novo (domínio, comandos, resultados, eventos, linhas de planilha), com `List.copyOf` no construtor compacto para imutabilidade; `sealed interface` e `switch` com pattern matching onde a variação é fechada (resultado de linha da importação, situação do painel, resposta do engine), **sem `default`**, para o compilador apontar o caso esquecido; `java.time`, `RoundingMode`, `HexFormat`, `MessageDigest`, `Normalizer`, `Currency`, `Locale`; `Stream` e `Collectors.groupingBy`/`teeing`; `Optional` só como retorno de busca (nunca parâmetro nem campo); `var` onde o tipo é óbvio; text blocks para SQL; `String.formatted`. Nada de tipo próprio de data, relógio, arredondamento ou "utils" (o `NormalizadorUtil` existente é reaproveitado para o nome normalizado, se servir);
-  - **virtual threads:** `spring.threads.virtual.enabled: true` (mudança deliberada do `application.yml`, que hoje traz `false`; seção 1.2); sem `synchronized`. As chamadas independentes ao engine e as regravações interpoladas depois da importação rodam em `Executors.newVirtualThreadPerTaskExecutor()`, com `try-with-resources` (o `StructuredTaskScope` é preview no Java 21 e não se usa);
-  - **Lombok e MapStruct:** o código existente usa os dois (entidades, modelos, mapeadores) e continua usando. O código novo usa Lombok **só nas entidades JPA** (`@Getter`, `@Setter`, `@NoArgsConstructor`, como a `ProvedorEntity`) e **nenhum MapStruct novo**: a conversão é um método `de(...)`/`para(...)` no próprio `record` ou adaptador. Injeção por construtor (`final`), nunca `@Autowired` em campo;
+  - **virtual threads:** a flag `spring.threads.virtual.enabled` do `application.yml` **não é alterada**; o código novo não usa `synchronized`. (Fase 2:) as chamadas independentes ao engine e as regravações interpoladas depois da importação rodam em `Executors.newVirtualThreadPerTaskExecutor()`, com `try-with-resources` (o `StructuredTaskScope` é preview no Java 21 e não se usa);
+  - **Lombok e MapStruct:** o código existente usa os dois (entidades, modelos, mapeadores) e continua usando. O código novo usa Lombok **só nas entidades JPA** (`@Getter`, `@Setter`, `@NoArgsConstructor`, como a `ProvedorEntity`) e **nenhum MapStruct novo**: a conversão é um método `de(...)`/`para(...)` no próprio `record` ou adaptador. Injeção por construtor (`final`), nunca `@Autowired` em campo; a classe tem um único construtor, ou, se tiver mais de um, `@Autowired` no que o Spring usa (sem isso o Spring exige construtor sem argumentos);
   - **transação:** `@Transactional` nos métodos de `application/service` que gravam (é o que o código existente faz); o domínio não conhece transação.
 - Não invente rota, código de erro, aviso, coluna ou tabela fora deste guia e das specs. Não crie tabela, sequência, índice nem tópico. O serviço não usa o Blob.
 - Número de curva é sempre `BigDecimal`, nunca `double` (a única exceção é a célula numérica da planilha, seção 9).
 - Fuso: a JVM inteira roda em `America/Sao_Paulo` (seção 1.4); `LocalDate.now()` e `OffsetDateTime.now()` são usados direto. Leitura em `READ COMMITTED`, nunca `NOLOCK`.
 - Mensagens em pt-BR com acentuação, UTF-8. Códigos (enums, `codigoErro`, avisos) não se traduzem.
 - Arquivos de configuração que já existem: não reescrever; conferir e acrescentar só o que faltar.
-- O serviço roda em no mínimo 2 instâncias: nenhum estado de negócio em memória local. O cache de valores aceitos (seção 5) usa o mecanismo de cache que o serviço já tem.
+- O serviço roda em no mínimo 2 instâncias: nenhum estado de negócio em memória local. Na fase 1 não há cache de valores aceitos (seção 5); o cache de 5 minutos da consulta ao engine é da fase 2.
 
 ### 0.1 Tabelas que o serviço usa
 
 | Tabela | O que o serviço faz |
 |---|---|
 | `tCurvaMercd` | cria e altera a curva; nunca escreve `dBaseReft`, `cUsuarCalc` nem as colunas sem uso da spec |
-| `tCurvaPrvdr` | CRUD dos provedores da curva; `cldtfdUnic` por `MAX + 1` com trava |
-| `tConfgCurva` | cria e exclui versões de configuração (`cldtfdConfg` é identity) |
+| `tCurvaPrvdr` | CRUD dos provedores da curva; `cIdtfdUnic` por `MAX + 1` com trava |
+| `tConfgCurva` | cria e exclui versões de configuração (`cIdtfdConfg` é identity) |
 | `tPrvdrDadoMercd` | só lê (provedores, do CRUD do outro dev) |
 | `tDadoVertcCurva` | **pontos da curva** (curva construída): edição manual |
 | `tDadoCurva` | curva interpolada: só **apaga** a da data quando os pontos da data são apagados; quem grava é o engine |
-| `tBtrsCurvaPrimr` | **dado bruto da B3**: listagem geral e CRUD por linha (seção 11); `cldtfdUnic` por `MAX + 1` com trava, como o processor |
+| `tBtrsCurvaPrimr` | **dado bruto da B3**: listagem geral e CRUD por linha (seção 11); `cIdtfdUnic` por `MAX + 1` com trava, como o processor |
 
 ### 0.2 Vetores de teste reais
 
 | Item | Valor esperado |
 |---|---|
-| `ETag` do cadastro da `PRE` do `exemplo-cadastro-7-curvas.txt` (curva criada, provedor da curva `idCurvaProvedor` 1, versão 1 com os parâmetros do exemplo) | `aba7591e409470d609462fc0e077257728f4757e382987712fe7cdb4d4c8ade9` |
-| JSON canônico desse `ETag` | ver seção 2.3 |
 | `hashPontos` do vetor comum com o engine (`2026-09-15;13.9\n2026-09-16;-117.96`) | `8dcff432fa5271ff16bdaef72940792811802e0a5ae59e8c2bf5cead818d5544` |
 | `hashPontos` da `PRE` de `2026-09-14` construída pelo engine (278 pontos) | `7c4982b34ca35f784863118902e63f28e7d49362d940cc27eb77961d526fca20` |
 | ponto da `PRE` em `2027-01-04` (data-base `2026-09-14`) | valor 13.589, 75 dias úteis publicados, 112 dias corridos, 110 dias 30/360 |
@@ -70,27 +68,26 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 
 ### 1.1 `pom.xml`: o mínimo de coisas novas
 
-> **Adiado:** a autenticação (Entra ID, papéis, 401/403 e o token de serviço para o engine) entra numa change própria, depois. Até lá, não acrescentar `spring-boot-starter-oauth2-resource-server` nem `azure-identity`.
+> **Adiado:** a autenticação do curves (Entra ID, papéis, 401/403) entra numa change própria, depois. O engine não exige autenticação, então não há token de serviço para ele. Até lá, não acrescentar `spring-boot-starter-oauth2-resource-server` nem `azure-identity`.
 
 O `pom.xml` do serviço já tem JPA, o driver do SQL Server, validação, springdoc, actuator, a biblioteca de log JSON do serviço e `spring-boot-starter-test`. Conferir e acrescentar **só** o que faltar:
 
 | Dependência | Por quê |
 |---|---|
-| `org.springframework.boot:spring-boot-starter-oauth2-resource-server` (versão do Spring Boot) | JWT do Entra ID |
-| `com.azure:azure-identity`, pelo `com.azure:azure-sdk-bom` **1.3.8** em `dependencyManagement` | token de serviço (Managed Identity) para chamar o engine |
+| `org.springframework.boot:spring-boot-starter-oauth2-resource-server` (versão do Spring Boot) | **adiada:** JWT do Entra ID; fica como alvo da change de autenticação |
+| `com.azure:azure-identity`, pelo `com.azure:azure-sdk-bom` **1.3.8** em `dependencyManagement` | **adiada:** só se a change de autenticação do curves precisar (o engine não exige token) |
 | `org.apache.poi:poi-ooxml` **5.5.1** | planilhas |
 
-Nada mais: o cliente do engine usa o `java.net.http.HttpClient` do JDK (o `openfeign` do pom fica para as integrações que já o usam), sem ArchUnit e sem dependência de teste além do `spring-boot-starter-test` (seção 14).
+Nada mais: o cliente do engine (fase 2) usa o `java.net.http.HttpClient` do JDK (o `openfeign` do pom fica para as integrações que já o usam), sem ArchUnit e sem dependência de teste além do `spring-boot-starter-test` (seção 14).
 
 ### 1.2 `application.yml` (conferir e acrescentar)
 
-> **Adiado:** a autenticação (Entra ID, papéis, 401/403 e o token de serviço para o engine) entra numa change própria, depois. Até lá, ficam de fora `spring.security` e `curves.engine.escopo`.
+> **Adiado:** a autenticação do curves (Entra ID, papéis, 401/403) entra numa change própria, depois. Até lá, fica de fora `spring.security`; o engine não exige autenticação, então não existe `curves.engine.escopo`. **Fase 1: o bloco `curves.engine` também fica de fora** (o curves não chama o engine); ele entra na fase 2, na change `curves-operacao-curvas`, e está abaixo só como referência.
 
 ```yaml
 curves:
-  engine:
+  engine:                                        # FASE 2 (curves-operacao-curvas): não acrescentar na fase 1
     url: ${CURVES_ENGINE_URL}
-    escopo: ${CURVES_ENGINE_ESCOPO}              # api://{app do engine}/.default
     timeout-segundos: 10
     timeout-situacao-segundos: 60
     timeout-interpolada-segundos: 60
@@ -99,21 +96,7 @@ curves:
     requisicao-segundos: 60
     importacao-pontos-segundos: 120
 spring:
-  threads:
-    virtual:
-      enabled: true                              # troca o false atual: requisições em virtual threads
-  datasource:
-    hikari:
-      transaction-isolation: TRANSACTION_READ_COMMITTED
-  jpa:
-    open-in-view: false
-    properties:
-      hibernate:
-        jdbc:
-          batch_size: 500
-        order_inserts: true
-        order_updates: true
-  security:
+  security:                                      # ADIADO (autenticação): fora até a change própria
     oauth2:
       resourceserver:
         jwt:
@@ -125,12 +108,12 @@ Conferir no `application.yml` que já existe, ajustando só o que conflita (o re
 
 | Chave existente | Ajuste |
 |---|---|
-| `spring.threads.virtual.enabled: false` | `true` (acima); trocar o comentário de cautela por "JDBC do mssql-jdbc 12+ não fixa a thread; sem `synchronized` no código novo" |
+| `spring.threads.virtual.enabled`, `spring.datasource.hikari.*`, `spring.jpa.open-in-view` e `hibernate.jdbc.*` | **não mexer**: o `application.yml` existente fica como está nesses blocos (mínimo de mudança no serviço); só se acrescenta o bloco `curves.timeout` acima |
 | `spring.jackson.default-property-inclusion: NON_NULL` | manter (é do CRUD de provedores); todo `record` de resposta **novo** leva `@JsonInclude(JsonInclude.Include.ALWAYS)` na classe, porque as specs exigem nulo presente, nunca omitido (painel, pontos, curva) e `avisos` sempre presente |
 | `spring.jackson.time-zone: UTC` e `date-format` | os instantes da resposta saem `-03:00` (seção 1.4): o `record` leva `OffsetDateTime` já no fuso de Brasília, e o `time-zone` não se aplica a `OffsetDateTime` |
 | `spring.jpa.show-sql: true` | manter em `default`; nos demais perfis `false` (a escrita de pontos tem centenas de `INSERT`) |
 | `spring.jpa.properties.hibernate.dialect` | manter |
-| tratadores de erro | o serviço pode ter mais de um (no real há um tratador em Problem Details além do que usa o record de erro, e `spring.mvc.problemdetails.enabled` não desliga um tratador próprio). Deixar **um formato só** para as rotas desta change: decidir qual tratador responde (`@Order` ou retirar o outro) e conferir com um teste de rota que 400, 404, 409, 412, 422, 428 e os erros do próprio Spring MVC saem nesse formato |
+| tratadores de erro | o serviço pode ter mais de um (no real há um tratador em Problem Details além do que usa o record de erro, e `spring.mvc.problemdetails.enabled` não desliga um tratador próprio). Deixar **um formato só** para as rotas desta change: decidir qual tratador responde (`@Order` ou retirar o outro) e conferir com um teste de rota que 400, 404, 409, 422 e os erros do próprio Spring MVC saem nesse formato |
 
 ### 1.3 Erros, avisos e enums: `domain/`
 
@@ -141,18 +124,18 @@ Erros **no padrão que o serviço já tem**. O que a spec exige, e o que o teste
 public enum CadastroErrorCode implements ErrorCode {
   PARAMETRO_INVALIDO("Parâmetro inválido"), NAO_AUTENTICADO("Token ausente ou inválido"), SEM_PERMISSAO("Sem permissão"),
   NAO_ENCONTRADO("Recurso não encontrado"), CODIGO_EM_USO("Código em uso"), NOME_EM_USO("Nome em uso"),
-  PROVEDOR_DUPLICADO("Provedor da curva duplicada"), PRIORIDADE_EM_USO("Prioridade em uso"), ALTERADO_POR_OUTRO("Alterado por outra pessoa"),
-  DADOS_INVALIDOS("Dados inválidos"), PONTOS_INVALIDOS("Pontos inválidos"), IF_MATCH_AUSENTE("Cabeçalho If-Match ausente"), ERRO_INTERNO("Erro interno");
+  PROVEDOR_DUPLICADO("Provedor da curva duplicado"), PRIORIDADE_EM_USO("Prioridade em uso"),
+  DADOS_INVALIDOS("Dados inválidos"), PONTOS_INVALIDOS("Pontos inválidos"), ERRO_INTERNO("Erro interno");
 }
 // domain: dados puros, sem Spring
-public enum CodigoAvisoCurva { /* os 19 códigos da tabela "Avisos do serviço" da spec cadastro-curva-mercado, na ordem da tabela */ }
+public enum CodigoAvisoCurva { /* os 23 códigos da tabela "Avisos do serviço" da spec cadastro-curva-mercado, na ordem da tabela */ }
 public record Detalhe(String campo, Integer linha, String valor, String motivo) {}     // usado em erros (detalhes) e em avisos
 public record AvisoCurva(CodigoAvisoCurva codigo, String mensagem, List<Detalhe> detalhes) {
   public AvisoCurva { detalhes = List.copyOf(detalhes); }
 }
 ```
 
-- **Exceções:** lançar as exceções do serviço **com o código da spec**. Se uma exceção existente só produz um código genérico (ex.: uma de "não encontrado" que sempre responde `NOT_FOUND`), acrescentar a ela um construtor que recebe `ErrorCode`, ou lançar a exceção que já aceita `ErrorCode`; não criar uma segunda hierarquia. Os status: 400 `PARAMETRO_INVALIDO`, 404 `NAO_ENCONTRADO`, 409 `CODIGO_EM_USO`/`NOME_EM_USO`/`PROVEDOR_DUPLICADO`/`PRIORIDADE_EM_USO`, 412 `ALTERADO_POR_OUTRO`, 422 `DADOS_INVALIDOS`/`PONTOS_INVALIDOS`, 428 `IF_MATCH_AUSENTE`, 500 `ERRO_INTERNO`. Para 409, 412 e 428, criar a exceção que faltar no mesmo molde das existentes.
+- **Exceções:** lançar as exceções do serviço **com o código da spec**. Se uma exceção existente só produz um código genérico (ex.: uma de "não encontrado" que sempre responde `NOT_FOUND`), acrescentar a ela um construtor que recebe `ErrorCode`, ou lançar a exceção que já aceita `ErrorCode`; não criar uma segunda hierarquia. Os status: 400 `PARAMETRO_INVALIDO`, 404 `NAO_ENCONTRADO`, 409 `CODIGO_EM_USO`/`NOME_EM_USO`/`PROVEDOR_DUPLICADO`/`PRIORIDADE_EM_USO`, 422 `DADOS_INVALIDOS`/`PONTOS_INVALIDOS`, 500 `ERRO_INTERNO`. Para 409, criar a exceção que faltar no mesmo molde das existentes.
 - **Tratador:** no tratador que responde (tabela da seção 1.2), acrescentar o que faltar para esses status e para JSON malformado e parâmetro inválido (400 `PARAMETRO_INVALIDO`), sem reescrever o que existe.
 - **Record de erro:** o que o tratador **realmente usa** (conferir; pode haver cópias sem uso) ganha `correlationId` e `detalhes` no fim, com um construtor no formato antigo para o código que já o chama. Os demais componentes, inclusive o tipo do `timestamp`, ficam como estão. `detalhes` usa o `record Detalhe` do domínio; o domínio nunca importa o pacote do record de erro.
 - Sem stack trace na resposta.
@@ -182,13 +165,13 @@ Igual ao engine (seção 1.4 do guia do engine): o `main` (`Application.java`) f
 // papéis pelo claim "roles", sem prefixo (JwtGrantedAuthoritiesConverter com authoritiesClaimName "roles" e prefixo "")
 ```
 
-A ordem importa: as regras de `GET` e de pontos vêm antes da regra geral de escrita. Usuário: `preferred_username`, senão `appid`.
+A ordem importa: as regras de `GET` e de pontos vêm antes da regra geral de escrita. Usuário: `preferred_username`, senão `appid`. **Enquanto a autenticação está adiada, não há usuário:** `usuario` sai nulo (ausente) nos eventos de log e `cUsuarAtulz` fica sem preencher (a coluna aceita nulo).
 
 ### 1.6 Cliente do engine: porta `EnginePort` e adaptador `adapter/out/client/engine/EngineHttpClient.java`
 
-> **Adiado:** a autenticação (Entra ID, papéis, 401/403 e o token de serviço para o engine) entra numa change própria, depois. Até lá, o cliente chama o engine sem `Authorization`; o resto desta seção vale.
+> **Fase 2 (change `curves-operacao-curvas`, tarefa 1.1): não implementar na fase 1.** Na primeira parte o curves não chama o engine em lugar nenhum; esta seção fica aqui como guia para quando a segunda parte chegar. O engine não exige autenticação: o cliente não envia `Authorization` e não usa token de serviço.
 
-`EnginePort` (em `application/port/out`) devolve um `sealed interface RespostaEngine<T>` com `Disponivel<T>(T valor)` e `Indisponivel<T>(String motivo)` (records). O adaptador usa o **`java.net.http.HttpClient`** do JDK (uma instância, `Version.HTTP_1_1`, `connectTimeout` 5 s), com `HttpRequest.timeout(...)` por chamada, `X-Correlation-Id` do MDC e `Authorization: Bearer` do token de serviço: `new DefaultAzureCredentialBuilder().build().getTokenSync(new TokenRequestContext().addScopes(escopo))`, guardado em um `volatile record Token(String valor, Instant expira)` e renovado 5 minutos antes de expirar (renovação em `ReentrantLock`, sem `synchronized`). O JSON do engine é lido com o `ObjectMapper` do Spring para `record`s do adaptador. Chamadas e tempos:
+`EnginePort` (em `application/port/out`) devolve um `sealed interface RespostaEngine<T>` com `Disponivel<T>(T valor)` e `Indisponivel<T>(String motivo)` (records). O adaptador usa o **`java.net.http.HttpClient`** do JDK (uma instância, `Version.HTTP_1_1`, `connectTimeout` 5 s), com `HttpRequest.timeout(...)` por chamada, e `X-Correlation-Id` do MDC. O JSON do engine é lido com o `ObjectMapper` do Spring para `record`s do adaptador. Chamadas e tempos:
 
 | Método | Rota do engine | Tempo |
 |---|---|---|
@@ -201,7 +184,7 @@ Toda falha (rede, tempo, 4xx, 5xx, JSON ilegível) vira `Indisponivel` com o mot
 
 ### 1.7 Log
 
-JSON com `correlationId`. `REQUISICAO_CONCLUIDA` (usuário, rota com molde, status, `codigoErro`, duração) em toda requisição. `CADASTRO_ALTERADO` (seção 2.5), `PONTOS_EDITADOS` (seção 10.5) e `CURVA_PRIMARIA_EDITADA` (seção 11) depois do commit (`TransactionSynchronizationManager.registerSynchronization` com `afterCommit`), emitidos pelo adaptador de `EventosPort` com a API fluente do SLF4J (`log.atWarn().addKeyValue("codigo", ...).log("CADASTRO_ALTERADO")`), pela biblioteca de log JSON que o serviço já usa (no poc, `LogstashEncoder`; no real, a do serviço). Conferir que os pares chave-valor saem como campos do JSON; se a biblioteca não os levar, usar o mecanismo dela para campos estruturados. Nunca token nem corpo inteiro.
+JSON com `correlationId`. Enquanto a autenticação está adiada, o campo `usuario` de todos os eventos sai nulo (ausente). `REQUISICAO_CONCLUIDA` (usuário, rota com molde, status, `codigoErro`, duração) em toda requisição. `CADASTRO_ALTERADO` (seção 2.5), `PONTOS_EDITADOS` (seção 10.5) e `CURVA_PRIMARIA_EDITADA` (seção 11) depois do commit (`TransactionSynchronizationManager.registerSynchronization` com `afterCommit`), emitidos pelo adaptador de `EventosPort` com a API fluente do SLF4J (`log.atWarn().addKeyValue("codigo", ...).log("CADASTRO_ALTERADO")`), pela biblioteca de log JSON que o serviço já usa (no poc, `LogstashEncoder`; no real, a do serviço). Conferir que os pares chave-valor saem como campos do JSON; se a biblioteca não os levar, usar o mecanismo dela para campos estruturados. Nunca token nem corpo inteiro.
 
 ---
 
@@ -213,56 +196,50 @@ A `CurvaMercdEntity` do serviço já existe; não criar outra. Conferir contra o
 - `dBaseReft` e `cUsuarCalc` com `@Column(insertable = false, updatable = false)`: são do engine, o curves nunca os escreve;
 - os getters das colunas `CHAR` (`cNormaDia`, `cPaisInstt`, `cSitReg`, `cTpoJuro`, `cTpoCotac`, `cTpoVlr`) devolvendo `stripTrailing()`, escritos à mão (o Lombok não gera um getter que já existe). Gravar sem espaços.
 
-O adaptador `CurvaMercdPersistenceAdapter` (hoje só `existsByTicker`) implementa os métodos novos de `CurvaMercdRepositoryPort` e converte entidade ↔ `record` do domínio `CurvaMercado`; o `CurvaMercdMapper` (MapStruct) e o modelo `CurvaMercd` continuam a serviço do código existente. Consulta com `WITH (UPDLOCK, ROWLOCK)` é `@Query(nativeQuery = true)` no `CurvaMercdRepository`.
+O adaptador `CurvaMercdPersistenceAdapter` (hoje só `existsByTicker`) implementa os métodos novos de `CurvaMercdRepositoryPort` e converte entidade ↔ `record` do domínio `CurvaMercado`; o `CurvaMercdMapper` (MapStruct) e o modelo `CurvaMercd` continuam a serviço do código existente. Consulta com `WITH (UPDLOCK, ROWLOCK)` é `@Query(nativeQuery = true)` no `CurvaMercdRepository`, com `@QueryHints(@QueryHint(name = "jakarta.persistence.query.timeout", value = "60000"))` (espera de 60 s pela trava; esgotada, o erro vira 500 `ERRO_INTERNO`, sem gravar). O mesmo `@QueryHints` vai em toda consulta de trava e em toda de `MAX + 1` do serviço.
 
 ### 2.2 Regras (`application/service/CurvaMercadoService.java`, caso de uso `CurvaMercadoUseCase`)
 
 Tabela "Campos da curva de mercado" da spec, campo a campo:
 - `codigo`: `^[A-Z0-9_]{1,50}$`; único (`SELECT COUNT(*) FROM tCurvaMercd WHERE cTickerIdtfdUnic = ? AND cTickerIndcd <> ?`) → 409 `CODIGO_EM_USO`.
-- `nome`: 1–50; único normalizado (`Normalizer.normalize(s, NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT).strip()`, comparando em Java contra todos os nomes) → 409 `NOME_EM_USO`; no `PUT`, nome diferente do atual → 422 `DADOS_INVALIDOS` ("o nome é imutável").
+- `nome`: 1–50; único normalizado (`Normalizer.normalize(s, NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT).strip()`, comparando em Java contra os nomes de **todas** as curvas, inclusive as sem código) → 409 `NOME_EM_USO`, antes do `save`; no `PUT`, nome diferente do atual → 422 `DADOS_INVALIDOS` ("o nome é imutável").
 - `unidade` obrigatória; `dayCounterCotacao` e `compounding` obrigatórios só com `TAXA` e nulos nos demais (preenchido com `PRECO`/`PONTOS` → 422 no campo).
 - `moeda` ISO 4217 (`Currency.getInstance`), `pais` ISO 3166-1 alfa-2 (`Locale.getISOCountries()`).
-- `fimVigencia` ≥ `inicioVigencia`.
+- `inicioVigencia` obrigatória; campo obrigatório ausente é recusado (422 no campo) **antes** de comparar datas, para a comparação nunca receber nulo.
+- `fimVigencia` ≥ `inicioVigencia` (só se `inicioVigencia` veio).
 - Todos os problemas de campo juntos numa única 422 `DADOS_INVALIDOS`, um `Detalhe` por campo.
-- Criação: `cSitReg = ATIVO`, `dCriacReg` e `dUltAtulz` = agora, `cUsuarAtulz` = usuário. Inativação e reativação só trocam `cSitReg` (com `ETag` e log).
-- Linhas com `cTickerIdtfdUnic` nulo nunca aparecem (`WHERE cTickerIdtfdUnic IS NOT NULL` em toda consulta).
+- Criação: `cSitReg = ATIVO`, `dCriacReg` e `dUltAtulz` = agora, `cUsuarAtulz` = usuário. Inativação e reativação só trocam `cSitReg` (com log).
+- Linhas com `cTickerIdtfdUnic` nulo nunca aparecem nas rotas (`WHERE cTickerIdtfdUnic IS NOT NULL` em toda consulta de listagem e consulta). A exceção é a checagem de nome único: ela lê os nomes de todas as curvas, inclusive as sem código.
 - Coerência com a configuração (spec `configuracao-calculo-curva`): mudança de `unidade`, `dayCounterCotacao` ou `compounding` que invalide a versão vigente ou futura → 422 citando a versão.
 - Inativar uma curva componente de derivada ativa → aviso `CURVA_COM_FILHAS` (filhas: provedores da curva `TCEN` com `cTickerPrvdr` = nome desta curva).
 
 Listagem: filtros `nome` (trecho normalizado), `codigo` (exato), `unidade`, `situacao`; paginação `pagina` (≥ 0) e `tamanho` (padrão 50, máximo 500); ordem por código.
 
-### 2.3 `ETag` (`domain/cadastro/EtagCurvaMercado.java`, Java puro; o JSON canônico é montado pelo adaptador com o Jackson e passado como texto)
+### 2.3 Sem controle de concorrência
 
-SHA-256 hexa minúsculo do JSON canônico: chaves em ordem alfabética em todos os níveis, sem espaços, nulos presentes como `null`, strings UTF-8 sem escape de não ASCII. Estrutura:
-
-```json
-{"configuracoes":[{"fimVigencia":null,"inicioVigencia":"2026-01-01","interpolador":"LogLinear","modeloConstrucao":"PRONTA_TS_B3","parametros":{"BASE_INTERPOLACAO":"Discount","BUSINESS_DAY_CONVENTION":"Following","CALENDARIO":"Brazil","CASAS_DECIMAIS":7,"DAY_COUNTER_TEMPO":"Business252","EXTRAPOLACAO_FIM":"FlatForward","EXTRAPOLACAO_INICIO":"Disabled","FREQUENCY":"Annual","HORIZONTE":"10Y","MERCADO_CALENDARIO":"Settlement","MODO_ARREDONDAMENTO":"HALF_UP"},"versao":1}],"curva":{"classeAtivo":null,"classificacao":null,"codigo":"PRE","compounding":"Compounded","dayCounterCotacao":"Business252","fimVigencia":null,"inicioVigencia":"2026-01-01","moeda":"BRL","nome":"DIxPRE","pais":"BR","situacao":"ATIVO","unidade":"TAXA"},"provedores":[{"codigoNaFonte":"PRE","idCurvaProvedor":1,"prioridade":1,"produto":"TS","provedor":"B3"}]}
-```
-
-Esse texto dá `aba7591e409470d609462fc0e077257728f4757e382987712fe7cdb4d4c8ade9`. Provedores da curva ordenadas por `idCurvaProvedor`, configurações por `versao`. Fora do cálculo: `dBaseReft`, `cUsuarCalc`, `cUsuarAtulz`, `dCriacReg`, `dUltAtulz`. Com Jackson: `JsonMapper.builder().enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS).enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)` e montar o documento com `Map`/`record` só com esses campos.
-
-Toda alteração (curva, inativação, reativação, provedor da curva, configuração): sem `If-Match` → 428 `IF_MATCH_AUSENTE`; `If-Match` diferente do `ETag` calculado dentro da transação, depois de travar a curva (`SELECT ... WITH (UPDLOCK, ROWLOCK)`) → 412 `ALTERADO_POR_OUTRO`, nada gravado. Resposta de sucesso traz o `ETag` novo.
+Nenhuma rota faz controle de versão da curva: quem salva por último vence, e o estado anterior fica no `CADASTRO_ALTERADO` (seção 2.5). Toda alteração (curva, inativação, reativação, provedor da curva, configuração) trava a linha da curva (`SELECT ... WITH (UPDLOCK, ROWLOCK)`, com o `@QueryHints` de 60 s da seção 2.1) só para serializar gravações simultâneas, sem recusar nenhuma. O controle de concorrência otimista está descrito nos extras no fim deste guia.
 
 ### 2.4 Rotas (`adapter/in/api/rest/CurvaMercadoController`)
 
-As da tabela "Rotas da curva de mercado" da spec. `GET /curvas-mercado/{codigo}` devolve a curva, os provedores da curva por prioridade e a configuração vigente hoje, com `ETag`.
+As da tabela "Rotas da curva de mercado" da spec. `GET /curvas-mercado/{codigo}` devolve a curva, os provedores da curva por prioridade e a configuração vigente hoje.
 
 ### 2.5 Auditoria
 
-`CADASTRO_ALTERADO` (nível `AVISO`), depois do commit: `idAuditoria` (UUID), `codigo`, `nome`, `tipo`, `operacao`, `usuario`, `instante`, `correlationId`, `idLote` (planilha), `estadoAnterior` e `estadoNovo` completos (o mesmo documento do `ETag`, mais os campos de controle). Commit que falha não gera o evento.
+`CADASTRO_ALTERADO` (nível `AVISO`), depois do commit: `idAuditoria` (UUID), `codigo`, `nome`, `tipo`, `operacao`, `usuario`, `instante`, `correlationId`, `idLote` (planilha), `estadoAnterior` e `estadoNovo` completos (a curva com todos os campos da API, os provedores da curva ordenados por `idCurvaProvedor` e as versões ordenadas por `versao`, mais os campos de controle). Commit que falha não gera o evento.
 
-`GET /curvas-mercado/{codigo}/auditoria?formato=json|xlsx`: montado na hora, com todos os campos da curva (inclusive controle e os do engine), todos os provedores da curva, todas as versões com parâmetros e o `ETag`. Arquivo `{codigo}_CADASTRO_AUDITORIA_{AAAAMMDDHHmmss}.xlsx`, abas `Curva`, `Provedores`, `Configuracoes`.
+`GET /curvas-mercado/{codigo}/auditoria?formato=json|xlsx`: montado na hora, com todos os campos da curva (inclusive controle e os do engine), todos os provedores da curva, todas as versões com parâmetros. Arquivo `{codigo}_CADASTRO_AUDITORIA_{AAAAMMDDHHmmss}.xlsx`, abas `Curva`, `Provedores`, `Configuracoes`.
 
 ---
 
 ## 3. Provedores da curva (`CurvaProvedorService`)
 
-Entidade nova `CurvaPrvdrEntity` (`tCurvaPrvdr`, `@Id cldtfdUnic`) e porta `CurvaPrvdrRepositoryPort`: `cldtfdUnic`, `cTickerIndcd`, `iPrvdrDados`, `cPrvdrMercd`, `cTickerPrvdr`, `cPriorCsumo`. Provedor: usar a `ProvedorEntity` que já existe no serviço (CRUD de provedores), só para leitura: `@Table(name = "tPrvdrDadoMercd")`, `@Id` `iPrvdrDados` → `nomeProvedor` (o identificador: `B3`, `ANBIMA`, `BLOOMBERG`, `TCEN`), `cInfoProdt` → `descricao`, `cProdt` → `produto`, `iCoplt` → `nomeCompletoAtivoOuInstrumento`. Não criar outra entidade para a mesma tabela. `tCurvaPrvdr.iPrvdrDados` tem FK para `tPrvdrDadoMercd.iPrvdrDados`: conferir a existência antes (404 `NAO_ENCONTRADO`) para responder com o erro certo em vez da violação de FK. O produto do provedor da curva (`cPrvdrMercd`) não é conferido contra `cProdt`: `tPrvdrDadoMercd` tem uma linha por provedor (PK em `iPrvdrDados`), e uma fonte pode ter vários produtos (a ANBIMA tem `MS` e, no futuro, `CZ`).
+Entidade nova `CurvaPrvdrEntity` (`tCurvaPrvdr`, `@Id cIdtfdUnic`) e porta `CurvaPrvdrRepositoryPort`: `cIdtfdUnic`, `cTickerIndcd`, `iPrvdrDados`, `cPrvdrMercd`, `cTickerPrvdr`, `cPriorCsumo`. Provedor: usar a `ProvedorEntity` que já existe no serviço (CRUD de provedores), só para leitura: `@Table(name = "tPrvdrDadoMercd")`, `@Id` `iPrvdrDados` → `nomeProvedor` (o identificador: `B3`, `ANBIMA`, `BLOOMBERG`, `TCEN`), `cInfoProdt` → `descricao`, `cProdt` → `produto`, `iCoplt` → `nomeCompletoAtivoOuInstrumento`. Não criar outra entidade para a mesma tabela. `tCurvaPrvdr.iPrvdrDados` tem FK para `tPrvdrDadoMercd.iPrvdrDados`: conferir a existência antes (404 `NAO_ENCONTRADO`) para responder com o erro certo em vez da violação de FK. O produto do provedor da curva (`cPrvdrMercd`) não é conferido contra `cProdt`: `tPrvdrDadoMercd` tem uma linha por provedor (PK em `iPrvdrDados`), e uma fonte pode ter vários produtos (a ANBIMA tem `MS` e, no futuro, `CZ`).
 
 `idCurvaProvedor` (na mesma transação da inserção):
 ```sql
-SELECT ISNULL(MAX(cldtfdUnic), 0) + 1 FROM tCurvaPrvdr WITH (UPDLOCK, HOLDLOCK);
+SELECT ISNULL(MAX(cIdtfdUnic), 0) + 1 FROM tCurvaPrvdr WITH (UPDLOCK, HOLDLOCK);
 ```
+A consulta leva o mesmo `@QueryHints` de 60 s (`jakarta.persistence.query.timeout`); esgotado, 500 `ERRO_INTERNO`, sem gravar.
 
 Regras: provedor inexistente → 404 `NAO_ENCONTRADO`; (curva, provedor, produto) repetido → 409 `PROVEDOR_DUPLICADO`; prioridade repetida na curva → 409 `PRIORIDADE_EM_USO`; trocar provedor não existe (excluir e incluir). `TCEN`: `codigoNaFonte` = nome de curva existente, diferente da própria, sem ciclo (DFS pelos provedores da curva `TCEN` a partir da curva componente; achando a curva atual → 422 com o caminho `B → A → B`).
 
@@ -274,7 +251,7 @@ Avisos depois da alteração: `CURVA_SEM_ORIGEM` (nenhum provedor); `ORIGEM_INCO
 
 ## 4. Configuração de cálculo (`ConfiguracaoCurvaService`)
 
-Entidade `ConfgCurvaEntity` (`tConfgCurva`, `@Id @GeneratedValue(IDENTITY) cldtfdConfg`): `cTickerIndcd`, `cMotorCalc`, `cRotnaCalc`, `cModDado`, `cVrsaoReg`, `dInicVgcia`, `dValidAte`; as demais colunas nulas.
+Entidade `ConfgCurvaEntity` (`tConfgCurva`, `@Id @GeneratedValue(IDENTITY) cIdtfdConfg`): `cTickerIndcd`, `cMotorCalc`, `cRotnaCalc`, `cModDado`, `cVrsaoReg`, `dInicVgcia`, `dValidAte`; as demais colunas nulas.
 
 ### 4.1 Validador de parâmetros (`ValidadorParametros`, cópia da regra do engine)
 
@@ -295,15 +272,15 @@ Uma tabela única em código (a mesma usada na cópia embutida de valores, seç�
 | `VERSAO_SCRIPT_CONSTRUCAO`, `VERSAO_SCRIPT_INTERPOLACAO`, `VERSAO_SCRIPT_CALENDARIO` | inteiro | não | ≥ 1 |
 | `MODELOS_POR_ORIGEM` | objeto | não | chave `^[^/]+/[^/]+$`, valor texto 1–100 |
 
-Combinações: `Price` só com `PRECO`/`PONTOS`, e as outras bases de interpolação só com `TAXA`; `FlatForward` só com interpolador `Linear` ou `LogLinear`. Chave desconhecida, tipo errado, valor fora da lista (com caixa) ou obrigatório ausente → 422 `DADOS_INVALIDOS`, um `Detalhe` por problema. Avisos: `MODELO_NAO_NATIVO` (modelo, interpolador ou calendário fora dos nativos), `ORIGEM_INCOMPATIVEL_COM_MODELO`, `MODELO_POR_ORIGEM_SEM_PROVEDOR`.
+Combinações: `Price` só com `PRECO`/`PONTOS`, e as outras bases de interpolação só com `TAXA`; o interpolador `FlatForward` só com `BASE_INTERPOLACAO` = `Discount`; a extrapolação `FlatForward` só com interpolador `Linear`, `LogLinear` ou `FlatForward`. Chave desconhecida, tipo errado, valor fora da lista (com caixa) ou obrigatório ausente → 422 `DADOS_INVALIDOS`, um `Detalhe` por problema. Avisos: `MODELO_NAO_NATIVO` (modelo, interpolador ou calendário fora dos nativos), `ORIGEM_INCOMPATIVEL_COM_MODELO`, `MODELO_POR_ORIGEM_SEM_PROVEDOR`.
 
 Gravação de `cModDado`: JSON compacto, chaves na **ordem da tabela acima** (não alfabética), `EXTRAPOLACAO_*` gravadas mesmo quando `Disabled`; mais de 1.024 caracteres → 422.
 
 ### 4.2 Versões e vigência
 
-Na mesma transação, com a curva travada e o `If-Match` conferido:
+Na mesma transação, com a curva travada:
 - primeira versão: `cVrsaoReg = 1`; `inicioVigencia` ≥ `dInicVgcia` da curva (pode ser no passado);
-- versão nova: `inicioVigencia` > o da última **e** ≥ `LocalDate.now()`, senão 422; fecha a última (`dValidAte = inicio da nova − 1 dia`); `cVrsaoReg = última + 1`; nova com `dValidAte` nulo;
+- versão nova: `inicioVigencia` obrigatória (ausente → 422 no campo, antes de qualquer comparação de datas); `inicioVigencia` > o da última **e** ≥ `LocalDate.now()`, senão 422; fecha a última carregando a entidade da versão e mudando **só** o `dValidAte` (`inicio da nova − 1 dia`), sem `save` de um objeto novo (que anularia as colunas que não estão no modelo); `cVrsaoReg = última + 1`; nova com `dValidAte` nulo;
 - exclusão: só a última e só se `inicioVigencia` > hoje; a anterior volta a `dValidAte` nulo; senão 422;
 - não há alteração de versão.
 
@@ -313,14 +290,17 @@ Rotas: as da tabela "Rotas da configuração" da spec. `validacao` roda as regra
 
 ## 5. Valores aceitos (`GET /api/v1/curvas-mercado/valores`)
 
-1. Engine: `valoresCadastro()` (seção 1.6), com cache de 5 minutos no mecanismo de cache do serviço (com 2 instâncias, preferir o cache distribuído se o serviço já tiver um; senão, cache local, aceitável porque o dado é o mesmo em todas as instâncias).
+**Fase 1: a rota é servida só pelo próprio serviço.** Sem chamada ao engine, sem cache, sem token, sem o aviso `VALORES_SEM_ENGINE` e sem `EnginePort` no `ValoresService`; responde 200 mesmo com o engine fora do ar.
+
+1. Partir da tabela embutida (seção 4.1: os modelos de construção, interpoladores e calendários nativos e os valores de cada chave de `parametros`, com os rótulos em código).
 2. Acrescentar os provedores de `tPrvdrDadoMercd` (pela `ProvedorEntity`: `nomeProvedor` e `descricao`) e os enums e catálogos do serviço (seção 1.3), cada valor com o `rotulo` e a `descricao` do `messages.properties`.
-3. Engine fora: devolver a **cópia embutida** (a tabela da seção 4.1, com os modelos nativos e os rótulos em código) com o aviso `VALORES_SEM_ENGINE`. Nunca falha por causa do engine.
-4. OpenAPI: `enum` em `unidade`, `dayCounterCotacao`, `compounding`, `situacao` e em cada chave de `parametros`; `modeloConstrucao`, `interpolador` e `CALENDARIO` como `string` com os nativos na descrição.
+3. OpenAPI: `enum` em `unidade`, `dayCounterCotacao`, `compounding`, `situacao` e em cada chave de `parametros`; `modeloConstrucao`, `interpolador` e `CALENDARIO` como `string` com os nativos na descrição.
+
+**Fase 2 (change `curves-operacao-curvas`, tarefa 1.1):** o `ValoresService` passa a chamar `valoresCadastro()` (seção 1.6) com cache de 5 minutos (cache distribuído, se o serviço já tiver um; senão, local, aceitável porque o dado é o mesmo em todas as instâncias) para acrescentar os scripts Groovy ativos; engine fora → devolve a tabela embutida com o aviso `VALORES_SEM_ENGINE`, sem falhar; e entra o teste de contrato que compara a tabela embutida com a parte fixa da resposta do engine.
 
 ---
 
-## 6. Painel (`PainelService`, `GET /api/v1/curvas-mercado/painel`)
+## 6. Painel (`PainelService`, `GET /api/v1/curvas-mercado/painel`) — fase 2 (`curves-operacao-curvas`)
 
 1. `dataBase`: a informada; sem ela, hoje se for útil no `Brazil`/`Settlement` (feriados do engine, seção 1.6), senão o dia útil anterior. Engine fora: só sábado e domingo recuam.
 2. Uma chamada a `situacao(dataBase)` e uma a `feriados` por consulta. Engine fora → todas as linhas `SITUACAO_INDISPONIVEL` e aviso `ENGINE_INDISPONIVEL`; nunca falha.
@@ -335,13 +315,13 @@ Rotas: as da tabela "Rotas da configuração" da spec. `validacao` roda as regra
 
 ### 7.1 Estrutura e exportação
 
-Abas e colunas exatamente como na spec `cadastro-curvas-planilha` (`Curvas`, `Provedores`, `Configuracoes`, `Valores`). Na aba `Configuracoes`, uma coluna por chave de parâmetro, na ordem da tabela 4.1; `MODELOS_POR_ORIGEM` como texto `B3/TS=PRONTA_TS_B3;...` em ordem alfabética da chave. Datas: célula de data `dd/mm/yyyy`; números: célula numérica. `Controle` = `ETag` da curva. Listas suspensas (`DataValidationHelper.createFormulaListConstraint` apontando para intervalos da aba `Valores`): restritivas em `Unidade`, `DayCounterCotacao`, `Compounding`, `Situacao`, `Provedor` e parâmetros com lista; só com aviso (`setErrorStyle(WARNING)`) em `ModeloConstrucao`, `Interpolador` e `CALENDARIO`. Arquivo `cadastro-curvas_{AAAAMMDDHHmmss}.xlsx`.
+Abas e colunas exatamente como na spec `cadastro-curvas-planilha` (`Curvas`, `Provedores`, `Configuracoes`, `Valores`). Na aba `Configuracoes`, uma coluna por chave de parâmetro, na ordem da tabela 4.1; `MODELOS_POR_ORIGEM` como texto `B3/TS=PRONTA_TS_B3;...` em ordem alfabética da chave. Datas: célula de data `dd/mm/yyyy`; números: célula numérica. Listas suspensas (`DataValidationHelper.createFormulaListConstraint` apontando para intervalos da aba `Valores`): restritivas em `Unidade`, `DayCounterCotacao`, `Compounding`, `Situacao`, `Provedor` e parâmetros com lista; só com aviso (`setErrorStyle(WARNING)`) em `ModeloConstrucao`, `Interpolador` e `CALENDARIO`. Arquivo `cadastro-curvas_{AAAAMMDDHHmmss}.xlsx`.
 
 ### 7.2 Importação (`modo=SIMULACAO|APLICACAO`, `formato=json|xlsx`)
 
 1. Ler as abas (até 5 MB, 1.000 curvas). Data em texto `dd/mm/aaaa` ou `aaaa-mm-dd`; número em texto com vírgula **ou** ponto, sem milhar; os dois juntos → erro na célula.
 2. Para cada curva da aba `Curvas`, montar o **estado desejado** (curva, provedores da curva, versões) e comparar com o banco:
-   - curva nova → `INCLUSAO`; existente com campo diferente → `ALTERACAO` (inclusive código); `Controle` ≠ `ETag` atual → erro `ALTERADO_POR_OUTRO` na linha;
+   - curva nova → `INCLUSAO`; existente com campo diferente → `ALTERACAO` (inclusive código);
    - provedores da curva por (`Provedor`, `Produto`): novo → inclusão; mudou `CodigoNaFonte`/`Prioridade` → alteração; ausente da aba → exclusão;
    - versões: `Versao` preenchida tem de ser igual à existente em tudo (senão erro "versões existentes não se alteram"); `Versao` vazia → versão nova (regras da seção 4.2, em ordem de `InicioVigencia`); última versão futura ausente → exclusão;
    - linha de `Provedores`/`Configuracoes` de curva fora da aba `Curvas` → erro.
@@ -400,7 +380,7 @@ SELECT dVertcReft, vPrecoTx, cDiaUtil FROM tDadoVertcCurva WHERE cTickerIndcd = 
 5. Depois do commit (também com `SEM_MUDANCA`): `regravarInterpolada(codigo, dataBase)`; falha → aviso `INTERPOLADA_DESATUALIZADA` com o motivo. A edição já está gravada.
 6. Log `PONTOS_EDITADOS` (seção 10.5) se algo mudou.
 
-Nunca escrever `dBaseReft`/`cUsuarCalc` de `tCurvaMercd`, nem `tDadoCurva` (exceto o `DELETE` da seção 8). Sem `If-Match`: quem salva por último vence.
+Nunca escrever `dBaseReft`/`cUsuarCalc` de `tCurvaMercd`, nem `tDadoCurva` (exceto o `DELETE` da seção 8). Sem conferência de versão: quem salva por último vence.
 
 ### 10.3 Avisos de regra de negócio (nunca recusam)
 
@@ -430,7 +410,7 @@ Nível `AVISO`: `correlationId`, `usuario`, `codigo`, `nome`, `dataBase`, `opera
 
 ## 11. Curva primária B3 (`BtrsCurvaPrimrService`, spec `curva-primaria-b3`)
 
-Entidade `BtrsCurvaPrimrEntity` (`tBtrsCurvaPrimr`: `cldtfdUnic` `@Id` sem geração, `cTickerIndcd`, `dBaseReft`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx`, `vFatorAcum`, `vFatorDia`), porta `BtrsCurvaPrimrRepositoryPort`. Record do domínio `BtrsCurvaPrimr(Integer id, int diasCorridos, int diasUteis, BigDecimal valor, BigDecimal fatorAcumulado, BigDecimal fatorDia)`; o resultado da validação de coluna é um `sealed interface` (`Valida(BtrsCurvaPrimr linha)` ou `Invalida(List<Detalhe> erros)`), lido com `switch` por pattern.
+Entidade `BtrsCurvaPrimrEntity` (`tBtrsCurvaPrimr`: `cIdtfdUnic` `@Id` sem geração, `cTickerIndcd`, `dBaseReft`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx`, `vFatorAcum`, `vFatorDia`), porta `BtrsCurvaPrimrRepositoryPort`. Record do domínio `BtrsCurvaPrimr(Integer id, int diasCorridos, int diasUteis, BigDecimal valor, BigDecimal fatorAcumulado, BigDecimal fatorDia)`; o resultado da validação de coluna é um `sealed interface` (`Valida(BtrsCurvaPrimr linha)` ou `Invalida(List<Detalhe> erros)`), lido com `switch` por pattern.
 
 Listagem geral (uma consulta; `codigosNaFonte` numa segunda consulta só para as curvas da página):
 ```sql
@@ -443,16 +423,17 @@ SELECT m.cTickerIdtfdUnic, m.cTickerIndcd, m.cSitReg, b.dBaseReft, COUNT(*) AS q
 OFFSET ? ROWS FETCH NEXT ? ROWS ONLY;
 SELECT cTickerIndcd, cTickerPrvdr FROM tCurvaPrvdr WHERE iPrvdrDados = 'B3' AND cPrvdrMercd = 'TS' AND cTickerIndcd IN (...);
 ```
+Filtros `de`/`ate`: `de` posterior a `ate`, ou intervalo acima de 366 dias → 400 `PARAMETRO_INVALIDO`, antes de consultar.
 
-Escrita (uma transação, trava como na seção 10.2, com o mesmo tempo limite de 60 s no comando e a mesma proibição de `SET LOCK_TIMEOUT` e `@Transactional(timeout)`):
+Escrita (uma transação, trava como na seção 10.2, com o mesmo tempo limite de 60 s no comando (`@QueryHints` `jakarta.persistence.query.timeout=60000` na consulta da trava **e** na do `MAX + 1`, que é o `proximoId` da `BtrsCurvaPrimr`; estouro de qualquer das duas → 500 `ERRO_INTERNO`, sem gravar e sem evento) e a mesma proibição de `SET LOCK_TIMEOUT` e `@Transactional(timeout)`):
 ```sql
 SELECT cTickerIndcd FROM tCurvaMercd WITH (UPDLOCK, ROWLOCK) WHERE cTickerIndcd = ?;
-SELECT ISNULL(MAX(cldtfdUnic), 0) FROM tBtrsCurvaPrimr WITH (UPDLOCK, HOLDLOCK);          -- só no POST
-INSERT INTO tBtrsCurvaPrimr (cldtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-UPDATE tBtrsCurvaPrimr SET cDiaCorri = ?, cDiaUtil = ?, vPrecoTx = ?, vFatorAcum = ?, vFatorDia = ? WHERE cldtfdUnic = ? AND cTickerIndcd = ? AND dBaseReft = ?;
-DELETE FROM tBtrsCurvaPrimr WHERE cldtfdUnic = ? AND cTickerIndcd = ? AND dBaseReft = ?;   -- 0 linhas → 404
+SELECT ISNULL(MAX(cIdtfdUnic), 0) FROM tBtrsCurvaPrimr WITH (UPDLOCK, HOLDLOCK);          -- só no POST
+INSERT INTO tBtrsCurvaPrimr (cIdtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+UPDATE tBtrsCurvaPrimr SET cDiaCorri = ?, cDiaUtil = ?, vPrecoTx = ?, vFatorAcum = ?, vFatorDia = ? WHERE cIdtfdUnic = ? AND cTickerIndcd = ? AND dBaseReft = ?;
+DELETE FROM tBtrsCurvaPrimr WHERE cIdtfdUnic = ? AND cTickerIndcd = ? AND dBaseReft = ?;   -- 0 linhas → 404
 DELETE FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;                       -- data inteira
-SELECT cldtfdUnic, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ? ORDER BY cDiaCorri, cldtfdUnic;
+SELECT cIdtfdUnic, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ? ORDER BY cDiaCorri, cIdtfdUnic;
 ```
 `PUT` e `DELETE` de linha filtram por id, nome e data-base: linha de outra curva ou data dá 0 linhas → 404 `NAO_ENCONTRADO`.
 
@@ -469,28 +450,32 @@ Nada a remover no serviço (é novo ou é do outro dev). Conferir que nenhum có
 
 ### 12.1 Conferência da primeira parte (tarefas 1 a 5), antes do commit
 
-- **Só o que é das tarefas 1 a 5:** curva de mercado, provedores da curva, configuração de cálculo com valores aceitos, curva primária B3 e a base comum (erros, correlação, `ETag`, log `CADASTRO_ALTERADO` e `CURVA_PRIMARIA_EDITADA`, contrato de tipos, catálogo de enums). Os enums de painel e de pontos entram porque o catálogo de `/valores` lista todos (tarefa 1.2b); o evento `PONTOS_EDITADOS`, as rotas de pontos, painel e planilha ficam para a change `curves-operacao-curvas`.
+- **Só o que é das tarefas 1 a 5:** curva de mercado, provedores da curva, configuração de cálculo com valores aceitos, curva primária B3 e a base comum (erros, correlação, log `CADASTRO_ALTERADO` e `CURVA_PRIMARIA_EDITADA`, contrato de tipos, catálogo de enums). Os enums de painel e de pontos entram porque o catálogo de `/valores` lista todos (tarefa 1.2b); o evento `PONTOS_EDITADOS`, as rotas de pontos, painel e planilha ficam para a change `curves-operacao-curvas`.
 - **Camadas:** cada classe no lugar da tabela "Onde fica cada tipo de classe" (seção 0).
-- **`ETag`:** o documento canônico usa as chaves `provedores` e `idCurvaProvedor`; o teste do vetor espera `aba7591e409470d609462fc0e077257728f4757e382987712fe7cdb4d4c8ade9` (seção 0.2).
 - **`pom.xml`:** sem Resource Server nem `azure-identity` enquanto a autenticação estiver adiada; `poi-ooxml` só se a auditoria em `xlsx` (tarefa 2.2) entrar agora.
 - **Jackson:** a configuração de `BigDecimal` como texto está no mapper que o Spring MVC usa (Jackson 3); conferido por um teste de rota.
 - **Um serviço de valores só:** nada de dois serviços para `/valores`.
+- **Sem engine:** nenhuma classe `EnginePort`, `EngineHttpClient` nem `RespostaEngine`, nenhum bloco `curves.engine` no `application.yml` e nenhuma chamada HTTP ao engine em `src/main` (busca por `EnginePort`, `EngineHttpClient`, `valores-cadastro` e `VALORES_SEM_ENGINE` sem resultado).
 - **Arquivos gerados fora do código** (cópia do script do banco, documentos `.md` do assistente na raiz): não vão no commit sem decisão do time.
 
 
 ## 13. Ordem de implementação (uma tarefa de `tasks.md` por vez; `mvn -q compile` ao fim de cada uma)
 
-1. Seção 1 (tarefas 1.x).
-2. Seção 2 (2.x), seção 3 (3.x), seção 4 (4.x), seção 5 (4.4). Ao fim: CRUD completo de curva de mercado, provedores e configuração de cálculo.
+1. Seção 1 (tarefas 1.x), sem a seção 1.6 (cliente do engine, fase 2).
+2. Seção 2 (2.x), seção 3 (3.x), seção 4 (4.x), seção 5 (4.4, só a parte local). Ao fim: CRUD completo de curva de mercado, provedores e configuração de cálculo.
 3. Seção 11, curva primária B3 (tarefas 5.x).
-4. Seção 7, planilha do cadastro (6.x).
-5. Seção 6, painel (7.1).
-6. Seções 8 e 10, pontos (8.x), seção 9, planilha de pontos (9.x), origens e dias úteis (10.x).
-7. Seção 14 (testes), seção 15 (homologação).
+4. Seção 14 (testes) e seção 15 (homologação) da primeira parte.
+
+Os passos seguintes são da segunda parte, a change `curves-operacao-curvas` (as tarefas 6.x a 10.x só existem no `tasks.md` dela):
+
+5. Seção 1.6, cliente do engine (1.1 da change da segunda parte), com a consulta ao engine em `/valores` (seção 5, fase 2); seção 7, planilha do cadastro (6.x).
+6. Seção 6, painel (7.1).
+7. Seções 8 e 10, pontos (8.x), seção 9, planilha de pontos (9.x), origens e dias úteis (10.x).
+8. Seção 14 (testes) e seção 15 (homologação) da segunda parte.
 
 ## 14. Testes (ao final)
 
-Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUnit 5 com testes parametrizados, Mockito, AssertJ, MockMvc); sem ArchUnit. **Sem banco nem engine reais**: portas de saída (repositórios e `EnginePort`) com Mockito. Fuso dos testes como no `main`: `TimeZoneExtension` registrada por autodetecção do JUnit (`junit-platform.properties` + `META-INF/services`), com `TimeZone.setDefault` no `beforeAll`. Quem depende de "hoje" (vigência, atraso do painel) recebe a data ou a hora por parâmetro do método testado.
+Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUnit 5 com testes parametrizados, Mockito, AssertJ, MockMvc); sem ArchUnit. **Sem banco nem engine reais**: portas de saída (repositórios e, na fase 2, `EnginePort`) com Mockito. Fuso dos testes como no `main`: `TimeZoneExtension` registrada por autodetecção do JUnit (`junit-platform.properties` + `META-INF/services`), com `TimeZone.setDefault` no `beforeAll`. Quem depende de "hoje" (vigência, atraso do painel) recebe a data ou a hora por parâmetro do método testado.
 
 ### 14.1 Verificar
 
@@ -500,18 +485,17 @@ Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUn
 
 | Teste | Casos |
 |---|---|
-| `EtagCurvaMercadoTest` | vetor da seção 0.2; ordem de chaves; `dBaseReft` alterado não muda o `ETag`; `CHAR` com espaços dá o mesmo `ETag` |
-| `CurvaMercadoServiceTest` | cenários da spec `cadastro-curva-mercado` (criação da DIxPRE, nome que colide, preço com cotação, renomear, inativação, duas pessoas editando → 412, sem `If-Match` → 428, enum em caixa errada) |
-| `CurvaProvedorServiceTest` | cenários da spec `provedor-curva` (TaxaSwap, provedor inexistente, `TCEN`, ciclo de 2 e de 3 curvas, última provedor excluído, avisos); o SQL do `MAX + 1` com `UPDLOCK, HOLDLOCK` enviado ao repositório |
+| `CurvaMercadoServiceTest` | cenários da spec `cadastro-curva-mercado` (criação da DIxPRE, nome que colide, preço com cotação, renomear, inativação, duas alterações seguidas e a última vence, enum em caixa errada, nome em uso por curva sem código → 409, `inicioVigencia` ausente → 422 sem comparar datas) |
+| `CurvaProvedorServiceTest` | cenários da spec `provedor-curva` (TaxaSwap, provedor inexistente, `TCEN`, ciclo de 2 e de 3 curvas, último provedor excluído, troca do provedor no `PUT` → 422, avisos); o SQL do `MAX + 1` com `UPDLOCK, HOLDLOCK` enviado ao repositório |
 | `ValidadorParametrosTest` | um caso por regra da tabela 4.1 (os mesmos da spec do engine); ordem das chaves em `cModDado`; 1.024 caracteres |
 | `ConfiguracaoCurvaServiceTest` | cenários da spec `configuracao-calculo-curva` (troca a partir de amanhã, correção retroativa, desistência, vigente em data antiga, unidade que invalida, `MODELOS_POR_ORIGEM` com e sem provedor) |
-| `ValoresServiceTest` | engine respondendo; engine fora com `VALORES_SEM_ENGINE`; todo valor com `rotulo` e `descricao`; tabela embutida igual à parte fixa da resposta do engine (resposta gravada em `src/test/resources/valores-engine.json`) |
-| `CadastroPlanilhaServiceTest` | exportar e importar sem editar → zero mudanças; 30 prioridades trocadas; provedor removido; versão existente editada → erro; erro impede o lote; `Controle` antigo → `ALTERADO_POR_OUTRO`; vírgula e ponto juntos → erro; `MODELOS_POR_ORIGEM` malformado |
-| `PainelServiceTest` | todos os cenários da spec `painel-curvas`, uma linha por situação e por `motivo`, engine fora, feriado americano, carga atrasada (ontem) e carga de hoje não atrasada, origem secundária |
+| `ValoresServiceTest` | fase 1: tabela embutida, provedores de `tPrvdrDadoMercd` e catálogos do serviço, sem nenhuma chamada ao engine; todo valor com `rotulo` e `descricao`. Fase 2 (change `curves-operacao-curvas`): engine respondendo; engine fora com `VALORES_SEM_ENGINE`; tabela embutida igual à parte fixa da resposta do engine (resposta gravada em `src/test/resources/valores-engine.json`) |
+| `CadastroPlanilhaServiceTest` | exportar e importar sem editar → zero mudanças; 30 prioridades trocadas; provedor removido; versão existente editada → erro; erro impede o lote; vírgula e ponto juntos → erro; `MODELOS_POR_ORIGEM` malformado |
+| `PainelServiceTest` (fase 2) | todos os cenários da spec `painel-curvas`, uma linha por situação e por `motivo`, engine fora, feriado americano, carga atrasada (ontem) e carga de hoje não atrasada, origem secundária |
 | `DadoVerticeCurvaServiceTest` | vetores da seção 0.2 (`hashPontos`, arredondamento, `diasUteis` 76 com 30/360 = 110); cenários da spec `pontos-curva-manual` (um valor, ponto retirado, casas a mais, lista igual sem escrita, conferência divergente desfaz, data sem construção, engine fora com `INTERPOLADA_DESATUALIZADA`, feriado, sábado, repetida); regravação chamada também com `SEM_MUDANCA` |
-| `BtrsCurvaPrimrServiceTest` | cenários da spec `curva-primaria-b3` (listagem da carga, consulta da PRE, linha de outra data → 404, repetidos, valor com 13 casas → 422, correção depois da construção, data sem carga digitada); nenhuma chamada à `EnginePort`; `MAX + 1` com `UPDLOCK, HOLDLOCK` enviado ao repositório; log sem o evento quando o commit falha |
+| `BtrsCurvaPrimrServiceTest` | cenários da spec `curva-primaria-b3` (listagem da carga, consulta da PRE, linha de outra data → 404, repetidos, valor com 13 casas → 422, correção depois da construção, data sem carga digitada, `de` maior que `ate` → 400, trava não obtida em 60 s → 500 sem gravar); nenhuma chamada ao engine; `MAX + 1` com `UPDLOCK, HOLDLOCK` enviado ao repositório; log sem o evento quando o commit falha |
 | `DadoVerticeCurvaPlanilhaServiceTest` | cenários da spec `pontos-curva-planilha`; planilha sem `DiasUteis`; `DiasUteis` apagado → `ALTERACAO`; valor da `PTX` 56,3772259 numérico |
-| `ApiContratoTest` (MockMvc) | um teste por rota com 401, 403 e papel certo; um por `codigoErro`; `X-Correlation-Id` em sucesso, erro e `xlsx`; decimais como string |
+| `ApiContratoTest` (MockMvc) | um teste por rota com 401, 403 e papel certo (**adiado** com a autenticação: por ora só a rota com sucesso); um por `codigoErro`; `X-Correlation-Id` em sucesso, erro e `xlsx`; decimais como string |
 | `FusoTest` | `OffsetDateTime.ofInstant(Instant.parse("2026-09-15T01:30:00Z"), ZoneId.systemDefault())` → `2026-09-14T22:30-03:00`; subida recusada com outro fuso |
 
 ### 14.3 Rodar
@@ -520,10 +504,52 @@ Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUn
 
 ## 15. Conferido na homologação (não é teste automatizado)
 
-Com o banco, o engine e o Entra ID do projeto:
+Com o banco e o Entra ID do projeto (o curves não depende do engine; o engine só é usado nas conferências que o citam):
+- `GET /api/v1/curvas-mercado/valores` responde 200 com a tabela embutida, os provedores e os catálogos, com o engine desligado;
 - as 7 curvas do `exemplo-cadastro-7-curvas.txt` cadastradas pela API e pela planilha, e a simulação do engine sem `CADASTRO_INVALIDO` em nenhuma;
-- `ETag` real depois da criação da `PRE` igual ao vetor da seção 0.2 (se o `idCurvaProvedor` for 1);
 - duas inclusões de provedor da curva simultâneas com `idCurvaProvedor` diferentes;
 - edição de pontos enquanto o engine constrói a mesma curva: espera e grava por cima;
-- tarefa 11.2 do `tasks.md` (construir, editar, interpolar, carga sem sobrescrever, painel `DIVERGENTE_DA_FONTE`, recálculo forçado);
+- tarefa 11.2 do `tasks.md` da change `curves-operacao-curvas` (construir, editar, interpolar, carga sem sobrescrever, painel `DIVERGENTE_DA_FONTE`, recálculo forçado);
 - `openspec validate curves-cadastro-curvas --strict`.
+
+---
+
+## Extras não finalizados (fora das tarefas e das specs)
+
+> **Não implementar agora; retomar se o número de usuários crescer.** O que está abaixo não faz parte de nenhuma tarefa nem de nenhuma spec das duas changes do curves.
+
+### ETag e If-Match (concorrência otimista)
+
+**Aviso:** a primeira parte do curves já foi enviada ao Copilot **com** o `ETag` e o `If-Match` na especificação, então o código gerado pode já tê-los. A remoção é uma **correção a aplicar no reenvio dos arquivos** (tarefa 1.3 retirada; classes `EtagCurvaMercado` e `CurvaCanonicoJsonSerializer`; códigos `ALTERADO_POR_OUTRO` e `IF_MATCH_AUSENTE` do enum de erros; cabeçalho `ETag` das respostas; exigência de `If-Match` nas escritas; teste `EtagCurvaMercadoTest`). A decisão (cerca de 3 usuários): quem salva por último vence, e o estado anterior fica no log `CADASTRO_ALTERADO`, de onde se recupera.
+
+**O que é.** Duas pessoas leem a mesma curva e as duas enviam alterações: sem controle, a segunda apaga a primeira sem perceber. Com o `ETag`, a leitura traz um hash do estado, e toda escrita devolve esse hash em `If-Match`. Se o estado mudou nesse meio tempo, a escrita é recusada.
+
+**Onde ficava cada peça:**
+- `domain/cadastro/EtagCurvaMercado.java`, Java puro; o JSON canônico era montado pelo adaptador (`CurvaCanonicoJsonSerializer`, em `adapter/out`) com o Jackson e passado como texto.
+- `GET /curvas-mercado/{codigo}` e toda resposta de escrita traziam o cabeçalho `ETag`.
+- Códigos de erro `ALTERADO_POR_OUTRO` (412) e `IF_MATCH_AUSENTE` (428), na spec `cadastro-curva-mercado` e no `CadastroErrorCode`.
+- Na planilha do cadastro (change `curves-operacao-curvas`), a coluna `Controle` da aba `Curvas` guardava o `ETag` da curva na exportação (vazio = curva nova). Na importação, `Controle` diferente do `ETag` atual dava `ALTERADO_POR_OUTRO` na linha da curva e nada era aplicado (cenário "Curva alterada depois da exportação").
+- No `exemplo-cadastro-7-curvas.txt`, a ordem das chamadas pedia `If-Match` com o `ETag` mais recente depois da criação (cada alteração muda o `ETag`, e a resposta traz o novo), e a aba `Curvas` tinha `Controle` vazio.
+
+**Documento canônico e hash.** SHA-256 hexa minúsculo do JSON canônico: chaves em ordem alfabética em todos os níveis, sem espaços, nulos presentes como `null`, strings UTF-8 sem escape de não ASCII. Estrutura (a `PRE` do exemplo das 7 curvas: curva criada, provedor da curva `idCurvaProvedor` 1, versão 1):
+
+```json
+{"configuracoes":[{"fimVigencia":null,"inicioVigencia":"2026-01-01","interpolador":"FlatForward","modeloConstrucao":"PRONTA_TS_B3","parametros":{"BASE_INTERPOLACAO":"Discount","BUSINESS_DAY_CONVENTION":"Following","CALENDARIO":"Brazil","CASAS_DECIMAIS":7,"DAY_COUNTER_TEMPO":"Business252","EXTRAPOLACAO_FIM":"FlatForward","EXTRAPOLACAO_INICIO":"Disabled","FREQUENCY":"Annual","HORIZONTE":"10Y","MERCADO_CALENDARIO":"Settlement","MODO_ARREDONDAMENTO":"HALF_UP"},"versao":1}],"curva":{"classeAtivo":null,"classificacao":null,"codigo":"PRE","compounding":"Compounded","dayCounterCotacao":"Business252","fimVigencia":null,"inicioVigencia":"2026-01-01","moeda":"BRL","nome":"DIxPRE","pais":"BR","situacao":"ATIVO","unidade":"TAXA"},"provedores":[{"codigoNaFonte":"PRE","idCurvaProvedor":1,"prioridade":1,"produto":"TS","provedor":"B3"}]}
+```
+
+Vetor de teste: esse texto dá `0a45962d58276782018cb313962646ae889877c9c01279cab32aa3909c654936`. Provedores da curva ordenados por `idCurvaProvedor`, configurações por `versao`. Ficavam **fora** do cálculo `dBaseReft`, `cUsuarCalc`, `cUsuarAtulz`, `dCriacReg` e `dUltAtulz`: assim uma construção do engine (que grava `dBaseReft`) não invalidava a edição de ninguém. Não se usava o `dUltAtulz` porque o `datetime` do SQL Server tem precisão de cerca de 3 ms. As colunas `CHAR` eram aparadas antes do cálculo, e o hash era o mesmo antes e depois de reler uma curva. Com Jackson: `JsonMapper.builder().enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS).enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)`, montando o documento com `Map`/`record` só com esses campos.
+
+**Regras de escrita.** Toda alteração (curva, inativação, reativação, provedor da curva, configuração): sem `If-Match` → 428 `IF_MATCH_AUSENTE`; `If-Match` diferente do `ETag` calculado **dentro da transação, depois de travar a curva** (`SELECT ... WITH (UPDLOCK, ROWLOCK)`, com o `@QueryHints` de 60 s da seção 2.1) → 412 `ALTERADO_POR_OUTRO`, nada gravado. A resposta de sucesso trazia o `ETag` novo. A edição de pontos e a do bruto da B3 nunca usaram `If-Match`.
+
+**Cenários da spec `cadastro-curva-mercado` (requisito "Concorrência otimista"):**
+- *Duas pessoas editando a mesma curva:* duas pessoas leem a `PRE` e as duas enviam alterações com o mesmo `ETag`; a primeira é gravada, e a segunda recebe 412 `ALTERADO_POR_OUTRO`.
+- *Alteração sem If-Match:* `PUT /curvas-mercado/PRE` sem o cabeçalho; 428 `IF_MATCH_AUSENTE`, nada gravado.
+- *Situação lida de coluna CHAR:* o `ETag` era o mesmo de antes da leitura.
+
+**Testes que existiam:**
+- `EtagCurvaMercadoTest`: vetor acima; ordem de chaves; `dBaseReft` alterado não muda o `ETag`; `CHAR` com espaços dá o mesmo `ETag`.
+- `CurvaMercadoServiceTest`: duas pessoas editando → 412; sem `If-Match` → 428.
+- `CadastroPlanilhaServiceTest`: `Controle` antigo → `ALTERADO_POR_OUTRO`.
+- Conferência 12.1 (o vetor do `ETag`) e homologação (`ETag` real da `PRE` igual ao vetor, se o `idCurvaProvedor` for 1).
+
+**Para retomar:** devolver a tarefa 1.3 e as peças acima, o `ETag` nas respostas do `GET` e das escritas, a coluna `Controle` na planilha do `curves-operacao-curvas` e o cenário de importação de planilha antiga, e os passos com `If-Match` do exemplo das 7 curvas.

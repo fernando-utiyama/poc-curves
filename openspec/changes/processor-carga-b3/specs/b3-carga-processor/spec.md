@@ -8,9 +8,9 @@ No `services/processor`, consumir o aviso de carga do `TaxaSwap.txt` publicado p
 O processor SHALL consumir o tópico existente `tp-event-b3-curve` com:
 - confirmação manual: a mensagem só é confirmada depois de processada até o fim (gravação e aviso ao engine) ou de registrada como falha definitiva;
 - `max.poll.records` = 1 e uma mensagem de cada vez por partição (as cargas de uma mesma data chegam na mesma partição, em ordem);
-- `max.poll.interval.ms` maior que a soma das janelas de repetição com folga (padrão 1.200.000, 20 minutos), para que o Kafka não redistribua a partição enquanto a carga ainda está sendo processada.
+- `max.poll.interval.ms` maior que a soma das janelas de repetição com folga (padrão 1.800.000, 30 minutos: as janelas de 5 e 10 minutos mais o tempo de processar somam 20 minutos sem folga), para que o Kafka não redistribua a partição enquanto a carga ainda está sendo processada.
 
-A mensagem SHALL ter o formato da spec `b3-taxaswap-publicacao` e ser rejeitada como falha definitiva, sem gravar nada, quando:
+A mensagem SHALL ter o formato da spec `b3-taxaswap-publicacao` do change `conector-b3-webhook-ingest` e ser rejeitada como falha definitiva, sem gravar nada, quando:
 - não for JSON válido, ou faltar campo obrigatório;
 - `fonte` for diferente de `B3` ou `produto` diferente de `TS`;
 - `idCarga` não casar com `^B3-TS-\d{8}-[0-9a-f]{12}$`, ou a data do `idCarga` for diferente de `dataBase`;
@@ -32,7 +32,7 @@ O processor SHALL ler `arquivo.caminho` do Blob Storage (`processor.blob.endpoin
 - **THEN** o processor registra `CARGA_FALHOU` informando a divergência, e nada é gravado
 
 ### Requirement: Parse pelo leiaute oficial
-O processor SHALL decodificar o arquivo como Latin-1, separar as linhas por `\n` (o arquivo já está na forma canônica da spec `b3-taxaswap-publicacao`) e interpretar cada linha pelo leiaute oficial "Taxas de Mercado para Swaps", com posições de 1 a 72:
+O processor SHALL decodificar o arquivo como Latin-1, separar as linhas por `\n` (o arquivo já está na forma canônica da spec `b3-taxaswap-publicacao` do change `conector-b3-webhook-ingest`) e interpretar cada linha pelo leiaute oficial "Taxas de Mercado para Swaps", com posições de 1 a 72:
 
 | Campo | Posições | Uso |
 |---|---|---|
@@ -80,13 +80,13 @@ Nenhuma linha isolada SHALL ser descartada. Os códigos inválidos SHALL constar
 - **THEN** o código `DPL` não é gravado e aparece como inválido no log, com a linha e o motivo, e os demais códigos são gravados
 
 ### Requirement: Gravação sob a curva de mercado mapeada em tCurvaPrvdr
-Para cada código válido, o processor SHALL buscar em `tCurvaPrvdr` as linhas com `iPrvdrDados` = `B3`, `cPrvdrMercd` = `TS` e `cTickerPrvdr` = código; cada linha encontrada indica uma curva de mercado (`tCurvaPrvdr.cTickerIndcd`) que recebe os vértices daquele código, seja a B3 a origem principal da curva ou uma origem secundária (o engine usa o bruto da secundária quando o usuário constrói a curva por ela). Um código pode alimentar mais de uma curva, e todas SHALL receber os vértices, qualquer que seja o `cPriorCsumo`. Códigos sem nenhuma linha em `tCurvaPrvdr` SHALL ser ignorados e contados, sem erro. O processor MUST NOT inserir, alterar ou apagar nada em `tCurvaMercd` ou `tCurvaPrvdr`: só lê `tCurvaPrvdr`, e o cadastro é responsabilidade do serviço de cadastro.
+Para cada código válido, o processor SHALL buscar em `tCurvaPrvdr` as linhas com `iPrvdrDados` = `B3`, `cPrvdrMercd` = `TS` e `cTickerPrvdr` = código; cada linha encontrada indica uma curva de mercado (`tCurvaPrvdr.cTickerIndcd`) que recebe os vértices daquele código, seja a B3 a origem principal da curva ou uma origem secundária. A primeira parte do engine só constrói pela origem principal; o bruto gravado sob a curva da origem secundária fica pronto para a construção por origem secundária, que vem com a segunda parte. Um código pode alimentar mais de uma curva, e todas SHALL receber os vértices, qualquer que seja o `cPriorCsumo`. Códigos sem nenhuma linha em `tCurvaPrvdr` SHALL ser ignorados e contados, sem erro. O processor MUST NOT inserir, alterar ou apagar nada em `tCurvaMercd` ou `tCurvaPrvdr`: só lê `tCurvaPrvdr`, só trava a linha da curva em `tCurvaMercd` (abaixo), e o cadastro é responsabilidade do serviço de cadastro.
 
-Numa **única transação** por carga, para cada curva de mercado mapeada, o processor SHALL apagar as linhas de `tBtrsCurvaPrimr` com `cTickerIndcd` = nome da curva e `dBaseReft` = data-base e inserir uma linha por vértice do código:
+Numa **única transação** por carga, o processor SHALL primeiro travar a linha de cada curva de mercado mapeada em `tCurvaMercd` com `UPDLOCK, ROWLOCK`, em ordem crescente do nome da curva (para evitar deadlock entre cargas e edições), com tempo limite de comando de 60 segundos. É a mesma trava da edição manual do bruto no serviço de cadastro e da construção no engine, que lê o bruto sob ela; assim o apaga-e-insere nunca corre junto com uma edição ou uma leitura do engine na mesma curva. Tempo esgotado ao obter a trava é falha transitória (política de repetição). Com as curvas travadas, para cada uma, o processor SHALL apagar as linhas de `tBtrsCurvaPrimr` com `cTickerIndcd` = nome da curva e `dBaseReft` = data-base e inserir uma linha por vértice do código:
 
 | Coluna | Valor |
 |---|---|
-| `cldtfdUnic` | id único da linha, gerado pelo processor sem colisão entre cargas simultâneas; a coluna é `INT NOT NULL` sem identity nem sequência no `001_SCRIPT_INICIAL.sql`; até o sistema real confirmar outra forma, o valor é `MAX(cldtfdUnic) + 1` lido com `UPDLOCK, HOLDLOCK` dentro da mesma transação da gravação, sem criar objeto no banco |
+| `cIdtfdUnic` | id único da linha, gerado pelo processor sem colisão entre cargas simultâneas; a coluna é `INT NOT NULL` sem identity nem sequência no `001_SCRIPT_INICIAL.sql`; o valor é `MAX(cIdtfdUnic) + 1` lido com `UPDLOCK, HOLDLOCK` dentro da mesma transação da gravação (como o serviço de cadastro faz na edição manual), sem criar objeto no banco |
 | `cTickerIndcd` | nome da curva de mercado (de `tCurvaPrvdr`) |
 | `dBaseReft` | data-base |
 | `cDiaCorri` | dias corridos |
@@ -96,9 +96,13 @@ Numa **única transação** por carga, para cada curva de mercado mapeada, o pro
 
 A FK de `tBtrsCurvaPrimr.cTickerIndcd` fica satisfeita porque `tCurvaPrvdr.cTickerIndcd` já aponta para uma curva existente. Depois das inserções e antes do commit, o processor SHALL conferir, por curva, que a quantidade de linhas gravadas é igual à quantidade de vértices do código no arquivo. Qualquer falha MUST desfazer a transação inteira.
 
-#### Scenario: Carga com 110 códigos e 5 mapeados
-- **WHEN** a carga de `2026-09-14` tem 110 códigos e só `PRE`, `DCL`, `DPL`, `INP` e `PTX` aparecem em `tCurvaPrvdr` (fonte `B3`, produto `TS`), mapeados para `DIxPRE`, `Cupom limpo de dólar`, `Cupom Limpo DI X IPCA`, `IBOVESPA` e `PTAX - USD`
-- **THEN** `tBtrsCurvaPrimr` passa a ter 278 linhas para cada uma dessas 5 curvas em `2026-09-14`, com `vPrecoTx` igual ao publicado, e os outros 105 códigos são ignorados
+#### Scenario: Carga com 114 códigos e 5 mapeados
+- **WHEN** a carga de `2026-09-14` tem 114 códigos e só `PRE`, `DCL`, `DPL`, `INP` e `PTX` aparecem em `tCurvaPrvdr` (fonte `B3`, produto `TS`), mapeados para `DIxPRE`, `Cupom limpo de dólar`, `Cupom Limpo DI X IPCA`, `IBOVESPA` e `PTAX - USD`
+- **THEN** `tBtrsCurvaPrimr` passa a ter 278 linhas para cada uma dessas 5 curvas em `2026-09-14`, com `vPrecoTx` igual ao publicado, e os outros 109 códigos são ignorados
+
+#### Scenario: Carga durante a edição manual da mesma curva
+- **WHEN** o gestor está gravando uma linha da `PRE` de `2026-09-14` no serviço de cadastro (curva travada) e a carga dessa data chega ao processor
+- **THEN** o processor espera a trava da `PRE` até o commit do gestor, e só então apaga e insere as linhas da data; passados 60 segundos sem a trava, a tentativa é repetida pela política de repetição e nada é gravado
 
 #### Scenario: Código sem mapeamento
 - **WHEN** a carga tem o código `SLP`, que não aparece em `tCurvaPrvdr`
@@ -115,7 +119,7 @@ Depois do commit, o processor SHALL chamar `POST {processor.engine.url}/api/v1/c
 { "idCarga": "B3-TS-20260914-1a2b3c4d5e6f", "fonte": "B3", "produto": "TS", "dataBase": "2026-09-14", "linhasPorCodigo": { "PRE": 278, "DCL": 278 } }
 ```
 
-`linhasPorCodigo` SHALL ter uma entrada por código gravado em alguma curva, com a quantidade de vértices do código no arquivo. A chamada SHALL levar os cabeçalhos `Authorization: Bearer` (token do Entra ID por client credentials, escopo `processor.engine.escopo`, papel `Curvas.Processor`) e `X-Correlation-Id`, e ser feita pelo endereço do serviço do engine (atrás do balanceador do Azure), com tempo limite de `processor.engine.timeout-segundos` (padrão 150, maior que o tempo limite do webhook no engine). Se nenhum código foi gravado, o aviso MUST NOT ser feito, e o evento é registrado. Resposta 2xx confirma a mensagem. Erro de rede, tempo esgotado, 409 `CONSTRUCAO_EM_ANDAMENTO`, 429 e 5xx SHALL seguir a política de repetição: o aviso é idempotente, e o engine devolve `EXISTENTE` para o que já construiu. Outro 4xx MUST ser registrado como falha definitiva, com a resposta do engine. Os vértices já gravados permanecem gravados. O resultado de cada curva devolvido pelo engine SHALL constar do log da carga; uma curva que o engine não conseguiu construir é resultado do engine (tem alerta próprio lá) e não falha a carga no processor.
+`linhasPorCodigo` SHALL ter uma entrada por código gravado em alguma curva, com a quantidade de vértices do código no arquivo. A chamada SHALL levar o cabeçalho `X-Correlation-Id` e ser feita pelo endereço do serviço do engine (atrás do balanceador do Azure), com tempo limite de `processor.engine.timeout-segundos` (padrão 150, maior que os 120 segundos que o engine dá ao webhook). O engine não exige autenticação: a chamada MUST NOT levar `Authorization` e o processor MUST NOT obter token do Entra ID para ela. Se nenhum código foi gravado, o aviso MUST NOT ser feito, e o evento é registrado. Resposta 2xx confirma a mensagem. Erro de rede, tempo esgotado, 409 `CONSTRUCAO_EM_ANDAMENTO`, 429 e 5xx SHALL seguir a política de repetição: o aviso é idempotente, e o engine devolve `EXISTENTE` para o que já construiu. Outro 4xx MUST ser registrado como falha definitiva, com a resposta do engine. Os vértices já gravados permanecem gravados. O resultado de cada curva devolvido pelo engine SHALL constar do log da carga; uma curva que o engine não conseguiu construir é resultado do engine (tem alerta próprio lá) e não falha a carga no processor.
 
 #### Scenario: Engine fora por poucos minutos
 - **WHEN** o engine fica fora por 3 minutos depois do commit da carga
@@ -130,7 +134,7 @@ Depois do commit, o processor SHALL chamar `POST {processor.engine.url}/api/v1/c
 - **THEN** o processor registra `CARGA_FALHOU` com o estado `GRAVADA_SEM_AVISO`, os vértices continuam em `tBtrsCurvaPrimr`, e reprocessar a data pelo `b3/taxa-swap/reprocessamento` do conector só repete a gravação (idêntica) e o aviso
 
 ### Requirement: Idempotência e reprocessamento
-Reprocessar a mesma carga (mesmo `idCarga`) SHALL regravar as mesmas linhas e repetir o aviso, que o engine trata como repetido (curvas com pontos voltam como `EXISTENTE`). Uma carga nova para a mesma data-base (`idCarga` diferente, arquivo republicado pela B3) SHALL substituir as linhas das curvas mapeadas; recalcular curvas já construídas continua sendo decisão do engine. A recuperação de qualquer falha definitiva SHALL ser reprocessar a data pelo `b3/taxa-swap/reprocessamento` do conector (spec `b3-taxaswap-publicacao`).
+Reprocessar a mesma carga (mesmo `idCarga`) SHALL regravar as mesmas linhas e repetir o aviso, que o engine trata como repetido (curvas com pontos voltam como `EXISTENTE`). Uma carga nova para a mesma data-base (`idCarga` diferente, arquivo republicado pela B3) SHALL substituir as linhas das curvas mapeadas; recalcular curvas já construídas continua sendo decisão do engine. A recuperação de qualquer falha definitiva SHALL ser reprocessar a data pelo `b3/taxa-swap/reprocessamento` do conector (spec `b3-taxaswap-publicacao` do change `conector-b3-webhook-ingest`).
 
 #### Scenario: Curva ligada depois da carga
 - **WHEN** a carga de `2026-09-14` já foi gravada e avisada, e depois o cadastro liga o código `SLP` a uma curva nova em `tCurvaPrvdr`
@@ -167,4 +171,4 @@ Cada carga SHALL gerar log JSON com `correlationId`, `idCarga`, origem, usuário
 
 #### Scenario: Log de carga
 - **WHEN** uma carga é processada com sucesso
-- **THEN** o log tem um evento com o `idCarga`, os 5 códigos gravados com as curvas de cada um, os 105 ignorados, nenhum inválido e a resposta do engine
+- **THEN** o log tem um evento com o `idCarga`, os 5 códigos gravados com as curvas de cada um, os 109 ignorados, nenhum inválido e a resposta do engine

@@ -17,7 +17,7 @@ O engine SHALL expor `POST /api/v1/cargas`, com o corpo:
 }
 ```
 
-`linhasPorCodigo` SHALL trazer, para cada código na fonte da carga, a quantidade de linhas gravadas na tabela bruta para aquela data-base, inclusive as que o modelo vier a descartar. A rota MUST exigir credencial de serviço do processor. Campo ausente, quantidade negativa, mapa vazio ou data inválida MUST resultar em 400 `PARAMETRO_INVALIDO`. O processor SHALL gravar todas as linhas da carga numa única transação, chamar o webhook só depois do commit e repetir a chamada com o mesmo `idCarga` até receber 2xx. O engine MUST NOT gravar a carga em lugar nenhum: o corpo da requisição é usado só durante o seu processamento, e o `idCarga` vai para o log.
+`linhasPorCodigo` SHALL trazer, para cada código na fonte da carga, a quantidade de linhas gravadas na tabela bruta para aquela data-base, inclusive as que o modelo vier a descartar. Campo ausente, quantidade negativa, mapa vazio ou data inválida MUST resultar em 400 `PARAMETRO_INVALIDO`. O processor SHALL gravar todas as linhas da carga numa única transação, chamar o webhook só depois do commit e repetir a chamada com o mesmo `idCarga` até receber 2xx. O engine MUST NOT gravar a carga em lugar nenhum: o corpo da requisição é usado só durante o seu processamento, e o `idCarga` vai para o log.
 
 #### Scenario: Aviso da carga B3
 - **WHEN** o processor termina de gravar o `TaxaSwap.txt` de `2026-09-14` e chama o webhook com `fonte` = `B3`, `produto` = `TS` e as quantidades por código
@@ -70,7 +70,7 @@ Cada curva SHALL ser construída de forma independente: a falha de uma MUST NOT 
 - **THEN** as outras curvas da carga são construídas, a resposta é 200 com o erro da `DPL`, e o log tem `CONSTRUCAO_FALHOU` da `DPL`
 
 ### Requirement: Construção automática da data pelo orquestrador
-O engine SHALL expor `POST /api/v1/construcoes/{dataBase}`, sem corpo e sem parâmetros de query, exigindo o papel `Curvas.Orquestrador`. A rota é o segundo gatilho automático, ao lado do webhook do processor: o processor dispara as curvas de dado de mercado da carga que gravou, e o orquestrador dispara a data inteira, o que cobre as curvas derivadas cuja curva componente foi construída ou recalculada fora de uma carga e serve de rede de segurança se o aviso de uma carga se perder.
+O engine SHALL expor `POST /api/v1/construcoes/{dataBase}`, sem corpo e sem parâmetros de query. A rota é o segundo gatilho automático, ao lado do webhook do processor: o processor dispara as curvas de dado de mercado da carga que gravou, e o orquestrador dispara a data inteira, o que cobre as curvas derivadas cuja curva componente foi construída ou recalculada fora de uma carga e serve de rede de segurança se o aviso de uma carga se perder.
 
 Ao receber a chamada, o engine SHALL processar, na própria requisição, toda curva com código não nulo, com as mesmas regras da carga (requisito "Construção disparada pela carga"):
 - curva inativa ou com a data-base fora da vigência: `IGNORADA`, com o motivo;

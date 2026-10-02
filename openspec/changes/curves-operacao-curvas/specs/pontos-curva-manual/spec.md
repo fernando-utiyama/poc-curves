@@ -110,7 +110,7 @@ O tratamento no engine é o do requisito "Pontos no mesmo prazo do eixo" da spec
 - **THEN** a consulta do engine responde `CURVA_NAO_CONSTRUIDA` para essa data, e uma construção posterior grava os pontos da fonte
 
 ### Requirement: Preferência da edição manual
-A edição manual é feita pelo gestor da curva, no front, e MUST NOT ser recusada por concorrência: não há `If-Match` nem conferência de versão, e a gravação sempre se aplica sobre os pontos atuais, registrando no log o `hashPontos` anterior. A preferência sobre o engine SHALL resultar de três regras, sem coordenação por API:
+A edição manual é feita pelo gestor da curva, no front, e MUST NOT ser recusada por concorrência: não há conferência de versão, e a gravação sempre se aplica sobre os pontos atuais, registrando no log o `hashPontos` anterior. A preferência sobre o engine SHALL resultar de três regras, sem coordenação por API:
 - se o engine estiver construindo a mesma curva, a edição espera a transação dele e grava por cima;
 - se a edição acontecer antes, a construção automática do engine (webhook de carga ou construção sem recálculo) encontra pontos gravados e devolve `EXISTENTE`, sem sobrescrever, com o aviso `PONTOS_DIFERENTES_DA_FONTE` quando os pontos manuais diferem do que a fonte produz;
 - só um recálculo forçado por um usuário (`forcarRecalculo=true` no engine) substitui pontos existentes, inclusive manuais.

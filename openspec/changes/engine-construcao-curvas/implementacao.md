@@ -43,7 +43,7 @@ domain/                       Java puro: nada de Spring, JPA, Jackson, Azure, PO
   quantlib/                   Compounding, Frequency, BusinessDayConvention, DayCounter, InterestRate, Periodos
   matematica/                 DecimalMath
   calendario/                 Calendario, Brazil, UnitedStates, CalendarioPorLista
-  interpolacao/               BaseInterpolacao, Extrapolacao, Classificacao, Interpolador, InterpoladorPorSegmento, Linear, LogLinear,
+  interpolacao/               BaseInterpolacao, Extrapolacao, Classificacao, Interpolador, InterpoladorPorSegmento, Linear, LogLinear, FlatForward,
                               BackwardFlat, ForwardFlat, Cubic, EixoDiasUteis, PreparacaoPontos,
                               CurvaInterpolada, InterpolacaoDadoCurva
   construcao/                 ModeloConstrucao, ContextoConstrucao, CurvaPrimariaPort (porta do domínio),
@@ -61,7 +61,7 @@ application/
   service/                    uma classe por caso de uso, registrada do mesmo jeito que os serviços existentes (`@Service` ou `@Bean` numa configuração); @Transactional quando grava;
                               Paralelo (virtual threads), ResolverModelos
 adapter/
-  in/rest/                    controllers, DTOs (records), FiltroCorrelacao, SegurancaConfig, configuração do Jackson (erros: o tratador do serviço, seção 1.5)
+  in/rest/                    controllers, DTOs (records), FiltroCorrelacao, configuração do Jackson (erros: o tratador do serviço, seção 1.5)
   out/persistence/            entidades JPA, repositórios Spring Data, adaptadores das portas
   out/blob/                   ScriptsBlobAdapter
   out/groovy/                 CarregadorGroovy
@@ -118,11 +118,10 @@ Fonte: `docs/TaxaSwap.txt` (data-base `B` = `2026-09-14`), conferidos por uma re
 
 ### 1.1 `pom.xml`: o mínimo de coisas novas
 
-> Na primeira parte (`engine-construcao-curvas`), nenhuma destas dependências entra: sem Blob, Groovy, planilha nem autenticação. Só a meta `build-info`, se for usada na proveniência.
+> Na primeira parte (`engine-construcao-curvas`), nenhuma destas dependências entra: sem Blob, Groovy nem planilha. Só a meta `build-info`, se for usada na proveniência.
 
 | Acrescentar | Por quê |
 |---|---|
-| `org.springframework.boot:spring-boot-starter-oauth2-resource-server` (versão do Spring Boot) | JWT do Entra ID |
 | `com.azure:azure-storage-blob` e `com.azure:azure-identity`, pelo `com.azure:azure-sdk-bom` **1.3.8** importado em `dependencyManagement` (`<type>pom</type>`, `<scope>import</scope>`) | scripts Groovy no Blob, Managed Identity |
 | `org.apache.poi:poi-ooxml` **5.5.1** | planilhas `.xlsx` |
 
@@ -132,9 +131,6 @@ No `spring-boot-maven-plugin` (já existe), acrescentar a meta `build-info`. Nã
 
 ```yaml
 engine:
-  seguranca:
-    emissor: ${ENGINE_JWT_EMISSOR}
-    audiencia: ${ENGINE_JWT_AUDIENCIA}
   blob:
     endpoint: ${ENGINE_BLOB_ENDPOINT}
     container: ${ENGINE_BLOB_CONTAINER}
@@ -172,12 +168,6 @@ spring:
         jdbc:
           batch_size: 1000
         order_inserts: true
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${engine.seguranca.emissor}
-          audiences: ${engine.seguranca.audiencia}
 ```
 
 Perfil `local` (e só ele): `engine.blob.connection-string` para o Azurite.
@@ -253,7 +243,7 @@ Erros usam **o que o serviço já tem** (no poc, `application/exception`: `Error
 ```java
 // domain/curva/CodigoErro.java — implementa a interface do projeto
 public enum CodigoErro implements ErrorCode {
-  PARAMETRO_INVALIDO, NAO_AUTENTICADO, SEM_PERMISSAO, CURVA_NAO_ENCONTRADA, CURVA_NAO_CONSTRUIDA,
+  PARAMETRO_INVALIDO, CURVA_NAO_ENCONTRADA, CURVA_NAO_CONSTRUIDA,
   CODIGO_DUPLICADO, NOME_AMBIGUO, CONSTRUCAO_EM_ANDAMENTO, ESTADO_SCRIPT_CONCORRENTE,
   CADASTRO_INVALIDO, CURVA_COMPONENTE_NAO_CONSTRUIDA, INSUMO_INCOMPLETO, INSUMO_AUSENTE, INSUMO_INVALIDO,
   PONTOS_NAO_INTERPOLAVEIS, PRAZO_FORA_DO_DOMINIO, MODELO_FALHOU, SCRIPT_INVALIDO, ERRO_INTERNO, BLOB_INDISPONIVEL;
@@ -272,7 +262,6 @@ Status esperado para cada código, com a exceção equivalente no poc (no real, 
 | `BusinessException` | 422 | `CADASTRO_INVALIDO`, `CURVA_COMPONENTE_NAO_CONSTRUIDA`, `INSUMO_*`, `PONTOS_NAO_INTERPOLAVEIS`, `PRAZO_FORA_DO_DOMINIO`, `MODELO_FALHOU`, `SCRIPT_INVALIDO` |
 | `InfrastructureException` | 500 | `ERRO_INTERNO` |
 | `ServiceUnavailableException` | 503 | `BLOB_INDISPONIVEL` |
-| (Spring Security: ponto de entrada e tratador de acesso negado escrevendo o mesmo formato) | 401, 403 | `NAO_AUTENTICADO`, `SEM_PERMISSAO` |
 
 **Acrescentar** (sem reescrever nada que existe): na exceção base do serviço, a lista `detalhes` (`List<DetalheErro>`, com `comDetalhes(List<DetalheErro>)`); no tratador que responde, `correlationId` (do MDC) e `detalhes` (quando houver) no corpo de erro, e o tratamento de 409. A ArchUnit do projeto passa a permitir que `domain` dependa de `application.exception` (classes em Java puro), e de nada mais fora do domínio.
 
@@ -574,9 +563,9 @@ SELECT cTickerIndcd, cTickerIdtfdUnic, cTpoVlr, cNormaDia, cTpoJuro, cSitReg, dI
 -- por nome: ler (cTickerIndcd, cTickerIdtfdUnic) com código não nulo e comparar em Java o nome normalizado
 -- (Normalizer.normalize(s, NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT).strip()); 0 → CURVA_NAO_ENCONTRADA; >1 → NOME_AMBIGUO
 SELECT cTickerIndcd, cTickerIdtfdUnic FROM tCurvaMercd WHERE cTickerIdtfdUnic IS NOT NULL;
-SELECT iPrvdrDados, cPrvdrMercd, cTickerPrvdr, cPriorCsumo FROM tCurvaPrvdr WHERE cTickerIndcd = ? ORDER BY cPriorCsumo, cldtfdUnic;
+SELECT iPrvdrDados, cPrvdrMercd, cTickerPrvdr, cPriorCsumo FROM tCurvaPrvdr WHERE cTickerIndcd = ? ORDER BY cPriorCsumo, cIdtfdUnic;
 -- configuração vigente (exatamente 1 linha; 0 ou >1 → CADASTRO_INVALIDO)
-SELECT cldtfdConfg, cMotorCalc, cRotnaCalc, cModDado FROM tConfgCurva
+SELECT cIdtfdConfg, cMotorCalc, cRotnaCalc, cModDado FROM tConfgCurva
  WHERE cTickerIndcd = ? AND dInicVgcia <= ? AND (dValidAte IS NULL OR dValidAte >= ?);
 ```
 
@@ -590,7 +579,7 @@ O `cModDado` é lido pelo adaptador com o Jackson e entregue ao domínio como `M
 1. `cModDado` é objeto JSON; cada chave existe na tabela; tipo certo.
 2. Obrigatórios presentes; valores nas listas, com caixa exata. Padrão só em `EXTRAPOLACAO_INICIO`/`FIM` (`Disabled`).
 3. `cTpoVlr` ∈ `TAXA|PRECO|PONTOS`; com `TAXA`, `cNormaDia` ∈ constantes de `DayCounter` (`DayCounter.valueOf`) e `cTpoJuro` ∈ `Simple|Compounded|Continuous`.
-4. Combinações: `Price` só com `PRECO`/`PONTOS` e o contrário; `FREQUENCY` só com `Compounded` (e obrigatória nele), nunca `NoFrequency|Once|OtherFrequency`; `MERCADO_CALENDARIO` = `mercado()` do calendário resolvido; `FlatForward` só com `Linear|LogLinear`; `CASAS_DECIMAIS` 0..12; `HORIZONTE` por `Periodos.parse`.
+4. Combinações: `Price` só com `PRECO`/`PONTOS` e o contrário; `FREQUENCY` só com `Compounded` (e obrigatória nele), nunca `NoFrequency|Once|OtherFrequency`; `MERCADO_CALENDARIO` = `mercado()` do calendário resolvido; interpolador `FlatForward` só com a base `Discount`; extrapolação `FlatForward` só com `Linear|LogLinear|FlatForward`; `CASAS_DECIMAIS` 0..12; `HORIZONTE` por `Periodos.parse`.
 5. `MODELOS_POR_ORIGEM`: chave `^[^/]+/[^/]+$`, valor texto não vazio; chave sem provedor ou da principal é ignorada.
 6. O modelo de construção da origem usada aceita a fonte e o produto dela.
 7. Derivada: componentes existem, sem ciclo (busca em profundidade pelos provedores da curva `TCEN`), papéis iguais aos declarados pelo modelo.
@@ -632,6 +621,7 @@ public abstract class InterpoladorPorSegmento implements Interpolador {
 |---|---|
 | `Linear` | `yE + w·(yD − yE)` |
 | `LogLinear` | `yE · DecimalMath.pow(yD/yE, w)` (todos os `y` > 0, checado antes; senão `PONTOS_NAO_INTERPOLAVEIS` com os pontos) |
+| `FlatForward` | igual ao `LogLinear` (a classe estende `LogLinear`); o cadastro com `BASE_INTERPOLACAO` diferente de `Discount` é recusado antes, com `CADASTRO_INVALIDO` |
 | `BackwardFlat` | `yD` |
 | `ForwardFlat` | `yE` |
 
@@ -721,7 +711,7 @@ Criada por um método de fábrica com o cadastro, os pontos mantidos, o calendá
 2. `du = duPedido != null ? duPedido : eixo.du(d)`; `x` pelo eixo (`dayCounterTempo.fracaoAno(B, d, du)`).
 3. `d` = data de ponto mantido → valor gravado, `PONTO`.
 4. Antes do primeiro → política de início; depois do último → política de fim; senão interpolador e `baseInterpolacao.deY`.
-5. `Disabled` → `PRAZO_FORA_DO_DOMINIO`; `FlatValue` → valor do ponto adjacente; `FlatForward` (só `Linear`/`LogLinear`, ≥ 2 pontos) → `extrapolar(w, yE, yD)` do segmento adjacente com `w` fora de `[0,1]`.
+5. `Disabled` → `PRAZO_FORA_DO_DOMINIO`; `FlatValue` → valor do ponto adjacente; `FlatForward` (só `Linear`/`LogLinear`/`FlatForward`, ≥ 2 pontos) → `extrapolar(w, yE, yD)` do segmento adjacente com `w` fora de `[0,1]`.
 6. `valor.setScale(casasDecimais, modoArredondamento)`. Para `TAXA`: `fa = cotacao.fator(valorArredondado, B, d, du).setScale(16, RoundingMode.HALF_UP)`, `fd = DecimalMath.pow(fa, BigDecimal.ONE.divide(BigDecimal.valueOf(du), DecimalMath.MC)).setScale(16, RoundingMode.HALF_UP)` (`du` ≥ 1). `PRECO`/`PONTOS`: fatores nulos.
 
 ### 6.6 `InterpolacaoDadoCurva.java`
@@ -786,7 +776,7 @@ Passos:
 7. Gravar (SQL acima); `Construida` ou `Reconstruida`. A proveniência vem do que o `RegistroModelos` de fato resolveu para modelo, interpolador e calendário: nativo → origem `JAVA` e versão do engine; script → origem `GROOVY`, versão e hash do script. Nunca valores fixos.
 8. `TransactionSynchronization.afterCommit`: `CURVA_GRAVADA` e `CONSTRUCAO_CONCLUIDA`. Falha → `CONSTRUCAO_FALHOU`, sem `CURVA_GRAVADA`.
 
-`cUsuarCalc` = `preferred_username` do token, ou `appid` para identidade de serviço.
+`cUsuarCalc` = o `usuario` da requisição (cabeçalho `X-Usuario`, seção 13.3), nulo quando ausente.
 
 ### 7.3 `SimularCurvaService`
 
@@ -794,7 +784,7 @@ Mesmo pipeline sem trava nem escrita (o pipeline dos passos 2–6 é um componen
 
 ### 7.4 `RegravarInterpoladaService`
 
-Mesma trava. Sem pontos → apaga `tDadoCurva` da data e `CURVA_NAO_CONSTRUIDA`. Com pontos → cadastro, `CurvaInterpolada`, grade, `DELETE` + `INSERT` só em `tDadoCurva`. Sem modelo, sem `CURVA_GRAVADA`; evento `INTERPOLADA_REGRAVADA`.
+Mesma trava. Sem pontos → apaga `tDadoCurva` da data e `CURVA_NAO_CONSTRUIDA`. Com pontos → cadastro, `CurvaInterpolada`, grade, `DELETE` + `INSERT` só em `tDadoCurva`. Sem modelo, sem `CURVA_GRAVADA`. O evento `INTERPOLADA_REGRAVADA` sai em `TransactionSynchronization.afterCommit`, como o `CURVA_GRAVADA` da construção (seção 7.2, passo 8); falha ou desfazer da transação não emite o evento.
 
 ### 7.5 Conferência da interpolada (consulta, auditoria, situação)
 
@@ -846,9 +836,9 @@ public record BloombergCurvaPrimaria(int id, String curva, String ticker, LocalD
 Adaptador (`CurvaPrimariaJpaAdapter`), consultas nativas:
 
 ```sql
-SELECT cldtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx FROM tBtrsCurvaPrimr  WHERE cTickerIndcd = ? AND dBaseReft = ?;
-SELECT cldtfdUnic, cTickerIndcd, dBaseReft, vVertcCurva, vPrecoTx      FROM tAnbmaCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;
-SELECT cldtfdUnic, cTickerIndcd, cTickerBberg, dBaseReft, vPrecoUlt   FROM tBbergCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;
+SELECT cIdtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx FROM tBtrsCurvaPrimr  WHERE cTickerIndcd = ? AND dBaseReft = ?;
+SELECT cIdtfdUnic, cTickerIndcd, dBaseReft, vVertcCurva, vPrecoTx      FROM tAnbmaCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;
+SELECT cIdtfdUnic, cTickerIndcd, cTickerBberg, dBaseReft, vPrecoUlt   FROM tBbergCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;
 ```
 
 Nenhuma linha → `INSUMO_AUSENTE` (código, fonte, código na fonte, data). Cada linha vai para a aba `Insumos`.
@@ -863,7 +853,7 @@ Tabela "Regras do arquivo" da spec `b3-ready-curve-model` linha a linha. Ponto: 
 
 ### 8.4 `NtnbBootstrapAnbima` (`NTNB_BOOTSTRAP_ANBIMA`, `ANBIMA`/`MS`)
 
-Interpolador `Linear` ou `LogLinear` (senão `CADASTRO_INVALIDO`); tabela "Regras do arquivo" da spec `ntnb-anbima-curve-model` (sem tolerância). Por título:
+Interpolador `Linear`, `LogLinear` ou `FlatForward` (senão `CADASTRO_INVALIDO`); tabela "Regras do arquivo" da spec `ntnb-anbima-curve-model` (sem tolerância). Por título:
 
 ```java
 var a = cal.advance(B, prazo);                                   // data aproximada
@@ -1011,27 +1001,12 @@ Controllers só convertem (records de entrada e saída) e chamam as portas de en
 - Erros: o tratador do serviço (seção 1.5), com os acréscimos de `correlationId`, `detalhes` e 409. Nada de tratador novo além do que o serviço já tem. Tempo esgotado da requisição → `InfrastructureException(ERRO_INTERNO)`; qualquer exceção não prevista cai no tratamento padrão do Spring, sem stack trace na resposta.
 - JSON: `BigDecimal` como string plana, datas `AAAA-MM-DD`, instantes `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`, `avisos` sempre presente. A configuração tem de estar **no mapper que o Spring MVC usa**: o Spring Boot 4 usa Jackson 3 (`tools.jackson`: `withConfigOverride(BigDecimal.class, o -> o.setFormat(JsonFormat.Value.forShape(JsonFormat.Shape.STRING)))` + `StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN`), e um `Module` ou customizador de Jackson 2 (`com.fasterxml.jackson.databind`) que o serviço já tenha é ignorado. Conferir onde o serviço configura o Jackson e pôr ali. Teste de rota: um fator com 16 casas sai como string.
 
-### 13.3 Segurança (`SegurancaConfig`)
+### 13.3 Sem autenticação; `acionadoPor` e `usuario`
 
-Só o Resource Server do Spring configurado pelo `application.yml` da seção 1.2 (`spring.security.oauth2.resourceserver.jwt.issuer-uri` e `audiences`, sem valor padrão). **Proibido** criar `JwtDecoder` próprio, validador de reserva ou decodificador que aceite qualquer token ("mock"), em qualquer perfil: sem emissor, a aplicação não sobe; com o Entra ID fora, o Spring recusa com 401. Nos testes, `SecurityMockMvcRequestPostProcessors.jwt()` do `spring-security-test` (já vem no `spring-boot-starter-test`).
+O engine não tem Spring Security, `SegurancaConfig` nem validação de token: **Proibido** acrescentar o Resource Server, `JwtDecoder`, filtro de autorização ou qualquer verificação de papel. Quem autentica o usuário é o `services/curves` (e o BFF), que chama o engine.
 
-```java
-http.csrf(c -> c.disable())
-  .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-  .authorizeHttpRequests(a -> a
-    .requestMatchers("/actuator/health/**").permitAll()
-    .requestMatchers(HttpMethod.POST, "/api/v1/cargas").hasAuthority("Curvas.Processor")
-    .requestMatchers(HttpMethod.POST, "/api/v1/construcoes/*").hasAuthority("Curvas.Orquestrador")
-    .requestMatchers(HttpMethod.POST, "/api/v1/curvas/*/*/construcao", "/api/v1/curvas/*/*/interpolada").hasAuthority("Curvas.Operador")
-    .requestMatchers(HttpMethod.POST, "/api/v1/modelos/*/*", "/api/v1/modelos/*/*/versoes/*/validacao", "/api/v1/calendarios/*/importacao").hasAuthority("Curvas.ModelosAutor")
-    .requestMatchers(HttpMethod.POST, "/api/v1/modelos/*/*/versoes/*/ativacao", "/api/v1/modelos/*/*/desativacao").hasAuthority("Curvas.ModelosAprovador")
-    .requestMatchers(HttpMethod.GET, "/api/v1/**").hasAnyAuthority("Curvas.Leitura", "Curvas.Operador")
-    .anyRequest().denyAll())
-  .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(conversorRoles())));
-// conversorRoles: JwtGrantedAuthoritiesConverter com authoritiesClaimName "roles" e authorityPrefix ""
-```
-
-Usuário: claim `preferred_username`, senão `appid`.
+- `acionadoPor`: vem da rota (o controller de `POST /cargas` passa `CARGA`, o de `POST /construcoes/{dataBase}` passa `ORQUESTRADOR`, e os demais `API`); não há como o chamador escolher.
+- `usuario`: cada controller lê o cabeçalho opcional (`@RequestHeader(name = "X-Usuario", required = false)`) e o passa ao caso de uso, que o grava no `usuario` do `CURVA_GRAVADA` e em `cUsuarCalc`; ausente, é nulo (a coluna `cUsuarCalc` aceita nulo). O engine não valida o valor. Só o envio e a ativação de script (segunda parte) exigem o cabeçalho (400 `PARAMETRO_INVALIDO` sem ele), porque o `estado.json` grava `autor` e `aprovador`.
 
 ### 13.4 `GET /valores-cadastro`
 
@@ -1087,17 +1062,17 @@ Tabela da spec `curve-engine-resilience`, com as propriedades da seção 1.2. Gr
 
 ### 15.1 Primeira parte (change `engine-construcao-curvas`)
 
-1. Seções 1, 2, 3, 4 (tarefas 1.x, 2.x e 15.1). Na seção 1, **pular** o que é da segunda parte: no `pom.xml`, nada de Blob, `azure-identity`, POI nem Resource Server; no `application.yml`, nada de `engine.blob`, `engine.groovy` nem `spring.security` (autenticação adiada).
+1. Seções 1, 2, 3, 4 (tarefas 1.x, 2.x e 15.1). Na seção 1, **pular** o que é da segunda parte: no `pom.xml`, nada de Blob, `azure-identity` nem POI; no `application.yml`, nada de `engine.blob` nem `engine.groovy`.
 2. Seção 6 (3.x). Seção 5 (4.1, 4.1b, 4.2, 4.3; a 5.4, origem secundária, é da segunda parte).
 3. Seção 7.6 (6.2). Seção 8 (7.x): o contrato recebe a `MemoriaCalculo` da seção 10.1, só como acumulador, sem planilha.
 4. Seção 7 (8.1, 8.3, 8.2b, 8.4, 8.5, 8.6; a 8.2, simulação como rota, é da segunda parte). Seção 9 (9.1, 9.2, 9.3, 9.3b, 9.4; a 9.5, derivadas, é da segunda parte). Leitura em `READ COMMITTED` (10.3).
-5. Seção 13 (12.0, 12.1, 12.2, 12.4; sem a gestão de scripts, sem segurança). Seção 12, só a exportação de feriados em JSON (14.4).
+5. Seção 13 (12.0, 12.1, 12.2, 12.4; sem a gestão de scripts). Seção 12, só a exportação de feriados em JSON (14.4).
 6. Seção 13.5 (remoções) e as correções 17.1, 17.2, 17.4, 17.6 a 17.10; `mvn compile` limpo.
 7. Seção 16, só os testes do que foi feito (os de Groovy, Blob, planilha, auditoria e resiliência ficam para a segunda parte). Tarefas 16.1 e 16.2.
 
 ### 15.2 Segunda parte (change `engine-modelos-curva`)
 
-1. Seção 1, o que ficou: dependências de Blob, `azure-identity`, POI e Resource Server; `engine.blob`, `engine.groovy`, `spring.security`.
+1. Seção 1, o que ficou: dependências de Blob, `azure-identity` e POI; `engine.blob`, `engine.groovy`.
 2. Seção 5.4 (4.2b). Seção 11 (5.x). Seção 10.1 completa (6.1).
 3. Seção 7 (8.2, 8.3b). Seção 9.3 (9.5). Seção 14.1 (10.1). Seção 13 (10.4, 12.3). Seções 10.2/10.3 (13.x, 14.6). Seção 12 (14.1–14.3, e a planilha e a `versao` da 14.4). Seções 14.2–14.4 (11.x, 14.5).
 4. Correções 17.3 e 17.5; testes da segunda parte (seção 16); homologação (seção 17).
@@ -1145,7 +1120,7 @@ Ordem: **verificar, adaptar, criar, rodar**. Só o que já existe no pom (`sprin
 | `ResolverModelosTest` (`ScriptsPort` em memória) | resolução; duas instâncias; ativação concorrente; hash adulterado; Blob parado; circuito |
 | `CarregadorGroovyTest` | válido; tipo errado; rede → reprovado; laço → `MODELO_FALHOU`; `LogLinear` sobrescrevendo só `valorNoSegmento`; script com `DayCounter.Business252` e `new Brazil()` |
 | `PlanilhaPoiAdapterTest`, `CalendarioPlanilhaTest` | abas, cabeçalhos, tipos de célula; ida e volta do `Brazil` 2001–2100; mesma planilha → mesmo hash |
-| `ApiContratoTest` (MockMvc) | cada rota com 401/403/papel certo; um por `codigoErro`; `X-Correlation-Id`; fator com 16 casas como string; parâmetro desconhecido 400; `data` em sábado |
+| `ApiContratoTest` (MockMvc) | um por `codigoErro`; `X-Usuario` presente e ausente; `X-Correlation-Id`; fator com 16 casas como string; parâmetro desconhecido 400; `data` em sábado |
 | `FusoTest` | `OffsetDateTime.ofInstant(Instant.parse("2026-09-15T01:30:00Z"), ZoneId.systemDefault())` → `2026-09-14T22:30-03:00`; `conferirFuso` falha com outro fuso |
 | `ValoresCadastroTest` | ida e volta com o validador; Groovy ativo aparece; todo valor com `rotulo` e `descricao` |
 | `ArquiteturaTest` (ArchUnit) | `domain` não depende de `org.springframework`, `jakarta.persistence`, `tools.jackson`, `com.azure`, `org.apache.poi`, `groovy`; `application` não depende de `adapter` |

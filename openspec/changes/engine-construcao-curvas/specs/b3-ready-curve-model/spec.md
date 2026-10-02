@@ -25,7 +25,7 @@ O modelo `PRONTA_TS_B3` SHALL exigir origem com fonte `B3` e produto `TS`; outra
 - **THEN** `DI_MERCADO` é construída com os mesmos pontos da `DIxPRE`
 
 ### Requirement: Regras do arquivo
-O `TaxaSwap.txt` já chega validado pelo leiaute no processor (change `conector-b3-webhook-ingest`), que não grava o código com linha inválida; as regras abaixo protegem contra dado alterado depois da gravação. Nenhuma linha SHALL ser descartada. Para cada situação das linhas lidas de `tBtrsCurvaPrimr`, o resultado SHALL ser:
+O `TaxaSwap.txt` já chega validado pelo leiaute no processor (change `processor-carga-b3`), que não grava o código com linha inválida; as regras abaixo protegem contra dado alterado depois da gravação. Nenhuma linha SHALL ser descartada. Para cada situação das linhas lidas de `tBtrsCurvaPrimr`, o resultado SHALL ser:
 
 | Situação | Resultado |
 |---|---|
@@ -46,9 +46,9 @@ As cinco curvas SHALL ser cadastradas com construção `PRONTA_TS_B3`, origem `B
 
 | Código | Nome | Código na fonte | Unidade | Base de interpolação + interpolador | Eixo | Cotação | Extrap. fim | Casas | Modo |
 |---|---|---|---|---|---|---|---|---|---|
-| `PRE` | DIxPRE | `PRE` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Business252`/`Compounded`/`Annual` | `FlatForward` | 7 | `HALF_UP` |
-| `DCL` | Cupom limpo de dólar | `DCL` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Actual360`/`Simple` | `FlatForward` | 7 | `HALF_UP` |
-| `DPL` | Cupom Limpo DI X IPCA | `DPL` | `TAXA` | `Discount` + `LogLinear` | `Business252` | `Business252`/`Compounded`/`Annual` | `FlatForward` | 7 | `HALF_UP` |
+| `PRE` | DIxPRE | `PRE` | `TAXA` | `Discount` + `FlatForward` | `Business252` | `Business252`/`Compounded`/`Annual` | `FlatForward` | 7 | `HALF_UP` |
+| `DCL` | Cupom limpo de dólar | `DCL` | `TAXA` | `Discount` + `FlatForward` | `Business252` | `Actual360`/`Simple` | `FlatForward` | 7 | `HALF_UP` |
+| `DPL` | Cupom Limpo DI X IPCA | `DPL` | `TAXA` | `Discount` + `FlatForward` | `Business252` | `Business252`/`Compounded`/`Annual` | `FlatForward` | 7 | `HALF_UP` |
 | `INP` | IBOVESPA | `INP` | `PONTOS` | `Price` + `LogLinear` | `Business252` | — | `FlatValue` | 7 | `HALF_UP` |
 | `PTX` | PTAX - USD | `PTX` | `PRECO` | `Price` + `LogLinear` | `Business252` | — | `Disabled` | 7 | `DOWN` |
 

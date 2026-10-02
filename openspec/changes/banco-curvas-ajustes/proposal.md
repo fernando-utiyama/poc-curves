@@ -1,6 +1,6 @@
 ## Why
 
-As changes `engine-construcao-curvas`, `engine-modelos-curva`, `curves-cadastro-curvas` e `conector-b3-webhook-ingest` foram escritas sem mudar o banco, porque o schema oficial não podia ser alterado nesta fase. Dois pontos do schema, porém, atrapalham diretamente o que vem a seguir e precisam ser levados ao dono do schema:
+As changes `engine-construcao-curvas`, `engine-modelos-curva`, `curves-cadastro-curvas`, `conector-b3-webhook-ingest` e `processor-carga-b3` foram escritas sem mudar o banco, porque o schema oficial não podia ser alterado nesta fase. Dois pontos do schema, porém, atrapalham diretamente o que vem a seguir e precisam ser levados ao dono do schema:
 
 - **Ticker Bloomberg curto demais.** `tBbergCurvaPrimr.cTickerBberg` é `CHAR(20)`. Os nós da SOFR são publicados como `S0490Z <tenor> BLC2 Curncy`, e `S0490Z 15M BLC2 Curncy` tem 22 caracteres. Sem aumentar a coluna, o feeder Bloomberg teria de guardar uma forma encurtada e inventada do ticker, diferente do que a Bloomberg publica.
 - **`tCurvaData` sobrando.** A curva construída (os vértices, com dias e fatores) fica em `tDadoVertcCurva`, e a curva interpolada, em `tDadoCurva`. `tCurvaData` não é usada por ninguém e tem uma FK para `tDadoCurva` que só confunde o modelo; sai.

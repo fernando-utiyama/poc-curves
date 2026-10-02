@@ -1,6 +1,6 @@
 ## Purpose
 
-No `services/curves`, criar, consultar, alterar, inativar e reativar as curvas de mercado (`tCurvaMercd`), que são a base do cadastro lido pelo engine. Define também as regras comuns a todo o CRUD de cadastro do serviço: identificação, autenticação, erros, concorrência, auditoria (log e arquivo montado na hora) e horário.
+No `services/curves`, criar, consultar, alterar, inativar e reativar as curvas de mercado (`tCurvaMercd`), que são a base do cadastro lido pelo engine. Define também as regras comuns a todo o CRUD de cadastro do serviço: identificação, autenticação, erros, última gravação vence, auditoria (log e arquivo montado na hora) e horário.
 
 ## ADDED Requirements
 
@@ -10,7 +10,7 @@ O serviço SHALL gravar em `tCurvaMercd`:
 | Campo da API | Coluna | Regra |
 |---|---|---|
 | `codigo` | `cTickerIdtfdUnic` | obrigatório; 1 a 50 caracteres de `A-Z` (só maiúsculas), `0-9` e `_`; único entre todas as curvas. As rotas fixas em minúsculas (`painel`, `valores`, `exportacao`, `importacao`, `pontos`) nunca colidem com um código |
-| `nome` | `cTickerIndcd` | obrigatório; 1 a 50 caracteres; único entre todas as curvas depois de normalizado (sem acentos, minúsculo, sem espaços nas pontas); **imutável** depois de criado, porque é a chave de todas as FKs |
+| `nome` | `cTickerIndcd` | obrigatório; 1 a 50 caracteres; único entre todas as curvas, inclusive as sem código (`cTickerIdtfdUnic` nulo), depois de normalizado (sem acentos, minúsculo, sem espaços nas pontas); a colisão responde 409 `NOME_EM_USO` antes de qualquer gravação; **imutável** depois de criado, porque é a chave de todas as FKs |
 | `unidade` | `cTpoVlr` | obrigatório: `TAXA`, `PRECO` ou `PONTOS` |
 | `dayCounterCotacao` | `cNormaDia` | obrigatório se `unidade` = `TAXA`, e nulo caso contrário: `Business252`, `Actual360`, `Actual365Fixed`, `Thirty360` |
 | `compounding` | `cTpoJuro` | obrigatório se `unidade` = `TAXA`, e nulo caso contrário: `Simple`, `Compounded`, `Continuous` |
@@ -22,6 +22,8 @@ O serviço SHALL gravar em `tCurvaMercd`:
 | `inicioVigencia` | `dInicVgcia` | obrigatório; data |
 | `fimVigencia` | `dValidAte` | opcional; data maior ou igual a `inicioVigencia` |
 
+Campo obrigatório ausente (inclusive `inicioVigencia`) MUST ser recusado com 422 `DADOS_INVALIDOS`, com um item em `detalhes` por campo, antes de qualquer comparação de datas (como `fimVigencia` maior ou igual a `inicioVigencia`).
+
 O serviço SHALL preencher `cUsuarAtulz` (usuário autenticado), `dCriacReg` (na criação) e `dUltAtulz` (a cada alteração). O serviço MUST NOT gravar `dBaseReft` nem `cUsuarCalc`, que são do engine, nem as colunas sem uso definido (`cPprioDado`, `cConfgIdtfd`, `cCurvaReft`, `cFamlInsttFincr`, `cIndxdAtivo`, `cTpoCotac`, `iPrvdrDados`, `rAtivoIndcd`, `vFatorMultiAtivo`), que ficam nulas nas curvas criadas pelo serviço e intocadas nas demais.
 
 #### Scenario: Criação da DIxPRE
@@ -31,6 +33,14 @@ O serviço SHALL preencher `cUsuarAtulz` (usuário autenticado), `dCriacReg` (na
 #### Scenario: Nome que colide depois de normalizado
 - **WHEN** já existe a curva `Cupom limpo de dólar` e o cliente cria outra com o nome `CUPOM LIMPO DE DOLAR`
 - **THEN** a resposta é 409 com `NOME_EM_USO`, e nada é gravado
+
+#### Scenario: Nome em uso por curva sem código
+- **WHEN** existe uma linha de `tCurvaMercd` sem código com o nome `DIxPRE`, e o cliente cria uma curva com o nome `dixpre`
+- **THEN** a resposta é 409 com `NOME_EM_USO`, e nada é gravado
+
+#### Scenario: Início de vigência ausente
+- **WHEN** o cliente cria uma curva sem `inicioVigencia` e com `fimVigencia`
+- **THEN** a resposta é 422 com `DADOS_INVALIDOS` no campo `inicioVigencia`, sem comparar as datas, e nada é gravado
 
 #### Scenario: Unidade de preço com cotação
 - **WHEN** o cliente cria uma curva `PRECO` informando `compounding`
@@ -58,12 +68,12 @@ Não há exclusão física: a curva pode ter pontos, dados brutos e configuraç�
 - **WHEN** a curva `SLP` é inativada
 - **THEN** `cSitReg` passa a `INATIVO`, a curva continua consultável, os provedores da curva e as configurações são mantidos, e a carga deixa de construí-la automaticamente
 
-### Requirement: Concorrência otimista
-Toda resposta de consulta de uma curva SHALL trazer o cabeçalho `ETag` = SHA-256, em hexadecimal minúsculo, do JSON canônico (chaves em ordem alfabética, sem espaços) formado pelos campos da API da curva, pelas seus provedores (ordenadas por `idCurvaProvedor`) e pelas suas versões de configuração (ordenadas por `versao`). Os campos gravados pelo engine (`dBaseReft`, `cUsuarCalc`) e os de controle (`cUsuarAtulz`, `dCriacReg`, `dUltAtulz`) MUST NOT entrar no cálculo, para que uma construção do engine não invalide a edição de ninguém. Toda alteração (`PUT`, inativação, reativação e as alterações de provedores da curva e configurações da curva) MUST exigir o cabeçalho `If-Match` com esse valor. Ausente, a resposta MUST ser 428; diferente do atual, 412 com `ALTERADO_POR_OUTRO`, sem gravar nada.
+### Requirement: Última gravação vence
+Nenhuma rota do serviço SHALL fazer controle de versão (cabeçalho condicional ou comparação de estado): o cadastro é mantido por poucas pessoas, e quem salva por último vence. O estado anterior de toda alteração fica no evento de log `CADASTRO_ALTERADO` (requisito "Auditoria do cadastro"), de onde pode ser recuperado. A trava da curva em `tCurvaMercd` continua valendo só para serializar gravações concorrentes (como `idCurvaProvedor` por `MAX + 1`), sem recusar ninguém.
 
 #### Scenario: Duas pessoas editando a mesma curva
-- **WHEN** duas pessoas leem a curva `PRE` e as duas enviam alterações com o mesmo `ETag`
-- **THEN** a primeira é gravada, e a segunda recebe 412 com `ALTERADO_POR_OUTRO`
+- **WHEN** duas pessoas leem a curva `PRE` e as duas enviam alterações
+- **THEN** as duas são gravadas, uma depois da outra, a última vence, e o log tem um `CADASTRO_ALTERADO` de cada uma, com o estado anterior
 
 ### Requirement: Autenticação, papéis e erros
 Toda rota MUST exigir token JWT do Entra ID, no mesmo registro de aplicação do engine. Leitura exige `Curvas.Leitura`; escrita, o papel novo `Curvas.Cadastro`. Token ausente ou inválido: 401 `NAO_AUTENTICADO`; sem papel: 403 `SEM_PERMISSAO`. Toda resposta de erro SHALL seguir o formato de erro único do serviço (o mesmo do CRUD de provedores), trazendo o código abaixo, a mensagem em português, a rota, o `correlationId` e, quando houver, `detalhes` (`campo`, `linha`, `valor`, `motivo`, com nulo no que não se aplica); sem stack trace. Os códigos:
@@ -75,10 +85,9 @@ Toda rota MUST exigir token JWT do Entra ID, no mesmo registro de aplicação do
 | `SEM_PERMISSAO` | 403 | sem o papel exigido |
 | `NAO_ENCONTRADO` | 404 | curva, provedor da curva, versão ou provedor inexistente |
 | `CODIGO_EM_USO`, `NOME_EM_USO`, `PROVEDOR_DUPLICADO`, `PRIORIDADE_EM_USO` | 409 | unicidade violada |
-| `ALTERADO_POR_OUTRO` | 412 | `If-Match` diferente do estado atual |
 | `DADOS_INVALIDOS` | 422 | regra de campo violada; `detalhes` lista cada campo |
-| `IF_MATCH_AUSENTE` | 428 | alteração sem `If-Match` |
-| `ERRO_INTERNO` | 500 | qualquer outro erro |
+| `PONTOS_INVALIDOS` | 422 | lista de pontos que não pode ser gravada de forma consistente (spec `pontos-curva-manual`) |
+| `ERRO_INTERNO` | 500 | qualquer outro erro, inclusive a espera de 60 segundos pela trava de uma consulta esgotada |
 
 Toda resposta SHALL trazer `X-Correlation-Id` (o recebido ou um UUID gerado).
 
@@ -89,7 +98,7 @@ Toda resposta SHALL trazer `X-Correlation-Id` (o recebido ou um UUID gerado).
 ### Requirement: Auditoria do cadastro
 Nada do cadastro SHALL ser gravado no Blob Storage, que guarda só os arquivos originais dos feeders e os scripts Groovy. Toda alteração do cadastro (curva, provedor da curva ou configuração, pela API ou pela planilha) SHALL emitir, depois do commit, o evento de log `CADASTRO_ALTERADO` com nível `AVISO`: `idAuditoria`, código, nome, tipo (`CURVA`, `PROVEDOR` ou `CONFIGURACAO`), operação (`CRIACAO`, `ALTERACAO`, `INATIVACAO`, `REATIVACAO`, `EXCLUSAO`), usuário, instante (horário de Brasília), `correlationId`, `idLote` (quando vier da planilha), estado anterior e estado novo completos. O evento traz sempre o nome, que é imutável, para o histórico sobreviver a uma troca de código. O destino dos logs SHALL ter retenção definida pela área de risco.
 
-`GET /api/v1/curvas-mercado/{codigo}/auditoria?formato=xlsx|json` (papel `Curvas.Leitura`), pedido pelo front, SHALL montar na hora, sem guardar nada, o arquivo de auditoria do cadastro da curva: a curva com todos os campos, inclusive `cUsuarAtulz`, `dCriacReg`, `dUltAtulz`, `dBaseReft` e `cUsuarCalc`; todos os provedores da curva; todas as versões de configuração, com vigência e parâmetros; e o `ETag` atual. O nome do arquivo SHALL ser `{codigo}_CADASTRO_AUDITORIA_{AAAAMMDDHHmmss}.xlsx`, no horário de Brasília. Quem alterou o quê antes está nos eventos `CADASTRO_ALTERADO` do log.
+`GET /api/v1/curvas-mercado/{codigo}/auditoria?formato=xlsx|json` (papel `Curvas.Leitura`), pedido pelo front, SHALL montar na hora, sem guardar nada, o arquivo de auditoria do cadastro da curva: a curva com todos os campos, inclusive `cUsuarAtulz`, `dCriacReg`, `dUltAtulz`, `dBaseReft` e `cUsuarCalc`; todos os provedores da curva; todas as versões de configuração, com vigência e parâmetros. O nome do arquivo SHALL ser `{codigo}_CADASTRO_AUDITORIA_{AAAAMMDDHHmmss}.xlsx`, no horário de Brasília. Quem alterou o quê antes está nos eventos `CADASTRO_ALTERADO` do log.
 
 #### Scenario: Quem mudou a unidade
 - **WHEN** a unidade de uma curva é alterada
@@ -102,7 +111,7 @@ Nada do cadastro SHALL ser gravado no Blob Storage, que guarda só os arquivos o
 ### Requirement: Contrato de tipos para o front
 Toda resposta JSON do serviço SHALL seguir o mesmo contrato de tipos do engine (spec `curve-engine-api` do change `engine-construcao-curvas`): decimais como string em notação simples, datas `AAAA-MM-DD`, instantes em ISO-8601 com o deslocamento de Brasília, enums como string exatamente como nas specs, com diferença entre maiúsculas e minúsculas, e `avisos` como lista de `{ "codigo", "mensagem", "detalhes" }`, vazia quando não há aviso. O front é pt-BR: a API troca valores em formato de máquina e o front formata para pt-BR na tela (vírgula decimal, `dd/mm/aaaa`, horário de Brasília); mensagens de erro e de aviso, rótulos e descrições SHALL estar em pt-BR, com acentuação, em UTF-8; os códigos não são traduzidos. Na entrada, enum com caixa diferente (`taxa`, `business252`) MUST ser recusado com 422 `DADOS_INVALIDOS`, e decimal SHALL ser aceito como string.
 
-As colunas `CHAR` de `tCurvaMercd` (`cNormaDia`, `cTpoJuro`, `cSitReg`, `cTpoVlr`, `cPaisInstt`) são completadas com espaços pelo banco. O serviço SHALL gravar os valores sem espaços e SHALL aparar os espaços à direita de toda coluna de texto lida, antes de devolver, comparar ou calcular o `ETag`.
+As colunas `CHAR` de `tCurvaMercd` (`cNormaDia`, `cTpoJuro`, `cSitReg`, `cTpoVlr`, `cPaisInstt`) são completadas com espaços pelo banco. O serviço SHALL gravar os valores sem espaços e SHALL aparar os espaços à direita de toda coluna de texto lida, antes de devolver ou comparar.
 
 Enums do serviço:
 
@@ -119,11 +128,12 @@ Enums do serviço:
 | tipo no `CADASTRO_ALTERADO` | `CURVA`, `PROVEDOR`, `CONFIGURACAO` |
 | operação no `CADASTRO_ALTERADO` | `CRIACAO`, `ALTERACAO`, `INATIVACAO`, `REATIVACAO`, `EXCLUSAO` |
 | operação no `PONTOS_EDITADOS` | `SUBSTITUICAO`, `EXCLUSAO` |
+| operação no `CURVA_PRIMARIA_EDITADA` | `INCLUSAO`, `ALTERACAO`, `EXCLUSAO`, `EXCLUSAO_DATA` |
 | `origem` no `PONTOS_EDITADOS` | `API`, `PLANILHA` |
 | `modo` da importação | `SIMULACAO`, `APLICACAO` |
 | `Resultado` na planilha | `SEM_MUDANCA`, `INCLUSAO`, `ALTERACAO`, `EXCLUSAO` ou o código do erro |
 
-Os parâmetros de cálculo (`parametros`) seguem os valores da spec `curve-build-pipeline` do engine, repassados por `GET /api/v1/curvas-mercado/valores`.
+Os parâmetros de cálculo (`parametros`) seguem os valores da spec `curve-build-pipeline` do engine, servidos por `GET /api/v1/curvas-mercado/valores` a partir da tabela embutida no serviço (sem chamada ao engine nesta fase).
 
 Avisos do serviço:
 
@@ -134,26 +144,30 @@ Avisos do serviço:
 | `MODELO_NAO_NATIVO` | configuração | modelo, interpolador ou calendário que depende de script Groovy |
 | `MODELO_POR_ORIGEM_SEM_PROVEDOR` | provedores da curva, configuração, planilha | chave de `MODELOS_POR_ORIGEM` sem provedor correspondente, ou da origem principal: ignorada pelo engine |
 | `CURVA_COM_FILHAS` | inativação | curva é componente de curva derivada ativa |
-| `VALORES_SEM_ENGINE` | valores aceitos | engine fora: valores da cópia embutida, só com modelos nativos |
-| `ENGINE_INDISPONIVEL` | painel | engine fora: situação sem conferência |
+| `VALORES_SEM_ENGINE` | valores aceitos (change `curves-operacao-curvas`) | engine fora: valores da cópia embutida, só com modelos nativos; não ocorre na primeira parte, que não chama o engine |
+| `ENGINE_INDISPONIVEL` | painel (change `curves-operacao-curvas`) | engine fora: situação sem conferência |
 | `INTERPOLADA_DESATUALIZADA` | pontos, planilha de pontos | pontos gravados, mas a regravação da curva interpolada no engine falhou; ela fica com a interpolação anterior até ser regravada |
 | `PONTO_ANTES_DA_DATA_BASE` | pontos | data do ponto igual ou anterior à data-base |
 | `PONTO_EM_FIM_DE_SEMANA` | pontos | ponto em sábado ou domingo |
 | `PONTO_EM_FERIADO` | pontos | ponto em feriado do calendário da curva |
 | `DIAS_UTEIS_DIFERENTES_DO_CALENDARIO` | pontos | dias úteis informados diferentes do calendário da curva; o engine usa os informados |
-| `DIAS_UTEIS_INCOERENTES` | pontos | dias úteis menores que 1 ou maiores que os dias corridos |
+| `DIAS_UTEIS_INCOERENTES` | pontos, primária B3 | dias úteis menores que 1 ou maiores que os dias corridos |
 | `DIAS_UTEIS_FORA_DE_ORDEM` | pontos | dias úteis iguais ou menores que os de um ponto de data anterior |
 | `VALOR_NAO_POSITIVO` | pontos | preço ou pontos menor ou igual a zero |
 | `VALOR_ARREDONDADO` | pontos | valor arredondado pela configuração; `detalhes` traz o enviado e o gravado |
 | `SEM_CONFIGURACAO` | pontos | sem configuração vigente: gravado sem arredondar |
 | `CALENDARIO_NAO_VERIFICADO` | pontos | engine fora ou sem configuração: feriados não conferidos |
 | `SEM_MUDANCA` | pontos | lista igual à gravada: nada foi escrito |
+| `DIAS_CORRIDOS_NAO_POSITIVO` | primária B3 | dias corridos menores que 1: a construção falha com `INSUMO_INVALIDO` até a correção |
+| `DIAS_CORRIDOS_REPETIDOS` | primária B3 | duas linhas da data com os mesmos dias corridos: a construção falha com `INSUMO_INVALIDO` até a correção |
+| `CURVA_SEM_PROVEDOR_B3` | primária B3 | a curva não tem provedor `B3`/`TS`: o processor não grava nem substitui essa curva |
+| `CURVA_JA_CONSTRUIDA` | primária B3 | a curva já tem pontos na data-base: só um recálculo forçado pelo engine usa a correção |
 
 Um código de aviso ou de erro novo SHALL entrar nestas tabelas e na resposta de `GET /api/v1/curvas-mercado/valores` antes de ser usado.
 
 #### Scenario: Situação lida de coluna CHAR
 - **WHEN** a curva `PRE` tem `cSitReg` gravado como `ATIVO` numa coluna `CHAR(20)`
-- **THEN** a resposta traz `"situacao": "ATIVO"`, sem espaços, e o `ETag` é o mesmo de antes da leitura
+- **THEN** a resposta traz `"situacao": "ATIVO"`, sem espaços
 
 #### Scenario: Enum em caixa errada
 - **WHEN** o cliente cria uma curva com `unidade` = `taxa`

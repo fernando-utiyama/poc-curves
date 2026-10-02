@@ -21,12 +21,12 @@ GET /api/v1/curvas-mercado/valores (e no Swagger do serviço).
 
 Código  Nome                   Unidade  Origem (provedor/produto/código)  Construção             Interpolador
 ------  ---------------------  -------  --------------------------------  ---------------------  ------------
-PRE     DIxPRE                 TAXA     B3 / TS / PRE                     PRONTA_TS_B3           LogLinear
-DCL     Cupom limpo de dólar   TAXA     B3 / TS / DCL                     PRONTA_TS_B3           LogLinear
-DPL     Cupom Limpo DI X IPCA  TAXA     B3 / TS / DPL                     PRONTA_TS_B3           LogLinear
+PRE     DIxPRE                 TAXA     B3 / TS / PRE                     PRONTA_TS_B3           FlatForward
+DCL     Cupom limpo de dólar   TAXA     B3 / TS / DCL                     PRONTA_TS_B3           FlatForward
+DPL     Cupom Limpo DI X IPCA  TAXA     B3 / TS / DPL                     PRONTA_TS_B3           FlatForward
 INP     IBOVESPA               PONTOS   B3 / TS / INP                     PRONTA_TS_B3           LogLinear
 PTX     PTAX - USD             PRECO    B3 / TS / PTX                     PRONTA_TS_B3           LogLinear
-NTNB    NTN-B                  TAXA     ANBIMA / MS / NTN-B               NTNB_BOOTSTRAP_ANBIMA  LogLinear
+NTNB    NTN-B                  TAXA     ANBIMA / MS / NTN-B               NTNB_BOOTSTRAP_ANBIMA  FlatForward
 SOFR    SOFR                   TAXA     BLOOMBERG / BLC2 / S0490Z         SOFR_ZERO_BLOOMBERG    Linear
 
 Código  Base interp.    Eixo         Cotação (curva)                 Calendário                  Convenção          Extrap. início  Extrap. fim  Horiz.  Casas  Arred.
@@ -49,13 +49,12 @@ Correspondência com o Manual de Curvas B3:
 2. ORDEM DAS CHAMADAS (por curva)
 ---------------------------------
 
-Papel exigido: Curvas.Cadastro. Toda chamada depois da criação exige
-If-Match com o ETag mais recente da curva (cada alteração muda o ETag; a
-resposta de cada alteração traz o novo).
+Papel exigido: Curvas.Cadastro. Nenhuma chamada exige cabeçalho de versão
+(quem salva por último vence); a ordem abaixo só respeita as dependências.
 
-  1) POST /api/v1/curvas-mercado                         -> 201, ETag
-  2) POST /api/v1/curvas-mercado/{codigo}/provedores       (If-Match) -> 201, ETag novo
-  3) POST /api/v1/curvas-mercado/{codigo}/configuracoes  (If-Match) -> 201, versão 1
+  1) POST /api/v1/curvas-mercado                         -> 201
+  2) POST /api/v1/curvas-mercado/{codigo}/provedores       -> 201
+  3) POST /api/v1/curvas-mercado/{codigo}/configuracoes  -> 201, versão 1
 
 Antes de 3), dá para conferir sem gravar:
      POST /api/v1/curvas-mercado/{codigo}/configuracoes/validacao
@@ -96,7 +95,7 @@ POST /api/v1/curvas-mercado/PRE/provedores
 POST /api/v1/curvas-mercado/PRE/configuracoes
 {
   "modeloConstrucao": "PRONTA_TS_B3",
-  "interpolador": "LogLinear",
+  "interpolador": "FlatForward",
   "inicioVigencia": "2026-01-01",
   "parametros": {
     "BASE_INTERPOLACAO": "Discount",
@@ -132,7 +131,7 @@ POST /api/v1/curvas-mercado/DCL/provedores
 POST /api/v1/curvas-mercado/DCL/configuracoes
 {
   "modeloConstrucao": "PRONTA_TS_B3",
-  "interpolador": "LogLinear",
+  "interpolador": "FlatForward",
   "inicioVigencia": "2026-01-01",
   "parametros": {
     "BASE_INTERPOLACAO": "Discount",
@@ -167,7 +166,7 @@ POST /api/v1/curvas-mercado/DPL/provedores
 POST /api/v1/curvas-mercado/DPL/configuracoes
 {
   "modeloConstrucao": "PRONTA_TS_B3",
-  "interpolador": "LogLinear",
+  "interpolador": "FlatForward",
   "inicioVigencia": "2026-01-01",
   "parametros": {
     "BASE_INTERPOLACAO": "Discount",
@@ -269,7 +268,7 @@ POST /api/v1/curvas-mercado/NTNB/provedores
 POST /api/v1/curvas-mercado/NTNB/configuracoes
 {
   "modeloConstrucao": "NTNB_BOOTSTRAP_ANBIMA",
-  "interpolador": "LogLinear",
+  "interpolador": "FlatForward",
   "inicioVigencia": "2026-01-01",
   "parametros": {
     "BASE_INTERPOLACAO": "Discount",
@@ -325,8 +324,7 @@ POST /api/v1/curvas-mercado/SOFR/configuracoes
 4. O MESMO CADASTRO NA PLANILHA DE IMPORTAÇÃO
 ---------------------------------------------
 
-Aba Curvas (Classificacao, ClasseAtivo, FimVigencia e Controle vazios;
-Controle vazio = curva nova):
+Aba Curvas (Classificacao, ClasseAtivo e FimVigencia vazios):
 
 Curva                  Codigo  Unidade  DayCounterCotacao  Compounding  Moeda  Pais  Situacao  InicioVigencia
 DIxPRE                 PRE     TAXA     Business252        Compounded   BRL    BR    ATIVO     2026-01-01
@@ -351,12 +349,12 @@ SOFR                   BLOOMBERG  BLC2     S0490Z         1
 Aba Configuracoes (Versao vazia = versão nova; FimVigencia ignorada):
 
 Curva                  InicioVig.  ModeloConstrucao       Interpolador  BASE_INTERPOLACAO  DAY_COUNTER_TEMPO  FREQUENCY  CALENDARIO    MERCADO_CALENDARIO  BUSINESS_DAY_CONVENTION  EXTRAPOLACAO_INICIO  EXTRAPOLACAO_FIM  HORIZONTE  CASAS_DECIMAIS  MODO_ARREDONDAMENTO
-DIxPRE                 2026-01-01  PRONTA_TS_B3           LogLinear     Discount           Business252        Annual     Brazil        Settlement          Following                Disabled             FlatForward       10Y        7               HALF_UP
-Cupom limpo de dólar   2026-01-01  PRONTA_TS_B3           LogLinear     Discount           Business252                   Brazil        Settlement          Following                Disabled             FlatForward       10Y        7               HALF_UP
-Cupom Limpo DI X IPCA  2026-01-01  PRONTA_TS_B3           LogLinear     Discount           Business252        Annual     Brazil        Settlement          Following                Disabled             FlatForward       10Y        7               HALF_UP
+DIxPRE                 2026-01-01  PRONTA_TS_B3           FlatForward   Discount           Business252        Annual     Brazil        Settlement          Following                Disabled             FlatForward       10Y        7               HALF_UP
+Cupom limpo de dólar   2026-01-01  PRONTA_TS_B3           FlatForward   Discount           Business252                   Brazil        Settlement          Following                Disabled             FlatForward       10Y        7               HALF_UP
+Cupom Limpo DI X IPCA  2026-01-01  PRONTA_TS_B3           FlatForward   Discount           Business252        Annual     Brazil        Settlement          Following                Disabled             FlatForward       10Y        7               HALF_UP
 IBOVESPA               2026-01-01  PRONTA_TS_B3           LogLinear     Price              Business252                   Brazil        Settlement          Following                Disabled             FlatValue         10Y        7               HALF_UP
 PTAX - USD             2026-01-01  PRONTA_TS_B3           LogLinear     Price              Business252                   Brazil        Settlement          Following                Disabled             Disabled          10Y        7               DOWN
-NTN-B                  2026-01-01  NTNB_BOOTSTRAP_ANBIMA  LogLinear     Discount           Business252        Annual     Brazil        Settlement          Following                FlatValue            FlatForward       10Y        8               HALF_UP
+NTN-B                  2026-01-01  NTNB_BOOTSTRAP_ANBIMA  FlatForward   Discount           Business252        Annual     Brazil        Settlement          Following                FlatValue            FlatForward       10Y        8               HALF_UP
 SOFR                   2026-01-01  SOFR_ZERO_BLOOMBERG    Linear        CompoundFactor     Actual360                     UnitedStates  FederalReserve      ModifiedFollowing        Disabled             FlatValue         10Y        7               HALF_UP
 
 
@@ -373,24 +371,24 @@ tCurvaMercd (cTickerIndcd = nome, PK; cTickerIdtfdUnic = código):
   SOFR                   SOFR  TAXA    Actual360    Simple      USD US ATIVO 2026-01-01
   (dBaseReft e cUsuarCalc ficam nulos: só o engine grava)
 
-tCurvaPrvdr (cldtfdUnic = MAX+1 gerado pelo serviço):
+tCurvaPrvdr (cIdtfdUnic = MAX+1 gerado pelo serviço):
   cTickerIndcd, iPrvdrDados, cPrvdrMercd, cTickerPrvdr, cPriorCsumo
   DIxPRE, B3, TS, PRE, 1  ...  SOFR, BLOOMBERG, BLC2, S0490Z, 1
 
 tConfgCurva (cVrsaoReg = 1, dInicVgcia = 2026-01-01, dValidAte = null).
 cModDado é gravado em JSON compacto, chaves na ordem da tabela do engine:
 
-  DIxPRE / PRONTA_TS_B3 / LogLinear
+  DIxPRE / PRONTA_TS_B3 / FlatForward
     {"BASE_INTERPOLACAO":"Discount","DAY_COUNTER_TEMPO":"Business252","FREQUENCY":"Annual","CALENDARIO":"Brazil","MERCADO_CALENDARIO":"Settlement","BUSINESS_DAY_CONVENTION":"Following","EXTRAPOLACAO_INICIO":"Disabled","EXTRAPOLACAO_FIM":"FlatForward","HORIZONTE":"10Y","CASAS_DECIMAIS":7,"MODO_ARREDONDAMENTO":"HALF_UP"}
-  Cupom limpo de dólar / PRONTA_TS_B3 / LogLinear
+  Cupom limpo de dólar / PRONTA_TS_B3 / FlatForward
     {"BASE_INTERPOLACAO":"Discount","DAY_COUNTER_TEMPO":"Business252","CALENDARIO":"Brazil","MERCADO_CALENDARIO":"Settlement","BUSINESS_DAY_CONVENTION":"Following","EXTRAPOLACAO_INICIO":"Disabled","EXTRAPOLACAO_FIM":"FlatForward","HORIZONTE":"10Y","CASAS_DECIMAIS":7,"MODO_ARREDONDAMENTO":"HALF_UP"}
-  Cupom Limpo DI X IPCA / PRONTA_TS_B3 / LogLinear
+  Cupom Limpo DI X IPCA / PRONTA_TS_B3 / FlatForward
     {"BASE_INTERPOLACAO":"Discount","DAY_COUNTER_TEMPO":"Business252","FREQUENCY":"Annual","CALENDARIO":"Brazil","MERCADO_CALENDARIO":"Settlement","BUSINESS_DAY_CONVENTION":"Following","EXTRAPOLACAO_INICIO":"Disabled","EXTRAPOLACAO_FIM":"FlatForward","HORIZONTE":"10Y","CASAS_DECIMAIS":7,"MODO_ARREDONDAMENTO":"HALF_UP"}
   IBOVESPA / PRONTA_TS_B3 / LogLinear
     {"BASE_INTERPOLACAO":"Price","DAY_COUNTER_TEMPO":"Business252","CALENDARIO":"Brazil","MERCADO_CALENDARIO":"Settlement","BUSINESS_DAY_CONVENTION":"Following","EXTRAPOLACAO_INICIO":"Disabled","EXTRAPOLACAO_FIM":"FlatValue","HORIZONTE":"10Y","CASAS_DECIMAIS":7,"MODO_ARREDONDAMENTO":"HALF_UP"}
   PTAX - USD / PRONTA_TS_B3 / LogLinear
     {"BASE_INTERPOLACAO":"Price","DAY_COUNTER_TEMPO":"Business252","CALENDARIO":"Brazil","MERCADO_CALENDARIO":"Settlement","BUSINESS_DAY_CONVENTION":"Following","EXTRAPOLACAO_INICIO":"Disabled","EXTRAPOLACAO_FIM":"Disabled","HORIZONTE":"10Y","CASAS_DECIMAIS":7,"MODO_ARREDONDAMENTO":"DOWN"}
-  NTN-B / NTNB_BOOTSTRAP_ANBIMA / LogLinear
+  NTN-B / NTNB_BOOTSTRAP_ANBIMA / FlatForward
     {"BASE_INTERPOLACAO":"Discount","DAY_COUNTER_TEMPO":"Business252","FREQUENCY":"Annual","CALENDARIO":"Brazil","MERCADO_CALENDARIO":"Settlement","BUSINESS_DAY_CONVENTION":"Following","EXTRAPOLACAO_INICIO":"FlatValue","EXTRAPOLACAO_FIM":"FlatForward","HORIZONTE":"10Y","CASAS_DECIMAIS":8,"MODO_ARREDONDAMENTO":"HALF_UP"}
   SOFR / SOFR_ZERO_BLOOMBERG / Linear
     {"BASE_INTERPOLACAO":"CompoundFactor","DAY_COUNTER_TEMPO":"Actual360","CALENDARIO":"UnitedStates","MERCADO_CALENDARIO":"FederalReserve","BUSINESS_DAY_CONVENTION":"ModifiedFollowing","EXTRAPOLACAO_INICIO":"Disabled","EXTRAPOLACAO_FIM":"FlatValue","HORIZONTE":"10Y","CASAS_DECIMAIS":7,"MODO_ARREDONDAMENTO":"HALF_UP"}
@@ -399,10 +397,12 @@ cModDado é gravado em JSON compacto, chaves na ordem da tabela do engine:
 6. VALORES ACEITOS (referência rápida)
 --------------------------------------
 
-A fonte oficial é o engine: GET /api/v1/valores-cadastro (engine), repassado
-pelo curves em GET /api/v1/curvas-mercado/valores, junto com os provedores.
-Os nomes de modelo, interpolador e calendário podem crescer com scripts
-Groovy ativos, por isso só a rota mostra a lista completa.
+O curves serve a lista em GET /api/v1/curvas-mercado/valores, a partir da
+tabela de parâmetros embutida no serviço (a mesma que valida o cadastro), junto
+com os provedores; nesta primeira parte não consulta o engine. Os nomes de
+modelo, interpolador e calendário podem crescer com scripts Groovy ativos: a
+segunda parte (curves-operacao-curvas) passa a consultar o engine
+(GET /api/v1/valores-cadastro) para listá-los.
 
 Curva (tCurvaMercd):
   unidade ............. TAXA | PRECO | PONTOS
@@ -412,7 +412,7 @@ Curva (tCurvaMercd):
 
 Configuração (tConfgCurva):
   modeloConstrucao .... PRONTA_TS_B3 | NTNB_BOOTSTRAP_ANBIMA | SOFR_ZERO_BLOOMBERG  (+ Groovy ativos)
-  interpolador ........ Linear | LogLinear | BackwardFlat | ForwardFlat | Cubic      (+ Groovy ativos)
+  interpolador ........ Linear | LogLinear | FlatForward | BackwardFlat | ForwardFlat | Cubic      (+ Groovy ativos)
 
 Parâmetros (cModDado):
   BASE_INTERPOLACAO ....... Discount | CompoundFactor | ZeroYield | Price
@@ -439,7 +439,8 @@ Decimais vão como string ("13.9000000").
 
 Combinações:
   - BASE_INTERPOLACAO Price só com unidade PRECO ou PONTOS; as outras bases de interpolação só com TAXA.
-  - FlatForward só com interpolador Linear ou LogLinear.
+  - Interpolador FlatForward só com BASE_INTERPOLACAO Discount (taxa a termo constante entre os nós; mesma conta do LogLinear sobre Discount).
+  - Extrapolação FlatForward só com interpolador Linear, LogLinear ou FlatForward.
   - Origem esperada pelo modelo nativo: PRONTA_TS_B3 = B3/TS;
     NTNB_BOOTSTRAP_ANBIMA = ANBIMA/MS; SOFR_ZERO_BLOOMBERG = BLOOMBERG/BLC2.
 

@@ -82,6 +82,10 @@ A situação SHALL ser decidida nesta ordem, pela primeira regra que se aplica:
 - **WHEN** a SOFR não tem linhas brutas na data-base de hoje
 - **THEN** a linha da `SOFR` tem `situacao` = `AGUARDANDO_CARGA`, `atrasada` = `false` e `atencao` = `false`
 
+#### Scenario: Curva que poderia ter sido construída
+- **WHEN** a carga B3 de `2026-09-14` gravou as linhas brutas da `DCL`, a conferência do engine está `OK`, e a `DCL` não tem pontos em `tDadoVertcCurva` na data
+- **THEN** a linha da `DCL` tem `situacao` = `NAO_CONSTRUIDA`, `atencao` = `true` e `atrasada` = `true` (a data-base é anterior a hoje)
+
 #### Scenario: Feriado americano
 - **WHEN** a data-base é `2026-11-26` (Thanksgiving, dia útil no Brasil)
 - **THEN** a `SOFR` aparece como `NAO_E_DIA_UTIL`, sem `atencao`, e as curvas B3 seguem as demais regras

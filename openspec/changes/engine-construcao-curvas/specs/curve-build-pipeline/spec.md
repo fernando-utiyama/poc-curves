@@ -34,7 +34,8 @@ Para unidade `TAXA`, `cNormaDia` e `cTpoJuro` SHALL ser obrigatórios; para `PRE
 - não houver linha vigente em `tConfgCurva`, ou houver mais de uma;
 - `BASE_INTERPOLACAO` = `Price` com unidade `TAXA`, ou `BASE_INTERPOLACAO` diferente de `Price` com unidade `PRECO` ou `PONTOS`;
 - `cTpoJuro` for `SimpleThenCompounded` ou `CompoundedThenSimple` (não suportados nesta fase);
-- a política `FlatForward` for usada com interpolador que não seja `Linear` ou `LogLinear`;
+- o interpolador `FlatForward` for usado com `BASE_INTERPOLACAO` diferente de `Discount`;
+- a política de extrapolação `FlatForward` for usada com interpolador que não seja `Linear`, `LogLinear` ou `FlatForward`;
 - a fonte ou o produto da origem não forem os esperados pelo modelo de construção cadastrado (para a origem principal, `cMotorCalc`; para uma secundária, o modelo de `MODELOS_POR_ORIGEM` ou, sem ele, `cMotorCalc`);
 - `FREQUENCY` for informada sem `cTpoJuro` = `Compounded`, ou for `NoFrequency`, `Once` ou `OtherFrequency`, que não definem `f`;
 - `MERCADO_CALENDARIO` não for o mercado do `CALENDARIO`.
@@ -46,7 +47,7 @@ Nenhum valor padrão SHALL ser usado além dos dois marcados na tabela.
 Os valores de enum SHALL ser comparados exatamente como escritos nesta spec, com diferença entre maiúsculas e minúsculas (`business252` é inválido). As colunas `CHAR` de `tCurvaMercd` (`cNormaDia`, `cTpoJuro`, `cSitReg`, `cTpoVlr`, `cPaisInstt`) devolvem o valor completado com espaços à direita; o engine SHALL aparar os espaços à direita de toda coluna de texto do cadastro antes de interpretá-la. `cSitReg` diferente de `ATIVO`, inclusive nulo, SHALL ser tratado como curva inativa.
 
 #### Scenario: Cadastro completo da PRE
-- **WHEN** a curva `PRE` tem origem `B3`/`TS`/`PRE`, construção `PRONTA_TS_B3`, interpolador `LogLinear`, unidade `TAXA`, `cNormaDia` = `Business252`, `cTpoJuro` = `Compounded` e os parâmetros `BASE_INTERPOLACAO` = `Discount`, `DAY_COUNTER_TEMPO` = `Business252`, `FREQUENCY` = `Annual`, `CALENDARIO` = `Brazil`, `MERCADO_CALENDARIO` = `Settlement`, `BUSINESS_DAY_CONVENTION` = `Following`, `EXTRAPOLACAO_FIM` = `FlatForward`, `HORIZONTE` = `10Y`, `CASAS_DECIMAIS` = 7, `MODO_ARREDONDAMENTO` = `HALF_UP`
+- **WHEN** a curva `PRE` tem origem `B3`/`TS`/`PRE`, construção `PRONTA_TS_B3`, interpolador `FlatForward`, unidade `TAXA`, `cNormaDia` = `Business252`, `cTpoJuro` = `Compounded` e os parâmetros `BASE_INTERPOLACAO` = `Discount`, `DAY_COUNTER_TEMPO` = `Business252`, `FREQUENCY` = `Annual`, `CALENDARIO` = `Brazil`, `MERCADO_CALENDARIO` = `Settlement`, `BUSINESS_DAY_CONVENTION` = `Following`, `EXTRAPOLACAO_FIM` = `FlatForward`, `HORIZONTE` = `10Y`, `CASAS_DECIMAIS` = 7, `MODO_ARREDONDAMENTO` = `HALF_UP`
 - **THEN** a curva pode ser construída e interpolada sem nenhum parâmetro vindo do chamador, com extrapolação de início `Disabled`
 
 #### Scenario: Item obrigatório ausente
@@ -149,6 +150,7 @@ O valor de um prazo SHALL ser obtido pela conversão inversa do `y` calculado, u
 Entre dois pontos consecutivos `(x_i, y_i)` e `(x_{i+1}, y_{i+1})`, com `w = (x − x_i)/(x_{i+1} − x_i)`, cada interpolador SHALL calcular:
 - `Linear`: `y = y_i + w·(y_{i+1} − y_i)`;
 - `LogLinear`: `y = y_i · (y_{i+1}/y_i)^w`; todos os `y` da curva MUST ser positivos, ou a interpolação falha com `PONTOS_NAO_INTERPOLAVEIS`, citando os pontos (pode acontecer com preço ou pontos não positivos gravados à mão no `services/curves`); a consulta dos pontos gravados continua funcionando;
+- `FlatForward` (Flat Forward do mercado): taxa a termo constante entre dois nós, ou seja, log-linear sobre o fator de desconto, `y = y_i · (y_{i+1}/y_i)^w`, com a mesma exigência de `y` positivos; só vale com `BASE_INTERPOLACAO` = `Discount`. É o nome de mercado do que o `LogLinear` calcula sobre `Discount`; o `LogLinear` continua aceito para essa base e dá os mesmos números;
 - `BackwardFlat`: `y = y_{i+1}`;
 - `ForwardFlat`: `y = y_i`;
 - `Cubic`: spline cúbica natural (segunda derivada nula no primeiro e no último ponto) sobre todos os pontos.
@@ -157,9 +159,9 @@ Os pontos SHALL ser ordenados por data, e dois pontos com a mesma data MUST NOT 
 
 | Função B3 | Base de interpolação + interpolador | Eixo | Cotação |
 |---|---|---|---|
-| 1.4.2 Flat Forward 252 | `Discount` + `LogLinear` | `Business252` | `Business252`/`Compounded`/`Annual` |
-| 1.4.3 Flat Forward 252 com convenção linear | `Discount` + `LogLinear` | `Business252` | `Actual360`/`Simple` |
-| 1.4.4 Interpolação 360 | `Discount` + `LogLinear` | `Actual360` | `Actual360`/`Compounded`/`Annual` |
+| 1.4.2 Flat Forward 252 | `Discount` + `FlatForward` | `Business252` | `Business252`/`Compounded`/`Annual` |
+| 1.4.3 Flat Forward 252 com convenção linear | `Discount` + `FlatForward` | `Business252` | `Actual360`/`Simple` |
+| 1.4.4 Interpolação 360 | `Discount` + `FlatForward` | `Actual360` | `Actual360`/`Compounded`/`Annual` |
 | 1.4.5 Interpolação de preços | `Price` + `LogLinear` | `Business252` | — |
 | 1.4.11 Interpolação 360 linear | `CompoundFactor` + `Linear` | `Actual360` | `Actual360`/`Simple` |
 

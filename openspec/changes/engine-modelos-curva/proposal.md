@@ -1,6 +1,6 @@
 ## Why
 
-> **Dividida em 2026-09-30.** A primeira parte (construir, gravar, consultar e interpolar as 7 curvas com os modelos e calendários nativos, e as rotas básicas usadas pelos outros serviços) está na change `engine-construcao-curvas`, que vem antes. O design e o guia de implementação, comuns às duas, estão na change `engine-construcao-curvas`. Esta change entrega o resto: origem secundária, curvas derivadas, scripts Groovy no Blob, simulação e memória de cálculo, auditoria, calendário por planilha, resiliência, autenticação e testes em massa. O texto abaixo descreve o engine inteiro, como contexto das duas partes.
+> **Dividida em 2026-09-30.** A primeira parte (construir, gravar, consultar e interpolar as 7 curvas com os modelos e calendários nativos, e as rotas básicas usadas pelos outros serviços) está na change `engine-construcao-curvas`, que vem antes. O design e o guia de implementação, comuns às duas, estão na change `engine-construcao-curvas`. Esta change entrega o resto: origem secundária, curvas derivadas, scripts Groovy no Blob, simulação e memória de cálculo, auditoria, calendário por planilha, resiliência e testes em massa. O texto abaixo descreve o engine inteiro, como contexto das duas partes.
 
 O primeiro objetivo do projeto é entregar 7 curvas: DIxPRE, DCL, PTAX, DPL e IBOVESPA (Taxa Swap B3), NTN-B (ANBIMA) e SOFR (Bloomberg). As três fontes pedem tratamento diferente:
 - as curvas B3 chegam prontas no `TaxaSwap.txt` (278 vértices por curva, com 7 casas decimais);
@@ -19,7 +19,7 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
     - `ntnbbootstrapanbima` (`NTNB_BOOTSTRAP_ANBIMA`): bootstrap sequencial por bisseção sobre `tAnbmaCurvaPrimr`;
     - `sofrzerobloomberg` (`SOFR_ZERO_BLOOMBERG`): nós por tenor, sem bootstrap;
     - `pontosprontos`: código comum aos modelos sem bootstrap.
-  - Interpolação no modelo do QuantLib: base de interpolação (`Discount`, `CompoundFactor`, `ZeroYield`, `Price`) + interpolador (`Linear`, `LogLinear`, `BackwardFlat`, `ForwardFlat`, `Cubic`) + `DayCounter` do eixo. As funções do Manual de Curvas B3 viram configuração. Extrapolação por lado: `Disabled`, `FlatForward`, `FlatValue`.
+  - Interpolação no modelo do QuantLib: base de interpolação (`Discount`, `CompoundFactor`, `ZeroYield`, `Price`) + interpolador (`Linear`, `LogLinear`, `FlatForward`, `BackwardFlat`, `ForwardFlat`, `Cubic`) + `DayCounter` do eixo. As funções do Manual de Curvas B3 viram configuração. Extrapolação por lado: `Disabled`, `FlatForward`, `FlatValue`.
   - Calendários `Brazil`/`Settlement` e `UnitedStates`/`FederalReserve`, com os feriados listados na spec. Feriados também podem ser mantidos por planilha: a importação gera um script Groovy de calendário versionado, e a exportação devolve a planilha no mesmo formato.
   - Construção, interpolação e calendário podem ser criados ou sobrescritos por Groovy, com versões imutáveis no Blob Storage existente (`groovy-models/{tipo}/{nome}/`), propagadas a todas as instâncias em até 30 segundos, validação antes de ativar, sandbox por lista permitida e tempo limite.
 - **Tipos e enums com os nomes do QuantLib** (`Compounding`, `Frequency`, `BusinessDayConvention`, `DayCounter`, calendários), em implementação própria, 100% Java, com valores em `BigDecimal` e `pow`/`ln`/`exp` pelo `StrictMath` do Java. Todo o resto usa o que o Java 21 já tem (`java.time`, `RoundingMode`, records, sealed, virtual threads), em arquitetura hexagonal.
@@ -35,9 +35,9 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
   - `formato=zip` gera um pacote de depuração: planilha, JSON, código-fonte exato de cada script Groovy usado e manifesto com hashes. A proveniência inclui a versão do engine.
   - Logs estruturados e um `hashPontos` ligam cada consulta à construção ou edição que gravou aqueles pontos.
 - **Auditoria sem mudar o banco e sem Blob.** Toda construção e todo recálculo emitem no log o evento `CURVA_GRAVADA`: quem, quando, de qual carga, com quais modelos e cadastro, e os pontos substituídos. A construção atualiza `tCurvaMercd.dBaseReft` (última data-base) e `cUsuarCalc`. O front pede o arquivo de auditoria de uma curva e data, que o engine monta na hora: pontos gravados, cadastro, modelos e a conferência ponto a ponto com o que a fonte produz agora. A edição manual de pontos sai do engine e vai para o `services/curves` (change `curves-cadastro-curvas`), como contingência.
-- **Leitura consistente e segurança de produção.**
+- **Leitura consistente e resiliência.**
   - Leituras só em `READ COMMITTED`, nunca `NOLOCK`: consulta nunca vê a data vazia no meio de uma reconstrução.
-  - Todas as rotas exigem JWT do Entra ID, com papéis de leitura, operador, processor, autor e aprovador de scripts.
+  - O engine não autentica; as rotas de script exigem o cabeçalho `X-Usuario` do chamador, para gravar autor e aprovador.
   - Tempo limite em toda dependência e repetição só do que é idempotente.
   - O Blob guarda, para o engine, só os scripts Groovy, e fora do ar nunca bloqueia construção nem consulta: o engine usa o último estado de script conhecido ou os modelos nativos e registra a degradação na proveniência e no log. Uma instância nova espera o Blob por até 5 minutos antes de ficar pronta.
   - Logs e métricas por dependência, e circuit breaker no Blob.
@@ -69,7 +69,7 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
 Acrescentam requisitos às capabilities criadas pela change `engine-construcao-curvas`:
 - `curve-build-pipeline`: curva derivada e construção por origem secundária.
 - `curve-extension-models`: ordem de resolução, scripts no Blob, mesma versão em todas as instâncias, versões e estados, validação e contenção.
-- `curve-engine-api`: rotas de operação e extensões, autenticação e papéis, saída em planilha e gestão de scripts.
+- `curve-engine-api`: rotas de operação e extensões, usuário nas rotas de script, saída em planilha e gestão de scripts.
 - `curve-load-trigger`: construção em cadeia das derivadas.
 - `curve-audit-history`: auditoria no log e arquivo de auditoria montado na hora.
 - `calendar-management`: calendário por lista, importação e validação da planilha, exportação em planilha e por versão.
@@ -84,13 +84,12 @@ Acrescentam requisitos às capabilities criadas pela change `engine-construcao-c
   - adaptador de planilha com Apache POI (`poi-ooxml`, dependência nova);
   - a entidade de `tDadoCurva` passa a ter só as quatro colunas do schema, e a de `tDadoVertcCurva` guarda os pontos.
 - **Banco: o engine não depende de alteração de schema.** Parâmetros da curva em JSON em `tConfgCurva.cModDado` (coluna existente); o engine escreve `tDadoVertcCurva` (pontos), `tDadoCurva` (interpolada) e, em `tCurvaMercd`, só `dBaseReft` e `cUsuarCalc`; `tConfgCurva.cRotnaCalc` passa a ser usado.
-- **Entra ID:** registro da aplicação com os papéis `Curvas.Leitura`, `Curvas.Operador`, `Curvas.Processor`, `Curvas.Orquestrador`, `Curvas.ModelosAutor` e `Curvas.ModelosAprovador`. Todo cliente da API passa a precisar de token.
 - **Blob Storage:** só a pasta `groovy-models/` no container existente, acessada por Managed Identity. Nenhum dado de curva vai para o Blob, que fica com os originais dos feeders e os scripts.
 - **Dependências fora do engine (outros changes):**
-  - B3: o processor precisa ler o `TaxaSwap.txt` pelo código exato e gravar em `tBtrsCurvaPrimr` (change `conector-b3-webhook-ingest`; hoje o conector transforma DCL/DPL em DOL e descarta PTX/INP);
+  - B3: o processor precisa ler o `TaxaSwap.txt` pelo código exato e gravar em `tBtrsCurvaPrimr` (changes `processor-carga-b3` e `conector-b3-webhook-ingest`; hoje o conector transforma DCL/DPL em DOL e descarta PTX/INP);
   - a ingestão ANBIMA (arquivo `ms{AAMMDD}.txt`, produto `MS`) grava só o título inteiro (código SELIC terminado em `99`) e precisa confirmar a unidade de `vVertcCurva`, calculado a partir de `Data Vencimento`; a escala de `vPrecoTx` (percentual) está confirmada pelo arquivo;
   - a ingestão SOFR precisa do feeder gravando os nós em `tBbergCurvaPrimr` (o ticker completo precisa da change `banco-curvas-ajustes`; a forma curta cabe no schema atual);
-  - o processor precisa chamar o webhook de carga depois do commit de cada carga, com retry pelo mesmo `idCarga` (change `conector-b3-webhook-ingest`, para a B3);
+  - o processor precisa chamar o webhook de carga depois do commit de cada carga, com retry pelo mesmo `idCarga` (change `processor-carga-b3`, para a B3);
   - o cadastro das 7 curvas vem do `services/curves` (change `curves-cadastro-curvas`, com o exemplo `exemplo-cadastro-7-curvas.txt`), com os valores das specs;
   - os clientes da API do engine (curve-bff) precisam migrar para as rotas novas (BREAKING).
 - **Fora de escopo:** CRUD de cadastro de curva e edição manual dos pontos (change `curves-cadastro-curvas`) e CRUD de provedor (outro dev); `tCurvaData`, que não é usada e sai do schema na change `banco-curvas-ajustes`; cache de curva; qualquer mudança de schema (alvos ideais registrados no design).

@@ -5,7 +5,7 @@ No `services/curves`, listar, consultar, incluir, alterar e apagar à mão as li
 ## ADDED Requirements
 
 ### Requirement: Rotas da curva primária B3
-O serviço SHALL expor (prefixo `/api/v1`), identificando a curva pelo código (`tCurvaMercd.cTickerIdtfdUnic`) e a linha pelo id (`tBtrsCurvaPrimr.cldtfdUnic`):
+O serviço SHALL expor (prefixo `/api/v1`), identificando a curva pelo código (`tCurvaMercd.cTickerIdtfdUnic`) e a linha pelo id (`tBtrsCurvaPrimr.cIdtfdUnic`):
 
 | Rota | Uso | Papel |
 |---|---|---|
@@ -35,12 +35,16 @@ Linhas de `tCurvaMercd` sem código MUST NOT aparecer. A curva inexistente, e a 
 
 Filtros: intervalo `de`..`ate` de datas-base (padrão: `ate` = hoje, `de` = `ate` − 30 dias; intervalo máximo de 366 dias, acima → 400 `PARAMETRO_INVALIDO`), `codigo` exato e trecho de `nome` (normalizado, como na listagem de curvas). A listagem MUST ser feita por uma consulta agregada no banco, sem ler as linhas uma a uma.
 
+#### Scenario: Intervalo invertido
+- **WHEN** o cliente chama `GET /api/v1/curvas-mercado/primaria-b3?de=2026-09-15&ate=2026-09-01`
+- **THEN** a resposta é 400 com `PARAMETRO_INVALIDO`, informando que `de` é posterior a `ate`
+
 #### Scenario: Seleção depois da carga
 - **WHEN** o gestor abre a listagem em `2026-09-15`, com a carga B3 de `2026-09-14` gravada para as 5 curvas ligadas
 - **THEN** a listagem traz 5 linhas com `dataBase` = `2026-09-14`, cada uma com `quantidadeLinhas` = 278, o código na fonte (`PRE`, `DCL`, `DPL`, `INP`, `PTX`) e `curvaConstruida` conforme o engine já tenha construído
 
 ### Requirement: Consulta das linhas de uma data
-`GET /curvas-mercado/{codigo}/primaria-b3/{dataBase}` SHALL devolver as linhas ordenadas por dias corridos e id, cada uma com `id` (`cldtfdUnic`), `diasCorridos` (`cDiaCorri`), `diasUteis` (`cDiaUtil`), `valor` (`vPrecoTx`), `fatorAcumulado` (`vFatorAcum`), `fatorDia` (`vFatorDia`), decimais como string na escala da coluna, e `dataPonto` (data-base + dias corridos, só leitura), mais `curvaConstruida` e os avisos da data (requisito "Validação das linhas") calculados sobre as linhas gravadas. Data-base sem linhas responde 200 com a lista vazia, para o gestor poder digitar do zero.
+`GET /curvas-mercado/{codigo}/primaria-b3/{dataBase}` SHALL devolver as linhas ordenadas por dias corridos e id, cada uma com `id` (`cIdtfdUnic`), `diasCorridos` (`cDiaCorri`), `diasUteis` (`cDiaUtil`), `valor` (`vPrecoTx`), `fatorAcumulado` (`vFatorAcum`), `fatorDia` (`vFatorDia`), decimais como string na escala da coluna, e `dataPonto` (data-base + dias corridos, só leitura), mais `curvaConstruida` e os avisos da data (requisito "Validação das linhas") calculados sobre as linhas gravadas. Data-base sem linhas responde 200 com a lista vazia, para o gestor poder digitar do zero.
 
 #### Scenario: Consulta das linhas da PRE
 - **WHEN** o cliente chama `GET /api/v1/curvas-mercado/PRE/primaria-b3/2026-09-14`
@@ -78,15 +82,19 @@ Os valores são gravados exatamente como enviados, sem arredondamento (é o dado
 ### Requirement: Gravação sob a trava da curva
 Toda escrita (`POST`, `PUT`, `DELETE`) SHALL acontecer numa única transação que:
 1. trava a linha da curva em `tCurvaMercd` com `UPDLOCK, ROWLOCK` (a mesma trava da edição de pontos e da construção no engine, que lê o bruto sob ela), esperando até 60 segundos para obtê-la; sem a trava, 500 `ERRO_INTERNO` sem gravar;
-2. no `POST`, gera o `cldtfdUnic` como o processor: `MAX(cldtfdUnic) + 1` lido com `UPDLOCK, HOLDLOCK` na mesma transação, sem criar objeto no banco;
+2. no `POST`, gera o `cIdtfdUnic` como o processor: `MAX(cIdtfdUnic) + 1` lido com `UPDLOCK, HOLDLOCK` na mesma transação, sem criar objeto no banco, também com espera de até 60 segundos e 500 `ERRO_INTERNO` sem gravar se esgotada;
 3. grava a linha com `cTickerIndcd` = nome da curva e `dBaseReft` = data-base (a FK para `tCurvaMercd` é satisfeita pela curva existente);
 4. relê as linhas da data para calcular os avisos.
 
-Não há `If-Match`: é contingência, e quem salva por último vence, com o estado anterior no log. O serviço MUST NOT escrever em `tDadoVertcCurva`, `tDadoCurva` nem `tCurvaMercd`, e MUST NOT chamar o engine por causa dessa gravação. Uma nova carga ou reprocessamento da mesma data pelo processor SHALL substituir todas as linhas da curva na data (spec `b3-carga-processor`, que apaga e insere), inclusive as editadas à mão.
+Nenhuma rota do curves faz controle de versão: quem salva por último vence, com o estado anterior no log (nesta rota, no `CURVA_PRIMARIA_EDITADA`). O serviço MUST NOT escrever em `tDadoVertcCurva`, `tDadoCurva` nem `tCurvaMercd`, e MUST NOT chamar o engine por causa dessa gravação. Uma nova carga ou reprocessamento da mesma data pelo processor SHALL substituir todas as linhas da curva na data (spec `b3-carga-processor`, que apaga e insere), inclusive as editadas à mão.
 
 #### Scenario: Digitar uma data sem carga
 - **WHEN** a carga B3 de `2026-09-15` não chegou, e o gestor inclui as linhas da `PRE` dessa data uma a uma
 - **THEN** cada `POST` responde 201 com o id gerado, nada é disparado no engine, e a próxima construção da data (manual ou pelo orquestrador) usa essas linhas
+
+#### Scenario: Trava da curva não obtida
+- **WHEN** a trava da `PRE` está com outra transação (por exemplo, a construção do engine) por mais de 60 segundos, e o gestor envia um `POST` de linha
+- **THEN** a resposta é 500 com `ERRO_INTERNO`, nada é gravado e nenhum evento `CURVA_PRIMARIA_EDITADA` é emitido
 
 #### Scenario: Reprocessamento depois da edição
 - **WHEN** o gestor alterou uma linha da `PRE` de `2026-09-14`, e depois a data é reprocessada pelo processor

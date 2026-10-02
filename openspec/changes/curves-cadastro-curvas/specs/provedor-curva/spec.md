@@ -9,7 +9,7 @@ Cada provedor da curva SHALL gravar uma linha em `tCurvaPrvdr`:
 
 | Campo da API | Coluna | Regra |
 |---|---|---|
-| `idCurvaProvedor` | `cldtfdUnic` | gerado pelo serviço (ver abaixo); só leitura |
+| `idCurvaProvedor` | `cIdtfdUnic` | gerado pelo serviço (ver abaixo); só leitura |
 | curva | `cTickerIndcd` | o nome da curva da rota |
 | `provedor` | `iPrvdrDados` | obrigatório; MUST existir em `tPrvdrDadoMercd` (mantida pelo CRUD de provedores, fora desta change). O engine e o processor reconhecem as fontes pelos identificadores `B3`, `ANBIMA` e `BLOOMBERG` |
 | `produto` | `cPrvdrMercd` | obrigatório; 1 a 50 caracteres (ex.: `TS`, `MS`, `BLC2`): o identificador da publicação na fonte |
@@ -21,7 +21,7 @@ Regras:
 - `prioridade` MUST ser única dentro da curva: 409 `PRIORIDADE_EM_USO`;
 - o mesmo (`provedor`, `produto`, `codigoNaFonte`) MAY estar ligado a mais de uma curva: todas recebem os dados brutos daquele código.
 
-Como `cldtfdUnic` não tem identity nem sequência e o schema não pode mudar, o serviço SHALL gerá-lo como `MAX(cldtfdUnic) + 1` (ou 1 se a tabela estiver vazia), lido com `UPDLOCK, HOLDLOCK` dentro da mesma transação da inserção, de modo que inserções simultâneas não gerem o mesmo valor.
+Como `cIdtfdUnic` não tem identity nem sequência e o schema não pode mudar, o serviço SHALL gerá-lo como `MAX(cIdtfdUnic) + 1` (ou 1 se a tabela estiver vazia), lido com `UPDLOCK, HOLDLOCK` dentro da mesma transação da inserção, de modo que inserções simultâneas não gerem o mesmo valor. A consulta do `MAX + 1` SHALL esperar até 60 segundos pela trava; esgotado o tempo, a resposta é 500 `ERRO_INTERNO`, sem gravar.
 
 #### Scenario: Ligar a DIxPRE ao TaxaSwap
 - **WHEN** o cliente liga a curva `PRE` ao provedor `B3`, produto `TS`, código na fonte `PRE`, prioridade 1
@@ -32,7 +32,7 @@ Como `cldtfdUnic` não tem identity nem sequência e o schema não pode mudar, o
 - **THEN** a resposta é 404 com `NAO_ENCONTRADO` informando o provedor, e nada é gravado
 
 #### Scenario: Duas inclusões simultâneas
-- **WHEN** dois provedores de curvas diferentes são incluídas ao mesmo tempo
+- **WHEN** dois provedores de curvas diferentes são incluídos ao mesmo tempo
 - **THEN** cada uma recebe um `idCurvaProvedor` diferente
 
 ### Requirement: Curvas componentes como provedor
@@ -40,7 +40,7 @@ O provedor interno `TCEN` (que precisa existir em `tPrvdrDadoMercd`) SHALL ligar
 
 #### Scenario: Inflação implícita ligada às curvas componentes
 - **WHEN** o cliente liga a curva `IPCA_IMPLICITA` a (`TCEN`, `NUMERADOR`, `DIxPRE`, prioridade 1) e (`TCEN`, `DENOMINADOR`, `NTN-B`, prioridade 2)
-- **THEN** as dois provedores são gravadas, e `GET /api/v1/curvas-mercado/provedores?provedor=TCEN&codigoNaFonte=NTN-B` lista a `IPCA_IMPLICITA`
+- **THEN** os dois provedores são gravados, e `GET /api/v1/curvas-mercado/provedores?provedor=TCEN&codigoNaFonte=NTN-B` lista a `IPCA_IMPLICITA`
 
 #### Scenario: Ciclo recusado
 - **WHEN** a curva `A` tem `B` como componente, e o cliente liga `B` a (`TCEN`, `NUMERADOR`, `A`)
@@ -57,7 +57,11 @@ O serviço SHALL expor (prefixo `/api/v1`):
 | `DELETE /curvas-mercado/{codigo}/provedores/{idCurvaProvedor}` | excluir | `Curvas.Cadastro` |
 | `GET /curvas-mercado/provedores?provedor=&produto=&codigoNaFonte=` | quais curvas recebem um código da fonte | `Curvas.Leitura` |
 
-As alterações seguem a concorrência otimista da curva (`If-Match` com o `ETag` da curva). Excluir um provedor da curva não apaga dados brutos já gravados. Trocar o `iPrvdrDados` de um provedor da curva não é permitido: exclui-se e inclui-se outra.
+Excluir um provedor da curva não apaga dados brutos já gravados. Trocar o `iPrvdrDados` de um provedor da curva não é permitido: exclui-se e inclui-se outro. O `PUT` que enviar um `provedor` diferente do gravado MUST ser recusado com 422 `DADOS_INVALIDOS` no campo `provedor`, antes de qualquer gravação.
+
+#### Scenario: Troca do provedor num PUT
+- **WHEN** o cliente envia `PUT .../provedores/{idCurvaProvedor}` de um provedor `B3` com `provedor` = `ANBIMA`
+- **THEN** a resposta é 422 com `DADOS_INVALIDOS` no campo `provedor`, informando que o provedor não muda, e nada é gravado
 
 #### Scenario: Quais curvas recebem o PRE da B3
 - **WHEN** o cliente chama `GET /api/v1/curvas-mercado/provedores?provedor=B3&produto=TS&codigoNaFonte=PRE`
@@ -71,6 +75,6 @@ Sem bloquear a operação, a resposta SHALL trazer `avisos` quando, depois da al
 
 Os provedores da curva de prioridade maior que a menor são as **origens secundárias**: o processor grava para elas o dado bruto do mesmo jeito que para a principal, e o usuário pode construir a curva por uma delas no engine (rota de construção com `fonte` e `produto`, spec `curve-engine-api` do change `engine-modelos-curva`). A construção automática usa só a principal.
 
-#### Scenario: Última provedor excluído
+#### Scenario: Último provedor excluído
 - **WHEN** o único provedor da curva `SLP` é excluído
 - **THEN** a exclusão é feita, e a resposta traz o aviso `CURVA_SEM_ORIGEM`

@@ -1,26 +1,23 @@
 ## Context
 
-A motivação está no proposal e o comportamento nas specs. Estado atual verificado no código:
+A motivação está no proposal e o comportamento na spec. Este change é o lado do conector da divisão do antigo `conector-b3-webhook-ingest`: o conector obtém o arquivo e publica o aviso de carga; o processor (change `processor-carga-b3`) consome, interpreta, grava e avisa o engine. Estado atual verificado no código:
 
 - **Conector, processamento do `TaxaSwap.txt`** (`b3HttpTrigger`, rota `swap-process`, anônima): lê o texto de `B3_SWAP_URL`, que aponta para o arquivo já gravado no Blob (a B3 não publica o `.txt` por URL direta), e faz `fetchSwapFile` → `parseFile` → `publishRecords`, uma mensagem por vértice (`{ "values": { ticker, refDate, diasCorridos, diasUteis, valor, fatorDiario, fatorAcumulado } }`) no tópico `tp-event-b3-curve` (no poc; no real, o tópico configurado em `spring.kafka.topics.b3.name`). O tipo é decidido por `normalizeCurveType` (que publica DCL e DPL como DOL e descarta PTX e INP), os valores são `number` do JavaScript, e os fatores vêm de `curveB3Factors`.
 - **Conector, download do `.ex_`** (hoje `b3ContingencyHttpTrigger`, rota `swap-contingency`): baixa o `.ex_` (com busca de até 7 dias úteis anteriores), extrai o texto e grava em `b3/{AAAAMMDD}/TaxaSwap.txt` (`uploadSwapText`), com a data do download na pasta. Não publica nada.
 - **Codificação:** a leitura do `.txt` devolve texto (o arquivo local é lido como UTF-8), o download do `.ex_` extrai texto, e o upload grava em Latin-1. O mesmo conteúdo pode chegar com bytes diferentes (fim de linha, codificação).
-- **Processor** (`B3KafkaConsumer`, tópico `tp-event-b3-curve`): lê a mensagem direto em `B3CurveRaw` sem desembrulhar `values`, guarda o valor em `Double` e grava em `mkt.B3CurveRaw` por *upsert* na chave (ticker, data). Como chega uma mensagem por vértice, cada vértice sobrescreve o anterior: sobra uma linha por curva e data, em vez de 278.
-- **Banco:** `tBtrsCurvaPrimr` tem FK de `cTickerIndcd` para `tCurvaMercd`; `tCurvaPrvdr` liga a curva de mercado ao provedor e ao ticker no provedor (`cTickerPrvdr`); `cldtfdUnic` é `INT NOT NULL` sem identity nem sequência no `001_SCRIPT_INICIAL.sql`. O processor não escreve em `tCurvaMercd`.
-- **Engine** (`engine-construcao-curvas`): lê `tBtrsCurvaPrimr` pelo nome da curva e constrói automaticamente ao receber `POST /api/v1/cargas` com a quantidade de linhas por código (spec `curve-load-trigger`); não guarda registro da carga.
+- **Processor** (change `processor-carga-b3`): hoje grava uma linha por curva e data em `mkt.B3CurveRaw`; passa a consumir o aviso de carga publicado aqui.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Um único caminho de interpretação e gravação para o `TaxaSwap.txt`, venha ele do download do `.ex_`, da leitura do Blob ou de um upload.
-- Valores exatamente como publicados pela B3, código exato, sem fatores.
-- Gravação atômica por carga e aviso ao engine só depois do commit.
+- Um único caminho de obtenção, identificação, arquivamento e publicação para o `TaxaSwap.txt`, venha ele do download do `.ex_`, da leitura do Blob ou de um upload.
+- O mesmo conteúdo gera o mesmo `idCarga` por qualquer caminho.
 - Rastreabilidade por `idCarga`, do arquivo original até a curva construída.
 
 **Non-Goals:**
+- Interpretar, validar ou gravar o conteúdo: é do processor (change `processor-carga-b3`).
 - ANBIMA e SOFR: seguem o mesmo contrato com o engine, em changes próprios.
 - Construção de curva: é do engine.
-- Cadastro em `tCurvaMercd` e `tCurvaPrvdr`: códigos sem provedor em `tCurvaPrvdr` são ignorados.
 - Infraestrutura nova: nenhum tópico, fila ou tabela novos, e nenhuma mudança de schema.
 
 ## Decisions
@@ -33,88 +30,52 @@ Interpretar o leiaute é normalizar dado de provedor, função do processor. Com
 A única leitura de conteúdo no conector é a data de geração (posições 12–19), necessária para o `idCarga`, o caminho e a chave da mensagem. **Alternativa rejeitada:** conector interpretando e gravando um `vertices.json` no Blob para o processor reler.
 
 ### D2. Uma mensagem por carga, com o arquivo no Blob (*claim check*)
-O arquivo tem cerca de 110 curvas × 278 vértices, mais de 2 MB, acima do limite usual de mensagem (1 MB). O arquivo bruto fica no Blob, e a mensagem leva o caminho e o SHA-256. Com uma mensagem só por carga, o processor tem a carga inteira de uma vez: grava tudo numa transação e sabe exatamente quando avisar o engine.
+O arquivo tem 114 códigos de curva × 278 vértices, mais de 2 MB, acima do limite usual de mensagem (1 MB). O arquivo bruto fica no Blob, e a mensagem leva o caminho e o SHA-256. Com uma mensagem só por carga, o processor tem a carga inteira de uma vez. O formato da mensagem é definido na spec `b3-taxaswap-publicacao` deste change e é o contrato que o processor consome.
 
 **Alternativas rejeitadas:**
 - Mensagem por vértice (atual): o processor não sabe quando a carga termina, e a gravação fica parcial.
 - Mensagem por curva mais uma de "fim de carga": exige acumular mensagens no processor, depender de ordem e tratar rebalanceamento no meio da carga.
 
 ### D3. Mesmo tópico, formato novo
-O aviso usa o tópico que já existe, `tp-event-b3-curve`, só com o formato novo. Conector e processor mudam juntos. Mensagens no formato antigo que estiverem no tópico no deploy são registradas como falha e descartadas; as datas afetadas são republicadas.
+O aviso usa o tópico que já existe, `tp-event-b3-curve`, só com o formato novo. Conector e processor mudam juntos. Mensagens no formato antigo que estiverem no tópico no deploy são registradas como falha e descartadas pelo processor; as datas afetadas são republicadas pelo conector (`b3/taxa-swap/reprocessamento`).
 
-### D4. Valor em `BigDecimal` direto do texto
-O campo posicional já é um decimal exato (sinal + 14 dígitos com 7 decimais). O processor o converte direto para `BigDecimal` com escala 7, sem passar por `double`.
-
-### D5. Código exato, sem catálogo de descrições e sem filtro de tipo
-O processor usa o código das posições 22–26 como está. Quem decide o que gravar é o cadastro (`tCurvaPrvdr`), e quem decide o que construir é o engine.
-
-### D6. `idCarga` determinístico
+### D4. `idCarga` determinístico
 `B3-TS-{AAAAMMDD}-{12 caracteres do SHA-256 do arquivo}`. O mesmo arquivo, por qualquer caminho e em qualquer repetição, gera o mesmo `idCarga`, e a cadeia inteira é idempotente. Um arquivo diferente para a mesma data (republicação pela B3) gera outro `idCarga`; o engine não reconstrói as curvas que já têm pontos e avisa `PONTOS_DIFERENTES_DA_FONTE` nas que a fonte nova mudaria.
 
-### D7. Validação: rejeitar o arquivo ou o código, nunca a linha
-Uma linha descartada deixaria uma curva com 277 vértices que parece normal. Por isso:
-- linha ilegível (tamanho errado, data divergente) rejeita o arquivo;
-- campo inválido numa linha de código legível rejeita aquele código inteiro, que fica no log da carga.
-
-O engine, sem aquele código na carga, responde `INSUMO_AUSENTE` para a curva correspondente, de forma explícita.
-
-### D8. Arquivamento imutável por `idCarga`
+### D5. Arquivamento imutável por `idCarga`
 `b3/{AAAAMMDD}/TaxaSwap.txt` é a cópia de trabalho da data, sobrescrita pelo download e pelo upload, e pelo reprocessamento sem data (a partir de `recebidos/TaxaSwap.txt`), e é a que o reprocessamento com data lê. `{AAAAMMDD}` é sempre a data de geração do arquivo, nunca a do download. A cópia em `b3/{AAAAMMDD}/cargas/{idCarga}/TaxaSwap.txt` é imutável e é a que o processor lê. Toda curva construída pode ser rastreada até o arquivo exato.
 
-### D9. Processor: transação única, conferência antes do commit, aviso depois
-O processor grava os vértices de todos os códigos mapeados numa transação e confere as contagens antes do commit. Só depois do commit chama o engine, de modo que o engine nunca é avisado de uma carga que não está gravada. Se o aviso não for aceito dentro da janela (D12), os vértices ficam gravados, e o processor registra `CARGA_FALHOU` com o estado `GRAVADA_SEM_AVISO`; republicar a data regrava as mesmas linhas e repete o aviso, sem efeito colateral.
+### D6. Sem autenticação própria no conector
+O conector não autentica: só os serviços que expõem a API ao front (o bff e o `services/curves`) autenticam. O `usuario` do upload e do reprocessamento vem do cabeçalho opcional `X-Usuario`, enviado pelo bff, e fica nulo se o cabeçalho não vier.
 
-### D10. Autenticação do Entra ID nas rotas do conector
-As rotas do conector publicam dado de mercado usado em risco. Passam a exigir o Entra ID (autenticação do App Service), com o papel `Curvas.Operador` ou a identidade do orquestrador, no mesmo registro de aplicação do engine.
-
-### D11. Mapeamento pelo `tCurvaPrvdr`, sob o nome da curva de mercado
-`tCurvaPrvdr` liga a curva de mercado ao provedor e ao ticker da curva no provedor. O processor a usa para saber quais curvas de mercado recebem os vértices de cada código, e grava `tBtrsCurvaPrimr.cTickerIndcd` com o nome da curva de mercado. A FK para `tCurvaMercd` fica satisfeita pela próprio provedor, sem linhas de "curva da fonte" em `tCurvaMercd` e sem convenção de nome. O processor só lê `tCurvaPrvdr`. **Alternativa rejeitada:** uma linha em `tCurvaMercd` por código da fonte (ex.: `B3_TAXA_SWAP_PRE`), que duplica o cadastro e depende de uma convenção de nome.
-
-### D12. Aviso ao engine por HTTP, com repetição curta e alerta cedo
-Não há tópico Kafka para o engine, então o aviso é o webhook `POST /api/v1/cargas`, chamado pelo endereço do serviço. O balanceador do Azure entrega cada chamada a uma instância pronta. Qual instância atende não importa, porque o estado está no banco e a trava por curva serializa as construções.
-
-As curvas devem estar construídas em minutos. O processor repete o aviso por até 10 minutos, com espera crescente até 1 minuto, o suficiente para sobreviver a um reinício ou a uma troca de instância do engine sem intervenção. Aos 2 minutos sem aviso aceito, emite `AVISO_ATRASADO` como alerta. Repetir é sempre seguro, inclusive depois de um tempo esgotado em que o engine continuou construindo: a repetição recebe 409 e depois `EXISTENTE`.
-
-Tempos limite em cadeia: webhook do engine (120 s) < chamada do processor (150 s) < tempo ocioso do balanceador do Azure.
-
-### D13. Chave da mensagem por data, não por carga
+### D7. Chave da mensagem por data, não por carga
 A chave `B3-TS-{AAAAMMDD}` põe todas as cargas de uma data (download, leitura do Blob ou upload) na mesma partição, processadas em ordem por uma instância do processor. Com a chave pelo `idCarga`, duas cargas da mesma data poderiam ser gravadas em paralelo nas mesmas curvas, com risco de deadlock ou de a carga mais antiga ganhar.
 
-### D14. Curva ligada depois da carga
-Se o cadastro liga uma curva nova em `tCurvaPrvdr` depois que a carga do dia foi gravada, a curva não tem vértices, e o engine responde `INSUMO_AUSENTE`. O procedimento é reprocessar a data pelo `b3/taxa-swap/reprocessamento`: o mesmo arquivo gera o mesmo `idCarga`, o processor regrava todas as curvas mapeadas, incluindo a nova, e o engine constrói só as que ainda não têm pontos.
-
-### D15. Sem tópico novo e sem tópico de falhas
-Falha definitiva no processor não vai para uma fila de falhas: vira o evento `CARGA_FALHOU` (log de erro e métrica, para alerta), e a mensagem é confirmada. Guardar a mensagem não é necessário, porque o arquivo está arquivado no Blob por `idCarga`, e o `b3/taxa-swap/reprocessamento` do conector reproduz a carga com o mesmo `idCarga`, de forma idempotente em toda a cadeia.
-
-### D16. Caminhos equivalentes e forma canônica
+### D8. Caminhos equivalentes e forma canônica
 O download do `.ex_` (o único que a B3 oferece), o reprocessamento do arquivo já gravado no Blob (`b3/taxa-swap/reprocessamento`: com a data informada pelo front ou pelo orquestrador, ou, sem data, o `TaxaSwap.txt` colocado na pasta `recebidos/`, na raiz do container, que o conector cria se não existir) e o upload são caminhos equivalentes, todos com o prefixo `b3/taxa-swap` para deixar claro que é a function da B3 para o Taxa Swap, e nenhum é tratado como exceção, nem no nome. Para que o mesmo conteúdo gere o mesmo `idCarga` por qualquer caminho, o conector converte o texto numa forma canônica antes do hash: linhas separadas por `\n`, sem linhas vazias, sem mexer no conteúdo das linhas, codificado em Latin-1. Sem isso, uma diferença de fim de linha faria o mesmo arquivo parecer outra carga.
 
-### D17. Upload pelo usuário
+### D9. Upload pelo usuário
 O upload (`.txt` ou `.ex_`, até 20 MB) cobre o caso de a B3 estar inacessível para o download, ou de um arquivo corrigido recebido por outro meio. Passa pelo mesmo caminho dos outros e leva o usuário na mensagem e no log, para rastreio.
 
-### D18. O orquestrador dispara
+### D10. O orquestrador dispara
 Quem dispara os downloads é o orquestrador (`services/orchestrator`), que orquestra todo o processo: ele chama o download (`b3/taxa-swap/download`) e, quando preciso, força o processamento de uma data (`b3/taxa-swap/reprocessamento`), em que horário, as novas tentativas quando a B3 ainda não publicou, e o alerta de "carga não recebida". O conector só executa o que é chamado e responde com o `idCarga`. O upload e o `b3/taxa-swap/reprocessamento` também podem ser chamados pelo front, por um operador, que informa a data. Configurar essas tarefas no orquestrador é do change dele.
 
-### D19. No mínimo duas instâncias
-O conector (Azure Functions) e o processor rodam em no mínimo duas instâncias no Azure. Nada depende de estado em memória: a identidade da carga é o hash do arquivo, a cópia imutável é gravada com `If-None-Match`, e a pasta `recebidos/` é criada de forma idempotente. No processor, as instâncias ficam no mesmo consumer group: cada aviso é processado por uma só, e a chave `B3-TS-{AAAAMMDD}` põe as cargas da mesma data na mesma partição, em ordem; cargas de datas diferentes podem ser gravadas em paralelo sem conflito. Um aviso repetido (rebalanceamento entre instâncias) regrava as mesmas linhas e repete o aviso ao engine, que é idempotente.
+### D11. No mínimo duas instâncias
+O conector (Azure Functions) roda em no mínimo duas instâncias no Azure. Nada depende de estado em memória: a identidade da carga é o hash do arquivo, a cópia imutável é gravada com `If-None-Match`, e a pasta `recebidos/` é criada de forma idempotente.
 
 ## Risks / Trade-offs
 
-- **Conector e processor mudam juntos (BREAKING).** → Deploy coordenado; o formato antigo deixa de ser publicado e consumido no mesmo release.
-- **Processor passa a conhecer o leiaute da B3.** → É a função dele (normalizar dado de provedor); o parser fica num lugar só.
+- **Conector e processor mudam juntos (BREAKING).** → Deploy coordenado com o change `processor-carga-b3`; o formato antigo deixa de ser publicado e consumido no mesmo release.
 - **A resposta HTTP do conector não diz quais códigos são inválidos.** → A informação fica no log da carga no processor, com o `idCarga`.
-- **Processor depende do Blob.** → O arquivo é imutável e conferido por hash. Se o Blob estiver fora, a leitura é repetida por até 5 minutos; depois, `CARGA_FALHOU` e reprocessamento da data pelo `b3/taxa-swap/reprocessamento`.
-- **Código com linha inválida não chega ao engine.** → É intencional; aparece no log do processor e como `INSUMO_AUSENTE` no engine.
-- **Um arquivo novo da B3 para a mesma data substitui os brutos.** → As versões anteriores ficam no Blob por `idCarga`, e o engine decide sobre recálculo.
+- **Um arquivo novo da B3 para a mesma data substitui a cópia de trabalho.** → As versões anteriores ficam no Blob por `idCarga`, e o engine decide sobre recálculo.
 
 ## Migration Plan
 
-1. Sem tópico novo e sem mudança de schema. Dar ao conector (escrita) e ao processor (leitura) acesso à pasta `b3/` do Blob por Managed Identity, e configurar o tempo ocioso do balanceador na frente do engine acima de 150 segundos.
-2. Cadastro: ligar em `tCurvaPrvdr` cada curva de mercado ao seu código na fonte (`B3`/`TS`/código).
-3. Deploy conjunto de conector e processor, porque o formato da mensagem em `tp-event-b3-curve` muda. O consumo antigo sai no mesmo release.
-4. Reprocessar pelo `b3/taxa-swap/reprocessamento` as datas que precisarem estar em `tBtrsCurvaPrimr`.
-5. **Rollback:** voltar os dois deploys. `mkt.B3CurveRaw` não é apagada por este change.
+1. Sem tópico novo e sem mudança de schema. Dar ao conector acesso de escrita à pasta `b3/` do Blob (e ao `recebidos/`) por Managed Identity.
+2. **Deploy conjunto de conector e processor** (change `processor-carga-b3`), porque o formato da mensagem em `tp-event-b3-curve` muda. Os dois sobem no mesmo release, para que não haja intervalo em que um publica num formato que o outro não entende; se houver, as datas afetadas são reprocessadas pelo `b3/taxa-swap/reprocessamento` depois.
+3. Reprocessar pelo `b3/taxa-swap/reprocessamento` as datas que precisarem estar em `tBtrsCurvaPrimr`.
+4. **Rollback:** voltar os dois deploys, conector e processor juntos.
 
 ## Open Questions
 
-- Como o sistema real gera `tBtrsCurvaPrimr.cldtfdUnic` (`INT NOT NULL`, sem identity nem sequência no `001_SCRIPT_INICIAL.sql`). A spec do processor deixa a forma em aberto; ajustar quando for confirmada.
+Nenhuma.

@@ -20,7 +20,7 @@ Todo horário do orquestrador SHALL ser o de Brasília (`America/Sao_Paulo`), qu
 - **THEN** a última e a próxima execução vêm com o deslocamento `-03:00`
 
 ### Requirement: Cadastro de tarefa
-Uma `Tarefa` SHALL ter `nome`, `descricao` e `action` obrigatórios, e no máximo uma regra de agendamento: `regraCron` (cron do Spring, 6 campos, até 15 caracteres) ou `regraIntervalo` (instante ou duração ISO-8601, até 20 caracteres). `action` SHALL ser um nome atendido por algum `TaskActionPort` (`console`, `http`, `download-carga-dia`, `construcao-curvas-data`); um nome não atendido MUST falhar com 400. Criar uma tarefa SHALL colocá-la em `PRONTA` e devolver 201 com a localização do recurso. `PATCH` SHALL atualizar só os campos enviados, e MUST recusar alterar uma tarefa `REMOVIDA` ou `EXECUTANDO`. Os campos `action` e `descricao` SHALL ser gravados e lidos cada um na sua coluna, sem inversão.
+Uma `Tarefa` SHALL ter `nome`, `descricao` e `action` obrigatórios, e no máximo uma regra de agendamento: `regraCron` (cron do Spring, 6 campos, até 15 caracteres) ou `regraIntervalo` (instante ou duração ISO-8601, até 20 caracteres). `action` SHALL ser um nome atendido por algum `TaskActionPort` (`console`, `http`, `download-carga-dia`); um nome não atendido MUST falhar com 400. Criar uma tarefa SHALL colocá-la em `PRONTA` e devolver 201 com a localização do recurso. `PATCH` SHALL atualizar só os campos enviados, e MUST recusar alterar uma tarefa `REMOVIDA` ou `EXECUTANDO`. Os campos `action` e `descricao` SHALL ser gravados e lidos cada um na sua coluna, sem inversão.
 
 #### Scenario: Action não atendida
 - **WHEN** uma tarefa é criada com `action` = `"ftp-download"`
@@ -31,8 +31,8 @@ Uma `Tarefa` SHALL ter `nome`, `descricao` e `action` obrigatórios, e no máxim
 - **THEN** a criação falha por tamanho, antes de qualquer gravação
 
 #### Scenario: Campos lidos como gravados
-- **WHEN** uma tarefa é criada com `action` = `"http"` e `descricao` = `"Chama o conector"`
-- **THEN** a consulta devolve exatamente `action` = `"http"` e `descricao` = `"Chama o conector"`
+- **WHEN** uma tarefa é criada com `action` = `"http"` e `descricao` = `"Chama a function"`
+- **THEN** a consulta devolve exatamente `action` = `"http"` e `descricao` = `"Chama a function"`
 
 ### Requirement: Ciclo de vida
 Uma `Tarefa` SHALL ter um dos estados `PRONTA`, `AGENDADA`, `EXECUTANDO`, `FINALIZADA`, `ERRO`, `CANCELADA`, `DESABILITADA` ou `REMOVIDA`, com as transições:
@@ -55,7 +55,7 @@ Toda mudança de estado SHALL ser condicionada ao estado esperado: se outra inst
 - **THEN** a operação falha com a transição inválida, e a tarefa continua `PRONTA`
 
 #### Scenario: Erro não para a tarefa recorrente
-- **WHEN** uma ocorrência de uma tarefa `AGENDADA` com `regraIntervalo` = `PT10M` termina com erro (conector respondeu 502)
+- **WHEN** uma ocorrência de uma tarefa `AGENDADA` com `regraIntervalo` = `PT10M` termina com erro (a function respondeu 502)
 - **THEN** a tarefa volta para `AGENDADA`, o erro fica no log, e a ocorrência seguinte executa
 
 #### Scenario: Duas instâncias mudando o mesmo estado
@@ -82,7 +82,7 @@ Cada instância SHALL agendar todas as tarefas `AGENDADA` (e as `EXECUTANDO` que
 - **THEN** a instância A reagenda na hora, e a instância B, na próxima reconciliação
 
 ### Requirement: Execução única por ocorrência
-Com 2 ou mais instâncias, cada ocorrência SHALL ser executada por uma só instância, inclusive quando as instâncias disparam com alguns segundos de diferença. Antes de executar, a instância SHALL reivindicar a ocorrência numa transação curta com trava de linha em `tTrefaAgnda` (`UPDLOCK, ROWLOCK`, tempo limite `orquestrador.execucao.trava-segundos`, padrão 5): só segue se a tarefa estiver `AGENDADA`, se a regra gravada for a mesma que gerou o disparo, e se não houver log de início (código `102`) com instante igual ou posterior à ocorrência; então muda a situação para `EXECUTANDO` e grava o log de início (ocorrência, situação de origem, instância), na mesma transação. Quem não reivindica desiste sem erro. A execução da `action` SHALL acontecer fora dessa transação.
+Com 2 ou mais instâncias, cada ocorrência SHALL ser executada por uma só instância, inclusive quando as instâncias disparam com alguns segundos de diferença. Antes de executar, a instância SHALL reivindicar a ocorrência numa transação curta com trava de linha em `tTrefaAgnda` (`UPDLOCK, ROWLOCK`, tempo limite `orquestrador.execucao.trava-segundos`, padrão 5): só segue se a tarefa estiver `AGENDADA`, se a regra gravada for a mesma que gerou o disparo, e se não houver log de início (código `102`) com instante igual ou posterior à ocorrência; então muda a situação para `EXECUTANDO` e grava o log de início (ocorrência, situação de origem, instância), na mesma transação. Quem não reivindica desiste sem erro. As colunas `cSit`, `cRegraAgnda` e `cRegraIntvl` são `CHAR` e voltam do banco com espaços à direita: a situação e a regra lidas MUST ser comparadas sem esses espaços. A execução da `action` SHALL acontecer fora dessa transação.
 
 #### Scenario: Duas instâncias no mesmo instante
 - **WHEN** as duas instâncias disparam a mesma ocorrência ao mesmo tempo
@@ -97,7 +97,7 @@ Com 2 ou mais instâncias, cada ocorrência SHALL ser executada por uma só inst
 - **THEN** a reivindicação falha porque a regra gravada é outra, e nada executa
 
 ### Requirement: Recuperação de disparo perdido e de tarefa presa
-Na subida e em cada reconciliação, para cada tarefa `AGENDADA`, a última ocorrência passada dentro de `orquestrador.agendamento.recuperacao-minutos` (padrão 60) sem log de início SHALL ser disparada uma vez, com a mesma reivindicação; várias ocorrências perdidas viram uma execução só, e ocorrências mais antigas que a janela são ignoradas. Uma tarefa `EXECUTANDO` cujo último log de início é mais velho que `orquestrador.execucao.expiracao-minutos` (padrão 15, a meta de duração de uma execução), sem log de conclusão ou erro depois, SHALL ser encerrada como uma execução com erro (log "execução interrompida"): volta para `AGENDADA` se saiu de `AGENDADA` com regra recorrente; senão, vai para `ERRO`.
+Na subida e em cada reconciliação, para cada tarefa `AGENDADA`, a última ocorrência passada dentro de `orquestrador.agendamento.recuperacao-minutos` (padrão 60) sem log de início SHALL ser disparada uma vez, com a mesma reivindicação; várias ocorrências perdidas viram uma execução só, e ocorrências mais antigas que a janela são ignoradas. A ocorrência recuperada passa pelas mesmas checagens antes da reivindicação (calendário e, na `action`, o que ela decide dispensar sem log), então a dispensada não executa nem grava log. Uma tarefa `EXECUTANDO` cujo último log de início é mais velho que `orquestrador.execucao.expiracao-minutos` (padrão 15, a meta de duração de uma execução), sem log de conclusão ou erro depois, SHALL ser encerrada como uma execução com erro (log "execução interrompida"): volta para `AGENDADA` se saiu de `AGENDADA` com regra recorrente; senão, vai para `ERRO`.
 
 #### Scenario: Deploy no horário do disparo
 - **WHEN** as duas instâncias estão fora das 18h55 às 19h10, e a tarefa tinha disparo às 19h
@@ -117,7 +117,7 @@ O status de uma tarefa (`GET .../tarefas/{id}/status`) e o status global (`GET .
 ### Requirement: Calendário de dias úteis por tarefa
 Uma tarefa SHALL poder ter o parâmetro opcional `calendarios` (um ou mais `nome/mercado`, separados por vírgula, ex.: `Brazil/Settlement` ou `Brazil/Settlement,UnitedStates/FederalReserve`). Numa ocorrência agendada, se a data de hoje em `America/Sao_Paulo` não for dia útil em **todos** os calendários da tarefa, a ocorrência SHALL encerrar antes da reivindicação, sem chamar a `action` e sem gravar log na tarefa (só log da aplicação `TAREFA_PULADA`, com o motivo e o calendário), para não repetir uma linha por ocorrência e por instância. A execução manual não consulta o calendário. Sem o parâmetro, a tarefa roda todo dia.
 
-O orquestrador SHALL ter os mesmos calendários nativos do engine (`Brazil`/`Settlement` e `UnitedStates`/`FederalReserve`, com as mesmas regras de feriado e Páscoa da change `engine-construcao-curvas`), sem depender do engine no ar. Para acompanhar os feriados decretados (versões importadas por planilha no engine), o orquestrador SHALL ler uma vez por dia, por calendário usado, a exportação de feriados do engine (`GET {destino=engine}/api/v1/calendarios/{nome}?mercado={mercado}&anoInicial={ano}&anoFinal={ano+1}&formato=json`, `Curvas.Leitura`) e usar essa lista enquanto valer; com o engine fora, SHALL usar o calendário nativo, com log `CALENDARIO_SEM_SINCRONIA` em nível `AVISO`. Um calendário não conhecido no parâmetro MUST falhar no cadastro com 400.
+O orquestrador SHALL ter os mesmos calendários nativos do engine (`Brazil`/`Settlement` e `UnitedStates`/`FederalReserve`, com as mesmas regras de feriado e Páscoa da change `engine-construcao-curvas`), sem depender do engine no ar. Para acompanhar os feriados decretados (versões importadas por planilha no engine), o orquestrador SHALL ler uma vez por dia, por calendário usado, a exportação de feriados do engine (`GET {destino=engine}/api/v1/calendarios/{nome}?mercado={mercado}&anoInicial={ano}&anoFinal={ano+1}&formato=json`, sem autenticação) e usar essa lista enquanto valer; com o engine fora, SHALL usar o calendário nativo, com log `CALENDARIO_SEM_SINCRONIA` em nível `AVISO`. Um calendário não conhecido no parâmetro MUST falhar no cadastro com 400.
 
 #### Scenario: Feriado nacional
 - **WHEN** uma ocorrência da tarefa com `calendarios` = `Brazil/Settlement` cai em `2026-11-20`
@@ -153,33 +153,29 @@ Uma nova `action` SHALL poder ser adicionada implementando `TaskActionPort` (`ge
 - **WHEN** uma tarefa com `action` = `"http"` não tem o parâmetro `destino`
 - **THEN** a execução falha com erro claro sobre o parâmetro, sem nenhuma chamada
 
-### Requirement: Segurança das rotas
-Toda rota de consulta (`GET`) SHALL exigir o papel `Curvas.Leitura`; toda rota de mutação (criar, atualizar, desabilitar, habilitar, remover tarefa; iniciar, parar, agendar, desagendar, executar, cancelar, resetar) SHALL exigir `Curvas.Operador`. Sem token válido ou sem o papel, a resposta MUST ser 401 ou 403, sem executar nada.
+### Requirement: Rotas sem autenticação própria
+O orquestrador MUST NOT autenticar chamadas: quem expõe a API ao usuário (o bff e o `services/curves`) autentica. O usuário das ações manuais (executar, cancelar, resetar e as mutações de tarefa) SHALL vir do cabeçalho opcional `X-Usuario` e ficar nulo se ele não vier.
 
-#### Scenario: Executar sem o papel
-- **WHEN** um token sem `Curvas.Operador` chama `POST /api/v1/agendador/tarefas/{id}/executar`
-- **THEN** a resposta é 403, e a tarefa não muda de estado
+#### Scenario: Execução sem cabeçalho de usuário
+- **WHEN** `POST /api/v1/agendador/tarefas/{id}/executar` chega sem `X-Usuario`
+- **THEN** a tarefa executa normalmente, com o usuário nulo no registro
 
 ### Requirement: Chamada de saída restrita a destino cadastrado
-A `action` `http` MUST NOT aceitar URL livre. Ela SHALL receber `destino` (chave de `orquestrador.http.destinos`, cada uma com base-URL e credencial de configuração ou cofre) e `caminho` (sem esquema nem host); `destino` não cadastrado MUST falhar sem chamar nada. Nenhum parâmetro de tarefa SHALL definir o cabeçalho `Authorization` da chamada.
+A `action` `http` MUST NOT aceitar URL livre. Ela SHALL receber `destino` (chave de `orquestrador.http.destinos`, cada uma com base-URL) e `caminho` (sem esquema nem host); `destino` não cadastrado MUST falhar sem chamar nada.
 
 #### Scenario: Destino não cadastrado
 - **WHEN** a tarefa tem `destino` = `"externo-desconhecido"`
 - **THEN** a execução falha antes de qualquer chamada de rede
 
-#### Scenario: Tentativa de sobrescrever o Authorization
-- **WHEN** um parâmetro da tarefa é `header.Authorization`
-- **THEN** ele é ignorado; a chamada usa só a credencial do `destino`
+### Requirement: Sem webhook de notificação
+O orquestrador MUST NOT notificar webhook algum sobre mudança de tarefa: a porta `WebhookNotifierPort`, o adaptador, o cliente e as propriedades `scheduler.webhook.*` não existem. O que acontece com uma tarefa fica em `tLogTrefa`, nos status e em `GET /api/v1/alertas`.
 
-### Requirement: Webhook com segredo próprio
-A notificação de mudança de tarefa para o webhook configurado MUST NOT repassar o `Authorization` de quem chamou a API. O corpo SHALL ser assinado com HMAC-SHA256 usando `orquestrador.webhook.segredo`, no cabeçalho `X-Webhook-Signature`.
-
-#### Scenario: Execução via API autenticada
-- **WHEN** um operador autenticado executa uma tarefa, e ela notifica o webhook
-- **THEN** o webhook recebe `X-Webhook-Signature`, e não recebe o token do operador
+#### Scenario: Execução via API
+- **WHEN** um operador executa uma tarefa
+- **THEN** nenhuma requisição de notificação sai do orquestrador, além da chamada da própria `action`
 
 ### Requirement: Alertas consultáveis
-Um alerta de tarefa SHALL ser gravado em `tLogTrefa` da própria tarefa, com código `500` e texto JSON com os campos `alerta` (tipo), `dataBase` e `detalhe`. `GET /api/v1/alertas?dataInicial=&dataFinal=` (`Curvas.Leitura`) SHALL devolver os alertas do período, cada um com tarefa (id e nome), tipo, data-base, instante e detalhe, do mais recente para o mais antigo, para o dashboard do front.
+Um alerta de tarefa SHALL ser gravado em `tLogTrefa` da própria tarefa, com código `500` e texto JSON com os campos `alerta` (tipo), `dataBase` e `detalhe`. `GET /api/v1/alertas?dataInicial=&dataFinal=` SHALL devolver os alertas do período, cada um com tarefa (id e nome), tipo, data-base, instante e detalhe, do mais recente para o mais antigo, para o dashboard do front.
 
 #### Scenario: Dashboard lista os alertas do dia
 - **WHEN** o front consulta os alertas de `2026-09-14`

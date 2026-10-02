@@ -30,7 +30,7 @@ Segunda parte do engine (operação e extensões); a primeira, a construção da
 
 - [ ] 10.1 Emitir `CURVA_GRAVADA` depois do commit de cada construção e reconstrução (com `pontosAnteriores`, `idCarga` quando vier da carga, proveniência e componentes), nunca quando o commit falha, e atualizar `tCurvaMercd.dBaseReft` (sem retroceder) e `cUsuarCalc` na construção; verificar construção, reconstrução de data antiga, recálculo depois de uma edição manual (pontos alterados direto na tabela no teste), commit forçado a falhar (sem evento), e que nada é gravado no Blob
 - [ ] 10.2 Criar `GET /api/v1/curvas/{codigo}/{dataBase}/auditoria` (JSON e `xlsx`, montado na hora: `Resumo`, `Pontos`, `Conferencia`, `Insumos`); verificar o cenário da curva editada, uma curva sem pontos e que nada é gravado
-- [ ] 10.4 Configurar a validação de JWT do Entra ID (emissor, audiência, assinatura, validade) e a autorização por papel conforme a tabela de rotas, com `NAO_AUTENTICADO` e `SEM_PERMISSAO`, usuário da auditoria a partir de `preferred_username` ou `appid`, e autenticação impossível de desligar no perfil de produção; verificar um teste por rota com token sem papel (403), sem token (401) e com o papel certo, e o webhook recusado para `Curvas.Operador`
+- [ ] 10.4 Exigir o cabeçalho `X-Usuario` no envio e na ativação de script (400 `PARAMETRO_INVALIDO` sem ele) e gravá-lo como `autor` e `aprovador` no `estado.json`; verificar envio e ativação com e sem o cabeçalho, e que o engine continua sem Spring Security nem validação de token
 - [ ] 10.5 Gravar no `estado.json` quem ativou cada versão (`aprovador`, podendo ser o autor); verificar ativação pelo próprio autor e por outro usuário
 - [ ] 10.6 Acessar o Blob por Managed Identity (`DefaultAzureCredential`), com connection string só no perfil local (Azurite); verificar que o perfil de produção não aceita connection string
 
@@ -44,7 +44,7 @@ Segunda parte do engine (operação e extensões); a primeira, a construção da
 
 ## 12. API
 
-- [ ] 12.3 Criar as rotas `/api/v1/modelos/{tipo}/{nome}` sobre o Blob; verificar envio, validação, ativação, desativação, listagem, 401 e `ESTADO_SCRIPT_CONCORRENTE`
+- [ ] 12.3 Criar as rotas `/api/v1/modelos/{tipo}/{nome}` sobre o Blob; verificar envio, validação, ativação, desativação, listagem e `ESTADO_SCRIPT_CONCORRENTE`
 
 ## 13. Planilha
 
@@ -73,6 +73,6 @@ Segunda parte do engine (operação e extensões); a primeira, a construção da
 
 ## 17. Correções da revisão de 2026-09-30
 
-- [ ] 17.3 Segurança: apagar o `JwtDecoder` próprio e o `mockJwtDecoder` do `SegurancaConfig`; usar só o Resource Server do Spring pelo `application.yml` (guia, 13.3); verificar com `MockMvc` e `jwt()` os 401/403 de cada rota, que a subida sem emissor falha, e que nenhum token sem assinatura válida é aceito
+- [ ] 17.3 Segurança: apagar o `JwtDecoder` próprio, o `mockJwtDecoder` e o `SegurancaConfig` e todo o Resource Server do Spring (o engine não autentica; guia, 13.3); verificar que a aplicação sobe sem emissor nem audiência e que nenhuma classe de segurança sobra no código
 - [ ] 17.5 Proveniência: modelo, interpolador e calendário com a origem, a versão e o hash do que o `RegistroModelos` de fato resolveu; verificar o cenário "Proveniência de script Groovy" da spec `curve-audit-history`
 - [ ] 17.11 Rodar a suíte inteira e `openspec validate engine-modelos-curva --strict`; verificar, com a saída do Maven colada no relatório, que tudo passa (não marcar esta tarefa sem a saída)
