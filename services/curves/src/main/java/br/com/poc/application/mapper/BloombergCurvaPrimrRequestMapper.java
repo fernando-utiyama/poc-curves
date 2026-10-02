@@ -13,7 +13,7 @@ import org.mapstruct.MappingTarget;
  * {@link BloombergCurvaPrimr}, mantendo o caso de uso livre de código repetitivo de atribuição de campos.
  *
  * <p>As conversões são implementadas manualmente porque os campos seguem o padrão de nomenclatura
- * {@code cldtfdUnic}/{@code vPrecoLiqdc} (letra minúscula seguida de maiúscula), que o MapStruct não
+ * {@code cIdtfdUnic}/{@code vPrecoLiqdc} (letra minúscula seguida de maiúscula), que o MapStruct não
  * consegue casar automaticamente entre os {@code record}s de entrada e o bean de domínio.</p>
  */
 @Mapper(componentModel = "spring")
@@ -57,7 +57,7 @@ public interface BloombergCurvaPrimrRequestMapper {
         }
 
         return new BloombergCurvaPrimrResponse(
-            domain.getCldtfdUnic(),
+            domain.getCIdtfdUnic(),
             domain.getCTickerIndcd(),
             domain.getVPrecoLiqdc(),
             domain.getVPrecoMed(),

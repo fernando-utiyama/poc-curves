@@ -10,7 +10,7 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "tAnbmaCurvaPrimr", schema = "dbo")
-@AttributeOverride(name = "uuid", column = @Column(name = "cldtfdUnic", nullable = false))
+@AttributeOverride(name = "uuid", column = @Column(name = "cIdtfdUnic", nullable = false))
 @Getter
 @Setter
 @NoArgsConstructor

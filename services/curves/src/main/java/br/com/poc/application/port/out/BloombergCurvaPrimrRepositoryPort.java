@@ -10,13 +10,13 @@ public interface BloombergCurvaPrimrRepositoryPort {
 
     BloombergCurvaPrimr save(BloombergCurvaPrimr entity);
 
-    Optional<BloombergCurvaPrimr> findById(Integer cldtfdUnic);
+    Optional<BloombergCurvaPrimr> findById(Integer cIdtfdUnic);
 
     List<BloombergCurvaPrimr> findAll();
 
     List<BloombergCurvaPrimr> findByFilters(String cTickerIndcd, LocalDate dBaseReft);
 
-    void delete(Integer cldtfdUnic);
+    void delete(Integer cIdtfdUnic);
 
-    boolean existsById(Integer cldtfdUnic);
+    boolean existsById(Integer cIdtfdUnic);
 }

@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Conversões entre a entidade JPA e o modelo de domínio implementadas manualmente porque os campos
- * seguem o padrão {@code cldtfdUnic}/{@code vPrecoLiqdc} (letra minúscula seguida de maiúscula), que o
+ * seguem o padrão {@code cIdtfdUnic}/{@code vPrecoLiqdc} (letra minúscula seguida de maiúscula), que o
  * MapStruct não consegue casar automaticamente entre os beans.
  */
 @Component
@@ -18,7 +18,7 @@ public class BloombergCurvaPrimrMapper {
         }
 
         BloombergCurvaPrimr domain = new BloombergCurvaPrimr();
-        domain.setCldtfdUnic(entity.getCldtfdUnic());
+        domain.setCIdtfdUnic(entity.getCIdtfdUnic());
         domain.setCTickerIndcd(entity.getCTickerIndcd());
         domain.setVPrecoLiqdc(entity.getVPrecoLiqdc());
         domain.setVPrecoMed(entity.getVPrecoMed());
@@ -39,7 +39,7 @@ public class BloombergCurvaPrimrMapper {
         }
 
         BloombergCurvaPrimrEntity entity = new BloombergCurvaPrimrEntity();
-        entity.setCldtfdUnic(domain.getCldtfdUnic());
+        entity.setCIdtfdUnic(domain.getCIdtfdUnic());
         entity.setCTickerIndcd(domain.getCTickerIndcd());
         entity.setVPrecoLiqdc(domain.getVPrecoLiqdc());
         entity.setVPrecoMed(domain.getVPrecoMed());

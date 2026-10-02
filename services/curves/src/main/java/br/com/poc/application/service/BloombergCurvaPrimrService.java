@@ -43,8 +43,8 @@ public class BloombergCurvaPrimrService implements BloombergCurvaPrimrUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public BloombergCurvaPrimrResponse findById(Integer cldtfdUnic) {
-        BloombergCurvaPrimr domain = findExistingById(cldtfdUnic);
+    public BloombergCurvaPrimrResponse findById(Integer cIdtfdUnic) {
+        BloombergCurvaPrimr domain = findExistingById(cIdtfdUnic);
         return mapper.toResponse(domain);
     }
 
@@ -67,21 +67,21 @@ public class BloombergCurvaPrimrService implements BloombergCurvaPrimrUseCase {
     }
 
     @Override
-    public BloombergCurvaPrimrResponse update(Integer cldtfdUnic, UpdateBloombergCurvaPrimrRequest request) {
-        BloombergCurvaPrimr domain = findExistingById(cldtfdUnic);
+    public BloombergCurvaPrimrResponse update(Integer cIdtfdUnic, UpdateBloombergCurvaPrimrRequest request) {
+        BloombergCurvaPrimr domain = findExistingById(cIdtfdUnic);
         mapper.updateDomainFromRequest(request, domain);
 
         return mapper.toResponse(repositoryPort.save(domain));
     }
 
     @Override
-    public void delete(Integer cldtfdUnic) {
-        findExistingById(cldtfdUnic);
-        repositoryPort.delete(cldtfdUnic);
+    public void delete(Integer cIdtfdUnic) {
+        findExistingById(cIdtfdUnic);
+        repositoryPort.delete(cIdtfdUnic);
     }
 
-    private BloombergCurvaPrimr findExistingById(Integer cldtfdUnic) {
-        return repositoryPort.findById(cldtfdUnic)
+    private BloombergCurvaPrimr findExistingById(Integer cIdtfdUnic) {
+        return repositoryPort.findById(cIdtfdUnic)
             .orElseThrow(this::notFoundException);
     }
 

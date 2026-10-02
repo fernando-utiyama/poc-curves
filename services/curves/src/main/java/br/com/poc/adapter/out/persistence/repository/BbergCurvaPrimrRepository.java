@@ -11,7 +11,7 @@ import java.util.List;
 public interface BbergCurvaPrimrRepository extends JpaRepository<BloombergCurvaPrimrEntity, Integer> {
 
     @Query(value = """
-        SELECT ISNULL(MAX(cldtfdUnic), 0) + 1
+        SELECT ISNULL(MAX(cIdtfdUnic), 0) + 1
         FROM dbo.tBbergCurvaPrimr WITH (UPDLOCK, HOLDLOCK)
         """, nativeQuery = true)
     Integer reserveNextIdentifier();

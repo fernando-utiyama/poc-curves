@@ -11,13 +11,13 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @NoArgsConstructor
-@lombok.EqualsAndHashCode(of = "cldtfdUnic")
+@lombok.EqualsAndHashCode(of = "cIdtfdUnic")
 @Entity
 @Table(name = "tBbergCurvaPrimr", schema = "dbo")
 public class BloombergCurvaPrimrEntity {
     @Id
-    @Column(name = "cldtfdUnic", nullable = false)
-    private Integer cldtfdUnic;
+    @Column(name = "cIdtfdUnic", nullable = false)
+    private Integer cIdtfdUnic;
 
     @Column(name = "cTickerIndcd", nullable = false, length = 50)
     private String cTickerIndcd;

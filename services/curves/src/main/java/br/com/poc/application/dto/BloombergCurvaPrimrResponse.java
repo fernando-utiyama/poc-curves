@@ -3,7 +3,7 @@ package br.com.poc.application.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record BloombergCurvaPrimrResponse(Integer cldtfdUnic,
+public record BloombergCurvaPrimrResponse(Integer cIdtfdUnic,
                                           String cTickerIndcd,
                                           BigDecimal vPrecoLiqdc,
                                           BigDecimal vPrecoMed,

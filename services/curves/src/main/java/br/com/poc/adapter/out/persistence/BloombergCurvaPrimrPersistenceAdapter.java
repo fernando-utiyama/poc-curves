@@ -22,8 +22,8 @@ public class BloombergCurvaPrimrPersistenceAdapter implements BloombergCurvaPrim
     @Override
     public BloombergCurvaPrimr save(BloombergCurvaPrimr entity) {
         BloombergCurvaPrimrEntity persistenceEntity = mapper.toEntity(entity);
-        if (persistenceEntity.getCldtfdUnic() == null) {
-            persistenceEntity.setCldtfdUnic(repository.reserveNextIdentifier());
+        if (persistenceEntity.getCIdtfdUnic() == null) {
+            persistenceEntity.setCIdtfdUnic(repository.reserveNextIdentifier());
         }
 
         BloombergCurvaPrimrEntity saved = repository.save(persistenceEntity);
@@ -31,8 +31,8 @@ public class BloombergCurvaPrimrPersistenceAdapter implements BloombergCurvaPrim
     }
 
     @Override
-    public Optional<BloombergCurvaPrimr> findById(Integer cldtfdUnic) {
-        return repository.findById(cldtfdUnic)
+    public Optional<BloombergCurvaPrimr> findById(Integer cIdtfdUnic) {
+        return repository.findById(cIdtfdUnic)
             .map(mapper::toDomain);
     }
 
@@ -53,12 +53,12 @@ public class BloombergCurvaPrimrPersistenceAdapter implements BloombergCurvaPrim
     }
 
     @Override
-    public void delete(Integer cldtfdUnic) {
-        repository.deleteById(cldtfdUnic);
+    public void delete(Integer cIdtfdUnic) {
+        repository.deleteById(cIdtfdUnic);
     }
 
     @Override
-    public boolean existsById(Integer cldtfdUnic) {
-        return repository.existsById(cldtfdUnic);
+    public boolean existsById(Integer cIdtfdUnic) {
+        return repository.existsById(cIdtfdUnic);
     }
 }

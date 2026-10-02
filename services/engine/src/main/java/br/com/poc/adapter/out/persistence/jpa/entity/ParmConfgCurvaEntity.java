@@ -12,7 +12,7 @@ import java.util.Objects;
 public class ParmConfgCurvaEntity {
 
     @Id
-    @Column(name = "cldtfdConfg", nullable = false)
+    @Column(name = "cIdtfdConfg", nullable = false)
     private Integer idtfdConfg;
 
     @Id

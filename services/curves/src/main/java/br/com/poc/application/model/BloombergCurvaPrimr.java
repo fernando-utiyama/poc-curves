@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class BloombergCurvaPrimr {
 
-    private Integer cldtfdUnic;
+    private Integer cIdtfdUnic;
     private String cTickerIndcd;
     private BigDecimal vPrecoLiqdc;
     private BigDecimal vPrecoMed;

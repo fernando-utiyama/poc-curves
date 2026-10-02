@@ -11,13 +11,13 @@ public interface BloombergCurvaPrimrUseCase {
 
     BloombergCurvaPrimrResponse create(CreateBloombergCurvaPrimrRequest request);
 
-    BloombergCurvaPrimrResponse findById(Integer cldtfdUnic);
+    BloombergCurvaPrimrResponse findById(Integer cIdtfdUnic);
 
     List<BloombergCurvaPrimrResponse> findAll();
 
     List<BloombergCurvaPrimrResponse> findByFilters(String cTickerIndcd, LocalDate dBaseReft);
 
-    BloombergCurvaPrimrResponse update(Integer cldtfdUnic, UpdateBloombergCurvaPrimrRequest request);
+    BloombergCurvaPrimrResponse update(Integer cIdtfdUnic, UpdateBloombergCurvaPrimrRequest request);
 
-    void delete(Integer cldtfdUnic);
+    void delete(Integer cIdtfdUnic);
 }

@@ -10,7 +10,7 @@ public class ConfgCurvaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "cldtfdConfg", nullable = false)
+    @Column(name = "cIdtfdConfg", nullable = false)
     private Integer idtfdConfg;
 
     @Column(name = "cTickerIndcd", length = 50)
