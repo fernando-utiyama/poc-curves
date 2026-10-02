@@ -10,9 +10,10 @@
 -- 1. FK_tCurvaMercd_tTesouCurvaPrimr (não visível em nenhuma foto, inferida
 --    pelo padrão das demais tabelas "*CurvaPrimr") — CONFIRMADA, existe no
 --    script real com esse nome exato.
--- 2. Prefixo de coluna "cldtfdUnic"/"cldtfdConfg"/"cldtfdTrefa"/"cldtfdParm"/
---    "cldtfdEntrd" — CONFIRMADO como "l" minúsculo (não "I" maiúsculo,
---    hipótese inicial errada), corrigido em todas as ocorrências.
+-- 2. Prefixo de coluna "cIdtfdUnic"/"cIdtfdConfg"/"cIdtfdTrefa"/"cIdtfdParm"/
+--    "cIdtfdEntrd" — CONFIRMADO como "I" maiúsculo (de "Identificador", como
+--    em cTickerIdtfdUnic), conferido no arquivo real pelo Copilot em
+--    2026-09-30; a grafia com "l" minúsculo era erro de leitura das fotos.
 -- 3. DECIMAL(28,16) em vFatorAcum/vFatorDia/vDiaFator/vFatorCalc/vAcumFator
 --    (vs. DECIMAL(28,12) nos demais campos vPreco*/vFator*) — CONFIRMADO.
 --
@@ -154,7 +155,7 @@ GO
 
 CREATE TABLE [tAnbmaCurvaPrimr]
 (
-    [cldtfdUnic]        int             NOT NULL ,
+    [cIdtfdUnic]        int             NOT NULL ,
     [cTickerIndcd]      varchar(50)     NOT NULL ,
     [dBaseReft]         date            NULL ,
     [vPrecoTx]          DECIMAL(28,12)  NULL ,
@@ -164,7 +165,7 @@ GO
 
 CREATE TABLE [tBbergCurvaPrimr]
 (
-    [cldtfdUnic]        int             NOT NULL ,
+    [cIdtfdUnic]        int             NOT NULL ,
     [cTickerIndcd]      varchar(50)     NOT NULL ,
     [cDiaVcto]          int             NULL ,
     [cFormaLiqdc]       char(20)        NULL ,
@@ -181,7 +182,7 @@ GO
 
 CREATE TABLE [tBtrsCurvaPrimr]
 (
-    [cldtfdUnic]        int             NOT NULL ,
+    [cIdtfdUnic]        int             NOT NULL ,
     [cTickerIndcd]      varchar(50)     NOT NULL ,
     [cDiaCorri]         int             NULL ,
     [cDiaUtil]          int             NULL ,
@@ -194,7 +195,7 @@ GO
 
 CREATE TABLE [tCmeCurvaPrimr]
 (
-    [cldtfdUnic]        int             NOT NULL ,
+    [cIdtfdUnic]        int             NOT NULL ,
     [cTickerIndcd]      varchar(50)     NOT NULL ,
     [cDsvioAjustCurva]  int             NULL ,
     [dBaseReft]         date            NULL ,
@@ -204,7 +205,7 @@ GO
 
 CREATE TABLE [tConfgCurva]
 (
-    [cldtfdConfg]       int             IDENTITY(1,1) NOT NULL ,
+    [cIdtfdConfg]       int             IDENTITY(1,1) NOT NULL ,
     [cTickerIndcd]      varchar(50)     NULL ,
     [cAtivoFincr]       bit             NULL ,
     [cRotnaCalc]        varchar(1024)   NULL ,
@@ -264,7 +265,7 @@ GO
 
 CREATE TABLE [tCurvaPrvdr]
 (
-    [cldtfdUnic]        int             NOT NULL ,
+    [cIdtfdUnic]        int             NOT NULL ,
     [cPriorCsumo]       int             NULL ,
     [cPrvdrMercd]       varchar(50)     NULL ,
     [cTickerIndcd]      varchar(50)     NOT NULL ,
@@ -332,7 +333,7 @@ GO
 
 CREATE TABLE [tGradeMtrizData]
 (
-    [cldtfdUnic]        int             NOT NULL ,
+    [cIdtfdUnic]        int             NOT NULL ,
     [dBaseReft]         date            NULL ,
     [cFormtArq]         varchar(200)    NULL ,
     [cModLyoutCarga]    char(16)        NULL ,
@@ -367,7 +368,7 @@ GO
 
 CREATE TABLE [tLchCurvaPrimr]
 (
-    [cldtfdUnic]        int             NOT NULL ,
+    [cIdtfdUnic]        int             NOT NULL ,
     [cTickerIndcd]      varchar(50)     NOT NULL ,
     [cCurvaCompd]       int             NULL ,
     [cTpoInsttCurva]    varchar(50)     NULL ,
@@ -382,8 +383,8 @@ GO
 
 CREATE TABLE [tLogTrefa]
 (
-    [cldtfdEntrd]       int             IDENTITY(1,1) NOT NULL ,
-    [cldtfdTrefa]       int             NOT NULL ,
+    [cIdtfdEntrd]       int             IDENTITY(1,1) NOT NULL ,
+    [cIdtfdTrefa]       int             NOT NULL ,
     [cSitExcuc]         int             NULL ,
     [dAtaCriac]         datetime        NOT NULL ,
     [rLogTrefa]         varchar(8000)   NULL
@@ -392,7 +393,7 @@ GO
 
 CREATE TABLE [tLsegCurvaPrimr]
 (
-    [cldtfdUnic]        int             NOT NULL ,
+    [cIdtfdUnic]        int             NOT NULL ,
     [cTickerIndcd]      varchar(50)     NOT NULL ,
     [cDiaVcto]          int             NULL ,
     [cFormaLiqdc]       char(20)        NULL ,
@@ -420,7 +421,7 @@ GO
 
 CREATE TABLE [tParmConfgCurva]
 (
-    [cldtfdConfg]       int             NOT NULL ,
+    [cIdtfdConfg]       int             NOT NULL ,
     [cTpoInstt]         varchar(50)     NULL ,
     [iPrvdrDados]       varchar(1024)   NULL ,
     [vPrecoTx]          DECIMAL(28,12)  NULL ,
@@ -430,7 +431,7 @@ GO
 
 CREATE TABLE [tParmTpoGrade]
 (
-    [cldtfdUnic]        int             NOT NULL ,
+    [cIdtfdUnic]        int             NOT NULL ,
     [cTpoParm]          varchar(255)    NULL ,
     [cParmConfg]        varchar(8000)   NULL ,
     [iParmConfg]        varchar(50)     NULL ,
@@ -440,8 +441,8 @@ GO
 
 CREATE TABLE [tParmTrefa]
 (
-    [cldtfdParm]        int             IDENTITY(1,1) NOT NULL ,
-    [cldtfdTrefa]       int             NOT NULL ,
+    [cIdtfdParm]        int             IDENTITY(1,1) NOT NULL ,
+    [cIdtfdTrefa]       int             NOT NULL ,
     [cCategParmConfg]   varchar(255)    NULL ,
     [iParmTrefa]        varchar(255)    NULL ,
     [rParmTrefa]        varchar(8000)   NULL
@@ -459,7 +460,7 @@ GO
 
 CREATE TABLE [tTesouCurvaPrimr]
 (
-    [cldtfdUnic]        int             NOT NULL ,
+    [cIdtfdUnic]        int             NOT NULL ,
     [dBaseReft]         date            NULL ,
     [cNegocDay]         int             NULL ,
     [cQtdDiaPer]        int             NULL ,
@@ -473,7 +474,7 @@ GO
 
 CREATE TABLE [tTrefaAgnda]
 (
-    [cldtfdTrefa]       int             IDENTITY(1,1) NOT NULL ,
+    [cIdtfdTrefa]       int             IDENTITY(1,1) NOT NULL ,
     [cAcaoOperSist]     varchar(1024)   NOT NULL ,
     [cRegraAgnda]       char(15)        NULL ,
     [cRegraIntvl]       char(20)        NULL ,
@@ -488,7 +489,7 @@ GO
 -- ============================================================================
 
 ALTER TABLE [tAnbmaCurvaPrimr]
-    ADD CONSTRAINT [XPKtAnbmaCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cldtfdUnic] ASC)
+    ADD CONSTRAINT [XPKtAnbmaCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cIdtfdUnic] ASC)
 GO
 
 CREATE NONCLUSTERED INDEX [XIF1tAnbmaCurvaPrimr] ON [tAnbmaCurvaPrimr]
@@ -498,7 +499,7 @@ CREATE NONCLUSTERED INDEX [XIF1tAnbmaCurvaPrimr] ON [tAnbmaCurvaPrimr]
 GO
 
 ALTER TABLE [tBbergCurvaPrimr]
-    ADD CONSTRAINT [XPKtBbergCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cldtfdUnic] ASC)
+    ADD CONSTRAINT [XPKtBbergCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cIdtfdUnic] ASC)
 GO
 
 CREATE NONCLUSTERED INDEX [XIF1tBbergCurvaPrimr] ON [tBbergCurvaPrimr]
@@ -508,11 +509,11 @@ CREATE NONCLUSTERED INDEX [XIF1tBbergCurvaPrimr] ON [tBbergCurvaPrimr]
 GO
 
 ALTER TABLE [tBtrsCurvaPrimr]
-    ADD CONSTRAINT [XPKtBtrsCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cldtfdUnic] ASC)
+    ADD CONSTRAINT [XPKtBtrsCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cIdtfdUnic] ASC)
 GO
 
 ALTER TABLE [tCmeCurvaPrimr]
-    ADD CONSTRAINT [XPKtCmeCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cldtfdUnic] ASC, [cTickerIndcd] ASC)
+    ADD CONSTRAINT [XPKtCmeCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cIdtfdUnic] ASC, [cTickerIndcd] ASC)
 GO
 
 CREATE NONCLUSTERED INDEX [XIF1tCmeCurvaPrimr] ON [tCmeCurvaPrimr]
@@ -522,7 +523,7 @@ CREATE NONCLUSTERED INDEX [XIF1tCmeCurvaPrimr] ON [tCmeCurvaPrimr]
 GO
 
 ALTER TABLE [tConfgCurva]
-    ADD CONSTRAINT [XPKtConfgCurva] PRIMARY KEY NONCLUSTERED ([cldtfdConfg] ASC)
+    ADD CONSTRAINT [XPKtConfgCurva] PRIMARY KEY NONCLUSTERED ([cIdtfdConfg] ASC)
 GO
 
 CREATE NONCLUSTERED INDEX [XIF1tConfgCurva] ON [tConfgCurva]
@@ -540,7 +541,7 @@ ALTER TABLE [tCurvaMercd]
 GO
 
 ALTER TABLE [tCurvaPrvdr]
-    ADD CONSTRAINT [XPKtCurvaPrvdr] PRIMARY KEY NONCLUSTERED ([cldtfdUnic] ASC)
+    ADD CONSTRAINT [XPKtCurvaPrvdr] PRIMARY KEY NONCLUSTERED ([cIdtfdUnic] ASC)
 GO
 
 CREATE NONCLUSTERED INDEX [XIF2tCurvaPrvdr] ON [tCurvaPrvdr]
@@ -558,7 +559,7 @@ ALTER TABLE [tDadoVertcCurva]
 GO
 
 ALTER TABLE [tGradeMtrizData]
-    ADD CONSTRAINT [XPKtGradeMtrizData] PRIMARY KEY NONCLUSTERED ([cldtfdUnic] ASC)
+    ADD CONSTRAINT [XPKtGradeMtrizData] PRIMARY KEY NONCLUSTERED ([cIdtfdUnic] ASC)
 GO
 
 ALTER TABLE [tGradeTpo]
@@ -576,7 +577,7 @@ CREATE NONCLUSTERED INDEX [XIF1tGradeVoltl] ON [tGradeVoltl]
 GO
 
 ALTER TABLE [tLchCurvaPrimr]
-    ADD CONSTRAINT [XPKtLchCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cldtfdUnic] ASC)
+    ADD CONSTRAINT [XPKtLchCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cIdtfdUnic] ASC)
 GO
 
 CREATE NONCLUSTERED INDEX [XIF1tLchCurvaPrimr] ON [tLchCurvaPrimr]
@@ -586,17 +587,17 @@ CREATE NONCLUSTERED INDEX [XIF1tLchCurvaPrimr] ON [tLchCurvaPrimr]
 GO
 
 ALTER TABLE [tLogTrefa]
-    ADD CONSTRAINT [XPKtLogTrefa] PRIMARY KEY NONCLUSTERED ([cldtfdEntrd] ASC)
+    ADD CONSTRAINT [XPKtLogTrefa] PRIMARY KEY NONCLUSTERED ([cIdtfdEntrd] ASC)
 GO
 
 CREATE NONCLUSTERED INDEX [XIF1tLogTrefa] ON [tLogTrefa]
 (
-    [cldtfdTrefa] ASC
+    [cIdtfdTrefa] ASC
 )
 GO
 
 ALTER TABLE [tLsegCurvaPrimr]
-    ADD CONSTRAINT [XPKtLsegCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cldtfdUnic] ASC)
+    ADD CONSTRAINT [XPKtLsegCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cIdtfdUnic] ASC)
 GO
 
 CREATE NONCLUSTERED INDEX [XIF1tLsegCurvaPrimr] ON [tLsegCurvaPrimr]
@@ -616,17 +617,17 @@ CREATE NONCLUSTERED INDEX [XIF1tMtrizCurva] ON [tMtrizCurva]
 GO
 
 ALTER TABLE [tParmConfgCurva]
-    ADD CONSTRAINT [XPKtParmConfgCurva] PRIMARY KEY NONCLUSTERED ([cldtfdConfg] ASC)
+    ADD CONSTRAINT [XPKtParmConfgCurva] PRIMARY KEY NONCLUSTERED ([cIdtfdConfg] ASC)
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [XIF1tParmConfgCurva] ON [tParmConfgCurva]
 (
-    [cldtfdConfg] ASC
+    [cIdtfdConfg] ASC
 )
 GO
 
 ALTER TABLE [tParmTpoGrade]
-    ADD CONSTRAINT [XPKtParmTpoGrade] PRIMARY KEY CLUSTERED ([cldtfdUnic] ASC)
+    ADD CONSTRAINT [XPKtParmTpoGrade] PRIMARY KEY CLUSTERED ([cIdtfdUnic] ASC)
 GO
 
 CREATE NONCLUSTERED INDEX [XIF1tParmTpoGrade] ON [tParmTpoGrade]
@@ -636,12 +637,12 @@ CREATE NONCLUSTERED INDEX [XIF1tParmTpoGrade] ON [tParmTpoGrade]
 GO
 
 ALTER TABLE [tParmTrefa]
-    ADD CONSTRAINT [XPKtParmTrefa] PRIMARY KEY NONCLUSTERED ([cldtfdParm] ASC)
+    ADD CONSTRAINT [XPKtParmTrefa] PRIMARY KEY NONCLUSTERED ([cIdtfdParm] ASC)
 GO
 
 CREATE NONCLUSTERED INDEX [XIF1tParmTrefa] ON [tParmTrefa]
 (
-    [cldtfdTrefa] ASC
+    [cIdtfdTrefa] ASC
 )
 GO
 
@@ -650,7 +651,7 @@ ALTER TABLE [tPrvdrDadoMercd]
 GO
 
 ALTER TABLE [tTesouCurvaPrimr]
-    ADD CONSTRAINT [XPKtTesouCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cldtfdUnic] ASC)
+    ADD CONSTRAINT [XPKtTesouCurvaPrimr] PRIMARY KEY NONCLUSTERED ([cIdtfdUnic] ASC)
 GO
 
 CREATE NONCLUSTERED INDEX [XIF1tTesouCurvaPrimr] ON [tTesouCurvaPrimr]
@@ -660,7 +661,7 @@ CREATE NONCLUSTERED INDEX [XIF1tTesouCurvaPrimr] ON [tTesouCurvaPrimr]
 GO
 
 ALTER TABLE [tTrefaAgnda]
-    ADD CONSTRAINT [XPKtTrefa] PRIMARY KEY NONCLUSTERED ([cldtfdTrefa] ASC)
+    ADD CONSTRAINT [XPKtTrefa] PRIMARY KEY NONCLUSTERED ([cIdtfdTrefa] ASC)
 GO
 
 -- ============================================================================
@@ -720,7 +721,7 @@ ALTER TABLE [tLchCurvaPrimr]
 GO
 
 ALTER TABLE [tLogTrefa]
-    ADD CONSTRAINT [FK_tTrefaAgnda_tLogTrefa] FOREIGN KEY([cldtfdTrefa]) REFERENCES [tTrefaAgnda]([cldtfdTrefa])
+    ADD CONSTRAINT [FK_tTrefaAgnda_tLogTrefa] FOREIGN KEY([cIdtfdTrefa]) REFERENCES [tTrefaAgnda]([cIdtfdTrefa])
 GO
 
 ALTER TABLE [tLsegCurvaPrimr]
@@ -732,7 +733,7 @@ ALTER TABLE [tMtrizCurva]
 GO
 
 ALTER TABLE [tParmConfgCurva]
-    ADD CONSTRAINT [FK_tConfgCurva_tParmConfgCurva] FOREIGN KEY([cldtfdConfg]) REFERENCES [tConfgCurva]([cldtfdConfg])
+    ADD CONSTRAINT [FK_tConfgCurva_tParmConfgCurva] FOREIGN KEY([cIdtfdConfg]) REFERENCES [tConfgCurva]([cIdtfdConfg])
 GO
 
 ALTER TABLE [tParmTpoGrade]
@@ -740,7 +741,7 @@ ALTER TABLE [tParmTpoGrade]
 GO
 
 ALTER TABLE [tParmTrefa]
-    ADD CONSTRAINT [FK_tTrefaAgnda_tParmTrefa] FOREIGN KEY([cldtfdTrefa]) REFERENCES [tTrefaAgnda]([cldtfdTrefa])
+    ADD CONSTRAINT [FK_tTrefaAgnda_tParmTrefa] FOREIGN KEY([cIdtfdTrefa]) REFERENCES [tTrefaAgnda]([cIdtfdTrefa])
 GO
 
 -- Não capturada em nenhuma foto (a última imagem corta logo após a FK acima) —
