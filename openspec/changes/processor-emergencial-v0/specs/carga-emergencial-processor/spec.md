@@ -140,7 +140,7 @@ O processor MUST NOT escrever em `tCurvaMercd` nem em `tCurvaPrvdr`. Uma carga s
 
 #### Scenario: Ticker completo na Bloomberg
 - **WHEN** o nó `S0490Z 15M BLC2 Curncy` é gravado
-- **THEN** `cTickerBberg` = `S0490Z 15M BLC2 Curncy`, na coluna `VARCHAR(50)` da change `banco-curvas-ajustes`, aplicada antes
+- **THEN** `cTickerBberg` = `S0490Z 15M BLC2 Curncy`, na coluna `VARCHAR(50)` do `001_SCRIPT_INICIAL.sql`
 
 ### Requirement: Aviso ao engine depois do commit
 Depois do commit de uma carga com algum código gravado, o processor SHALL chamar `POST /api/v1/cargas` do engine (spec `curve-load-trigger`) com `idCarga`, `fonte`, `produto`, `dataBase` e `linhasPorCodigo` (linhas gravadas por código na fonte), sem `Authorization` e com o `X-Correlation-Id` da chamada. O aviso MUST NOT segurar a resposta ao orquestrador: roda em segundo plano, repetindo com o mesmo `idCarga` por até 10 minutos (espera de 1 segundo dobrando até 60, tempo limite de 150 segundos por chamada), tratando 409 como repetição. Aos 2 minutos sem 2xx, o log SHALL ter `AVISO_ATRASADO`; esgotada a janela, ou com 4xx diferente de 409, `CARGA_FALHOU` (log de erro e métrica), com `idCarga`, fonte e data-base. A recuperação é o reprocessamento da data.

@@ -33,7 +33,7 @@ Esta é a **versão 0 emergencial**: o próprio `services/processor` busca os tr
 - **Front:** tela "Carga manual de arquivo", em pt-BR, com a fonte, o arquivo e o resultado da carga.
 - **Orquestrador (`orquestrador-curvas`):** sem código novo. As três tarefas de `cadastros-sugeridos.txt` apontam o `destino` para o processor (`orquestrador.http.destinos`); os caminhos ficam iguais aos sugeridos.
 - **Blob:** escreve e lê `b3/`, `anbima/` e `bloomberg/`, por Managed Identity. Só originais, como a regra do projeto.
-- **Banco:** sem mudança de schema. Lê `tCurvaPrvdr`, trava `tCurvaMercd`, grava `tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr` e `tBbergCurvaPrimr`. Na Bloomberg grava o ticker completo em `cTickerBberg`, o que exige o `ALTER` para `VARCHAR(50)` da change `banco-curvas-ajustes` aplicado antes.
+- **Banco:** sem mudança de schema. Lê `tCurvaPrvdr`, trava `tCurvaMercd`, grava `tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr` e `tBbergCurvaPrimr`. Na Bloomberg grava o ticker completo em `cTickerBberg`, coluna já `VARCHAR(50)` no `001_SCRIPT_INICIAL.sql`.
 - **Bloomberg Data License:** credencial (id e segredo) no Key Vault; identificador do catálogo da conta por configuração.
 - **Engine:** recebe o aviso no contrato da spec `curve-load-trigger` (change `engine-construcao-curvas`).
 - **Changes relacionadas:** `processor-carga-b3` continua sendo o destino final do B3 (as regras de leiaute, validação e gravação são as mesmas, para o código ser reaproveitado); `conector-b3-webhook-ingest` e as futuras functions ANBIMA e Bloomberg substituem as rotas de download desta versão.

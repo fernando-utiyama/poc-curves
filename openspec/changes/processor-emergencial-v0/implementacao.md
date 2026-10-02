@@ -178,7 +178,7 @@ Comportamento (os endpoints exatos seguem a documentação da conta, [A CONFIRMA
 
 - Linhas com ticker, data e valor ([A CONFIRMAR] nomes das colunas do CSV da conta).
 - Para cada ticker pedido: uma linha com a data-base e valor numérico. Faltou algum = 503 no download, 422 no upload, citando os tickers.
-- Gravação: `cTickerBberg` = o ticker completo (`S0490Z 15M BLC2 Curncy`; coluna `VARCHAR(50)` da `banco-curvas-ajustes`); `vPrecoUlt` = valor como veio; código na fonte = primeiro termo (`S0490Z`); `linhasPorCodigo` = `{ "S0490Z": nós gravados }`.
+- Gravação: `cTickerBberg` = o ticker completo (`S0490Z 15M BLC2 Curncy`; coluna `VARCHAR(50)` do `001_SCRIPT_INICIAL.sql`); `vPrecoUlt` = valor como veio; código na fonte = primeiro termo (`S0490Z`); `linhasPorCodigo` = `{ "S0490Z": nós gravados }`.
 
 ### 7.3 Lista de reserva (temporária)
 

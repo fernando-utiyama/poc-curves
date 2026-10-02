@@ -6,7 +6,7 @@ Constrói a curva SOFR a partir das zero rates por tenor do curve member Bloombe
 
 ### Requirement: Leitura dos nós por tenor
 O modelo `SOFR_ZERO_BLOOMBERG` SHALL exigir origem com fonte `BLOOMBERG` e produto `BLC2`; caso contrário, `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tBbergCurvaPrimr` com `cTickerIndcd` = nome da curva (o feeder grava os nós sob a curva de mercado ligada ao membro em `tCurvaPrvdr`) e `dBaseReft` = data-base. Cada linha é um nó:
-- `cTickerBberg` = ticker da Bloomberg, no formato `{membro} {tenor}` seguido ou não da fonte e da yellow key (ex.: `S0490Z 15M BLC2 Curncy`, completo depois da change `banco-curvas-ajustes`, ou `S0490Z 15M`, que cabe no `CHAR(20)` atual e é a forma gravada até a homologação, com a lista de tickers fixa no conector); o primeiro termo MUST ser igual ao código na fonte da origem, e o segundo é o tenor;
+- `cTickerBberg` = ticker da Bloomberg, no formato `{membro} {tenor}` seguido ou não da fonte e da yellow key (ex.: `S0490Z 15M BLC2 Curncy`, completo, que é o que o processor grava na coluna `VARCHAR(50)` do `001_SCRIPT_INICIAL.sql`, ou a forma curta `S0490Z 15M`, também aceita); o primeiro termo MUST ser igual ao código na fonte da origem, e o segundo é o tenor;
 - `vPrecoUlt` = taxa zero em percentual ao ano, usada sem conversão.
 
 Ticker fora desse formato ou de outro membro MUST resultar em `INSUMO_INVALIDO`. As colunas de contrato futuro (`dVctoContr`, `vPrecoMed` e as demais) MUST NOT ser usadas. O modelo MUST NOT ler `BloombergCurveRaw`.

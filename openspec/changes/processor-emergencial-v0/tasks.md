@@ -22,7 +22,7 @@ Guia de implementação: [`implementacao.md`](implementacao.md). A seção 1 (ba
 
 ## 4. Provedor Bloomberg (independente)
 
-- [ ] 4.1 `BloombergProvedorCarga` no lugar do provisório: cliente do Data License (pedido de histórico com identificador determinístico por data, hash dos tickers e faixa de 30 min; reaproveitamento do pedido já feito; espera de até 90 s; leitura do arquivo de resposta), credencial do Key Vault, ticker completo em `cTickerBberg` (depende do `ALTER` da `banco-curvas-ajustes`), carga só com todos os tickers com valor, e o `INSERT` em `tBbergCurvaPrimr`; verificar com servidor simulado pedido novo, pedido já existente, resposta atrasada (503), ticker sem valor (503 no download, 422 no upload)
+- [ ] 4.1 `BloombergProvedorCarga` no lugar do provisório: cliente do Data License (pedido de histórico com identificador determinístico por data, hash dos tickers e faixa de 30 min; reaproveitamento do pedido já feito; espera de até 90 s; leitura do arquivo de resposta), credencial do Key Vault, ticker completo em `cTickerBberg` (`VARCHAR(50)` no `001_SCRIPT_INICIAL.sql`), carga só com todos os tickers com valor, e o `INSERT` em `tBbergCurvaPrimr`; verificar com servidor simulado pedido novo, pedido já existente, resposta atrasada (503), ticker sem valor (503 no download, 422 no upload)
 - [ ] 4.2 Criar `TickersSofrReserva` com os 20 tickers e o `TODO` de retirada, usada numa única linha quando `tickers` vem ausente ou vazio, com o log `TICKERS_RESERVA`; verificar a chamada sem `tickers` e que apagar a classe só quebra essa linha
 
 ## 5. bff e front (depois da 1.2; independente dos provedores)
@@ -37,6 +37,6 @@ Guia de implementação: [`implementacao.md`](implementacao.md). A seção 1 (ba
 
 ## 7. Homologação (infraestrutura real)
 
-- [ ] 7.1 Aplicar o `ALTER` de `cTickerBberg` (`banco-curvas-ajustes`); liberar a saída para B3, ANBIMA e Data License, o Blob e o Key Vault; cadastrar `tCurvaPrvdr` das 7 curvas (`design.md`, plano de migração)
+- [ ] 7.1 Conferir `cTickerBberg` `VARCHAR(50)` no banco (`001_SCRIPT_INICIAL.sql` atual); liberar a saída para B3, ANBIMA e Data License, o Blob e o Key Vault; cadastrar `tCurvaPrvdr` das 7 curvas (`design.md`, plano de migração)
 - [ ] 7.2 Apontar os destinos do orquestrador para o processor, cadastrar as tarefas dos provedores prontos (sem agendar) e executá-las manualmente pelo orquestrador v0 (`orquestrador-v0-disparo-manual`) para hoje e para uma data passada; verificar originais no Blob, linhas nas tabelas e o engine construindo as curvas
 - [ ] 7.3 Enviar pelo front um `TaxaSwap.txt` e um `ms` já carregados e conferir o mesmo `idCarga`; reprocessar uma data pelo orquestrador e conferir que nada é baixado

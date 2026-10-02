@@ -114,8 +114,9 @@ banco (os nós da SOFR já gravados):
   FROM (SELECT DISTINCT cTickerBberg FROM dbo.tBbergCurvaPrimr
         WHERE cTickerIndcd = 'SOFR') t;
 
-(se a coluna ainda tiver a forma curta "S0490Z 15M", a function envia à
-Bloomberg a forma completa, como a change banco-curvas-ajustes define).
+(a coluna é VARCHAR(50) no 001_SCRIPT_INICIAL.sql e guarda o ticker completo;
+se aparecer alguma linha com a forma curta "S0490Z 15M", completar com
+" BLC2 Curncy" antes de usar a lista).
 
 {
   "nome": "download-bloomberg-sofr",

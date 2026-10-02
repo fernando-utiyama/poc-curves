@@ -42,7 +42,7 @@ Seguindo `processor-carga-b3` (D7, rejeitar o arquivo ou o código, nunca a linh
 `tAnbmaCurvaPrimr` guarda o prazo em dias úteis (`vVertcCurva`), e o arquivo `ms` traz só a data de vencimento. O processor conta os dias úteis até o vencimento ajustado por `Following`, com as classes de calendário copiadas do engine (seção 4 do guia do `engine-construcao-curvas`, como o orquestrador faz), sem chamar o engine. Um feriado decretado que o calendário nativo não conheça aparece no engine como `CALENDARIO_DIVERGENTE`, sem errar o vencimento.
 
 ### D7. Ticker completo na tabela Bloomberg
-A v0 grava `cTickerBberg` com o ticker completo, como a Bloomberg publica (`S0490Z 15M BLC2 Curncy`, 22 caracteres). Por isso depende do `ALTER` da change `banco-curvas-ajustes` (`cTickerBberg` de `CHAR(20)` para `VARCHAR(50)`) aplicado antes. O modelo `SOFR_ZERO_BLOOMBERG` aceita o ticker completo. **Alternativa rejeitada:** gravar a forma curta `S0490Z 15M`, que caberia no `CHAR(20)` mas é diferente do que a fonte publica.
+A v0 grava `cTickerBberg` com o ticker completo, como a Bloomberg publica (`S0490Z 15M BLC2 Curncy`, 22 caracteres). A coluna já é `VARCHAR(50)` no `001_SCRIPT_INICIAL.sql` (ajuste da change `banco-curvas-ajustes`, incorporado ao script). O modelo `SOFR_ZERO_BLOOMBERG` aceita o ticker completo. **Alternativa rejeitada:** gravar a forma curta `S0490Z 15M`, que caberia no `CHAR(20)` mas é diferente do que a fonte publica.
 
 ### D8. Identidade e Blob iguais ao caminho definitivo
 `idCarga`, forma canônica do B3 e pastas no Blob seguem a spec `b3-taxaswap-publicacao`: o mesmo arquivo gera o mesmo `idCarga` aqui e, depois, no conector. Para ANBIMA e Bloomberg, a mesma estrutura com `anbima/` e `bloomberg/`, guardando os bytes como recebidos.
@@ -67,7 +67,7 @@ As rotas, o caso de uso (`CargaArquivoUseCase`, porta de entrada), o roteiro com
 
 ## Migration Plan
 
-1. Aplicar o `ALTER` de `cTickerBberg` da change `banco-curvas-ajustes` (já pronto), antes do deploy do provedor Bloomberg.
+1. Conferir que o banco foi criado com o `001_SCRIPT_INICIAL.sql` atual (`cTickerBberg` `VARCHAR(50)`); se foi com a versão antiga, aplicar antes o `alter-banco-curvas.sql` da change `banco-curvas-ajustes`.
 2. Liberar a saída do processor para `www.b3.com.br`, `www.anbima.com.br` e o host do Data License; dar ao processor escrita e leitura em `b3/`, `anbima/` e `bloomberg/` do Blob por Managed Identity; guardar a credencial do Data License no Key Vault.
 3. Cadastro em `tCurvaPrvdr`: `B3`/`TS`/código para PRE, DCL, DPL, INP e PTX; `ANBIMA`/`MS`/`NTN-B` para a NTNB; `BLOOMBERG`/`BLC2`/`S0490Z` para a SOFR.
 4. Implantar o processor.

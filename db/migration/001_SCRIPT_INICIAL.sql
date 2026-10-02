@@ -16,6 +16,9 @@
 --    2026-09-30; a grafia com "l" minúsculo era erro de leitura das fotos.
 -- 3. DECIMAL(28,16) em vFatorAcum/vFatorDia/vDiaFator/vFatorCalc/vAcumFator
 --    (vs. DECIMAL(28,12) nos demais campos vPreco*/vFator*) — CONFIRMADO.
+-- 4. Ajustes da change banco-curvas-ajustes já incorporados ao script real:
+--    tBbergCurvaPrimr.cTickerBberg VARCHAR(50) (era CHAR(20)) e tCurvaData
+--    removida (só sobram os DROP ... IF EXISTS no início, para bancos antigos).
 --
 -- Serviços que usam este schema: services/processor, services/engine,
 -- services/curves e services/orchestrator. Mudanças de schema vão como
@@ -169,7 +172,7 @@ CREATE TABLE [tBbergCurvaPrimr]
     [cTickerIndcd]      varchar(50)     NOT NULL ,
     [cDiaVcto]          int             NULL ,
     [cFormaLiqdc]       char(20)        NULL ,
-    [cTickerBberg]      char(20)        NULL ,
+    [cTickerBberg]      varchar(50)     NULL ,
     [dBaseReft]         date            NULL ,
     [dLiqdcFincr]       date            NULL ,
     [dVctoContr]        date            NULL ,
@@ -220,15 +223,6 @@ CREATE TABLE [tConfgCurva]
     [cVrsaoReg]         int             NULL ,
     [dInicVgcia]        date            NULL ,
     [dValidAte]         date            NULL
-)
-GO
-
-CREATE TABLE [tCurvaData]
-(
-    [dBaseReft]         date            NOT NULL ,
-    [cTickerIndcd]      varchar(50)     NOT NULL ,
-    [dVertcReft]        date            NOT NULL ,
-    [vPrecoTx]          DECIMAL(28,12)  NULL
 )
 GO
 
@@ -532,10 +526,6 @@ CREATE NONCLUSTERED INDEX [XIF1tConfgCurva] ON [tConfgCurva]
 )
 GO
 
-ALTER TABLE [tCurvaData]
-    ADD CONSTRAINT [XPKtCurvaData] PRIMARY KEY NONCLUSTERED ([dBaseReft] ASC, [cTickerIndcd] ASC, [dVertcReft] ASC)
-GO
-
 ALTER TABLE [tCurvaMercd]
     ADD CONSTRAINT [XPKtCurvaMercd] PRIMARY KEY NONCLUSTERED ([cTickerIndcd] ASC)
 GO
@@ -686,10 +676,6 @@ GO
 
 ALTER TABLE [tConfgCurva]
     ADD CONSTRAINT [FK_tCurvaMercd_tConfgCurva] FOREIGN KEY([cTickerIndcd]) REFERENCES [tCurvaMercd]([cTickerIndcd])
-GO
-
-ALTER TABLE [tCurvaData]
-    ADD CONSTRAINT [FK_tDadoCurva_tCurvaData] FOREIGN KEY([dBaseReft], [cTickerIndcd], [dVertcReft]) REFERENCES [tDadoCurva]([dBaseReft], [cTickerIndcd], [dVertcReft])
 GO
 
 ALTER TABLE [tCurvaPrvdr]

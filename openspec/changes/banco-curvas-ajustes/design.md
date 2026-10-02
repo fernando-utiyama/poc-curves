@@ -39,7 +39,9 @@ Verificado com o arquivo real `CurvaZero_25092026.txt`, gravado em SQL Server 20
 
 ## Migration Plan
 
-1. Pedir ao dono do schema a execução de `scripts/alter-banco-curvas.sql` no banco ainda sem uso. O script foi testado em SQL Server 2022 sobre o schema do `001_SCRIPT_INICIAL.sql`: aplicação, ticker de 22 caracteres gravado, `tCurvaData` removida com a FK, `tDadoCurva` e `tDadoVertcCurva` intactas (colunas, PKs e FKs), a volta comentada recriando `tCurvaData` como no `001_SCRIPT_INICIAL.sql` (colunas e PK nonclustered), e uma falha no `DROP TABLE` desfazendo também o `ALTER` do ticker. Retestado em 2026-09-28 com esta versão do script.
+**Situação em 2026-10-01:** as duas alterações foram incorporadas ao `001_SCRIPT_INICIAL.sql` real (`cTickerBberg` `VARCHAR(50)`, sem `tCurvaData`), e a cópia em `db/migration/` foi atualizada. Banco criado por esse script já está ajustado; o `alter-banco-curvas.sql` só é preciso num banco criado com a versão antiga.
+
+1. Num banco criado com a versão antiga do script: executar `scripts/alter-banco-curvas.sql`. O script foi testado em SQL Server 2022 sobre o schema do `001_SCRIPT_INICIAL.sql`: aplicação, ticker de 22 caracteres gravado, `tCurvaData` removida com a FK, `tDadoCurva` e `tDadoVertcCurva` intactas (colunas, PKs e FKs), a volta comentada recriando `tCurvaData` como no `001_SCRIPT_INICIAL.sql` (colunas e PK nonclustered), e uma falha no `DROP TABLE` desfazendo também o `ALTER` do ticker. Retestado em 2026-09-28 com esta versão do script.
 2. **Rollback:** a volta comentada no final do script.
 
 ## Open Questions
@@ -52,5 +54,5 @@ Verificado com o arquivo real `CurvaZero_25092026.txt`, gravado em SQL Server 20
 - Tamanho de `cTickerBberg` para outros produtos Bloomberg além da SOFR, se algum passar de 50.
 - PK de `tDadoCurva` clustered, agora que ela guarda a curva interpolada (o maior volume): pedir ou não ao dono do schema.
 
-## Nota: não bloqueia a homologação
-A lista de tickers da SOFR está fixa no conector. Até a homologação, ele grava a forma curta (ex.: `S0490Z 15M`), que cabe no `CHAR(20)` atual; para produção, com este ALTER aplicado, o ticker fica livre e passa a ser gravado completo. O modelo do engine lê as duas formas, então a homologação não depende deste ALTER.
+## Nota: ticker completo desde já
+Com o `001_SCRIPT_INICIAL.sql` já em `VARCHAR(50)`, o ticker da SOFR é gravado completo desde o início (processor emergencial v0). O modelo do engine continua aceitando também a forma curta (`S0490Z 15M`).
