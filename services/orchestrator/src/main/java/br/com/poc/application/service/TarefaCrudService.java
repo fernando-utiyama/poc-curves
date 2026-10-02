@@ -80,6 +80,9 @@ public class TarefaCrudService implements TarefaCrudUseCase {
 
         Tarefa atual = buscarPorId(id);
 
+        if(TarefaStatus.REMOVIDA.name().equalsIgnoreCase(atual.getStatus())) {
+            throw new InvalidInputException(ORIGIN, "atualizarParcialmente", "Nao e permitido atualizar tarefa removida");
+        }
         if (tarefaPatch.getNome() != null) {
             atual.setNome(tarefaPatch.getNome());
         }

@@ -122,7 +122,6 @@ public class SchedulerService implements SchedulerUseCase {
     }
 
     @Override
-    @Transactional
     public void executeTask(Long tarefaId) {
         // Sem @Transactional: cada save commita por chamada, garantindo que o status final
         // (FINALIZADA ou ERRO) seja persistido mesmo quando a action lanca excecao.

@@ -15,6 +15,7 @@ import java.util.Optional;
 public interface TaskRepositoryPort {
     Tarefa save(Tarefa tarefa);
     List<Tarefa> findAllTarefas();
+    List<Tarefa> findAllTarefasResumidas();
     List<Tarefa> findPersistedScheduledTarefas();
     Optional<Tarefa> findTarefaById(Long id);
     Optional<Tarefa> findTarefaByNome(String nome);
