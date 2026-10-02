@@ -4,7 +4,7 @@ A spec manda; este guia diz onde e como. Pacotes, nomes de exceção, handler de
 
 ## 1. Base comum: contrato hexagonal e onde fica cada coisa
 
-A base comum (tarefas 1.1 a 1.8) é feita primeiro, por uma pessoa. Ao fim dela, as nove rotas chegam ao caso de uso, o roteiro comum roda, e cada fonte responde 501 `PROVEDOR_NAO_IMPLEMENTADO`. Aí vem a **pausa** (tarefa 1.9, seção 11): parar e aguardar a revisão. Depois, cada dev implementa um provedor (tarefas 2, 3 ou 4) trocando só as classes da sua fonte.
+A base comum (tarefas 1.1 a 1.8) é feita primeiro, por uma pessoa. Ao fim dela, as nove rotas chegam ao caso de uso, o roteiro comum roda, e cada fonte responde 501 `PROVEDOR_NAO_IMPLEMENTADO`. Em seguida, a mesma pessoa implementa a ANBIMA (tarefas 3.1 e 3.2), que fica como modelo de provedor. Aí vem a **pausa** (tarefa 3.3, seção 11): parar e aguardar a revisão. Depois, cada dev implementa um dos provedores restantes (tarefas 2 ou 4) seguindo o modelo da ANBIMA e trocando só as classes da sua fonte.
 
 Em hexagonal, o "caso de uso" é a **porta de entrada** (interface em `application/port/in`), implementada por um serviço em `application/service`. Os controllers (adaptadores de entrada) só conhecem a porta. O que muda por fonte fica atrás de uma **porta de saída**, `ProvedorCargaPort`, com uma implementação por fonte.
 
@@ -233,9 +233,10 @@ SELECT COUNT(*) FROM {tabela} WHERE cTickerIndcd = ? AND dBaseReft = ?;         
 ## 11. Ordem
 
 1. **Base comum (uma pessoa):** seções 1, 2, 3, 4, 8 (parte comum), 9 e o log (tarefas 1.1 a 1.8). Entregar com as nove rotas respondendo 501.
-2. **PAUSA (tarefa 1.9):** parar. Rodar `mvn compile` e os testes das tarefas 1.x, registrar o que foi feito e o que ficou pendente, e aguardar a revisão. Não começar nenhum provedor nem o bff e o front antes disso.
-3. **Provedores, em paralelo (um dev cada):** B3 (seção 5; tarefa 2.1), ANBIMA com o calendário (seção 6; 3.1 e 3.2), Bloomberg com a reserva (seção 7; 4.1 e 4.2). Cada um troca só a sua pasta `adapter/out/provedor/{fonte}/` e a sua `Insercao*`, e escreve os seus testes.
-4. **bff e front (em paralelo, depois da pausa):** seção 10 (5.1 e 5.2).
-5. Fechamento (6.x) e homologação (7.x).
+2. **ANBIMA, provedor modelo (a mesma pessoa):** seção 6, com o calendário (tarefas 3.1 e 3.2). Entregar com as rotas da ANBIMA gravando em `tAnbmaCurvaPrimr` e B3 e Bloomberg ainda respondendo 501.
+3. **PAUSA (tarefa 3.3):** parar. Rodar `mvn compile` e os testes das tarefas 1.x e 3.x, registrar o que foi feito e o que ficou pendente, e aguardar a revisão. Não começar a B3, a Bloomberg nem o bff e o front antes disso.
+4. **Provedores restantes, em paralelo (um dev cada), seguindo o modelo da ANBIMA:** B3 (seção 5; tarefa 2.1) e Bloomberg com a reserva (seção 7; 4.1 e 4.2). Cada um troca só a sua pasta `adapter/out/provedor/{fonte}/` e a sua `Insercao*`, e escreve os seus testes.
+5. **bff e front (em paralelo, depois da pausa):** seção 10 (5.1 e 5.2).
+6. Fechamento (6.x) e homologação (7.x).
 
 Testes: um por cenário da spec, com o `ms260928.txt` real e o `TaxaSwap.txt` de `docs/` nos recursos de teste; servidores simulados para B3, ANBIMA, Data License e engine; acesso ao banco e Blob simulados.
