@@ -878,9 +878,9 @@ Tabela "Regras do arquivo" da spec `sofr-bloomberg-curve-model`. `ticker.strip()
 
 ### 9.1 `ProcessarCargaService` (`POST /api/v1/cargas`)
 
-Corpo: `record NotificacaoCarga(String idCarga, String fonte, String produto, LocalDate dataBase, Map<String, Integer> linhasPorCodigo)`; inválido → 400. Nada é gravado sobre a carga.
+Corpo: `record NotificacaoCarga(String idCarga, String fonte, String produto, LocalDate dataBase, Map<String, Integer> verticesPorCodigo)`; inválido → 400. Nada é gravado sobre a carga.
 1. `CARGA_RECEBIDA`.
-2. Curvas cuja **origem principal** tem a fonte e o produto da carga e código em `linhasPorCodigo`, agrupadas em `Map<String, List<...>>` (um código na fonte pode ter **várias** curvas; todas são processadas); código sem curva → log `AVISO`.
+2. Curvas cuja **origem principal** tem a fonte e o produto da carga e código em `verticesPorCodigo`, agrupadas em `Map<String, List<...>>` (um código na fonte pode ter **várias** curvas; todas são processadas); código sem curva → log `AVISO`.
 3. Cada curva independente: inativa/fora da vigência → `Ignorada`; senão `ConstruirCurvaService` (`CARGA`, `linhasAvisadas`, sem recálculo) com `fonte` e `produto` do `PedidoConstrucao` **nulos**: eles só existem para a construção por origem secundária pela API; na carga, a construção é pela origem principal, sem `ORIGEM_SECUNDARIA`.
 4. Cadeia de derivadas (9.3).
 5. 200 com o `idCarga` e os resultados; `CARGA_PROCESSADA`. Prazo total `engine.timeout.carga-segundos`.

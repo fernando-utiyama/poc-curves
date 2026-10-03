@@ -33,6 +33,6 @@ Esta **v0** entrega a base que a v1 usa (fuso de Brasília, campos do cadastro c
 
 - **services/orchestrator:** `Application` (fuso), `application.yml` (`orquestrador.http.destinos`, sem `jackson.time-zone`), `TarefaJpaMapper`, `HttpTaskActionAdapter` (destino + caminho), novo `CargaFonteTaskActionAdapter`, cliente de saída comum, classes de calendário copiadas do engine, rota de execução manual com `dataBase` e defasagem, e reivindicação condicional da tarefa no `TaskJpaPersistenceAdapter`.
 - **bff e front:** rota autenticada de execução com data opcional, repassada ao orquestrador com `X-Usuario`; na tela de tarefas, executar com data e ver o resultado.
-- **Processor:** os destinos `conector-b3`, `conector-anbima` e `conector-bloomberg` apontam para o `services/processor` (change `processor-v0`). Quando as functions existirem, muda só a base-URL de cada destino.
+- **Processor:** os destinos `conector-b3`, `conector-anbima` e `conector-bloomberg` apontam para o `services/processor` (change `processor-v0`). Quando as functions existirem, mudam a base-URL de cada destino e os caminhos de cada tarefa (parâmetros, sem redeploy).
 - **Banco:** sem mudança de schema; usa `tTrefaAgnda`, `tParmTrefa` e `tLogTrefa` como já existem.
 - **v1 (`orquestrador-curvas`):** parte das tarefas já sai feita; a v1 completa a reivindicação por ocorrência, o agendamento, a janela, o alerta e o calendário.

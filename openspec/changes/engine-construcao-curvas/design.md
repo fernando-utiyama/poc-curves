@@ -148,7 +148,7 @@ Os modelos esperam das tabelas brutas o contrato abaixo. Preenchê-las é do con
 | `tAnbmaCurvaPrimr` | uma linha por título inteiro (código SELIC terminado em `99`; os desmembrados não são gravados), `cTickerIndcd` = nome da curva de mercado: `vPrecoTx` = taxa indicativa em percentual, `vVertcCurva` = prazo em dias úteis | colunas existem; escala de `vPrecoTx` confirmada pelo arquivo `ms{AAMMDD}.txt` (percentual ao ano); unidade de `vVertcCurva` a confirmar com a ingestão ANBIMA |
 | `tBbergCurvaPrimr` | uma linha por nó da SOFR, `cTickerIndcd` = nome da curva de mercado, `cTickerBberg` = `{membro} {tenor} ...`, `vPrecoUlt` = taxa zero em percentual | tabela existe; gravada pelo processor (change `processor-v0`); `cTickerBberg` já `VARCHAR(50)` no `001_SCRIPT_INICIAL.sql`, com o ticker completo |
 
-Além das tabelas, o processor chama o webhook `POST /api/v1/cargas` depois do commit de cada carga, com a quantidade de linhas por código na fonte, e repete com o mesmo `idCarga` até receber 2xx (D22). Para a B3, isso está especificado nos changes `conector-b3-webhook-ingest` (o conector publica uma mensagem por carga) e `processor-carga-b3` (o processor grava `tBtrsCurvaPrimr` e avisa o engine).
+Além das tabelas, o processor chama o webhook `POST /api/v1/cargas` depois do commit de cada carga, com a quantidade de vértices por código na fonte, e repete com o mesmo `idCarga` até receber 2xx (D22). Para a B3, isso está especificado nos changes `conector-b3-webhook-ingest` (o conector publica uma mensagem por carga) e `processor-carga-b3` (o processor grava `tBtrsCurvaPrimr` e avisa o engine).
 
 ### NTN-B (ANBIMA): `NTNB_BOOTSTRAP_ANBIMA`
 

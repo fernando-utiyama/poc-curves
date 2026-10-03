@@ -52,7 +52,7 @@ Cada execução é uma tentativa só: a v0 não repete, não consulta janela, n�
 
 #### Scenario: Download do dia com sucesso
 - **WHEN** o operador executa a tarefa B3 sem `dataBase` em `2026-09-14`, e o destino responde 200 com `dataBase` = `2026-09-14` e `idCarga` = `B3-TS-20260914-1a2b3c4d5e6f`
-- **THEN** o orquestrador chamou `{base-url do conector-b3}/api/b3/taxa-swap/download?date=2026-09-14`, e o resultado é `SUCESSO` com o `idCarga`
+- **THEN** o orquestrador chamou `{base-url do conector-b3}/api/v1/cargas/b3/download?dataBase=2026-09-14`, e o resultado é `SUCESSO` com o `idCarga`
 
 #### Scenario: Defasagem de um dia útil
 - **WHEN** a tarefa Bloomberg tem `defasagemDiasUteis` = 1 e `calendarios` = `Brazil/Settlement,UnitedStates/FederalReserve`, e o operador executa sem data na segunda-feira `2026-09-14`
@@ -96,9 +96,9 @@ Cada execução é uma tentativa só: a v0 não repete, não consulta janela, n�
 ### Requirement: Calendários nativos no orquestrador
 O orquestrador SHALL ter os mesmos calendários nativos do engine (`Brazil`/`Settlement` e `UnitedStates`/`FederalReserve`), copiados da seção 4 do guia da change `engine-construcao-curvas` sem mudar regra, sem depender do engine no ar. Na v0 não há sincronização de feriados decretados com o engine (é da v1).
 
-#### Scenario: Mesmos dias úteis do engine
-- **WHEN** o orquestrador e o engine contam os dias úteis de `Brazil`/`Settlement` de 2001 a 2099
-- **THEN** os dois dão os mesmos dias
+#### Scenario: Mesmos feriados do engine
+- **WHEN** o orquestrador consulta os feriados de 2026
+- **THEN** `Brazil`/`Settlement` tem a Páscoa em `2026-04-05` (Carnaval `02-16`/`02-17`, Sexta-feira Santa `04-03`, Corpus Christi `06-04`), e `UnitedStates`/`FederalReserve` tem `01-01`, `01-19`, `02-16`, `05-25`, `06-19`, `09-07`, `10-12`, `11-11`, `11-26` e `12-25`, as mesmas datas do engine
 
 ### Requirement: Data-base escolhida no front
 O front SHALL permitir ao operador executar cada tarefa de download informando a data-base (campo opcional, `dd/mm/aaaa`); vazio, vale a data-base padrão da tarefa, e a tela SHALL dizer isso ("Vazio: data-base padrão da tarefa"). Com uma data informada, a tela SHALL oferecer a opção "Baixar de novo da fonte" (desmarcada), que envia `incluirDownload` = `true`; sem marcá-la, uma data passada reprocessa o arquivo já guardado. O bff SHALL expor a execução autenticada, só para o perfil de operação, e repassar ao orquestrador `POST /api/v1/agendador/tarefas/{id}/executar` com a `dataBase` (em `AAAA-MM-DD`, ou sem ela) e o `incluirDownload`, `X-Usuario` = usuário autenticado e `X-Correlation-Id`, sem o token. A tela SHALL mostrar o resultado devolvido: situação ("Sucesso", "Arquivo ainda não recebido", "Fonte ainda não implementada", "Erro"), a data-base usada (`dd/mm/aaaa`), o identificador da carga e o detalhe do erro.

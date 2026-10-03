@@ -2,11 +2,11 @@
 
 As curvas do primeiro objetivo precisam de insumo diário, e o caminho definitivo ainda não existe: as functions de download (B3, ANBIMA e Bloomberg) e o consumo do aviso de carga pelo processor (change `processor-carga-b3`) dependem de changes que não estão no ar. Sem dados brutos em `tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr` e `tBbergCurvaPrimr`, o engine não constrói nada.
 
-Esta é a **versão 0**: o próprio `services/processor` busca os três arquivos, arquiva o original no Blob para auditoria e grava os dados no banco, chamado pelo orquestrador nas mesmas rotas que as functions teriam. Quando as functions existirem, o orquestrador passa a apontar para elas, só por configuração, e esta versão sai.
+Esta é a **versão 0**: o próprio `services/processor` busca os três arquivos, arquiva o original no Blob para auditoria e grava os dados no banco, chamado pelo orquestrador com as mesmas respostas que as functions teriam. Quando as functions existirem, o orquestrador passa a apontar para elas trocando o destino e os caminhos das tarefas, sem mudar código, e esta versão sai.
 
 ## What Changes
 
-- **Processor ganha três rotas de download e três de reprocessamento**, no mesmo contrato que o orquestrador já espera das functions (200 com `dataBase` e `idCarga`; 503 quando o arquivo do dia ainda não saiu):
+- **Processor ganha uma rota de download e uma de reprocessamento, com a fonte no caminho** (`/api/v1/cargas/{fonte}/download` e `.../reprocessamento`, `{fonte}` = `b3`, `anbima` ou `bloomberg`), com as respostas que o orquestrador já espera das functions (200 com `dataBase` e `idCarga`; 503 quando o arquivo do dia ainda não saiu):
   - B3, por download do site: `TS{AAMMDD}.ex_` da B3 → `TaxaSwap.txt` → `tBtrsCurvaPrimr`;
   - ANBIMA, por download do site: `ms{AAMMDD}.txt` (mercado secundário, só NTN-B inteira) → `tAnbmaCurvaPrimr`, com o prazo em dias úteis;
   - Bloomberg, pela API do Data License: pedido de histórico (`HistoryRequest`) com os tickers da SOFR → `tBbergCurvaPrimr`.
@@ -31,7 +31,7 @@ Esta é a **versão 0**: o próprio `services/processor` busca os três arquivos
 - **services/processor:** rotas REST novas sem autenticação, clientes HTTP da B3, da ANBIMA e do Bloomberg Data License, escrita e leitura no Blob, parsers em Java, gravação JDBC nas três tabelas brutas, cliente do webhook do engine, classes de calendário copiadas do engine (dias úteis da NTN-B). Os consumidores Kafka existentes ficam como estão.
 - **bff:** rota autenticada de upload (multipart), que repassa ao processor com `X-Usuario` e `X-Correlation-Id`; só o bff autentica.
 - **Front:** tela "Carga manual de arquivo", em pt-BR, com a fonte, o arquivo e o resultado da carga.
-- **Orquestrador (`orquestrador-curvas`):** sem código novo. As três tarefas de `cadastros-sugeridos.txt` apontam o `destino` para o processor (`orquestrador.http.destinos`); os caminhos ficam iguais aos sugeridos.
+- **Orquestrador (`orquestrador-v0-disparo-manual`):** sem código novo além da v0. As três tarefas apontam o `destino` para o processor (`orquestrador.http.destinos`) e usam os caminhos `/api/v1/cargas/{fonte}/...` (guia da v0, seção 12).
 - **Blob:** escreve e lê `b3/`, `anbima/` e `bloomberg/`, por Managed Identity. Só originais, como a regra do projeto.
 - **Banco:** sem mudança de schema. Lê `tCurvaPrvdr`, trava `tCurvaMercd`, grava `tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr` e `tBbergCurvaPrimr`. Na Bloomberg grava o ticker completo em `cTickerBberg`, coluna já `VARCHAR(50)` no `001_SCRIPT_INICIAL.sql`.
 - **Bloomberg Data License:** credencial (id e segredo) no Key Vault; identificador do catálogo da conta por configuração.

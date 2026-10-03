@@ -1,34 +1,102 @@
 # Guia de implementação: processor v0
 
-A spec manda; este guia diz onde e como. Pacotes, nomes de exceção, handler de erro, log e configuração seguem o que o repositório real já usa. Os nomes abaixo são sugestão. Siga a ordem da seção 11. Os testes ficam para o fim.
+A spec (`specs/carga-arquivos-processor/spec.md`) manda no comportamento; este guia diz **onde, com que nome e como**. Ele foi escrito para ser suficiente sozinho: tudo o que você precisaria buscar em outras changes ou em outros serviços já está copiado aqui.
 
-## 1. Base comum: contrato hexagonal e onde fica cada coisa
+## 0. Antes de começar (leia isto primeiro)
 
-A base comum (tarefas 1.1 a 1.8) é feita primeiro, por uma pessoa. Ao fim dela, as nove rotas chegam ao caso de uso, o roteiro comum roda, e cada fonte responde 501 `PROVEDOR_NAO_IMPLEMENTADO`. Em seguida, a mesma pessoa implementa a ANBIMA (tarefas 3.1 e 3.2), que fica como modelo de provedor. Aí vem a **pausa** (tarefa 3.3, seção 11): parar e aguardar a revisão. Depois, cada dev implementa um dos provedores restantes (tarefas 2 ou 4) seguindo o modelo da ANBIMA e trocando só as classes da sua fonte.
+### 0.0 Como gastar pouco
 
-Em hexagonal, o "caso de uso" é a **porta de entrada** (interface em `application/port/in`), implementada por um serviço em `application/service`. Os controllers (adaptadores de entrada) só conhecem a porta. O que muda por fonte fica atrás de uma **porta de saída**, `ProvedorCargaPort`, com uma implementação por fonte.
+Cada fase é feita com **um prompt só**, sem ida e volta: não faça perguntas, decida pelo guia e, se faltar algo, deixe `// TODO(revisao): <dúvida>` e siga. Trabalhe tarefa por tarefa pelo cartão dela (seção 0.4): abra só os arquivos do cartão e leia só as seções que ele cita. A spec é para consulta em caso de dúvida: tudo o que o código precisa dela já está neste guia. Não rode a aplicação; compile e rode os testes. Para tarefas mecânicas (cartões com código pronto), um modelo de custo menor costuma bastar; confira o multiplicador do modelo na sua conta.
+
+### 0.1 O que ler e o que não ler
+
+Leia **só**:
+1. este guia (as seções do cartão da tarefa);
+2. `tasks.md` (só para marcar o que terminou);
+3. a spec (`specs/carga-arquivos-processor/spec.md`) só em caso de dúvida;
+4. do código existente do processor, só estes arquivos, e só quando o cartão mandar alterá-los (caminhos a partir do pacote raiz; no poc, `br.com.poc.starter.srv.hex`):
+   - `util/ErrorCode.java` e `util/enumerator/BusinessErrorCode.java` (molde do enum de códigos);
+   - `application/exception/` (as exceções existentes: só a assinatura dos construtores);
+   - `adapter/in/api/rest/exception/handler/ApplicationExceptionHandler.java` (onde acrescentar o mapeamento);
+   - `src/main/resources/application.yml` e `pom.xml` (para acrescentar, nunca reescrever).
+
+**Não** abra: `proposal.md` e `design.md` desta change (o que importa deles está aqui), outras changes do `openspec/`, outros serviços (engine, curves, orchestrator, conector), `docs/*.pdf`, e no processor os consumidores Kafka (`adapter/in/consumer/`), `adapter/out/persistence/inmemory/`, `application/model/*CurveRaw`, `application/service/Process*`, cache Redis e Feign. Nada disso muda nem é usado aqui.
+
+Se algo não estiver neste guia nem na spec, **não procure no repositório**: siga o padrão mais simples do Java 21, deixe `// TODO(revisao): <dúvida>` no código e registre a dúvida no resumo da pausa.
+
+### 0.2 Regras de código
+
+- Java 21 nativo: `java.time`, `BigDecimal`, records, sealed interfaces, `switch` com pattern matching, `HexFormat`, `MessageDigest`, `java.util.zip`, virtual threads, `java.time.Clock`.
+- Records para todo dado; conversões por métodos estáticos nos records. Sem Lombok nem MapStruct no código novo.
+- Spring Boot 4 e Jackson 3: JSON com o pacote `tools.jackson` (nunca `com.fasterxml.jackson`), pelo mapper que o Spring já injeta.
+- HTTP de saída: `RestClient` do Spring (já vem no `spring-boot-starter-web`). Não use Feign aqui.
+- Dependências novas permitidas, só estas: `com.azure:azure-storage-blob` e `com.azure:azure-identity`, pelo BOM `com.azure:azure-sdk-bom` no `dependencyManagement`. Nenhuma outra, nem de teste.
+- Não crie rota, código de erro, coluna, tabela, tópico ou script de banco fora deste guia e da spec.
+- Tudo o que é novo fica nos pacotes da seção 1; os arquivos existentes só recebem acréscimos (handler, `application.yml`, `pom.xml`).
+
+### 0.3 Prompt sugerido para o agente
+
+Fase 1 (até a pausa):
+
+> Implemente as tarefas 1.1 a 1.8 e 3.1 a 3.3 de `openspec/changes/processor-v0/tasks.md`, seguindo `openspec/changes/processor-v0/implementacao.md`. Leia só os arquivos da seção 0.1 do guia; não explore o resto do repositório. Ao terminar cada tarefa, rode `mvn -q compile` e corrija os erros; ao fim, rode `mvn -q test` e corrija até passar. Pare na tarefa 3.3 e escreva o resumo pedido nela.
+
+Fase 2 (um prompt por dev, depois da revisão): o mesmo, trocando as tarefas por `2.1`, ou `4.1` e `4.2`, ou `5.1` e `5.2`, e acrescentando: "copie a estrutura do provedor ANBIMA (`adapter/out/client/anbima/`)".
+
+### 0.4 Cartões por tarefa
+
+Caminhos a partir do pacote raiz (`src/main/java/...`); testes em `src/test/java/...` no mesmo pacote da classe testada.
+
+| Tarefa | Criar | Alterar | Ler no guia | Pronto quando |
+|---|---|---|---|---|
+| 1.1 | `application/model/carga/` (os records e enums da 2.1 e 2.2), `application/port/in/CargaArquivoUseCase`, `application/port/out/` (as 4 portas da 2.3 e `ProvedorCargaPort`), `util/enumerator/CargaErrorCode`, `application/exception/NotImplementedException` e `BadGatewayException`, `config/CargaConfig` e `config/ProcessorProperties` | `ApplicationExceptionHandler` (3 métodos), `application.yml` (seção 4), `pom.xml` (BOM do Azure e 2 dependências) | 1, 2, 3, 4 | `mvn -q compile` |
+| 1.2 | `adapter/in/api/rest/controller/CargaAPI` e `CargaController`, `adapter/in/api/rest/dto/CargaResponse`, `adapter/in/api/rest/config/CorrelacaoFilter` | — | 5 (até o roteiro) | `mvn -q compile` |
+| 1.3 | `adapter/out/client/b3/B3DownloadSiteProvedor`, `adapter/out/client/anbima/AnbimaDownloadSiteProvedor`, `adapter/out/client/bloomberg/BloombergDataLicenseProvedor` (provisórios); `CargaRotasTest` | — | 2.2, 12 | `CargaRotasTest` passa |
+| 1.4 | `application/service/CargaArquivoService`; `CargaArquivoServiceTest` (com portas falsas no próprio teste) | — | 5 (roteiro), 12 | `CargaArquivoServiceTest` passa |
+| 1.5 | `adapter/out/storage/blob/ArquivoOriginalBlobAdapter` | — | 6 | `mvn -q compile` |
+| 1.6 | `adapter/out/persistence/jdbc/CurvaPrimrPersistenceAdapter`, `CurvaPrimrInsercao` e as três `*CurvaPrimrInsercao` provisórias | — | 7 | `mvn -q compile` |
+| 1.7 | `application/service/AvisoEngineService`, `adapter/out/client/engine/AvisoEngineAdapter`; `AvisoEngineServiceTest` | — | 8, 12 | `AvisoEngineServiceTest` passa |
+| 1.8 | — | `CargaArquivoService` (log) | 9 | `mvn -q test` |
+| 3.1 | `domain/calendario/Calendario` e `Brazil` (código pronto); `BrazilTest` | — | 10.3, 10.4 | `BrazilTest` passa |
+| 3.2 | `adapter/out/client/anbima/AnbimaMsClient` e `LeiauteAnbimaMs`; `src/test/resources/anbima/ms260928.txt` (cópia de `recursos/`); `LeiauteAnbimaMsTest` e `AnbimaCargaTest` | `AnbimaDownloadSiteProvedor`, `AnbmaCurvaPrimrInsercao` | 7 (INSERT), 10, 12 | `mvn -q test` |
+| 3.3 | resumo da pausa | — | 14 | resumo escrito; parar |
+| 2.1 | `adapter/out/client/b3/B3TaxaSwapClient` e `LeiauteTaxaSwap`; `B3CargaTest` e `LeiauteTaxaSwapTest` | `B3DownloadSiteProvedor`, `BtrsCurvaPrimrInsercao` | 11.1, 12 | `mvn -q test` |
+| 4.1 | `adapter/out/client/bloomberg/BloombergDataLicenseClient` e `LeiauteRespostaDataLicense`; `BloombergCargaTest` e `LeiauteRespostaDataLicenseTest` | `BloombergDataLicenseProvedor`, `BbergCurvaPrimrInsercao` | 11.2, 12 | `mvn -q test` |
+| 4.2 | `adapter/out/client/bloomberg/TickersSofrReserva` | `CargaController.parametros`, `CargaRotasTest` | 5, 11.2 | `mvn -q test` |
+| 5.1 e 5.2 | rota do bff e tela do front | — | 13 | testes do bff e conferência no navegador |
+
+## 1. Onde fica cada coisa
+
+Nomes no padrão do projeto: controller com interface `*API` (anotações do Swagger) e `*Controller`; caso de uso em `application/port/in`; portas de saída `*Port` (`*RepositoryPort` para banco); dados das tabelas com o nome da tabela sem o `t` (`tAnbmaCurvaPrimr` → `AnbmaCurvaPrimr`).
 
 ```
-adapter/in/web/                     CargaB3Controller, CargaAnbimaController, CargaBloombergController   (base)
-application/port/in/                CargaArquivoUseCase                                                   (base)
-application/port/out/               ProvedorCargaPort, ArquivoOriginalPort, CurvaPrimariaPort, EngineCargaPort (base)
-application/service/                CargaArquivoService (roteiro comum), AvisoEngineService               (base)
-application/model/                  Fonte, OrigemCarga, ParametrosFonte, ArquivoObtido, CargaInterpretada, ResultadoCarga,
-                                    LinhaBruta (sealed), LinhaB3, TituloAnbima, NoSofr                    (base)
-adapter/out/blob/                   ArquivoOriginalBlobAdapter                                            (base)
-adapter/out/persistence/            CurvaPrimariaJdbcAdapter (comum)                                      (base)
-                                    InsercaoB3, InsercaoAnbima, InsercaoBloomberg                         (uma por provedor)
-adapter/out/client/                 EngineCargaClient                                                     (base)
-adapter/out/provedor/b3/            B3DownloadSiteProvedor, B3TaxaSwapClient, LeiauteTaxaSwap                    (dev B3)
-adapter/out/provedor/anbima/        AnbimaDownloadSiteProvedor, AnbimaMsClient, LeiauteAnbimaMs                  (dev ANBIMA)
-adapter/out/provedor/bloomberg/     BloombergDataLicenseProvedor, BloombergDataLicenseClient,
-                                    LeiauteRespostaDataLicense, TickersSofrReserva                        (dev Bloomberg)
-domain/calendario/                  Calendario, Brazil, UnitedStates, CalendarioPorLista (cópia do engine) (dev ANBIMA)
+adapter/in/api/rest/controller/   CargaAPI, CargaController (as três fontes)                         (base)
+adapter/in/api/rest/dto/          CargaResponse                                                      (base)
+application/port/in/              CargaArquivoUseCase                                                (base)
+application/port/out/             ProvedorCargaPort, ArquivoOriginalPort, CurvaPrimrRepositoryPort,
+                                  AvisoEnginePort                                                    (base)
+application/service/              CargaArquivoService (roteiro comum), AvisoEngineService            (base)
+application/model/carga/          Fonte, OrigemCarga, ParametrosFonte, ArquivoObtido, IdentidadeCarga,
+                                  CargaInterpretada, ResultadoCarga,
+                                  CurvaPrimr (sealed), BtrsCurvaPrimr, AnbmaCurvaPrimr, BbergCurvaPrimr (base)
+application/exception/            NotImplementedException, BadGatewayException (novas)               (base)
+util/enumerator/                  CargaErrorCode                                                     (base)
+config/                           CargaConfig (Clock, RestClient, BlobContainerClient, executor)     (base)
+adapter/out/storage/blob/         ArquivoOriginalBlobAdapter                                         (base)
+adapter/out/persistence/jdbc/     CurvaPrimrPersistenceAdapter (comum), CurvaPrimrInsercao (interface) (base)
+                                  AnbmaCurvaPrimrInsercao | BtrsCurvaPrimrInsercao | BbergCurvaPrimrInsercao (um por provedor)
+adapter/out/client/engine/        AvisoEngineAdapter                                                 (base)
+adapter/out/client/anbima/        AnbimaDownloadSiteProvedor, AnbimaMsClient, LeiauteAnbimaMs        (ANBIMA, modelo)
+domain/calendario/                Calendario, Brazil                                                 (ANBIMA)
+adapter/out/client/b3/            B3DownloadSiteProvedor, B3TaxaSwapClient, LeiauteTaxaSwap          (dev B3)
+adapter/out/client/bloomberg/     BloombergDataLicenseProvedor, BloombergDataLicenseClient,
+                                  LeiauteRespostaDataLicense, TickersSofrReserva                     (dev Bloomberg)
 ```
 
-Os consumidores Kafka e as tabelas `mkt.*Raw` não mudam.
+Cada dev de provedor mexe só na sua pasta `adapter/out/client/{fonte}/` e na sua `*CurvaPrimrInsercao`.
 
-### 1.1 Porta de entrada
+## 2. Contratos
+
+### 2.1 Porta de entrada e modelo
 
 ```java
 public interface CargaArquivoUseCase {
@@ -38,154 +106,346 @@ public interface CargaArquivoUseCase {
 }
 
 public enum Fonte {
-    B3("B3", "TS", "b3"), ANBIMA("ANBIMA", "MS", "anbima"), BLOOMBERG("BLOOMBERG", "BLC2", "bloomberg");
-    // fonte e produto (tCurvaPrvdr e webhook do engine), pasta no Blob; idCarga = {fonte}-{produto}-{AAAAMMDD}-{12 do hash}
+    B3("TS", "b3"), ANBIMA("MS", "anbima"), BLOOMBERG("BLC2", "bloomberg");
+    private final String produto; private final String pasta;
+    Fonte(String produto, String pasta) { this.produto = produto; this.pasta = pasta; }
+    public String produto() { return produto; }   // cPrvdrMercd e "produto" do aviso ao engine
+    public String pasta() { return pasta; }       // prefixo no Blob
 }
 
-public record ParametrosFonte(List<String> tickers) {}                       // só a Bloomberg usa
+public enum OrigemCarga { DOWNLOAD, REPROCESSAMENTO, UPLOAD }
+
+public record ParametrosFonte(List<String> tickers) {            // só a Bloomberg usa
+    public static final ParametrosFonte VAZIO = new ParametrosFonte(List.of());
+}
+
+public record IdentidadeCarga(String idCarga, String hashArquivo) {
+    public static IdentidadeCarga de(Fonte fonte, LocalDate dataBase, byte[] bytes) {
+        String hash = HexFormat.of().formatHex(sha256(bytes));          // MessageDigest "SHA-256"
+        String id = "%s-%s-%s-%s".formatted(fonte.name(), fonte.produto(),
+                dataBase.format(DateTimeFormatter.BASIC_ISO_DATE), hash.substring(0, 12));
+        return new IdentidadeCarga(id, hash);
+    }
+}
+
 public record ResultadoCarga(String idCarga, LocalDate dataBase, String hashArquivo, OrigemCarga origem,
-                             Map<String, Integer> linhasPorCodigo, String usuario) {}
+                             Map<String, Integer> verticesPorCodigo, String usuario) {}
 ```
 
-### 1.2 Porta de saída de cada fonte
+### 2.2 Porta de saída de cada fonte
 
 ```java
 public interface ProvedorCargaPort {
     Fonte fonte();
-    ArquivoObtido baixar(LocalDate data, ParametrosFonte parametros);   // ArquivoIndisponivelException (503), FonteIndisponivelException (502)
-    ArquivoObtido preparar(byte[] conteudo, String nomeArquivo);         // upload: extrair/canonizar; ArquivoInvalidoException (422)
-    LocalDate dataBase(ArquivoObtido arquivo);                           // ArquivoInvalidoException (422)
-    CargaInterpretada interpretar(ArquivoObtido arquivo, LocalDate dataBase);   // ArquivoInvalidoException (422)
+    ArquivoObtido baixar(LocalDate data, ParametrosFonte parametros);   // 503 ARQUIVO_INDISPONIVEL, 502 FONTE_INDISPONIVEL
+    ArquivoObtido preparar(byte[] conteudo, String nomeArquivo);         // upload: extrair/canonizar; 422
+    LocalDate dataBase(ArquivoObtido arquivo);                           // 422 se ilegível
+    CargaInterpretada interpretar(ArquivoObtido arquivo, LocalDate dataBase);   // 422 se o arquivo inteiro cai
 }
 
 public record ArquivoObtido(byte[] bytes, String nomeArquivo) {}
-public record CargaInterpretada(Map<String, List<LinhaBruta>> linhasPorCodigo, Map<String, String> codigosRejeitados) {}
-public sealed interface LinhaBruta permits LinhaB3, TituloAnbima, NoSofr {}
-public record LinhaB3(int diasCorridos, int diasUteis, BigDecimal valor) implements LinhaBruta {}
-public record TituloAnbima(int prazoDiasUteis, BigDecimal taxa) implements LinhaBruta {}      // taxa pode ser null
-public record NoSofr(String ticker, BigDecimal valor) implements LinhaBruta {}
+public record CargaInterpretada(Map<String, List<CurvaPrimr>> verticesPorCodigo, Map<String, String> codigosRejeitados) {}
+
+public sealed interface CurvaPrimr permits BtrsCurvaPrimr, AnbmaCurvaPrimr, BbergCurvaPrimr {}
+public record BtrsCurvaPrimr(int diasCorridos, int diasUteis, BigDecimal valor) implements CurvaPrimr {}
+public record AnbmaCurvaPrimr(int prazoDiasUteis, BigDecimal taxa) implements CurvaPrimr {}      // taxa pode ser null
+public record BbergCurvaPrimr(String ticker, BigDecimal valor) implements CurvaPrimr {}
 ```
 
-O `CargaArquivoService` recebe todos os `ProvedorCargaPort` por injeção (`List<ProvedorCargaPort>`) e monta um `EnumMap<Fonte, ProvedorCargaPort>`; faltar uma fonte derruba a subida.
+O `CargaArquivoService` recebe `List<ProvedorCargaPort>` e monta um `EnumMap<Fonte, ProvedorCargaPort>`; faltar uma fonte derruba a subida (`IllegalStateException` no construtor).
 
-### 1.3 Provedores provisórios (base)
+**Provedores provisórios (base):** cada fonte nasce com a sua classe `*Provedor` (`@Component`) implementando `ProvedorCargaPort` e lançando `new NotImplementedException(CargaErrorCode.PROVEDOR_NAO_IMPLEMENTADO)` em todos os métodos, menos `fonte()`.
 
-Cada fonte nasce com a sua classe implementando `ProvedorCargaPort` e lançando `ProvedorNaoImplementadoException` (501 `PROVEDOR_NAO_IMPLEMENTADO`) em todos os métodos. O dev da fonte substitui o corpo dessa classe; nada fora da pasta da sua fonte e da sua classe `Insercao*` precisa mudar.
-
-### 1.4 Inserção por tabela
+### 2.3 Demais portas de saída
 
 ```java
-public interface InsercaoLinhaBruta {
+public interface ArquivoOriginalPort {
+    void gravar(Fonte fonte, LocalDate dataBase, String idCarga, ArquivoObtido arquivo);   // já existe = sucesso
+    Optional<ArquivoObtido> maisRecente(Fonte fonte, LocalDate dataBase);
+}
+
+public interface CurvaPrimrRepositoryPort {
+    /** Grava numa transação; devolve os vértices gravados por código (códigos sem curva ficam fora). */
+    Map<String, Integer> substituir(Fonte fonte, LocalDate dataBase, CargaInterpretada carga);
+}
+
+public interface AvisoEnginePort {
+    /** Uma chamada; devolve o status HTTP (lança exceção em erro de rede). */
+    int avisar(String idCarga, Fonte fonte, LocalDate dataBase, Map<String, Integer> verticesPorCodigo, String correlationId);
+}
+
+public interface CurvaPrimrInsercao {
     Fonte fonte();
-    String tabela();                                           // tBtrsCurvaPrimr, tAnbmaCurvaPrimr, tBbergCurvaPrimr
-    void inserir(JdbcTemplate jdbc, int id, String curva, LocalDate dataBase, LinhaBruta linha);
+    String tabela();                                                  // tBtrsCurvaPrimr | tAnbmaCurvaPrimr | tBbergCurvaPrimr
+    void inserir(JdbcTemplate jdbc, int id, String curva, LocalDate dataBase, CurvaPrimr vertice);
 }
 ```
 
-O `CurvaPrimariaJdbcAdapter` faz a parte comum (mapeamento, trava, apagar, `MAX + 1`, contagem) e chama a `InsercaoLinhaBruta` da fonte para cada linha. A base cria as três com `inserir` lançando `ProvedorNaoImplementadoException`.
+A base cria as três `*CurvaPrimrInsercao` com `inserir` lançando `NotImplementedException`; a ANBIMA implementa a sua na fase 1.
 
-## 2. Configuração (só chaves novas)
+## 3. Erros
+
+Use as exceções que o processor já tem (`application/exception/`), com o código da spec num enum novo no molde do `BusinessErrorCode`:
+
+```java
+// util/enumerator/CargaErrorCode.java
+public enum CargaErrorCode implements ErrorCode {
+    PARAMETRO_INVALIDO("Parâmetro inválido"),
+    ARQUIVO_NAO_ENCONTRADO("Nenhum arquivo original encontrado para a fonte e a data"),
+    ARQUIVO_INVALIDO("Arquivo rejeitado pela validação"),
+    PROVEDOR_NAO_IMPLEMENTADO("Fonte ainda sem provedor implementado"),
+    FONTE_INDISPONIVEL("A fonte respondeu com erro inesperado"),
+    ARQUIVO_INDISPONIVEL("Arquivo da data ainda não disponível na fonte"),
+    SERVICO_INDISPONIVEL("Blob ou banco indisponível");
+    // code = name(); getCode() e getMessage() como no BusinessErrorCode
+}
+```
+
+| Código | HTTP | Exceção |
+|---|---|---|
+| `PARAMETRO_INVALIDO` | 400 | `InvalidInputException` |
+| `ARQUIVO_NAO_ENCONTRADO` | 404 | `NotFoundException` |
+| `ARQUIVO_INVALIDO` | 422 | `BusinessException` |
+| `PROVEDOR_NAO_IMPLEMENTADO` | 501 | `NotImplementedException` (**nova**, no molde das existentes) |
+| `FONTE_INDISPONIVEL` | 502 | `BadGatewayException` (**nova**, no molde das existentes) |
+| `ARQUIVO_INDISPONIVEL`, `SERVICO_INDISPONIVEL` | 503 | `ServiceUnavailableException` |
+
+- Lance com o construtor que recebe `ErrorCode` (e a mensagem com o detalhe, quando houver). Se a exceção existente não tiver esse construtor, acrescente um, sem mudar os que existem.
+- No `ApplicationExceptionHandler`, acrescente só: um método para `NotImplementedException` (501), um para `BadGatewayException` (502) e um para `MaxUploadSizeExceededException` (422 `ARQUIVO_INVALIDO`).
+- Corpo de erro da spec: `{ "codigoErro", "mensagem", "correlationId" }`, sem stack trace. Se o handler já monta outro formato, o teste de rotas (seção 12) decide: ajuste o handler até o corpo bater com a spec.
+
+## 4. Configuração (acrescentar ao `application.yml`)
 
 ```yaml
 processor:
   blob:
-    account-url: ${PROCESSOR_BLOB_ACCOUNT_URL}       # Managed Identity; string de conexão só no perfil local
+    account-url: ${PROCESSOR_BLOB_ACCOUNT_URL}       # Managed Identity (DefaultAzureCredential)
     container: ${PROCESSOR_BLOB_CONTAINER}
+    connection-string: ${PROCESSOR_BLOB_CONNECTION_STRING:}   # só no perfil local; vazio = Managed Identity
   fontes:
     b3-url: https://www.b3.com.br/pesquisapregao/download?filelist=TS{AAMMDD}.ex_
     anbima-url: https://www.anbima.com.br/informacoes/merc-sec/arqs/ms{AAMMDD}.txt
-    timeout-segundos: 60
+    timeout: 60s
   bloomberg:
     base-url: ${BLOOMBERG_DL_BASE_URL}               # [A CONFIRMAR] host da API do Data License
     catalogo: ${BLOOMBERG_DL_CATALOGO}               # [A CONFIRMAR] catálogo da conta
     campo: PX_LAST
-    faixa-pedido-minutos: 30
-    espera-segundos: 90
+    faixa-pedido: 30m
+    espera: 90s
     # id e segredo da credencial: Key Vault, nunca no yml
   engine:
     base-url: ${ENGINE_BASE_URL}
-    timeout-segundos: 150
-    aviso-janela-minutos: 10
-    aviso-alerta-minutos: 2
-  upload:
-    tamanho-maximo-mb: 10
+    timeout: 150s
+    aviso-janela: 10m
+    aviso-alerta: 2m
+    aviso-espera-inicial: 1s
+    aviso-espera-maxima: 60s
 spring.servlet.multipart.max-file-size: 10MB
 spring.servlet.multipart.max-request-size: 11MB
 ```
 
-`{AAMMDD}` é trocado pela data. Nenhum outro parâmetro da chamada entra no endereço.
+Ligue com um `@ConfigurationProperties(prefix = "processor")` em record (`Duration` para os tempos). `{AAMMDD}` é trocado pela data (`DateTimeFormatter.ofPattern("yyMMdd")`); nenhum outro parâmetro da chamada entra no endereço.
 
-## 3. Rotas e roteiro comum
+`CargaConfig` cria: `Clock` (`Clock.system(ZoneId.of("America/Sao_Paulo"))`, injetado onde houver "hoje", para os testes fixarem a data), um `RestClient` por destino com o tempo limite da configuração, o `BlobContainerClient` e o executor do aviso (`Executors.newVirtualThreadPerTaskExecutor()`).
+
+## 5. Rotas e roteiro comum
 
 | Rota | Caso de uso | `origem` |
 |---|---|---|
-| `GET /api/b3/taxa-swap/download?date=` | `baixar(B3, data, vazio)` | `DOWNLOAD` |
-| `GET /api/b3/taxa-swap/reprocessamento?dataBase=` | `reprocessar(B3, data)` | `REPROCESSAMENTO` |
-| `POST /api/b3/taxa-swap/upload` (multipart `arquivo`, `X-Usuario`) | `receber(B3, bytes, nome, usuario)` | `UPLOAD` |
-| idem `/api/anbima/ms/...` | idem com `ANBIMA` | idem |
-| idem `/api/bloomberg/sofr/...`; `tickers` no download (no reprocessamento, aceito e ignorado) | idem com `BLOOMBERG` e `ParametrosFonte(tickers)` | idem |
+| `GET /api/v1/cargas/{fonte}/download?dataBase=&tickers=` | `baixar(fonte, data, parametros)` | `DOWNLOAD` |
+| `GET /api/v1/cargas/{fonte}/reprocessamento?dataBase=` (`tickers` aceito e ignorado) | `reprocessar(fonte, data)` | `REPROCESSAMENTO` |
+| `POST /api/v1/cargas/{fonte}/upload` (multipart `arquivo`, cabeçalho `X-Usuario`) | `receber(fonte, bytes, nome, usuario)` | `UPLOAD` |
 
-O limite de 10 MB do multipart (`MaxUploadSizeExceededException`) é mapeado para 422 `ARQUIVO_INVALIDO` no handler. Validação nos controllers: data `AAAA-MM-DD` e não futura (`LocalDate.now(ZoneId.of("America/Sao_Paulo"))`); `tickers` com `^[A-Za-z0-9]+( [A-Za-z0-9]+)*$`, até 50 caracteres cada, até 100, sem repetidos; `X-Usuario` obrigatório no upload. O mapeamento de exceção para código HTTP (seção "Rotas no contrato do orquestrador" da spec, mais 501 `PROVEDOR_NAO_IMPLEMENTADO`) fica no handler que o repositório já tem.
+Um só `CargaController` (`@RequestMapping("/api/v1/cargas/{fonte}")`) para as três fontes:
+
+```java
+private static Fonte fonte(String texto) {        // b3 | anbima | bloomberg
+    return Arrays.stream(Fonte.values()).filter(f -> f.name().equalsIgnoreCase(texto)).findFirst()
+        .orElseThrow(() -> new InvalidInputException(CargaErrorCode.PARAMETRO_INVALIDO));
+}
+
+private static ParametrosFonte parametros(Fonte fonte, List<String> informados) {
+    if (fonte != Fonte.BLOOMBERG) {
+        if (!informados.isEmpty()) throw new InvalidInputException(CargaErrorCode.PARAMETRO_INVALIDO);
+        return ParametrosFonte.VAZIO;
+    }
+    List<String> tickers = informados.isEmpty() ? TickersSofrReserva.TICKERS : informados; // TODO(retirar) reserva; log TICKERS_RESERVA
+    return new ParametrosFonte(tickers);
+}
+```
+
+O reprocessamento também passa os `tickers` por `parametros(...)`, só para recusar `tickers` com `b3` ou `anbima`; na Bloomberg, o valor é ignorado (valem os tickers do original). Na base (antes da Bloomberg), `TickersSofrReserva` ainda não existe: use `new ParametrosFonte(informados)` e deixe o `TODO(retirar)` para a tarefa 4.2.
+
+Validação no controller, lançando `InvalidInputException(PARAMETRO_INVALIDO)`:
+- data `AAAA-MM-DD` (`LocalDate.parse`) e não futura (`LocalDate.now(clock)`);
+- `tickers` (separados por vírgula): cada um com `^[A-Za-z0-9]+( [A-Za-z0-9]+)*$`, até 50 caracteres, até 100 tickers; os repetidos são removidos;
+- `X-Usuario` obrigatório e não vazio no upload.
+
+`X-Correlation-Id`: lido da requisição ou gerado (`UUID.randomUUID()`), posto no MDC (`correlationId`) e devolvido no cabeçalho da resposta, num `OncePerRequestFilter` em `adapter/in/api/rest/config/`. O `CargaResponse` é o `ResultadoCarga` mais o `correlationId`; datas em ISO.
 
 Roteiro do `CargaArquivoService`, igual para as três fontes:
 
-1. obter o arquivo: `provedor.baixar(...)`, `provedor.preparar(...)` (upload) ou o original mais recente do Blob (reprocessamento);
-2. `dataBase = provedor.dataBase(arquivo)`; no download, diferente da pedida = 503 `ARQUIVO_INDISPONIVEL` (sem arquivar); no upload, futura = 422. Se `dataBase(...)` lançar `ArquivoInvalidoException`: no download, arquivar sob a data pedida e responder 422; no upload, responder 422 sem arquivar (log com usuário e nome do arquivo);
-3. `hash` e `idCarga`; gravar o original no Blob (antes de interpretar, para o rejeitado ficar auditável; no reprocessamento, já existe);
+1. obter o arquivo: `provedor.baixar(...)`, `provedor.preparar(...)` (upload) ou `arquivoOriginal.maisRecente(...)` (reprocessamento; vazio = 404 `ARQUIVO_NAO_ENCONTRADO` com o prefixo);
+2. `dataBase = provedor.dataBase(arquivo)`:
+   - download: diferente da data pedida = 503 `ARQUIVO_INDISPONIVEL`, sem arquivar; se lançar 422, arquivar sob a **data pedida** e relançar o 422;
+   - upload: futura = 422; se lançar 422, relançar sem arquivar (log com usuário e nome do arquivo);
+3. `IdentidadeCarga.de(fonte, dataBase, arquivo.bytes())`; `arquivoOriginal.gravar(...)` (no reprocessamento, pular: já existe);
 4. `provedor.interpretar(arquivo, dataBase)` (422 se o arquivo inteiro cai);
-5. gravar no banco (seção 8);
-6. responder 200 e disparar o aviso ao engine em segundo plano (seção 9).
+5. `curvaPrimrRepository.substituir(...)`;
+6. se algum código foi gravado, `avisoEngine.avisarEmSegundoPlano(...)`; devolver o `ResultadoCarga`.
 
-O que é "ainda não saiu" (503 antes de arquivar) é decidido dentro do `baixar` de cada provedor: na Bloomberg, por exemplo, ticker sem valor na resposta.
+"Ainda não saiu" (503 antes de arquivar) é decidido dentro do `baixar` de cada provedor.
 
-## 4. Blob (`ArquivoOriginalBlobAdapter`)
+## 6. Blob (`ArquivoOriginalBlobAdapter`)
 
-- Caminho: `{b3|anbima|bloomberg}/{AAAAMMDD}/cargas/{idCarga}/{TaxaSwap.txt | ms{AAMMDD}.txt | nome da resposta}`.
-- Gravação: `BlobClient.uploadWithResponse(...)` com `BlobRequestConditions().setIfNoneMatch("*")`; 409 = já existe = sucesso.
-- Reprocessamento: listar o prefixo `{fonte}/{AAAAMMDD}/cargas/` e pegar o de maior data de criação; nenhum = 404 com o prefixo.
+- Caminho: `{fonte.pasta()}/{AAAAMMDD}/cargas/{idCarga}/{arquivo.nomeArquivo()}`.
+- Gravação: `blobClient.uploadWithResponse(new BlobParallelUploadOptions(BinaryData.fromBytes(bytes)).setRequestConditions(new BlobRequestConditions().setIfNoneMatch("*")), null, Context.NONE)`; `BlobStorageException` com status 409 = já existe = sucesso; qualquer outra falha = `ServiceUnavailableException(SERVICO_INDISPONIVEL)`.
+- Reprocessamento: `listBlobs(new ListBlobsOptions().setPrefix("{pasta}/{AAAAMMDD}/cargas/"), null)` e pegar o de maior `getProperties().getCreationTime()`.
 - Só originais: nada de estado, resultado ou log no Blob.
 
-## 5. B3
+## 7. Gravação (`CurvaPrimrPersistenceAdapter`)
 
-- Download: `GET` no endereço; 404, corpo vazio ou sem a assinatura de zip (`PK\x03\x04`) = 503 `ARQUIVO_INDISPONIVEL`.
-- Extração: `java.util.zip.ZipInputStream` no `.ex_`; dentro, o primeiro nível é outro zip; dentro dele, o único `TaxaSwap.txt`. Mais de dois níveis ou mais de um `TaxaSwap.txt` = 422.
-- Forma canônica, `idCarga`, leiaute e validação: os da spec `b3-taxaswap-publicacao` e da spec `b3-carga-processor` (guia da `processor-carga-b3`, seção 1.6). Se a `processor-carga-b3` já tiver o `LeiauteTaxaSwap`, use a mesma classe.
-- `linhasPorCodigo`: vértices gravados por código (278 por código, normalmente).
+Uma transação por carga (`@Transactional`), `JdbcTemplate`:
 
-## 6. ANBIMA (`LeiauteAnbimaMs`)
+```sql
+SELECT cTickerPrvdr, cTickerIndcd FROM tCurvaPrvdr WHERE iPrvdrDados = ? AND cPrvdrMercd = ?;   -- B3/TS, ANBIMA/MS, BLOOMBERG/BLC2
+SELECT cTickerIndcd FROM tCurvaMercd WITH (UPDLOCK, ROWLOCK) WHERE cTickerIndcd = ?;           -- cada curva, em ordem do nome
+DELETE FROM {tabela} WHERE cTickerIndcd = ? AND dBaseReft = ?;
+SELECT ISNULL(MAX(cIdtfdUnic), 0) FROM {tabela} WITH (UPDLOCK, HOLDLOCK);
+INSERT ...;                                                                                      -- feito pela *CurvaPrimrInsercao
+SELECT COUNT(*) FROM {tabela} WHERE cTickerIndcd = ? AND dBaseReft = ?;                         -- = vértices do código, senão desfaz
+```
 
-- Ler em `StandardCharsets.ISO_8859_1`; quebrar em linhas; achar a primeira que começa com `Titulo@`; as colunas são localizadas pelo nome nessa linha: `Titulo`, `Data Referencia`, `Codigo SELIC`, `Data Vencimento`, `Tx. Indicativas`.
-- Linhas seguintes com `Titulo` = `NTN-B` e `Codigo SELIC` terminando em `99`.
-- Datas em `AAAAMMDD` (`DateTimeFormatter.BASIC_ISO_DATE`); `dataBase(...)` devolve a `Data Referencia` (todas as linhas com a mesma, senão 422).
-- Chamadas à B3, à ANBIMA e ao Data License sem `X-Correlation-Id` (só o engine recebe).
-- Taxa: trocar `,` por `.` e `new BigDecimal(texto)`; vazio ou `--` = `null`.
-- Prazo: `P = brazil.ajustar(vencimento, Following)`; `vVertcCurva = brazil.diasUteisEntre(dataBase, P)`, com as mesmas funções que o engine usa (seção 4 do guia do engine).
-- Código na fonte: `NTN-B`; `linhasPorCodigo` = `{ "NTN-B": títulos gravados }`.
-- Sem cabeçalho, sem alguma das colunas, sem NTN-B inteira ou vencimento ilegível = 422.
+- `{tabela}` vem da `CurvaPrimrInsercao` da fonte, nunca da requisição.
+- `trim()` nas colunas `CHAR` lidas; um código pode ligar a mais de uma curva (grava para cada uma).
+- Tempo limite de 60 s nos comandos de trava e de `MAX` (`jdbc.setQueryTimeout` num `JdbcTemplate` próprio do adapter); estouro ou banco fora = `ServiceUnavailableException(SERVICO_INDISPONIVEL)`.
+- Código sem curva ligada: fica fora do resultado e vai para o log como ignorado.
 
-## 7. Bloomberg
+`INSERT` da ANBIMA (`AnbmaCurvaPrimrInsercao`):
 
-### 7.1 Pedido de histórico (`BloombergDataLicenseClient`)
+```sql
+INSERT INTO tAnbmaCurvaPrimr (cIdtfdUnic, cTickerIndcd, dBaseReft, vPrecoTx, vVertcCurva) VALUES (?, ?, ?, ?, ?);
+```
 
-Comportamento (os endpoints exatos seguem a documentação da conta, [A CONFIRMAR]):
+## 8. Aviso ao engine
 
-1. Obter o token com a credencial do Key Vault (OAuth2, como a API do Data License exige); guardar em memória até expirar.
-2. Montar o identificador: `sofr` + `AAAAMMDD` + 8 primeiros do SHA-256 hexa da lista ordenada de tickers unida por `,` + faixa (`HHmm` de Brasília arredondado para baixo em `faixa-pedido-minutos`). Ex.: `sofr20260914a1b2c3d41800`.
-3. Criar o pedido de histórico no catálogo com esse identificador: universo = tickers (tipo ticker), campo = `processor.bloomberg.campo`, datas inicial e final = data-base, saída em CSV. Se a API responder que o identificador já existe, seguir para o passo 4 (outra chamada ou instância já pediu).
-4. Consultar, a cada 5 segundos até `espera-segundos`, se a resposta do pedido está pronta; pronta, baixar o arquivo.
-5. Não pronta = 503 `ARQUIVO_INDISPONIVEL` com o identificador.
+- `AvisoEngineService.avisarEmSegundoPlano(...)`: chamado depois do commit (fora da transação), submete ao executor de virtual threads e retorna na hora.
+- `AvisoEngineAdapter.avisar(...)`: `POST {engine.base-url}/api/v1/cargas` com `{ "idCarga", "fonte", "produto", "dataBase", "verticesPorCodigo" }`, cabeçalho `X-Correlation-Id`, sem `Authorization`.
+- Repetir em erro de rede, 5xx e 409: espera `aviso-espera-inicial` dobrando até `aviso-espera-maxima`, com variação de até 20%, por até `aviso-janela`; ao passar `aviso-alerta`, log `AVISO_ATRASADO` (uma vez); no fim da janela, ou em 4xx diferente de 409, log de erro `CARGA_FALHOU` e `meterRegistry.counter("processor.carga.falhou", "fonte", fonte.name()).increment()`.
+- 2xx: logar o corpo devolvido (resultado por curva).
 
-### 7.2 Resposta (`LeiauteRespostaDataLicense`)
+## 9. Log da carga
 
-- Linhas com ticker, data e valor ([A CONFIRMAR] nomes das colunas do CSV da conta).
-- Para cada ticker pedido: uma linha com a data-base e valor numérico. Faltou algum = 503 no download, 422 no upload, citando os tickers.
-- Gravação: `cTickerBberg` = o ticker completo (`S0490Z 15M BLC2 Curncy`; coluna `VARCHAR(50)` do `001_SCRIPT_INICIAL.sql`); `vPrecoUlt` = valor como veio; código na fonte = primeiro termo (`S0490Z`); `linhasPorCodigo` = `{ "S0490Z": nós gravados }`.
+Um log JSON por carga, no fim do roteiro (sucesso ou erro), com `logstash-logback-encoder` (já no `pom.xml`) via `StructuredArguments.kv`: `fonte`, `dataBase`, `idCarga`, `origem`, `usuario`, `caminhoOriginal`, `codigosGravados` (código → curvas), `codigosIgnorados`, `codigosRejeitados` (código → motivo), `duracaoMs` por etapa (`obter`, `blob`, `interpretar`, `gravar`), `resultado`. Horário de Brasília. Nunca token, segredo ou conteúdo do arquivo.
 
-### 7.3 Lista de reserva (temporária)
+## 10. ANBIMA (modelo dos provedores)
+
+### 10.1 `AnbimaDownloadSiteProvedor`
+
+- `baixar`: `AnbimaMsClient.baixar(data)` faz `GET` no `anbima-url`; 404 = 503 `ARQUIVO_INDISPONIVEL`; outro status de erro = 502 `FONTE_INDISPONIVEL`; falha de rede ou tempo esgotado = 503 `ARQUIVO_INDISPONIVEL`. Sem `X-Correlation-Id` nem outro cabeçalho interno. Nome do arquivo: `ms{AAMMDD}.txt`. Depois, `dataBase(...)` diferente da data pedida = 503 (passo 2 do roteiro).
+- `preparar` (upload): devolve os bytes como vieram, com o nome recebido.
+- `dataBase` e `interpretar`: `LeiauteAnbimaMs`.
+
+### 10.2 `LeiauteAnbimaMs`
+
+- Texto `StandardCharsets.ISO_8859_1`, separado por `@`, vírgula decimal.
+- Cabeçalho: a primeira linha que começa com `Titulo@`. Colunas localizadas pelo nome: `Titulo`, `Data Referencia`, `Codigo SELIC`, `Data Vencimento`, `Tx. Indicativas`.
+- Entram só os títulos com `Titulo` = `NTN-B` e `Codigo SELIC` terminando em `99`.
+- Datas `AAAAMMDD` (`DateTimeFormatter.BASIC_ISO_DATE`). `dataBase(...)` = `Data Referencia` das NTN-B (todas iguais, senão 422).
+- Taxa: `,` → `.` e `new BigDecimal(texto)`; vazia ou `--` = `null`.
+- Prazo: `P = brazil.following(vencimento)`; `prazoDiasUteis = brazil.diasUteis(dataBase, P)`.
+- Código na fonte: `NTN-B` (`verticesPorCodigo` = `{ "NTN-B": [ ... ] }`).
+- 422 `ARQUIVO_INVALIDO`: sem cabeçalho, sem alguma das colunas, sem nenhuma NTN-B inteira, vencimento ilegível.
+
+### 10.3 Calendário (`domain/calendario/`, cópia do engine)
+
+Mesma regra do engine; o processor só precisa do `Brazil` e do `Following`:
+
+```java
+public abstract class Calendario {
+    private final ConcurrentHashMap<Integer, Set<LocalDate>> cache = new ConcurrentHashMap<>();
+    protected abstract Set<LocalDate> feriados(int ano);
+
+    public boolean isBusinessDay(LocalDate d) {
+        return switch (d.getDayOfWeek()) {
+            case SATURDAY, SUNDAY -> false;
+            default -> !cache.computeIfAbsent(d.getYear(), a -> Set.copyOf(feriados(a))).contains(d);
+        };
+    }
+
+    /** Dias úteis em (de, ate]; 0 se ate <= de. */
+    public int diasUteis(LocalDate de, LocalDate ate) {
+        if (!ate.isAfter(de)) return 0;
+        return (int) de.plusDays(1).datesUntil(ate.plusDays(1)).filter(this::isBusinessDay).count();
+    }
+
+    /** d se útil, senão o próximo dia útil (convenção Following). */
+    public LocalDate following(LocalDate d) {
+        var r = d; while (!isBusinessDay(r)) r = r.plusDays(1); return r;
+    }
+}
+
+public class Brazil extends Calendario {          // Settlement
+    protected Set<LocalDate> feriados(int y) {
+        var p = pascoa(y);
+        var s = new HashSet<>(List.of(LocalDate.of(y, 1, 1), p.minusDays(48), p.minusDays(47), p.minusDays(2),
+            LocalDate.of(y, 4, 21), LocalDate.of(y, 5, 1), p.plusDays(60), LocalDate.of(y, 9, 7),
+            LocalDate.of(y, 10, 12), LocalDate.of(y, 11, 2), LocalDate.of(y, 11, 15), LocalDate.of(y, 12, 25)));
+        if (y >= 2024) s.add(LocalDate.of(y, 11, 20));
+        return s;
+    }
+    static LocalDate pascoa(int y) {   // Meeus/Jones/Butcher
+        int a = y % 19, b = y / 100, c = y % 100, d = b / 4, e = b % 4, f = (b + 8) / 25, g = (b - f + 1) / 3;
+        int h = (19 * a + b - d - g + 15) % 30, i = c / 4, k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+        int m = (a + 11 * h + 22 * l) / 451, x = h + l - 7 * m + 114;
+        return LocalDate.of(y, x / 31, (x % 31) + 1);
+    }
+}
+```
+
+### 10.4 Vetores reais (`recursos/ms260928.txt` desta change)
+
+Copie `openspec/changes/processor-v0/recursos/ms260928.txt` para `src/test/resources/anbima/ms260928.txt` sem alterar nenhum byte (6.698 bytes, Latin-1).
+
+| Item | Valor esperado |
+|---|---|
+| `hashArquivo` | `ba9fe9dda8d522b7a298531a12c287314ed1302cf0afe8ce2ae8a6eb7c3ffb85` |
+| `idCarga` | `ANBIMA-MS-20260928-ba9fe9dda8d5` |
+| `dataBase` | `2026-09-28` |
+| títulos | 50 no arquivo; entram 14 NTN-B (todas com SELIC `760199`); ignoradas 17 LFT, 12 LTN, 1 NTN-C, 6 NTN-F |
+| 1ª NTN-B | vencimento `2027-05-15` → `P` `2027-05-17` (sábado), prazo **156**, taxa `5.5415` |
+| `2032-08-15` | `P` `2032-08-16` (domingo), prazo **1473**, taxa `7.6863` |
+| `2040-08-15` | `P` igual, prazo **3478**, taxa `7.4` (BigDecimal `7.4`, não `7.4000`) |
+| `2055-05-15` | `P` `2055-05-17` (sábado), prazo **7169**, taxa `7.1956` |
+| última NTN-B | `2060-08-15` → `P` `2060-08-16` (domingo), prazo **8486**, taxa `7.1668` |
+| todos os prazos | 156, 471, 655, 969, 1155, 1473, 1660, 2159, 2660, 3478, 4665, 5980, 7169, 8486 |
+| Páscoa | 2026: `04-05` (Carnaval `02-16`/`02-17`, Sexta-feira Santa `04-03`, Corpus Christi `06-04`); 2027: `03-28` |
+
+## 11. B3 e Bloomberg (depois da pausa)
+
+### 11.1 B3 (`adapter/out/client/b3/`)
+
+- Download: `GET` no `b3-url`; 404, corpo vazio ou sem a assinatura de zip (`PK\x03\x04`) = 503 `ARQUIVO_INDISPONIVEL`.
+- Extração: `ZipInputStream` no `.ex_`; dentro, o primeiro nível é outro zip; dentro dele, o único `TaxaSwap.txt`. Mais de dois níveis ou mais de um `TaxaSwap.txt` = 422. O upload aceita o `.ex_` (reconhecido pela assinatura) ou o `TaxaSwap.txt`.
+- Forma canônica, leiaute e validação: os da spec `b3-carga-processor` (change `processor-carga-b3`). Abra só essa spec e a seção 1.6 do guia daquela change; se o `LeiauteTaxaSwap` já existir no processor, reaproveite.
+- `INSERT INTO tBtrsCurvaPrimr (cIdtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx) VALUES (?, ?, ?, ?, ?, ?)`; fatores nulos.
+- Vetor: `docs/TaxaSwap.txt`, data-base `2026-09-14`; DCL primeiro valor `-117.9600000`; 278 vértices por código.
+
+### 11.2 Bloomberg (`adapter/out/client/bloomberg/`)
+
+Pedido de histórico (`BloombergDataLicenseClient`; endpoints exatos [A CONFIRMAR] com a documentação da conta):
+1. Token OAuth2 com a credencial do Key Vault, em memória até expirar.
+2. Identificador: `sofr` + `AAAAMMDD` + 8 primeiros do SHA-256 hexa da lista ordenada de tickers unida por `,` + faixa (`HHmm` de Brasília arredondado para baixo em `faixa-pedido`). Ex.: `sofr20260914a1b2c3d41800`.
+3. Criar o pedido (universo = tickers, campo = `campo`, datas = data-base, saída CSV); "identificador já existe" = seguir para o passo 4.
+4. Consultar a cada 5 s até `espera`; pronta, baixar. Não pronta = 503 `ARQUIVO_INDISPONIVEL` com o identificador.
+
+Resposta (`LeiauteRespostaDataLicense`, colunas [A CONFIRMAR]): para cada ticker pedido, um vértice com a data-base e valor numérico; faltou algum = 503 no download, 422 no upload, citando os tickers. `INSERT INTO tBbergCurvaPrimr (cIdtfdUnic, cTickerIndcd, dBaseReft, cTickerBberg, vPrecoUlt) VALUES (?, ?, ?, ?, ?)`, com `cTickerBberg` = ticker completo (`VARCHAR(50)`); código na fonte = primeiro termo (`S0490Z`).
+
+Reserva temporária (`TickersSofrReserva`), usada só no `parametros(...)` do `CargaController` (seção 5):
 
 ```java
 // TODO(retirar): reserva até todas as tarefas do orquestrador mandarem "tickers".
-// Para retirar: apagar esta classe e, em CargaBloombergService, trocar o uso por 400 PARAMETRO_INVALIDO.
+// Para retirar: apagar esta classe e, no CargaController.parametros, trocar o uso por InvalidInputException(PARAMETRO_INVALIDO).
 public final class TickersSofrReserva {
     private TickersSofrReserva() {}
     public static final List<String> TICKERS = List.of(
@@ -197,46 +457,32 @@ public final class TickersSofrReserva {
 }
 ```
 
-Uso, numa única linha do `CargaBloombergService` (com o log `TICKERS_RESERVA` quando cai na reserva):
 
-```java
-List<String> tickers = informados.isEmpty() ? TickersSofrReserva.TICKERS : informados; // TODO(retirar) reserva
-```
+## 12. Testes (poucos e amplos)
 
-## 8. Gravação (`CurvaPrimariaJdbcAdapter`)
+Sem dependência nova de teste: JUnit 5, Mockito e Spring Test do `spring-boot-starter-test`, e servidor HTTP falso com `com.sun.net.httpserver.HttpServer` (JDK). **Nenhum teste sobe o contexto do Spring** (`@SpringBootTest`, `@WebMvcTest`): o processor tem Kafka, Redis e JPA configurados, e o contexto não sobe sem eles. Rotas com `MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(handler).addFilters(filtroCorrelacao)`; o resto, objetos montados à mão. Banco e Blob reais ficam para a homologação (7.x); nos testes, eles são falsos em memória (classes de teste que implementam as portas). Em todo teste com data, `Clock.fixed(...)` em `America/Sao_Paulo`.
 
-Uma transação por carga (`@Transactional`), com o mesmo SQL da `processor-carga-b3` trocando a tabela:
+| Classe de teste | Tipo | Cobre |
+|---|---|---|
+| `CargaRotasTest` | MockMvc `standaloneSetup` do `CargaController` (com `Clock.fixed`), `CargaArquivoUseCase` mockado | `@ParameterizedTest` com as 3 rotas × 3 fontes chegando ao caso de uso com fonte, data, origem e tickers certos; os 400 (fonte desconhecida; data ausente, inválida, futura; ticker fora da regra; `tickers` com `b3` ou `anbima`; `X-Usuario` ausente); cada exceção → status e corpo `{codigoErro, mensagem, correlationId}` (400, 404, 422, 501, 502, 503); `X-Correlation-Id` recebido e gerado; 11 MB → 422 |
+| `CargaArquivoServiceTest` | unitário, portas falsas em memória | `@ParameterizedTest` do roteiro: download ok; 503 sem arquivar; data divergente (503); 422 com original arquivado sob a data pedida; upload 422 sem arquivar; upload com data futura; reprocessamento sem original (404); Blob fora (503, nada gravado); carga sem código mapeado (200, sem aviso); ordem das etapas (Blob antes de interpretar, gravar antes de avisar) |
+| `AvisoEngineServiceTest` | unitário, engine falso (`HttpServer`) | 500 → 409 → 200 (3 chamadas, mesmo `idCarga`); 400 → `CARGA_FALHOU` sem repetir; engine fora até a janela → `AVISO_ATRASADO` e `CARGA_FALHOU`; com `aviso-espera-inicial` = 1 ms, `aviso-alerta` = 50 ms e `aviso-janela` = 200 ms (nada de esperar minutos) |
+| `AnbimaCargaTest` | montado à mão: `CargaArquivoService` real com o `AnbimaDownloadSiteProvedor` real apontando para uma ANBIMA falsa (`HttpServer`), `AvisoEngineAdapter` real apontando para um engine falso, Blob e banco falsos em memória | ponta a ponta com o `ms260928.txt`: download de `2026-09-28` → 200 com o `idCarga` e `{"NTN-B": 14}`, original no Blob falso, 14 vértices com os prazos e taxas da seção 10.4, engine avisado; download repetido = mesmo `idCarga`; upload do mesmo arquivo = mesmo `idCarga`; reprocessamento não chama a ANBIMA; ANBIMA 404 → 503; ANBIMA 500 → 502 |
+| `LeiauteAnbimaMsTest` | unitário | o arquivo real (seção 10.4 inteira) e variações geradas no próprio teste a partir dele: sem cabeçalho, sem a coluna `Tx. Indicativas`, sem NTN-B, vencimento ilegível (422); taxa `--` e vazia (null); NTN-B com SELIC sem `99` (ignorada); duas `Data Referencia` diferentes (422) |
+| `BrazilTest` | unitário | Páscoa e feriados móveis 2026 e 2027; os 14 prazos da seção 10.4; `following` em sábado, domingo e feriado |
 
-```sql
-SELECT cTickerPrvdr, cTickerIndcd FROM tCurvaPrvdr WHERE iPrvdrDados = ? AND cPrvdrMercd = ?;   -- B3/TS, ANBIMA/MS, BLOOMBERG/BLC2
-SELECT cTickerIndcd FROM tCurvaMercd WITH (UPDLOCK, ROWLOCK) WHERE cTickerIndcd = ?;           -- cada curva, em ordem do nome, 60 s
-DELETE FROM {tabela} WHERE cTickerIndcd = ? AND dBaseReft = ?;
-SELECT ISNULL(MAX(cIdtfdUnic), 0) FROM {tabela} WITH (UPDLOCK, HOLDLOCK);
-INSERT ...;                                                                                      -- colunas da tabela na spec
-SELECT COUNT(*) FROM {tabela} WHERE cTickerIndcd = ? AND dBaseReft = ?;                         -- = linhas do código
-```
+Depois da pausa, cada provedor acrescenta um `*CargaTest` no molde do `AnbimaCargaTest` e um `Leiaute*Test`. Um teste de rota que já cobre um cenário não precisa de outro teste unitário para o mesmo cenário.
 
-`{tabela}` vem de um enum por fonte (`tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr`, `tBbergCurvaPrimr`), nunca da requisição. Os valores de `iPrvdrDados` e `cPrvdrMercd` e o `trim` das colunas `CHAR` seguem o que o banco real tem cadastrado. Tempo limite de 60 s nos comandos de trava e de `MAX`.
+## 13. bff e front (depois da pausa)
 
-## 9. Aviso ao engine (`AvisoEngineService`)
-
-- Depois do commit, submeter a um executor de threads virtuais (`Executors.newVirtualThreadPerTaskExecutor()`).
-- `POST {engine}/api/v1/cargas` com `{ idCarga, fonte, produto, dataBase, linhasPorCodigo }`, `X-Correlation-Id`, sem `Authorization`, tempo limite de 150 s.
-- Repetir em erro de rede, 5xx e 409: espera de 1 s dobrando até 60 s, com variação, por até 10 min; aos 2 min, log `AVISO_ATRASADO`; no fim, ou em 4xx diferente de 409, log de erro `CARGA_FALHOU` e incremento da métrica (`processor.carga.falhou`, rótulo `fonte`).
-- Logar o resultado por curva que o engine devolve.
-
-## 10. bff e front
-
-- bff: `POST /api/v1/cargas/upload`, segurança e perfil como as outras ações de operação do bff; repassar com o cliente HTTP que o bff já usa, mapeando `fonte` para o caminho de upload do processor; `X-Usuario` = nome do usuário do token; não repassar `Authorization`; tempo limite de 120 s.
+- bff: `POST /api/v1/cargas/upload`, segurança e perfil como as outras ações de operação do bff; repassar, com o cliente HTTP que o bff já usa, para `POST {processor}/api/v1/cargas/{fonte em minúsculas}/upload`; `X-Usuario` = nome do usuário do token; não repassar `Authorization`; tempo limite de 120 s.
 - Front: tela "Carga manual de arquivo" no menu de operação; textos e datas em pt-BR (`dd/mm/aaaa`); mensagens de erro vindas do processor.
 
-## 11. Ordem
+## 14. Ordem
 
-1. **Base comum (uma pessoa):** seções 1, 2, 3, 4, 8 (parte comum), 9 e o log (tarefas 1.1 a 1.8). Entregar com as nove rotas respondendo 501.
-2. **ANBIMA, provedor modelo (a mesma pessoa):** seção 6, com o calendário (tarefas 3.1 e 3.2). Entregar com as rotas da ANBIMA gravando em `tAnbmaCurvaPrimr` e B3 e Bloomberg ainda respondendo 501.
-3. **PAUSA (tarefa 3.3):** parar. Rodar `mvn compile` e os testes das tarefas 1.x e 3.x, registrar o que foi feito e o que ficou pendente, e aguardar a revisão. Não começar a B3, a Bloomberg nem o bff e o front antes disso.
-4. **Provedores restantes, em paralelo (um dev cada), seguindo o modelo da ANBIMA:** B3 (seção 5; tarefa 2.1) e Bloomberg com a reserva (seção 7; 4.1 e 4.2). Cada um troca só a sua pasta `adapter/out/provedor/{fonte}/` e a sua `Insercao*`, e escreve os seus testes.
-5. **bff e front (em paralelo, depois da pausa):** seção 10 (5.1 e 5.2).
+1. **Base comum (uma pessoa):** seções 1 a 9 (tarefas 1.1 a 1.8). Entregar com as rotas das três fontes respondendo 501.
+2. **ANBIMA, provedor modelo (a mesma pessoa):** seção 10 (tarefas 3.1 e 3.2). Entregar com as rotas da ANBIMA gravando e B3 e Bloomberg ainda respondendo 501.
+3. **PAUSA (tarefa 3.3):** rodar `mvn compile` e `mvn test` (os testes da seção 12), escrever o resumo e parar até a revisão. Não começar a B3, a Bloomberg nem o bff e o front antes disso.
+4. **Provedores restantes, em paralelo (um dev cada), copiando a estrutura da ANBIMA:** B3 (11.1; tarefa 2.1) e Bloomberg (11.2; 4.1 e 4.2).
+5. **bff e front (em paralelo, depois da pausa):** seção 13 (5.1 e 5.2).
 6. Fechamento (6.x) e homologação (7.x).
-
-Testes: um por cenário da spec, com o `ms260928.txt` real e o `TaxaSwap.txt` de `docs/` nos recursos de teste; servidores simulados para B3, ANBIMA, Data License e engine; acesso ao banco e Blob simulados.

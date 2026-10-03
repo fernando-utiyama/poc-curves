@@ -1,6 +1,6 @@
 ## Purpose
 
-Garante que uma curva só é construída automaticamente depois que o dado bruto da sua origem foi gravado por completo. O processor grava cada carga numa única transação e, depois do commit, avisa o engine por webhook, com a quantidade de linhas por código; e o orquestrador pede a construção automática de uma data inteira, que cobre as curvas derivadas e serve de rede de segurança. O engine constrói na hora as curvas que dependem da carga, confere se leu exatamente a quantidade avisada e não guarda nenhum registro próprio da carga: o que ele precisa saber depois está no banco (dados brutos e pontos) e no log.
+Garante que uma curva só é construída automaticamente depois que o dado bruto da sua origem foi gravado por completo. O processor grava cada carga numa única transação e, depois do commit, avisa o engine por webhook, com a quantidade de vértices por código; e o orquestrador pede a construção automática de uma data inteira, que cobre as curvas derivadas e serve de rede de segurança. O engine constrói na hora as curvas que dependem da carga, confere se leu exatamente a quantidade avisada e não guarda nenhum registro próprio da carga: o que ele precisa saber depois está no banco (dados brutos e pontos) e no log.
 
 ## ADDED Requirements
 
@@ -13,18 +13,18 @@ O engine SHALL expor `POST /api/v1/cargas`, com o corpo:
   "fonte": "B3",
   "produto": "TS",
   "dataBase": "2026-09-14",
-  "linhasPorCodigo": { "PRE": 278, "DCL": 278 }
+  "verticesPorCodigo": { "PRE": 278, "DCL": 278 }
 }
 ```
 
-`linhasPorCodigo` SHALL trazer, para cada código na fonte da carga, a quantidade de linhas gravadas na tabela bruta para aquela data-base, inclusive as que o modelo vier a descartar. Campo ausente, quantidade negativa, mapa vazio ou data inválida MUST resultar em 400 `PARAMETRO_INVALIDO`. O processor SHALL gravar todas as linhas da carga numa única transação, chamar o webhook só depois do commit e repetir a chamada com o mesmo `idCarga` até receber 2xx. O engine MUST NOT gravar a carga em lugar nenhum: o corpo da requisição é usado só durante o seu processamento, e o `idCarga` vai para o log.
+`verticesPorCodigo` SHALL trazer, para cada código na fonte da carga, a quantidade de linhas gravadas na tabela bruta para aquela data-base, inclusive as que o modelo vier a descartar. Campo ausente, quantidade negativa, mapa vazio ou data inválida MUST resultar em 400 `PARAMETRO_INVALIDO`. O processor SHALL gravar todas as linhas da carga numa única transação, chamar o webhook só depois do commit e repetir a chamada com o mesmo `idCarga` até receber 2xx. O engine MUST NOT gravar a carga em lugar nenhum: o corpo da requisição é usado só durante o seu processamento, e o `idCarga` vai para o log.
 
 #### Scenario: Aviso da carga B3
 - **WHEN** o processor termina de gravar o `TaxaSwap.txt` de `2026-09-14` e chama o webhook com `fonte` = `B3`, `produto` = `TS` e as quantidades por código
 - **THEN** o engine constrói as curvas cadastradas com origem `B3`/`TS` cujo código na fonte está na carga, e o log tem `CARGA_RECEBIDA` com o `idCarga`
 
 ### Requirement: Construção disparada pela carga
-Ao receber uma carga, o engine SHALL processar, na própria requisição, cada curva cuja **origem principal** tem a fonte e o produto da carga e um código na fonte presente em `linhasPorCodigo`. A fonte e o produto da carga só **selecionam** as curvas: a construção SHALL usar a origem principal, como qualquer construção automática, e MUST NOT ser tratada como construção por origem secundária (sem o aviso `ORIGEM_SECUNDARIA`, e com `principal` verdadeiro na origem do `CURVA_GRAVADA`). Um mesmo código na fonte pode estar em mais de uma curva cadastrada (ex.: duas curvas de configurações diferentes sobre o mesmo código da B3): todas SHALL ser processadas, cada uma na sua transação. Uma curva que tem a carga só como origem secundária MUST NOT ser construída pela carga (o dado bruto fica gravado para construção pela API):
+Ao receber uma carga, o engine SHALL processar, na própria requisição, cada curva cuja **origem principal** tem a fonte e o produto da carga e um código na fonte presente em `verticesPorCodigo`. A fonte e o produto da carga só **selecionam** as curvas: a construção SHALL usar a origem principal, como qualquer construção automática, e MUST NOT ser tratada como construção por origem secundária (sem o aviso `ORIGEM_SECUNDARIA`, e com `principal` verdadeiro na origem do `CURVA_GRAVADA`). Um mesmo código na fonte pode estar em mais de uma curva cadastrada (ex.: duas curvas de configurações diferentes sobre o mesmo código da B3): todas SHALL ser processadas, cada uma na sua transação. Uma curva que tem a carga só como origem secundária MUST NOT ser construída pela carga (o dado bruto fica gravado para construção pela API):
 - **curva com `cSitReg` = `INATIVO`, ou com a data-base fora da vigência da curva** (`dInicVgcia` a `dValidAte` em `tCurvaMercd`): MUST NOT ser construída, e é devolvida como `IGNORADA`, com o motivo `CURVA_INATIVA` ou `FORA_DA_VIGENCIA_CURVA`. Não é erro: o usuário ainda pode construí-la por `POST .../construcao`;
 - **curva sem pontos gravados na data**: é construída (`CONSTRUIDA`);
 - **curva com pontos gravados na data**: MUST NOT ser reconstruída, e é devolvida como `EXISTENTE`.
@@ -38,7 +38,7 @@ Cada curva SHALL ser construída de forma independente: a falha de uma MUST NOT 
 - **THEN** a resposta e o `CURVA_GRAVADA` trazem a origem B3/`TS`/`PRE` com `principal` verdadeiro, sem o aviso `ORIGEM_SECUNDARIA`
 
 #### Scenario: Duas curvas no mesmo código
-- **WHEN** as curvas `PRE` e `PRE_252` têm como origem principal o mesmo código `PRE` da B3, e chega a carga com `PRE` em `linhasPorCodigo`
+- **WHEN** as curvas `PRE` e `PRE_252` têm como origem principal o mesmo código `PRE` da B3, e chega a carga com `PRE` em `verticesPorCodigo`
 - **THEN** as duas são construídas, cada uma com o seu resultado na resposta
 
 #### Scenario: Comparação que falha
@@ -108,7 +108,7 @@ A construção de uma curva com origem de provedor, pela carga ou por `POST .../
 - **THEN** a construção falha com `INSUMO_AUSENTE`, e nada é gravado
 
 ### Requirement: Conferência da quantidade lida na carga
-Na construção disparada pelo webhook, antes de executar o modelo, o pipeline SHALL contar as linhas brutas lidas para a curva e a data-base. Se a contagem for diferente de `linhasPorCodigo[código na fonte]` do corpo, a construção MUST falhar com `INSUMO_INCOMPLETO`, informando a quantidade lida e a avisada. A contagem SHALL incluir as linhas que o modelo descarta depois. A conferência existe para a carga duplicada ou atropelada (duas cargas da mesma data, com o aviso da primeira chegando depois da gravação da segunda): nesse caso a construção daquele aviso é bloqueada, e o aviso da carga seguinte constrói. A construção por `POST .../construcao` e a construção da data pelo orquestrador não têm quantidade avisada e usam exatamente o que está gravado: o que o usuário deixou gravado é o certo, e uma linha a menos gera a curva com um ponto a menos.
+Na construção disparada pelo webhook, antes de executar o modelo, o pipeline SHALL contar as linhas brutas lidas para a curva e a data-base. Se a contagem for diferente de `verticesPorCodigo[código na fonte]` do corpo, a construção MUST falhar com `INSUMO_INCOMPLETO`, informando a quantidade lida e a avisada. A contagem SHALL incluir as linhas que o modelo descarta depois. A conferência existe para a carga duplicada ou atropelada (duas cargas da mesma data, com o aviso da primeira chegando depois da gravação da segunda): nesse caso a construção daquele aviso é bloqueada, e o aviso da carga seguinte constrói. A construção por `POST .../construcao` e a construção da data pelo orquestrador não têm quantidade avisada e usam exatamente o que está gravado: o que o usuário deixou gravado é o certo, e uma linha a menos gera a curva com um ponto a menos.
 
 #### Scenario: Leitura parcial
 - **WHEN** a carga avisou 278 linhas da `PRE`, mas a leitura encontra 150
@@ -123,7 +123,7 @@ Na construção disparada pelo webhook, antes de executar o modelo, o pipeline S
 - **THEN** a `PRE` é construída com 277 pontos, sem conferência de quantidade
 
 ### Requirement: Log da carga
-O engine SHALL registrar o evento `CARGA_RECEBIDA` (`idCarga`, fonte, produto, data-base, `linhasPorCodigo`), um `PONTOS_DIFERENTES_DA_FONTE` por curva mantida com pontos diferentes dos que a fonte atual produz e, ao final, `CARGA_PROCESSADA` (`idCarga`, quantidade de curvas por situação, inclusive `IGNORADA`, por aviso e por código de erro, duração).
+O engine SHALL registrar o evento `CARGA_RECEBIDA` (`idCarga`, fonte, produto, data-base, `verticesPorCodigo`), um `PONTOS_DIFERENTES_DA_FONTE` por curva mantida com pontos diferentes dos que a fonte atual produz e, ao final, `CARGA_PROCESSADA` (`idCarga`, quantidade de curvas por situação, inclusive `IGNORADA`, por aviso e por código de erro, duração).
 
 #### Scenario: Carga com falha parcial
 - **WHEN** uma carga termina com 4 curvas construídas e 1 com erro

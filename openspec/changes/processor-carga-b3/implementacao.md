@@ -103,7 +103,7 @@ public interface B3CurvaPrimariaPort {                                          
   void gravar(LocalDate dataBase, Map<String, List<String>> curvasPorCodigo, Map<String, List<B3CurvaPrimaria>> porCodigo);
 }
 public interface EngineCargaPort { RespostaEngine avisar(NotificacaoCarga corpo, String correlationId); }  // engine
-public record NotificacaoCarga(String idCarga, String fonte, String produto, LocalDate dataBase, Map<String, Integer> linhasPorCodigo) {}
+public record NotificacaoCarga(String idCarga, String fonte, String produto, LocalDate dataBase, Map<String, Integer> verticesPorCodigo) {}
 public record RespostaEngine(int status, String corpo) {}
 ```
 
@@ -155,12 +155,12 @@ SELECT COUNT(*) FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;  
 ### 1.8 Aviso ao engine: `adapter/out/client/EngineCargaClient.java` (implementa `EngineCargaPort`)
 
 `RespostaEngine avisar(NotificacaoCarga corpo, String correlationId)` com `RestClient` (um só, criado na subida), sem autenticação:
-- `POST {processor.engine.url}/api/v1/cargas`, JSON `{ idCarga, fonte:"B3", produto:"TS", dataBase:"AAAA-MM-DD", linhasPorCodigo:{ código: quantidade } }`;
+- `POST {processor.engine.url}/api/v1/cargas`, JSON `{ idCarga, fonte:"B3", produto:"TS", dataBase:"AAAA-MM-DD", verticesPorCodigo:{ código: quantidade } }`;
 - cabeçalho `X-Correlation-Id`, e nenhum `Authorization` (o engine não exige autenticação; o `DefaultAzureCredential` é só do Blob);
 - tempo limite de leitura `timeout-segundos`;
 - 2xx → sucesso (guardar o corpo para o log); rede, timeout, 409, 429, 5xx → `FalhaTransitoriaException("AVISO", e)`; outro 4xx → `FalhaDefinitivaException("AVISO", corpo da resposta)`.
 
-`linhasPorCodigo` = só os códigos gravados em pelo menos uma curva. Se vazio, não chamar o engine e registrar no log.
+`verticesPorCodigo` = só os códigos gravados em pelo menos uma curva. Se vazio, não chamar o engine e registrar no log.
 
 ### 1.9 Orquestração: `application/service/ProcessarCargaB3Service.java` e o consumidor
 

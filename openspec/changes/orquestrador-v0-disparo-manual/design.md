@@ -5,7 +5,7 @@ A motivação está no proposal e o comportamento na spec. Estado atual do `serv
 - `HttpTaskActionAdapter` chama qualquer `url` vinda do parâmetro da tarefa, com cabeçalhos livres (`header.*`): é a falha de SSRF que a v1 corrige na tarefa 1.7.
 - A execução manual (`SchedulerService.executeTask`) usa um mapa em memória (`runningTasks`) para saber o que está rodando: não vale entre instâncias.
 - `jackson.time-zone: UTC` no `application.yml` e constantes de fuso espalhadas; `TarefaJpaMapper` troca `action` e `descricao`.
-- Nenhuma `action` de download existe; o processor v0 expõe as rotas de download e reprocessamento das três fontes no contrato das functions.
+- Nenhuma `action` de download existe; o processor v0 expõe as rotas de download e reprocessamento das três fontes (`/api/v1/cargas/{fonte}/...`), com as respostas das functions.
 
 ## Goals / Non-Goals
 
@@ -39,7 +39,7 @@ A execução manual precisa ser única entre instâncias, e o mapa em memória n
 Na v0 não há agendamento para tentar de novo, então o operador precisa ver na hora se a carga veio. A rota responde 200 com o resultado (`SUCESSO`, `NAO_RECEBIDA`, `NAO_IMPLEMENTADA`, `ERRO`), a data-base e o `idCarga`, e o mesmo JSON fica no log da tarefa. "Não recebida" não é erro de execução: o operador tenta de novo mais tarde.
 
 ### D4. Parâmetros da v1 já aceitos
-`inicioHorario` e `limiteHorario` são aceitos e guardados, mas sem efeito; `calendarios` já é usado na v0, para contar a defasagem. Assim as tarefas são cadastradas uma vez, já com o conteúdo de `cadastros-sugeridos.txt` da v1, e passam a ser agendadas quando a v1 chegar, sem recadastro.
+`inicioHorario` e `limiteHorario` são aceitos e guardados, mas sem efeito; `calendarios` já é usado na v0, para contar a defasagem. Assim as tarefas são cadastradas uma vez, com os parâmetros de `cadastros-sugeridos.txt` da v1 (na v0, com os caminhos do processor, `/api/v1/cargas/{fonte}/...`), e passam a ser agendadas quando a v1 chegar; quando as functions existirem, só o `destino` e os caminhos mudam, por `PATCH`.
 
 ### D5. Tarefas não agendadas
 As três tarefas ficam `PRONTA`. O motor atual de agendamento não é seguro com duas instâncias (é o que a v1 corrige), então a v0 não agenda nada: o procedimento é não chamar `/agendar` nessas tarefas até a v1.
@@ -68,7 +68,7 @@ Uma data anterior à padrão é reprocessamento. Por padrão, o destino relê o 
 1. Levantar as tarefas `http` cadastradas e preparar o recadastro com `destino` e `caminho`.
 2. Configurar `orquestrador.http.destinos`: `conector-b3`, `conector-anbima` e `conector-bloomberg` com a base-URL do `services/processor` e 120 s; `engine` com 30 s, para a v1.
 3. Implantar o orquestrador.
-4. Cadastrar as três tarefas de `cadastros-sugeridos.txt` da change `orquestrador-curvas`, sem agendar, com a `defasagemDiasUteis` confirmada para cada fonte.
+4. Cadastrar as três tarefas da seção 12 do guia, sem agendar, com a `defasagemDiasUteis` confirmada para cada fonte.
 5. Implantar o bff e o front com a execução por data.
 6. Executar cada uma pelo front, com e sem data, e conferir o resultado e o log.
 7. **Rollback:** voltar o deploy. Nenhum schema muda; as tarefas cadastradas ficam `PRONTA`.

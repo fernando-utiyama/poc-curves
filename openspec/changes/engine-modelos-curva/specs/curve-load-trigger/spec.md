@@ -1,6 +1,6 @@
 ## Purpose
 
-Garante que uma curva só é construída automaticamente depois que o dado bruto da sua origem foi gravado por completo. O processor grava cada carga numa única transação e, depois do commit, avisa o engine por webhook, com a quantidade de linhas por código; e o orquestrador pede a construção automática de uma data inteira, que cobre as curvas derivadas e serve de rede de segurança. O engine constrói na hora as curvas que dependem da carga, confere se leu exatamente a quantidade avisada e não guarda nenhum registro próprio da carga: o que ele precisa saber depois está no banco (dados brutos e pontos) e no log.
+Garante que uma curva só é construída automaticamente depois que o dado bruto da sua origem foi gravado por completo. O processor grava cada carga numa única transação e, depois do commit, avisa o engine por webhook, com a quantidade de vértices por código; e o orquestrador pede a construção automática de uma data inteira, que cobre as curvas derivadas e serve de rede de segurança. O engine constrói na hora as curvas que dependem da carga, confere se leu exatamente a quantidade avisada e não guarda nenhum registro próprio da carga: o que ele precisa saber depois está no banco (dados brutos e pontos) e no log.
 
 ## ADDED Requirements
 
