@@ -1,3 +1,10 @@
+> **Como executar com `/opsx-apply`** (o apply já leu `proposal.md`, `design.md` e as specs; não releia):
+> 1. Antes de cada tarefa, leia **só** o cartão dela na seção 0.4 de [`implementacao.md`](implementacao.md) e as seções que o cartão cita. Leia a seção 0 do guia uma vez, no começo.
+> 2. Abra só os arquivos que o cartão manda criar ou alterar; não explore o resto do repositório.
+> 3. Não pare para perguntar: o guia já decidiu. Se faltar algo, deixe `// TODO(revisao): <dúvida>` no código e siga.
+> 4. Cada tarefa termina com o "Pronto quando" do cartão (compilar ou o teste passar); corrija até passar e marque a tarefa.
+> 5. Pare na tarefa **3.3** (PAUSA), escreva o resumo e espere a revisão. Depois da revisão, um novo `/opsx-apply` segue com 2.1 (B3), 4.1 e 4.2 (Bloomberg) e 5.x (bff e front).
+
 Guia de implementação: [`implementacao.md`](implementacao.md). A seção 1 (base comum) vem primeiro e é feita por uma pessoa. Ao fim dela, as rotas das três fontes chegam ao caso de uso, e cada provedor responde 501 `PROVEDOR_NAO_IMPLEMENTADO`. Em seguida, a mesma pessoa faz a seção 3 (ANBIMA), que serve de modelo de provedor, e para na pausa 3.3. Depois da pausa, as seções 2 e 4 são independentes entre si e seguem o modelo da ANBIMA: cada dev implementa um provedor sem mexer no código dos outros. Testes poucos e amplos (guia, seção 12), com servidores falsos e portas em memória; o que exige infraestrutura real vai para a homologação (7.x). Nenhum script de banco.
 
 ## 1. Base comum (primeiro, uma pessoa)

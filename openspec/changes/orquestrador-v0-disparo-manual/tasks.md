@@ -1,3 +1,10 @@
+> **Como executar com `/opsx-apply`** (o apply já leu `proposal.md`, `design.md` e as specs; não releia):
+> 1. Antes de cada tarefa, leia **só** o cartão dela na seção 0.4 de [`implementacao.md`](implementacao.md) e as seções que o cartão cita. Leia a seção 0 do guia uma vez, no começo.
+> 2. Abra só os arquivos que o cartão manda criar ou alterar; não explore o resto do repositório.
+> 3. Não pare para perguntar: o guia já decidiu. Se faltar algo, deixe `// TODO(revisao): <dúvida>` no código e siga.
+> 4. Cada tarefa termina com o "Pronto quando" do cartão (compilar ou o teste passar); corrija até passar e marque a tarefa.
+> 5. Pare na tarefa **1.6** (PAUSA), escreva o resumo e espere a revisão. Depois da revisão, um novo `/opsx-apply` segue com a seção 2.
+
 Guia de implementação: [`implementacao.md`](implementacao.md). Cada tarefa diz a classe a mexer e como verificar. Ao lado de cada uma, a tarefa da v1 (`orquestrador-curvas`) que ela antecipa. Testes poucos e amplos (guia, seção 11), com destino falso e repositório em memória, sem banco real. Nenhum script de banco.
 
 ## 1. Base (antecipa a v1)

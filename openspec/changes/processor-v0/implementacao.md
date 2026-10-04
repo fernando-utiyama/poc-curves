@@ -6,7 +6,7 @@ A spec (`specs/carga-arquivos-processor/spec.md`) manda no comportamento; este g
 
 ### 0.0 Como gastar pouco
 
-Cada fase é feita com **um prompt só**, sem ida e volta: não faça perguntas, decida pelo guia e, se faltar algo, deixe `// TODO(revisao): <dúvida>` e siga. Trabalhe tarefa por tarefa pelo cartão dela (seção 0.4): abra só os arquivos do cartão e leia só as seções que ele cita. A spec é para consulta em caso de dúvida: tudo o que o código precisa dela já está neste guia. Não rode a aplicação; compile e rode os testes. Para tarefas mecânicas (cartões com código pronto), um modelo de custo menor costuma bastar; confira o multiplicador do modelo na sua conta.
+Cada fase é feita com **um prompt só**, sem ida e volta: não faça perguntas, decida pelo guia e, se faltar algo, deixe `// TODO(revisao): <dúvida>` e siga. Trabalhe tarefa por tarefa pelo cartão dela (seção 0.4): abra só os arquivos do cartão e leia só as seções que ele cita. Com o `/opsx-apply`, a proposta, o design e as specs já foram lidos uma vez: não volte a eles; tudo o que o código precisa está neste guia. Não rode a aplicação; compile e rode os testes. Para tarefas mecânicas (cartões com código pronto), um modelo de custo menor costuma bastar; confira o multiplicador do modelo na sua conta.
 
 ### 0.1 O que ler e o que não ler
 
@@ -20,7 +20,7 @@ Leia **só**:
    - `adapter/in/api/rest/exception/handler/ApplicationExceptionHandler.java` (onde acrescentar o mapeamento);
    - `src/main/resources/application.yml` e `pom.xml` (para acrescentar, nunca reescrever).
 
-**Não** abra: `proposal.md` e `design.md` desta change (o que importa deles está aqui), outras changes do `openspec/`, outros serviços (engine, curves, orchestrator, conector), `docs/*.pdf`, e no processor os consumidores Kafka (`adapter/in/consumer/`), `adapter/out/persistence/inmemory/`, `application/model/*CurveRaw`, `application/service/Process*`, cache Redis e Feign. Nada disso muda nem é usado aqui.
+O `/opsx-apply` já carrega `proposal.md`, `design.md` e as specs: não os releia. **Não** abra: outras changes do `openspec/`, outros serviços (engine, curves, orchestrator, conector), `docs/*.pdf`, e no processor os consumidores Kafka (`adapter/in/consumer/`), `adapter/out/persistence/inmemory/`, `application/model/*CurveRaw`, `application/service/Process*`, cache Redis e Feign. Nada disso muda nem é usado aqui.
 
 Se algo não estiver neste guia nem na spec, **não procure no repositório**: siga o padrão mais simples do Java 21, deixe `// TODO(revisao): <dúvida>` no código e registre a dúvida no resumo da pausa.
 
@@ -38,7 +38,7 @@ Se algo não estiver neste guia nem na spec, **não procure no repositório**: s
 
 Fase 1 (até a pausa):
 
-> Implemente as tarefas 1.1 a 1.8 e 3.1 a 3.3 de `openspec/changes/processor-v0/tasks.md`, seguindo `openspec/changes/processor-v0/implementacao.md`. Leia só os arquivos da seção 0.1 do guia; não explore o resto do repositório. Ao terminar cada tarefa, rode `mvn -q compile` e corrija os erros; ao fim, rode `mvn -q test` e corrija até passar. Pare na tarefa 3.3 e escreva o resumo pedido nela.
+> `/opsx-apply processor-v0` (o cabeçalho do `tasks.md` já diz como trabalhar e onde parar). Sem o apply: "Implemente as tarefas 1.1 a 1.8 e 3.1 a 3.3 de `openspec/changes/processor-v0/tasks.md`, seguindo o cabeçalho dele e `implementacao.md`; pare na 3.3."
 
 Fase 2 (um prompt por dev, depois da revisão): o mesmo, trocando as tarefas por `2.1`, ou `4.1` e `4.2`, ou `5.1` e `5.2`, e acrescentando: "copie a estrutura do provedor ANBIMA (`adapter/out/client/anbima/`)".
 

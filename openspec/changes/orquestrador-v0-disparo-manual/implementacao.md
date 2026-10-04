@@ -6,7 +6,7 @@ A spec (`specs/disparo-manual-carga/spec.md`) manda no comportamento; este guia 
 
 ### 0.0 Como gastar pouco
 
-Cada fase é feita com **um prompt só**, sem ida e volta: não faça perguntas, decida pelo guia e, se faltar algo, deixe `// TODO(revisao): <dúvida>` e siga. Trabalhe tarefa por tarefa pelo cartão dela (seção 0.4): abra só os arquivos do cartão e leia só as seções que ele cita. A spec é para consulta em caso de dúvida: tudo o que o código precisa dela já está neste guia. Não rode a aplicação; compile e rode os testes. Para tarefas mecânicas (cartões com código pronto), um modelo de custo menor costuma bastar; confira o multiplicador do modelo na sua conta.
+Cada fase é feita com **um prompt só**, sem ida e volta: não faça perguntas, decida pelo guia e, se faltar algo, deixe `// TODO(revisao): <dúvida>` e siga. Trabalhe tarefa por tarefa pelo cartão dela (seção 0.4): abra só os arquivos do cartão e leia só as seções que ele cita. Com o `/opsx-apply`, a proposta, o design e as specs já foram lidos uma vez: não volte a eles; tudo o que o código precisa está neste guia. Não rode a aplicação; compile e rode os testes. Para tarefas mecânicas (cartões com código pronto), um modelo de custo menor costuma bastar; confira o multiplicador do modelo na sua conta.
 
 ### 0.1 O que ler e o que não ler
 
@@ -24,7 +24,7 @@ Leia **só**:
    - `application/exception/BaseException.java`, `BusinessException.java`, `InvalidInputException.java` (assinatura dos construtores) e `adapter/in/api/rest/exception/handler/ApplicationExceptionHandler.java`;
    - `adapter/infrastructure/scheduler/SpringSchedulerAdapter.java` e `application/service/TarefaCrudService.java` (só as constantes de fuso).
 
-**Não** abra: `proposal.md` e `design.md` desta change, outras changes (inclusive `orquestrador-curvas` e `engine-construcao-curvas`: o que importa delas está aqui), outros serviços, `TarefaService`, webhook (`adapter/out/client/feign/`), Kafka, `scheduler.*` e os DTOs que não aparecem neste guia.
+O `/opsx-apply` já carrega `proposal.md`, `design.md` e a spec: não os releia. **Não** abra: outras changes (inclusive `orquestrador-curvas` e `engine-construcao-curvas`: o que importa delas está aqui), outros serviços, `TarefaService`, webhook (`adapter/out/client/feign/`), Kafka, `scheduler.*` e os DTOs que não aparecem neste guia.
 
 Se algo não estiver neste guia nem na spec, **não procure no repositório**: siga o padrão mais simples do Java 21, deixe `// TODO(revisao): <dúvida>` e registre a dúvida no resumo da pausa.
 
@@ -40,7 +40,7 @@ Se algo não estiver neste guia nem na spec, **não procure no repositório**: s
 
 Fase 1:
 
-> Implemente as tarefas 1.1 a 1.6 de `openspec/changes/orquestrador-v0-disparo-manual/tasks.md`, seguindo `implementacao.md` da mesma pasta. Leia só os arquivos da seção 0.1 do guia; não explore o resto do repositório. Ao terminar cada tarefa, rode `mvn -q compile` e corrija; ao fim, rode `mvn -q test` e corrija até passar. Pare na tarefa 1.6 e escreva o resumo pedido nela.
+> `/opsx-apply orquestrador-v0-disparo-manual` (o cabeçalho do `tasks.md` já diz como trabalhar e onde parar). Sem o apply: "Implemente as tarefas 1.1 a 1.6 de `openspec/changes/orquestrador-v0-disparo-manual/tasks.md`, seguindo o cabeçalho dele e `implementacao.md`; pare na 1.6."
 
 Fase 2 (depois da revisão): o mesmo com as tarefas 2.1 e 2.2; bff e front (2.3 e 2.4) num prompt separado.
 
