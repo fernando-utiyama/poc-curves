@@ -52,7 +52,7 @@ Fase 2 (depois da revisão): o mesmo com as tarefas 2.1 e 2.2; bff e front (2.3 
 | 1.2 | `TarefaJpaMapperTest` | `TarefaJpaMapper` | 3 | o teste passa |
 | 1.3 | `adapter/out/client/feign/config/DestinosProperties`, `adapter/out/client/feign/ChamadaSaidaClient`, `adapter/out/client/feign/boundary/RestClientChamadaSaidaClient`, `application/exception/ExecucaoErrorCode` e `ConflictException`; `ChamadaSaidaClientTest` | `HttpTaskActionAdapter`, `ApplicationExceptionHandler` (1 método), `InvalidInputException` (1 construtor), `application.yml` (destinos) | 4, 0.5 | o teste passa e os testes existentes da action `http` foram ajustados |
 | 1.4 | — | `TaskRepositoryPort` (3 métodos), `TaskJpaPersistenceAdapter` (3 métodos e o `EntityManager` no construtor) | 5, 0.5 | `mvn -q compile` |
-| 1.5 | `domain/calendario/Calendario`, `Brazil`, `UnitedStates` e `Calendarios` (código pronto); `CalendariosTest` | — | 6 | o teste passa |
+| 1.5 | `application/model/calendario/Calendario`, `Brazil`, `UnitedStates` e `Calendarios` (código pronto); `CalendariosTest` | — | 6 | o teste passa |
 | 1.6 | resumo da pausa | — | 7 | resumo escrito; parar |
 | 2.1 | `application/port/out/ExecucaoManualActionPort`, `application/model/scheduler/ResultadoExecucao` e `TipoResultado`, `adapter/out/action/CargaFonteTaskActionAdapter`; `CargaFonteTaskActionAdapterTest` | — | 8, 0.5 | o teste passa |
 | 2.2 | `adapter/in/api/rest/dto/scheduler/ExecucaoManualResponseDto`; `ExecucaoManualServiceTest` e `SchedulerExecutarRotaTest` | `SchedulerUseCase`, `SchedulerService` (campo novo e `executeTask`), `SchedulerAPI`, `SchedulerController` | 9, 0.5 | `mvn -q test` |
@@ -123,7 +123,7 @@ adapter/out/action/                                HttpTaskActionAdapter (altera
 application/exception/                             ConflictException (nova), ExecucaoErrorCode (novo)  (1.3/1.4)
 application/port/out/                              TaskRepositoryPort (+ reivindicar, devolver, registrarLog) (1.4)
 adapter/out/persistence/jpa/boundary/              TaskJpaPersistenceAdapter (+ os três métodos)       (1.4)
-domain/calendario/                                 Calendario, Brazil, UnitedStates, Calendarios       (1.5)
+application/model/calendario/                      Calendario, Brazil, UnitedStates, Calendarios       (1.5)
 application/port/out/                              ExecucaoManualActionPort                            (2.1)
 application/model/scheduler/                       ResultadoExecucao, TipoResultado                    (2.1)
 adapter/out/action/                                CargaFonteTaskActionAdapter                         (2.1)

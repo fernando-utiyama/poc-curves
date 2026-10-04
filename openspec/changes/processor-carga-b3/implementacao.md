@@ -4,6 +4,8 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. A spec m
 
 Este guia é o lado do processor da divisão do antigo `conector-b3-webhook-ingest`. O conector (change `conector-b3-webhook-ingest`, com guia próprio) obtém o arquivo, arquiva no Blob e publica o aviso de carga em `tp-event-b3-curve`; o formato do aviso é o da spec `b3-taxaswap-publicacao` desse change. O processor consome esse aviso. Os dois são implantados juntos.
 
+**Reaproveite a `processor-v0`** (implementada antes desta change): `application/model/leiaute/LeiauteTaxaSwap`, `application/model/carga/` (`Fonte`, `CargaInterpretada`, `BtrsCurvaPrimr`), `CurvaPrimrRepositoryPort`/`CurvaPrimrPersistenceAdapter` com a `BtrsCurvaPrimrInsercao`, `AvisoEnginePort`/`AvisoEngineAdapter`, `ArquivoOriginalPort`/`ArquivoOriginalBlobAdapter` e as chaves `processor.*` do `application.yml`. Não crie classes paralelas com outros nomes; o que esta change acrescenta é o consumo do Kafka, a validação do aviso, a repetição por janela e o `CARGA_FALHOU` do caminho definitivo. Se a v0 não estiver implantada, crie essas classes como o guia dela descreve (seções 2, 6, 7, 8 e 11.1).
+
 Regras para quem implementa:
 - Não invente nome, rota, variável, tabela ou coluna fora deste guia e das specs.
 - Não crie tópico Kafka, fila, tabela, sequência nem índice.
@@ -44,11 +46,11 @@ Conferir que as chaves abaixo existem com estes valores; acrescentar só as que 
 ```yaml
 processor:
   blob:
-    endpoint: ${PROCESSOR_BLOB_ENDPOINT}        # https://<conta>.blob.core.windows.net
+    account-url: ${PROCESSOR_BLOB_ACCOUNT_URL}  # https://<conta>.blob.core.windows.net (mesma chave da processor-v0)
     container: ${PROCESSOR_BLOB_CONTAINER}      # o mesmo B3_BLOB_CONTAINER do conector
   engine:
-    url: ${PROCESSOR_ENGINE_URL}                # endereço do engine atrás do balanceador
-    timeout-segundos: 150
+    base-url: ${ENGINE_BASE_URL}                # mesma chave da processor-v0
+    timeout: 150s
   repeticao:
     gravacao-minutos: 5
     aviso-minutos: 10
@@ -94,73 +96,32 @@ public final class FalhaTransitoria extends FalhaCarga { public FalhaTransitoria
 
 Nas seções abaixo, `FalhaDefinitivaException` e `FalhaTransitoriaException` significam `FalhaDefinitiva` e `FalhaTransitoria`.
 
-Portas de saída (`application/port/out/`), uma por dependência:
+Portas de saída: as da `processor-v0`, com um acréscimo.
 
 ```java
-public interface ArquivoCargaPort { byte[] ler(String caminho); }                                   // Blob
-public interface B3CurvaPrimariaPort {                                                               // tBtrsCurvaPrimr
-  Map<String, List<String>> curvasPorCodigo();
-  void gravar(LocalDate dataBase, Map<String, List<String>> curvasPorCodigo, Map<String, List<B3CurvaPrimaria>> porCodigo);
-}
-public interface EngineCargaPort { RespostaEngine avisar(NotificacaoCarga corpo, String correlationId); }  // engine
-public record NotificacaoCarga(String idCarga, String fonte, String produto, LocalDate dataBase, Map<String, Integer> verticesPorCodigo) {}
-public record RespostaEngine(int status, String corpo) {}
+// ArquivoOriginalPort (v0) + leitura por caminho, usada só aqui:
+byte[] ler(String caminho);          // NotFoundException se não existe; ServiceUnavailableException em rede/5xx/408/429
+// CurvaPrimrRepositoryPort (v0): Map<String, Integer> substituir(Fonte fonte, LocalDate dataBase, CargaInterpretada carga);
+// AvisoEnginePort (v0): int avisar(String idCarga, Fonte fonte, LocalDate dataBase, Map<String, Integer> verticesPorCodigo, String correlationId);
 ```
 
-### 1.5 Leitura do arquivo: `adapter/out/blob/ArquivoCargaBlobAdapter.java` (implementa `ArquivoCargaPort`)
+Tradução das exceções da v0 para as falhas desta change (no `ProcessarCargaB3Service`): `ServiceUnavailableException` → `FalhaTransitoria`; `NotFoundException` e `BusinessException` → `FalhaDefinitiva`; no aviso, status 409, 429 ou 5xx e erro de rede → `FalhaTransitoria`, outro 4xx → `FalhaDefinitiva`.
 
-`byte[] ler(String caminho)` com um único `BlobContainerClient` criado na subida (bean), com `BlobServiceClientBuilder().endpoint(endpoint).credential(new DefaultAzureCredentialBuilder().build())`. 404 → `FalhaDefinitivaException("LEITURA", "arquivo inexistente: " + caminho)`; outras falhas de rede/5xx/408/429 → `FalhaTransitoriaException("LEITURA", e)`. Depois de ler, no serviço: `bytes.length == arquivo.bytes` e `HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)).equals(arquivo.sha256)`; senão `FalhaDefinitivaException("LEITURA", "divergência de tamanho|hash")`.
+### 1.5 Leitura do arquivo: `ArquivoOriginalBlobAdapter` da v0, com `ler(caminho)`
 
-### 1.6 Parse e validação: `application/model/LeiauteTaxaSwap.java` (Java puro)
+Acrescentar `ler(String caminho)` ao adaptador da v0 (mesmo `BlobContainerClient`). Depois de ler, no serviço: `bytes.length == arquivo.bytes` e `HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)).equals(arquivo.sha256)`; senão `FalhaDefinitiva("LEITURA", "divergência de tamanho|hash")`.
 
-```java
-public record B3CurvaPrimaria(String codigo, int diasCorridos, int diasUteis, BigDecimal valor, int linha) {}
-public record ResultadoParse(LocalDate dataBase, Map<String, List<B3CurvaPrimaria>> porCodigo, Map<String, String> invalidos /* código → "linha N: motivo" */) {}
-public static ResultadoParse interpretar(byte[] arquivo, LocalDate dataBaseEsperada);
-```
+### 1.6 Parse e validação: `LeiauteTaxaSwap` da v0
 
-Regras exatas (posições 1-based → `substring(inicio-1, fim)`):
-- `var linhas = new String(arquivo, StandardCharsets.ISO_8859_1).lines().filter(l -> !l.isBlank()).toList();` (`String.lines()` já trata `\r\n`, `\n` e `\r`).
-- Arquivo sem linhas, linha com tamanho ≠ 72, data (12–19) diferente entre linhas ou de `dataBaseEsperada`, ou código (22–26, `strip()`) vazio → `FalhaDefinitivaException("VALIDACAO", "linha N: <motivo>")`.
-- Por linha: `dc = 42–46`, `du = 47–51`, `sinal = 52`, `taxa = 53–66`. Código fica inválido (registrar em `invalidos`, parar de ler as linhas daquele código) se: `dc` ou `du` não são só dígitos; `dc < 1`, `du < 1` ou `du > dc`; `sinal` não é `+` nem `-`; `taxa` não é só dígitos; `dc` repetido no código.
-- `valor = new BigDecimal(taxa).movePointLeft(7)` com o sinal (`negate()` se `-`); escala 7. Nunca `double`.
+`LeiauteTaxaSwap.interpretar(bytes, aviso.dataBase())` (guia da `processor-v0`, seção 11.1, com as regras e os vetores). O 422 do arquivo inteiro vira `FalhaDefinitiva("VALIDACAO", motivo)`; os códigos rejeitados seguem em `codigosRejeitados` para o log.
 
-Casos de teste (escritos na seção 2): linha da spec `0049060010120260914T1DCL  CUPOM LIMPO - S0000100001-00001179600000F00001` → `DCL`, 1, 1, `-117.9600000`. Com `docs/TaxaSwap.txt`: 114 códigos, 278 vértices em `PRE`/`DCL`/`DPL`/`INP`/`PTX`, nenhum inválido; primeiro vértice da `PRE` = `13.9000000`.
+### 1.7 Gravação: `CurvaPrimrPersistenceAdapter` da v0
 
-### 1.7 Gravação: `adapter/out/persistence/jdbc/B3CurvaPrimariaJdbcAdapter.java` (implementa `B3CurvaPrimariaPort`)
+`curvaPrimrRepository.substituir(Fonte.B3, aviso.dataBase(), carga)`: mapeamento por `tCurvaPrvdr` (`B3`/`TS`), transação única, trava das curvas em `tCurvaMercd` em ordem do nome com 60 s, apagar por curva e data, `MAX + 1` com `UPDLOCK, HOLDLOCK`, `INSERT` pela `BtrsCurvaPrimrInsercao` e conferência de contagens (guia da v0, seções 7 e 11.1). Nunca escrever em `tCurvaMercd` nem `tCurvaPrvdr`.
 
-Consultas com o `JdbcClient` do Spring (mapeia direto para records); inclusões em lote com `JdbcTemplate.batchUpdate`. Ambos já vêm com o `spring-boot-starter-data-jpa`.
+### 1.8 Aviso ao engine: `AvisoEngineAdapter` da v0, chamado de forma síncrona
 
-Colunas conforme o `001_SCRIPT_INICIAL.sql`: `tBtrsCurvaPrimr(cIdtfdUnic int NOT NULL, cTickerIndcd varchar(50) NOT NULL, cDiaCorri int, cDiaUtil int, dBaseReft date, vFatorAcum decimal(28,16), vPrecoTx decimal(28,12), vFatorDia decimal(28,16))` e `tCurvaPrvdr(cIdtfdUnic, cPriorCsumo, cPrvdrMercd varchar(50), cTickerIndcd varchar(50), cTickerPrvdr varchar(1024), iPrvdrDados varchar(1024))`. `vPrecoTx` recebe o `BigDecimal` de escala 7 sem arredondar.
-
-SQL exato:
-```sql
--- mapeamento
-SELECT cTickerPrvdr, cTickerIndcd FROM tCurvaPrvdr WHERE iPrvdrDados = 'B3' AND cPrvdrMercd = 'TS';
--- por curva, dentro da transação única, em ordem crescente do nome da curva
-SELECT cTickerIndcd FROM tCurvaMercd WITH (UPDLOCK, ROWLOCK) WHERE cTickerIndcd = ?;   -- trava da curva, espera até 60 s
-DELETE FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;
-SELECT ISNULL(MAX(cIdtfdUnic), 0) FROM tBtrsCurvaPrimr WITH (UPDLOCK, HOLDLOCK);
-INSERT INTO tBtrsCurvaPrimr (cIdtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia)
-VALUES (?, ?, ?, ?, ?, ?, NULL, NULL);                 -- batchUpdate, ids = max+1, max+2, …
-SELECT COUNT(*) FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;  -- tem de ser = vértices do código
-```
-
-- `gravar` é `@Transactional` (uma transação para a carga inteira). Contagem divergente → exceção que desfaz tudo (`FalhaDefinitivaException("GRAVACAO", …)`).
-- Trava da curva: antes de apagar e inserir, travar a linha de cada curva mapeada em `tCurvaMercd` com `UPDLOCK, ROWLOCK`, em ordem crescente do nome da curva (evita deadlock entre cargas), com tempo limite de 60 s no próprio comando (dica de consulta `jakarta.persistence.query.timeout`=60000, ou `JdbcTemplate.setQueryTimeout(60)`; não usar `SET LOCK_TIMEOUT`). É a mesma trava da edição manual no curves e da construção no engine. Tempo esgotado → falha transitória.
-- Geração de `cIdtfdUnic`: `MAX + 1` lido com `UPDLOCK, HOLDLOCK` na mesma transação da gravação, como o serviço de cadastro faz na edição manual; isolar num método `proximoId()`, com o mesmo tempo limite de 60 s.
-- Nunca escrever em `tCurvaMercd` nem `tCurvaPrvdr`.
-- Deadlock, timeout de comando ou perda de conexão → `FalhaTransitoriaException("GRAVACAO", e)`; violação de FK/chave → `FalhaDefinitivaException("GRAVACAO", …)`.
-
-### 1.8 Aviso ao engine: `adapter/out/client/EngineCargaClient.java` (implementa `EngineCargaPort`)
-
-`RespostaEngine avisar(NotificacaoCarga corpo, String correlationId)` com `RestClient` (um só, criado na subida), sem autenticação:
-- `POST {processor.engine.url}/api/v1/cargas`, JSON `{ idCarga, fonte:"B3", produto:"TS", dataBase:"AAAA-MM-DD", verticesPorCodigo:{ código: quantidade } }`;
-- cabeçalho `X-Correlation-Id`, e nenhum `Authorization` (o engine não exige autenticação; o `DefaultAzureCredential` é só do Blob);
-- tempo limite de leitura `timeout-segundos`;
-- 2xx → sucesso (guardar o corpo para o log); rede, timeout, 409, 429, 5xx → `FalhaTransitoriaException("AVISO", e)`; outro 4xx → `FalhaDefinitivaException("AVISO", corpo da resposta)`.
-
-`verticesPorCodigo` = só os códigos gravados em pelo menos uma curva. Se vazio, não chamar o engine e registrar no log.
+Aqui o aviso não vai para o segundo plano da v0 (`AvisoEngineService`): o `ProcessarCargaB3Service` chama `avisoEngine.avisar(...)` dentro do `repetir("AVISO", ...)` da seção 1.9, para registrar `GRAVADA_SEM_AVISO` quando a janela acabar. Corpo, cabeçalho e tempo limite são os da v0 (`{ idCarga, fonte, produto, dataBase, verticesPorCodigo }`, `X-Correlation-Id`, sem `Authorization`, 150 s). `verticesPorCodigo` vazio: não chamar o engine e registrar no log.
 
 ### 1.9 Orquestração: `application/service/ProcessarCargaB3Service.java` e o consumidor
 
@@ -168,10 +129,10 @@ SELECT COUNT(*) FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;  
 public void processar(String mensagem, String correlationId);
 ```
 1. `AvisoCargaB3 aviso` (Jackson) + `ValidadorAvisoCargaB3.validar`;
-2. `repetir("LEITURA", gravacaoMinutos, () -> blob.ler(caminho))` + conferência de tamanho e hash;
+2. `repetir("LEITURA", gravacaoMinutos, () -> arquivoOriginal.ler(caminho))` + conferência de tamanho e hash;
 3. `LeiauteTaxaSwap.interpretar(bytes, aviso.dataBase())`;
-4. `repetir("GRAVACAO", gravacaoMinutos, () -> jdbc.gravar(...))` (códigos sem curva: ignorados e contados);
-5. `repetir("AVISO", avisoMinutos, () -> engine.avisar(...))`, com `AVISO_ATRASADO` (log `ERRO` + métrica) se passar de `alertaAvisoMinutos` desde o commit;
+4. `repetir("GRAVACAO", gravacaoMinutos, () -> curvaPrimrRepository.substituir(Fonte.B3, ...))` (códigos sem curva: ignorados e contados);
+5. `repetir("AVISO", avisoMinutos, () -> avisoEngine.avisar(...))`, com `AVISO_ATRASADO` (log `ERRO` + métrica) se passar de `alertaAvisoMinutos` desde o commit;
 6. log JSON da carga (campos da spec) e métricas.
 
 `repetir(etapa, minutos, acao)`: repete só em `FalhaTransitoria`, esperando 1 s, 2 s, 4 s… até 60 s, com ±10% aleatório, até a janela acabar; cada nova tentativa gera log `AVISO`. Janela esgotada → `FalhaDefinitiva(etapa, "janela esgotada")`. Só Java:
@@ -231,11 +192,8 @@ Processor (`services/processor/src/test/java/br/com/poc/starter/srv/hex/`):
 
 Processor (mesmo pacote base, em `src/test/java`):
 - `application/service/ValidadorAvisoCargaB3Test.java`: um caso por regra de 1.4;
-- `application/service/LeiauteTaxaSwapTest.java`: linha da spec, `docs/TaxaSwap.txt` completo e um caso por regra de linha inválida de 1.6;
-- `adapter/out/blob/ArquivoCargaBlobAdapterTest.java`: 404 definitivo, 503 transitório;
-- `adapter/out/persistence/jdbc/B3CurvaPrimariaJdbcAdapterTest.java` (`JdbcTemplate` simulado): SQL e parâmetros enviados, ids `max+1, max+2...`, contagem divergente lança a falha que desfaz a transação;
-- `adapter/out/client/EngineCargaClientTest.java` (servidor HTTP simulado): 2xx, 409/429/5xx transitórios, 400 definitivo, cabeçalhos;
-- `application/service/ProcessarCargaB3ServiceTest.java`: cenários da spec `b3-carga-processor` listados em 1.9, com as janelas reduzidas por configuração.
+- `LeiauteTaxaSwapTest`, a gravação e o aviso já têm os testes da `processor-v0` (`LeiauteTaxaSwapTest`, `B3CargaTest`, `AvisoEngineServiceTest`): não duplicar; acrescentar só o teste do `ler(caminho)` do `ArquivoOriginalBlobAdapter` (404 → `NotFoundException`, 503 → `ServiceUnavailableException`, com o Blob simulado);
+- `application/service/ProcessarCargaB3ServiceTest.java`: cenários da spec `b3-carga-processor` listados em 1.9, com as janelas reduzidas por configuração e as portas da v0 simuladas (inclusive a tradução das exceções da v0 para `FalhaTransitoria`/`FalhaDefinitiva`). Sem `@SpringBootTest`: objetos montados à mão.
 
 ### 2.4 Rodar e fechar
 

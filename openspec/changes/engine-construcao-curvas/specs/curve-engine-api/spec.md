@@ -103,7 +103,7 @@ Enums das respostas:
 | tipo de modelo | `construcao`, `interpolacao`, `calendario` (os mesmos da rota `/modelos/{tipo}`) |
 | status do script | `RASCUNHO`, `VALIDADA`, `REPROVADA`, `ATIVA`, `INATIVA` |
 | operação na auditoria | `CONSTRUCAO`, `RECONSTRUCAO` |
-| `acionadoPor` | `CARGA`, `ORQUESTRADOR`, `API` |
+| `acionadoPor` | `CARGA`, `CONSTRUCAO_DATA`, `API` |
 | fonte da planilha | `GRAVADA`, `SIMULACAO` |
 
 Avisos do engine:

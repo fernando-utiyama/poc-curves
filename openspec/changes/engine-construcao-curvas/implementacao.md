@@ -727,7 +727,7 @@ Criada por um método de fábrica com o cadastro, os pontos mantidos, o calendá
 ### 7.1 Pedido e resultado (sealed), em `domain/curva/`
 
 ```java
-public enum Acionamento { CARGA, ORQUESTRADOR, API }
+public enum Acionamento { CARGA, CONSTRUCAO_DATA, API }
 public record PedidoConstrucao(String codigo, LocalDate dataBase, boolean forcarRecalculo, String fonte, String produto,
     Acionamento acionadoPor, String usuario, String idCarga, Map<String, Integer> linhasAvisadas) {}
 
@@ -887,7 +887,7 @@ Corpo: `record NotificacaoCarga(String idCarga, String fonte, String produto, Lo
 
 ### 9.2 `ConstruirDataService` (`POST /api/v1/construcoes/{dataBase}`)
 
-Todas as curvas com código, regras da carga, sem conferência de quantidade, `ORQUESTRADOR`; sem pontos e sem insumo → `SemInsumo`. Curvas de provedor com `Paralelo.executar` (limite `engine.construcao-data.paralelismo`, prazo `engine.timeout.construcao-data-segundos`); depois as derivadas em cadeia. Tempo esgotado: as já gravadas ficam, as outras não começam, resposta `ERRO_INTERNO`. Eventos `CONSTRUCAO_DATA_RECEBIDA` e `CONSTRUCAO_DATA_PROCESSADA`. A existência de pontos é conferida depois da trava.
+Todas as curvas com código, regras da carga, sem conferência de quantidade, `CONSTRUCAO_DATA`; sem pontos e sem insumo → `SemInsumo`. Curvas de provedor com `Paralelo.executar` (limite `engine.construcao-data.paralelismo`, prazo `engine.timeout.construcao-data-segundos`); depois as derivadas em cadeia. Tempo esgotado: as já gravadas ficam, as outras não começam, resposta `ERRO_INTERNO`. Eventos `CONSTRUCAO_DATA_RECEBIDA` e `CONSTRUCAO_DATA_PROCESSADA`. A existência de pontos é conferida depois da trava.
 
 ### 9.3 Cadeia de derivadas
 
@@ -1005,7 +1005,7 @@ Controllers só convertem (records de entrada e saída) e chamam as portas de en
 
 O engine não tem Spring Security, `SegurancaConfig` nem validação de token: **Proibido** acrescentar o Resource Server, `JwtDecoder`, filtro de autorização ou qualquer verificação de papel. Quem autentica o usuário é o `services/curves` (e o BFF), que chama o engine.
 
-- `acionadoPor`: vem da rota (o controller de `POST /cargas` passa `CARGA`, o de `POST /construcoes/{dataBase}` passa `ORQUESTRADOR`, e os demais `API`); não há como o chamador escolher.
+- `acionadoPor`: vem da rota (o controller de `POST /cargas` passa `CARGA`, o de `POST /construcoes/{dataBase}` passa `CONSTRUCAO_DATA`, e os demais `API`); não há como o chamador escolher.
 - `usuario`: cada controller lê o cabeçalho opcional (`@RequestHeader(name = "X-Usuario", required = false)`) e o passa ao caso de uso, que o grava no `usuario` do `CURVA_GRAVADA` e em `cUsuarCalc`; ausente, é nulo (a coluna `cUsuarCalc` aceita nulo). O engine não valida o valor. Só o envio e a ativação de script (segunda parte) exigem o cabeçalho (400 `PARAMETRO_INVALIDO` sem ele), porque o `estado.json` grava `autor` e `aprovador`.
 
 ### 13.4 `GET /valores-cadastro`

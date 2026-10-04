@@ -1,6 +1,6 @@
 ## Purpose
 
-Garante que uma curva só é construída automaticamente depois que o dado bruto da sua origem foi gravado por completo. O processor grava cada carga numa única transação e, depois do commit, avisa o engine por webhook, com a quantidade de vértices por código; e o orquestrador pede a construção automática de uma data inteira, que cobre as curvas derivadas e serve de rede de segurança. O engine constrói na hora as curvas que dependem da carga, confere se leu exatamente a quantidade avisada e não guarda nenhum registro próprio da carga: o que ele precisa saber depois está no banco (dados brutos e pontos) e no log.
+Garante que uma curva só é construída automaticamente depois que o dado bruto da sua origem foi gravado por completo. O processor grava cada carga numa única transação e, depois do commit, avisa o engine por webhook, com a quantidade de vértices por código; e a construção da data inteira, pedida sob demanda (pelo operador ou por outro serviço do projeto), cobre as curvas derivadas e serve de rede de segurança. O engine constrói na hora as curvas que dependem da carga, confere se leu exatamente a quantidade avisada e não guarda nenhum registro próprio da carga: o que ele precisa saber depois está no banco (dados brutos e pontos) e no log.
 
 ## ADDED Requirements
 
@@ -17,7 +17,7 @@ O engine SHALL expor `POST /api/v1/cargas`, com o corpo:
 }
 ```
 
-`verticesPorCodigo` SHALL trazer, para cada código na fonte da carga, a quantidade de linhas gravadas na tabela bruta para aquela data-base, inclusive as que o modelo vier a descartar. Campo ausente, quantidade negativa, mapa vazio ou data inválida MUST resultar em 400 `PARAMETRO_INVALIDO`. O processor SHALL gravar todas as linhas da carga numa única transação, chamar o webhook só depois do commit e repetir a chamada com o mesmo `idCarga` até receber 2xx. O engine MUST NOT gravar a carga em lugar nenhum: o corpo da requisição é usado só durante o seu processamento, e o `idCarga` vai para o log.
+`verticesPorCodigo` SHALL trazer, para cada código na fonte da carga, a quantidade de vértices gravados na tabela bruta para aquela data-base, inclusive os que o modelo vier a descartar. Campo ausente, quantidade negativa, mapa vazio ou data inválida MUST resultar em 400 `PARAMETRO_INVALIDO`. O processor SHALL gravar todas as linhas da carga numa única transação, chamar o webhook só depois do commit e repetir a chamada com o mesmo `idCarga` até receber 2xx. O engine MUST NOT gravar a carga em lugar nenhum: o corpo da requisição é usado só durante o seu processamento, e o `idCarga` vai para o log.
 
 #### Scenario: Aviso da carga B3
 - **WHEN** o processor termina de gravar o `TaxaSwap.txt` de `2026-09-14` e chama o webhook com `fonte` = `B3`, `produto` = `TS` e as quantidades por código
@@ -69,8 +69,8 @@ Cada curva SHALL ser construída de forma independente: a falha de uma MUST NOT 
 - **WHEN** a construção da `DPL` falha por `INSUMO_INVALIDO` durante o processamento de uma carga
 - **THEN** as outras curvas da carga são construídas, a resposta é 200 com o erro da `DPL`, e o log tem `CONSTRUCAO_FALHOU` da `DPL`
 
-### Requirement: Construção automática da data pelo orquestrador
-O engine SHALL expor `POST /api/v1/construcoes/{dataBase}`, sem corpo e sem parâmetros de query. A rota é o segundo gatilho automático, ao lado do webhook do processor: o processor dispara as curvas de dado de mercado da carga que gravou, e o orquestrador dispara a data inteira, o que cobre as curvas derivadas cuja curva componente foi construída ou recalculada fora de uma carga e serve de rede de segurança se o aviso de uma carga se perder.
+### Requirement: Construção automática da data
+O engine SHALL expor `POST /api/v1/construcoes/{dataBase}`, sem corpo e sem parâmetros de query. A rota é o segundo gatilho, ao lado do webhook do processor: o processor dispara as curvas de dado de mercado da carga que gravou, e esta rota dispara a data inteira, o que cobre as curvas derivadas cuja curva componente foi construída ou recalculada fora de uma carga e serve de rede de segurança se o aviso de uma carga se perder. Ela é chamada sob demanda, pelo operador (pela API do `services/curves` ou do bff) ou por outro serviço do projeto; nenhum serviço a agenda, e o orquestrador não a chama.
 
 Ao receber a chamada, o engine SHALL processar, na própria requisição, toda curva com código não nulo, com as mesmas regras da carga (requisito "Construção disparada pela carga"):
 - curva inativa ou com a data-base fora da vigência: `IGNORADA`, com o motivo;
@@ -80,24 +80,24 @@ Ao receber a chamada, o engine SHALL processar, na própria requisição, toda c
 
 Primeiro SHALL ser processadas as curvas com origem de provedor, em paralelo, com até `engine.construcao-data.paralelismo` (padrão 8) ao mesmo tempo; depois, as derivadas, em cadeia, na ordem das dependências, como no requisito "Construção em cadeia das curvas derivadas". Não há conferência de quantidade (`INSUMO_INCOMPLETO`), porque não há quantidade avisada: vale o que está gravado, como na construção pela API. A rota MUST NOT recalcular nenhuma curva e MUST NOT guardar registro da chamada. A falha de uma curva MUST NOT impedir as demais.
 
-A resposta SHALL ser 200 com a data-base e, por curva, o código, a situação ou o `codigoErro` e a mensagem, o motivo de `IGNORADA`, os avisos e o `hashPontos`. Os `CURVA_GRAVADA` das curvas construídas SHALL ter `acionadoPor` = `ORQUESTRADOR`. O engine SHALL registrar `CONSTRUCAO_DATA_RECEBIDA` (data-base, usuário) e, ao final, `CONSTRUCAO_DATA_PROCESSADA` (data-base, quantidade de curvas por situação, por aviso e por código de erro, duração).
+A resposta SHALL ser 200 com a data-base e, por curva, o código, a situação ou o `codigoErro` e a mensagem, o motivo de `IGNORADA`, os avisos e o `hashPontos`. Os `CURVA_GRAVADA` das curvas construídas SHALL ter `acionadoPor` = `CONSTRUCAO_DATA`. O engine SHALL registrar `CONSTRUCAO_DATA_RECEBIDA` (data-base, usuário) e, ao final, `CONSTRUCAO_DATA_PROCESSADA` (data-base, quantidade de curvas por situação, por aviso e por código de erro, duração).
 
 Se o webhook do processor e esta rota construírem a mesma curva e data ao mesmo tempo, a trava da curva (spec `curve-build-pipeline`) serializa as duas: a existência de pontos SHALL ser conferida depois de obter a trava, e a segunda a obter a trava devolve `EXISTENTE`.
 
 #### Scenario: Derivada depois de uma curva componente construída à mão
-- **WHEN** a carga ANBIMA de `2026-09-14` falhou, o operador construiu a `NTN-B` pela API, e depois o orquestrador chama `POST /api/v1/construcoes/2026-09-14`
-- **THEN** a derivada com componentes `DIxPRE` e `NTN-B` é construída com `acionadoPor` = `ORQUESTRADOR`, e as curvas já construídas vêm como `EXISTENTE`
+- **WHEN** a carga ANBIMA de `2026-09-14` falhou, o operador construiu a `NTN-B` pela API, e depois pede `POST /api/v1/construcoes/2026-09-14`
+- **THEN** a derivada com componentes `DIxPRE` e `NTN-B` é construída com `acionadoPor` = `CONSTRUCAO_DATA`, e as curvas já construídas vêm como `EXISTENTE`
 
 #### Scenario: Aviso de carga perdido
-- **WHEN** o processor gravou a carga B3 de `2026-09-14`, mas o webhook nunca chegou ao engine, e o orquestrador chama a rota da data
+- **WHEN** o processor gravou a carga B3 de `2026-09-14`, mas o webhook nunca chegou ao engine, e o operador pede a construção da data
 - **THEN** as curvas B3 são construídas, e as curvas sem dado bruto na data vêm como `SEM_INSUMO`
 
 #### Scenario: Chamada repetida
-- **WHEN** o orquestrador chama a rota duas vezes para a mesma data, sem mudança de insumo
+- **WHEN** a rota é chamada duas vezes para a mesma data, sem mudança de insumo
 - **THEN** a segunda resposta traz todas as curvas construídas como `EXISTENTE`, sem aviso, e nada é gravado
 
-#### Scenario: Webhook e orquestrador ao mesmo tempo
-- **WHEN** o webhook da carga B3 e a rota do orquestrador tentam construir a `PRE` de `2026-09-14` ao mesmo tempo
+#### Scenario: Webhook e construção da data ao mesmo tempo
+- **WHEN** o webhook da carga B3 e a construção da data tentam construir a `PRE` de `2026-09-14` ao mesmo tempo
 - **THEN** uma das duas constrói a `PRE`, a outra espera a trava e devolve `EXISTENTE`, e `tDadoVertcCurva` tem uma única vez os 278 pontos
 
 ### Requirement: Dados brutos exigidos na construção

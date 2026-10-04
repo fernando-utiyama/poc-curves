@@ -1,3 +1,11 @@
+ANTES DAS FUNCTIONS (change processor-v0): enquanto a function de uma fonte nao
+existir, a tarefa aponta o destino para o services/processor e usa os caminhos
+/api/v1/cargas/{fonte}/download?dataBase={dataBase} e
+/api/v1/cargas/{fonte}/reprocessamento?dataBase={dataBase} (fonte = b3, anbima ou
+bloomberg; na Bloomberg, o download leva tambem &tickers={tickers}). Ver a
+tabela da secao 12 do guia da change orquestrador-v0-disparo-manual. Quando a
+function existir, troca-se destino e caminhos por PATCH, sem recadastro.
+
 CADASTROS SUGERIDOS DAS TAREFAS DE CURVA (orquestrador)
 Change: orquestrador-curvas | Sugestão de 2026-09-30, ajustada em 2026-10-01
 

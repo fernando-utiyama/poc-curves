@@ -24,7 +24,7 @@ Guia de implementação: [`implementacao.md`](implementacao.md). A seção 1 (ba
 
 ## 3. Provedor ANBIMA, download do site (logo depois da seção 1; modelo dos provedores)
 
-- [ ] 3.1 `Calendario` e `Brazil` em `domain/calendario/` (guia, seção 10.3, código pronto); escrever o `BrazilTest` (seção 12) e fazê-lo passar
+- [ ] 3.1 `Calendario` e `Brazil` em `application/model/calendario/` (guia, seção 10.3, código pronto); escrever o `BrazilTest` (seção 12) e fazê-lo passar
 - [ ] 3.2 `AnbimaDownloadSiteProvedor`, `AnbimaMsClient`, `LeiauteAnbimaMs` e `AnbmaCurvaPrimrInsercao` (seções 10.1, 10.2 e 7); copiar `recursos/ms260928.txt` para `src/test/resources/anbima/`; escrever o `LeiauteAnbimaMsTest` e o `AnbimaCargaTest` (seção 12, vetores da seção 10.4) e fazê-los passar
 - [ ] 3.3 **PAUSA:** com 1.1 a 1.8, 3.1 e 3.2 prontas (ANBIMA gravando, B3 e Bloomberg respondendo 501), rodar `mvn compile` e `mvn test`; escrever um resumo curto (arquivos criados, arquivos existentes alterados, testes e resultado, `TODO(revisao)` deixados) e parar até a revisão; só depois a B3 (seção 2), a Bloomberg (seção 4) e o bff e o front (seção 5) começam
 

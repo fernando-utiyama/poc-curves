@@ -13,7 +13,7 @@ Guia de implementação: [`implementacao.md`](implementacao.md). Cada tarefa diz
 - [ ] 1.2 Corrigir o `TarefaJpaMapper` (seção 3) (v1 1.10); escrever o `TarefaJpaMapperTest`
 - [ ] 1.3 `DestinosProperties`, `ChamadaSaidaClient`/`RestClientChamadaSaidaClient`, `ExecucaoErrorCode`, `ConflictException` com o método no handler, e o `HttpTaskActionAdapter` com `destino` e `caminho` (seção 4) (v1 1.7 e 2.2); escrever o `ChamadaSaidaClientTest` e ajustar os testes existentes da action `http`
 - [ ] 1.4 `reivindicar`, `devolver` e `registrarLog` no `TaskRepositoryPort`/`TaskJpaPersistenceAdapter` (seção 5) (v1 1.2 e 1.3, sem ocorrência); verificar com `mvn -q compile` (SQL real na homologação, 3.2)
-- [ ] 1.5 `Calendario`, `Brazil`, `UnitedStates` e `Calendarios` em `domain/calendario/` (seção 6, código pronto) (v1 1.11, parte); escrever o `CalendariosTest` com os vetores da seção 6
+- [ ] 1.5 `Calendario`, `Brazil`, `UnitedStates` e `Calendarios` em `application/model/calendario/` (seção 6, código pronto) (v1 1.11, parte); escrever o `CalendariosTest` com os vetores da seção 6
 - [ ] 1.6 **PAUSA:** com 1.1 a 1.5 prontas, rodar `mvn compile` e `mvn test`; escrever um resumo curto (arquivos criados, arquivos alterados, testes e resultado, `TODO(revisao)` deixados) e parar até a revisão; não começar a seção 2 antes disso
 
 ## 2. Execução manual das três tarefas

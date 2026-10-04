@@ -136,7 +136,7 @@ O orquestrador SHALL ter os mesmos calendários nativos do engine (`Brazil`/`Set
 - **THEN** os três consideram úteis exatamente os mesmos dias
 
 ### Requirement: Execução manual
-`POST /api/v1/agendador/tarefas/{id}/executar` SHALL reivindicar uma ocorrência igual a agora, pela mesma regra de execução única (aceitando qualquer situação exceto `EXECUTANDO`, `DESABILITADA` e `REMOVIDA`), e aceitar parâmetros de execução definidos pela `action` (ex.: `dataBase`). Com a tarefa `EXECUTANDO`, SHALL responder 409, sem esperar; `DESABILITADA` ou `REMOVIDA`, 400. Ao fim, a tarefa SHALL voltar à situação de onde saiu se era `AGENDADA` (a execução manual não desliga o agendamento). A execução manual não consulta o calendário da tarefa e registra o usuário no log.
+`POST /api/v1/agendador/tarefas/{id}/executar` SHALL reivindicar uma ocorrência igual a agora, pela mesma regra de execução única (aceitando qualquer situação exceto `EXECUTANDO`, `DESABILITADA` e `REMOVIDA`), e aceitar parâmetros de execução definidos pela `action` (ex.: `dataBase`). Com a tarefa `EXECUTANDO`, SHALL responder 409, sem esperar; `DESABILITADA` ou `REMOVIDA`, 400. Ao fim, a tarefa SHALL voltar à situação de onde saiu (uma `AGENDADA` continua `AGENDADA`: a execução manual não desliga o agendamento). A execução manual não consulta o calendário da tarefa e registra o usuário no log.
 
 #### Scenario: Manual durante a execução agendada
 - **WHEN** um operador pede `/executar` de uma tarefa que está executando pelo agendamento

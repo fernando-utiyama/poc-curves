@@ -13,7 +13,7 @@ O primeiro objetivo do projeto é entregar 7 curvas: DIxPRE, DCL, PTAX, DPL e IB
 - **`hashPontos`**, proveniência e log estruturado da construção.
 - **Rotas básicas para os outros serviços:**
   - processor: `POST /api/v1/cargas` (construção disparada pela carga, com comparação sem recálculo para curvas já construídas);
-  - orquestrador: `POST /api/v1/construcoes/{dataBase}`;
+  - construção da data, sob demanda (operador ou outro serviço; o orquestrador não chama): `POST /api/v1/construcoes/{dataBase}`;
   - `services/curves`: `GET /api/v1/valores-cadastro`, `GET /api/v1/curvas/situacao`, `POST .../interpolada` e `GET /api/v1/calendarios/{nome}` em JSON;
   - front e usuários: catálogo, construção, consulta e interpolação por código e por nome.
 - **Contrato de tipos, erros padronizados e correlação**, leitura em `READ COMMITTED` e fuso da JVM em `America/Sao_Paulo`.
@@ -25,7 +25,7 @@ O primeiro objetivo do projeto é entregar 7 curvas: DIxPRE, DCL, PTAX, DPL e IB
 - `curve-build-pipeline`: cadastro e itens obrigatórios, unidades, contagem de tempo, cotação, bases de interpolação, interpoladores, extrapolação, domínio, arredondamento, gravação com trava, reconstrução, interpolação sob demanda, proveniência, `hashPontos`, log e determinismo.
 - `curve-extension-models`: tipos de modelo por nome, contratos, nomes QuantLib e modelos nativos.
 - `curve-engine-api`: rotas básicas, parâmetros, erros, contrato de tipos, correlação, resolução por código e nome, catálogo, construção, consulta, regravação da interpolada, interpolação, situação e valores aceitos.
-- `curve-load-trigger`: webhook de carga, construção disparada pela carga, construção da data pelo orquestrador, dados brutos exigidos, conferência da quantidade e log da carga.
+- `curve-load-trigger`: webhook de carga, construção disparada pela carga, construção da data sob demanda, dados brutos exigidos, conferência da quantidade e log da carga.
 - `curve-audit-history`: resumo da última construção em `tCurvaMercd`.
 - `calendar-management`: exportação dos feriados em JSON.
 - `b3-ready-curve-model`, `ntnb-anbima-curve-model`, `sofr-bloomberg-curve-model`: os três modelos das 7 curvas.

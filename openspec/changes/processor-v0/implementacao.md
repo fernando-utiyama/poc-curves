@@ -30,7 +30,7 @@ Se algo não estiver neste guia nem na spec, **não procure no repositório**: s
 - Records para todo dado; conversões por métodos estáticos nos records. Sem Lombok nem MapStruct no código novo.
 - Spring Boot 4 e Jackson 3: JSON com o pacote `tools.jackson` (nunca `com.fasterxml.jackson`), pelo mapper que o Spring já injeta.
 - HTTP de saída: `RestClient` do Spring (já vem no `spring-boot-starter-web`). Não use Feign aqui.
-- Dependências novas permitidas, só estas: `com.azure:azure-storage-blob` e `com.azure:azure-identity`, pelo BOM `com.azure:azure-sdk-bom` no `dependencyManagement`. Nenhuma outra, nem de teste.
+- Dependências novas permitidas, só estas: `com.azure:azure-storage-blob` e `com.azure:azure-identity`, pelo BOM `com.azure:azure-sdk-bom` **1.3.8** (a mesma do engine) no `dependencyManagement`. Nenhuma outra, nem de teste.
 - Não crie rota, código de erro, coluna, tabela, tópico ou script de banco fora deste guia e da spec.
 - Tudo o que é novo fica nos pacotes da seção 1; os arquivos existentes só recebem acréscimos (handler, `application.yml`, `pom.xml`).
 
@@ -56,11 +56,11 @@ Caminhos a partir do pacote raiz (`src/main/java/...`); testes em `src/test/java
 | 1.6 | `adapter/out/persistence/jdbc/CurvaPrimrPersistenceAdapter`, `CurvaPrimrInsercao` e as três `*CurvaPrimrInsercao` provisórias | — | 7 | `mvn -q compile` |
 | 1.7 | `application/service/AvisoEngineService`, `adapter/out/client/engine/AvisoEngineAdapter`; `AvisoEngineServiceTest` | — | 8, 12 | `AvisoEngineServiceTest` passa |
 | 1.8 | — | `CargaArquivoService` (log) | 9 | `mvn -q test` |
-| 3.1 | `domain/calendario/Calendario` e `Brazil` (código pronto); `BrazilTest` | — | 10.3, 10.4 | `BrazilTest` passa |
-| 3.2 | `adapter/out/client/anbima/AnbimaMsClient` e `LeiauteAnbimaMs`; `src/test/resources/anbima/ms260928.txt` (cópia de `recursos/`); `LeiauteAnbimaMsTest` e `AnbimaCargaTest` | `AnbimaDownloadSiteProvedor`, `AnbmaCurvaPrimrInsercao` | 7 (INSERT), 10, 12 | `mvn -q test` |
+| 3.1 | `application/model/calendario/Calendario` e `Brazil` (código pronto); `BrazilTest` | — | 10.3, 10.4 | `BrazilTest` passa |
+| 3.2 | `adapter/out/client/anbima/AnbimaMsClient`, `application/model/leiaute/LeiauteAnbimaMs`; `src/test/resources/anbima/ms260928.txt` (cópia de `recursos/`); `LeiauteAnbimaMsTest` e `AnbimaCargaTest` | `AnbimaDownloadSiteProvedor`, `AnbmaCurvaPrimrInsercao` | 7 (INSERT), 10, 12 | `mvn -q test` |
 | 3.3 | resumo da pausa | — | 14 | resumo escrito; parar |
-| 2.1 | `adapter/out/client/b3/B3TaxaSwapClient` e `LeiauteTaxaSwap`; `B3CargaTest` e `LeiauteTaxaSwapTest` | `B3DownloadSiteProvedor`, `BtrsCurvaPrimrInsercao` | 11.1, 12 | `mvn -q test` |
-| 4.1 | `adapter/out/client/bloomberg/BloombergDataLicenseClient` e `LeiauteRespostaDataLicense`; `BloombergCargaTest` e `LeiauteRespostaDataLicenseTest` | `BloombergDataLicenseProvedor`, `BbergCurvaPrimrInsercao` | 11.2, 12 | `mvn -q test` |
+| 2.1 | `adapter/out/client/b3/B3TaxaSwapClient`, `application/model/leiaute/LeiauteTaxaSwap`; `B3CargaTest` e `LeiauteTaxaSwapTest` | `B3DownloadSiteProvedor`, `BtrsCurvaPrimrInsercao` | 11.1, 12 | `mvn -q test` |
+| 4.1 | `adapter/out/client/bloomberg/BloombergDataLicenseClient`, `application/model/leiaute/LeiauteRespostaDataLicense`; `BloombergCargaTest` e `LeiauteRespostaDataLicenseTest` | `BloombergDataLicenseProvedor`, `BbergCurvaPrimrInsercao` | 11.2, 12 | `mvn -q test` |
 | 4.2 | `adapter/out/client/bloomberg/TickersSofrReserva` | `CargaController.parametros`, `CargaRotasTest` | 5, 11.2 | `mvn -q test` |
 | 5.1 e 5.2 | rota do bff e tela do front | — | 13 | testes do bff e conferência no navegador |
 
@@ -85,14 +85,15 @@ adapter/out/storage/blob/         ArquivoOriginalBlobAdapter                    
 adapter/out/persistence/jdbc/     CurvaPrimrPersistenceAdapter (comum), CurvaPrimrInsercao (interface) (base)
                                   AnbmaCurvaPrimrInsercao | BtrsCurvaPrimrInsercao | BbergCurvaPrimrInsercao (um por provedor)
 adapter/out/client/engine/        AvisoEngineAdapter                                                 (base)
-adapter/out/client/anbima/        AnbimaDownloadSiteProvedor, AnbimaMsClient, LeiauteAnbimaMs        (ANBIMA, modelo)
-domain/calendario/                Calendario, Brazil                                                 (ANBIMA)
-adapter/out/client/b3/            B3DownloadSiteProvedor, B3TaxaSwapClient, LeiauteTaxaSwap          (dev B3)
+adapter/out/client/anbima/        AnbimaDownloadSiteProvedor, AnbimaMsClient                         (ANBIMA, modelo)
+application/model/leiaute/        LeiauteAnbimaMs (ANBIMA), LeiauteTaxaSwap (dev B3), LeiauteRespostaDataLicense (dev Bloomberg)
+application/model/calendario/     Calendario, Brazil                                                 (ANBIMA)
+adapter/out/client/b3/            B3DownloadSiteProvedor, B3TaxaSwapClient                           (dev B3)
 adapter/out/client/bloomberg/     BloombergDataLicenseProvedor, BloombergDataLicenseClient,
-                                  LeiauteRespostaDataLicense, TickersSofrReserva                     (dev Bloomberg)
+                                  TickersSofrReserva                                                 (dev Bloomberg)
 ```
 
-Cada dev de provedor mexe só na sua pasta `adapter/out/client/{fonte}/` e na sua `*CurvaPrimrInsercao`.
+Cada dev de provedor mexe só na sua pasta `adapter/out/client/{fonte}/`, no seu `Leiaute*` e na sua `*CurvaPrimrInsercao`. O processor não tem pacote `domain`: o domínio (Java puro, sem Spring) fica em `application/model`, como na `processor-carga-b3`, que reaproveita o `LeiauteTaxaSwap`, a gravação, o aviso e o Blob desta change.
 
 ## 2. Contratos
 
@@ -346,7 +347,7 @@ Um log JSON por carga, no fim do roteiro (sucesso ou erro), com `logstash-logbac
 - `preparar` (upload): devolve os bytes como vieram, com o nome recebido.
 - `dataBase` e `interpretar`: `LeiauteAnbimaMs`.
 
-### 10.2 `LeiauteAnbimaMs`
+### 10.2 `LeiauteAnbimaMs` (`application/model/leiaute/`, Java puro)
 
 - Texto `StandardCharsets.ISO_8859_1`, separado por `@`, vírgula decimal.
 - Cabeçalho: a primeira linha que começa com `Titulo@`. Colunas localizadas pelo nome: `Titulo`, `Data Referencia`, `Codigo SELIC`, `Data Vencimento`, `Tx. Indicativas`.
@@ -357,7 +358,7 @@ Um log JSON por carga, no fim do roteiro (sucesso ou erro), com `logstash-logbac
 - Código na fonte: `NTN-B` (`verticesPorCodigo` = `{ "NTN-B": [ ... ] }`).
 - 422 `ARQUIVO_INVALIDO`: sem cabeçalho, sem alguma das colunas, sem nenhuma NTN-B inteira, vencimento ilegível.
 
-### 10.3 Calendário (`domain/calendario/`, cópia do engine)
+### 10.3 Calendário (`application/model/calendario/`, cópia do engine)
 
 Mesma regra do engine; o processor só precisa do `Brazil` e do `Following`:
 
@@ -423,13 +424,32 @@ Copie `openspec/changes/processor-v0/recursos/ms260928.txt` para `src/test/resou
 
 ## 11. B3 e Bloomberg (depois da pausa)
 
-### 11.1 B3 (`adapter/out/client/b3/`)
+### 11.1 B3 (`adapter/out/client/b3/` e `application/model/leiaute/LeiauteTaxaSwap`)
 
-- Download: `GET` no `b3-url`; 404, corpo vazio ou sem a assinatura de zip (`PK\x03\x04`) = 503 `ARQUIVO_INDISPONIVEL`.
+- Download (`B3TaxaSwapClient`): `GET` no `b3-url`; 404, corpo vazio ou sem a assinatura de zip (`PK\x03\x04`) = 503 `ARQUIVO_INDISPONIVEL`; outro status de erro = 502.
 - Extração: `ZipInputStream` no `.ex_`; dentro, o primeiro nível é outro zip; dentro dele, o único `TaxaSwap.txt`. Mais de dois níveis ou mais de um `TaxaSwap.txt` = 422. O upload aceita o `.ex_` (reconhecido pela assinatura) ou o `TaxaSwap.txt`.
-- Forma canônica, leiaute e validação: os da spec `b3-carga-processor` (change `processor-carga-b3`). Abra só essa spec e a seção 1.6 do guia daquela change; se o `LeiauteTaxaSwap` já existir no processor, reaproveite.
-- `INSERT INTO tBtrsCurvaPrimr (cIdtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx) VALUES (?, ?, ?, ?, ?, ?)`; fatores nulos.
-- Vetor: `docs/TaxaSwap.txt`, data-base `2026-09-14`; DCL primeiro valor `-117.9600000`; 278 vértices por código.
+- `LeiauteTaxaSwap` (Java puro; a `processor-carga-b3` usa a mesma classe):
+
+```java
+public final class LeiauteTaxaSwap {
+    /** Forma canônica: linhas por \r\n|\n|\r, sem linhas vazias ou só com espaços, cada linha como está, junção por \n e \n final, Latin-1.
+     *  Caractere fora do Latin-1 → 422. O hash, o idCarga e o Blob usam estes bytes. */
+    public static byte[] canonizar(byte[] texto);
+    /** Posições 12–19 da primeira linha (AAAAMMDD), data válida; senão 422. */
+    public static LocalDate dataBase(byte[] canonico);
+    /** verticesPorCodigo: código → List<BtrsCurvaPrimr>; codigosRejeitados: código → "linha N: motivo". */
+    public static CargaInterpretada interpretar(byte[] canonico, LocalDate dataBaseEsperada);
+}
+```
+
+- Regras do `interpretar` (posições 1-based → `substring(inicio - 1, fim)`):
+  - `new String(bytes, ISO_8859_1).lines().filter(l -> !l.isBlank())`;
+  - arquivo sem linhas, linha com tamanho ≠ 72, data (12–19) diferente entre linhas ou de `dataBaseEsperada`, ou código (22–26, `strip()`) vazio → 422, o arquivo inteiro;
+  - por linha: `dc` = 42–46, `du` = 47–51, `sinal` = 52, `taxa` = 53–66. O código é rejeitado (vai para `codigosRejeitados` e para de ser lido) se `dc` ou `du` não são só dígitos, `dc < 1`, `du < 1`, `du > dc`, `sinal` não é `+` nem `-`, `taxa` não é só dígitos, ou `dc` repete no código;
+  - `valor = new BigDecimal(taxa).movePointLeft(7)`, com `negate()` se o sinal é `-`; escala 7; nunca `double`.
+- `B3DownloadSiteProvedor`: `baixar` = cliente + extração + `canonizar`, nome `TaxaSwap.txt`; `preparar` = extração (se `.ex_`) + `canonizar`; `dataBase` e `interpretar` = `LeiauteTaxaSwap`.
+- `INSERT INTO tBtrsCurvaPrimr (cIdtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)`; `vPrecoTx` recebe o `BigDecimal` de escala 7 sem arredondar.
+- Vetores (`docs/TaxaSwap.txt`, copiado para `src/test/resources/b3/`): 30.481 linhas de 72 caracteres, data `20260914`, 114 códigos, 278 vértices em `PRE`, `DCL`, `DPL`, `INP` e `PTX`, nenhum rejeitado; forma canônica com 2.225.113 bytes e SHA-256 `46a249c60bec1ac111d69934b8486213eedecdf9b772246df86a11b5f120d9e8` → `idCarga` `B3-TS-20260914-46a249c60bec`; primeiro vértice da `PRE` = `13.9000000`; a linha `0049060010120260914T1DCL  CUPOM LIMPO - S0000100001-00001179600000F00001` → `DCL`, 1, 1, `-117.9600000`.
 
 ### 11.2 Bloomberg (`adapter/out/client/bloomberg/`)
 

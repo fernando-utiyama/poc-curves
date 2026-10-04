@@ -11,21 +11,23 @@ Define o que o orquestrador faz no processo das curvas: disparar, em cada functi
 |---|---|
 | `fonte` | rótulo da fonte nos logs e no alerta (`B3`, `ANBIMA`, `BLOOMBERG`) |
 | `destino` | a function da fonte (chave de `orquestrador.http.destinos`, ex.: `conector-b3`, `conector-anbima`, `conector-bloomberg`; lista de destinos da spec `agendamento-tarefas`) |
-| `caminhoDownload` | caminho com `{dataBase}` (ex.: `/api/b3/taxa-swap/download?date={dataBase}`) e, na Bloomberg, também `{tickers}` |
+| `caminhoDownload` | caminho com `{dataBase}` (ex.: function B3 `/api/b3/taxa-swap/download?date={dataBase}`; processor da change `processor-v0`, enquanto a function não existe, `/api/v1/cargas/b3/download?dataBase={dataBase}`) e, na Bloomberg, também `{tickers}` |
 | `caminhoReprocessamento` | opcional; caminho com `{dataBase}` (e `{tickers}`) usado na execução manual de data passada |
 | `tickers` | só na Bloomberg: lista separada por vírgula dos tickers a buscar (ex.: `S0490Z 1M BLC2 Curncy,S0490Z 3M BLC2 Curncy`), enviada à function junto com a data no lugar de `{tickers}`, com codificação de URL; obrigatório quando um caminho tem `{tickers}`, e MUST NOT ser exigido nas outras fontes |
 | `inicioHorario`, `limiteHorario` | janela de tentativas (`HH:mm`, Brasília) |
 | `defasagemDiasUteis` | opcional, 0 a 10 (padrão 0): a data-base padrão é hoje recuado essa quantidade de dias úteis nos `calendarios` da tarefa (como na change `orquestrador-v0-disparo-manual`) |
 
-A tarefa SHALL ter `regraIntervalo` com o intervalo entre tentativas (ex.: `PT10M`, ocorrências alinhadas à meia-noite de Brasília); o cron não é usado porque uma janela "a cada 10 minutos" não cabe nos 15 caracteres da coluna. A function de cada fonte MUST responder no contrato do download B3 (change `conector-b3-webhook-ingest`): 200 com a `dataBase` do arquivo e o `idCarga`.
+A tarefa SHALL ter `regraIntervalo` com o intervalo entre tentativas (ex.: `PT10M`, ocorrências alinhadas à meia-noite de Brasília); o cron não é usado porque uma janela "a cada 10 minutos" não cabe nos 15 caracteres da coluna. A function de cada fonte MUST responder no contrato do download B3 (change `conector-b3-webhook-ingest`): 200 com a `dataBase` do arquivo e o `idCarga`. Enquanto a function de uma fonte não existe, o `destino` da tarefa aponta para o `services/processor` (change `processor-v0`), que responde no mesmo contrato; a troca é só de `destino` e caminhos, por `PATCH`.
 
 O orquestrador MUST NOT disparar o engine: o 200 da function encerra o trabalho dele naquele dia, e a construção das curvas segue pelo fluxo da function e do processor.
 
 Antes de reivindicar a ocorrência (sem gravar log), a `action` SHALL encerrar se: a ocorrência é anterior ao `inicioHorario`; já existe log de sucesso da tarefa com a data-base de hoje; ou já existe o alerta `CARGA_NAO_RECEBIDA` da tarefa com a data-base de hoje. Os logs de tentativa, sucesso e alerta SHALL trazer a data-base em JSON, para que um reprocessamento manual de outra data não conte como o sucesso de hoje. Nos demais casos, cada ocorrência é uma tentativa:
 
-- 200 com `dataBase` igual à pedida: sucesso, log com o `idCarga`;
-- 200 com outra `dataBase` (arquivo de dia anterior), 502, 503, tempo esgotado ou erro de rede: "ainda não recebida", log da tentativa; a próxima ocorrência tenta de novo;
-- 400 ou 422: log de erro; a próxima ocorrência tenta de novo (repetir na mesma execução não resolve);
+- 200 com `dataBase` igual à pedida: `SUCESSO`, log com o `idCarga`;
+- 200 com outra `dataBase` (arquivo de dia anterior), 502, 503, tempo esgotado ou erro de rede: `NAO_RECEBIDA` ("ainda não recebida"), log da tentativa; a próxima ocorrência tenta de novo;
+- 501 (fonte ainda sem provedor no processor): `NAO_IMPLEMENTADA`, log de erro; a próxima ocorrência tenta de novo;
+- 200 com corpo ilegível, 400, 404, 422 ou outro status: `ERRO`, log de erro; a próxima ocorrência tenta de novo (repetir na mesma execução não resolve);
+- o JSON dos logs de tentativa, sucesso e erro SHALL ser o da execução manual da change `orquestrador-v0-disparo-manual` (`resultado`, `fonte`, `dataBase`, `incluirDownload`, `idCarga`, `statusHttp`, `detalhe`, `usuario`, `correlationId`), acrescido da `ocorrencia`;
 - na primeira ocorrência igual ou posterior ao `limiteHorario`, a tentativa é feita normalmente e, se o arquivo do dia ainda não veio, SHALL gravar também o alerta `CARGA_NAO_RECEBIDA` (fonte, data-base, quantidade de tentativas de hoje, última resposta), uma vez por dia; as ocorrências seguintes do dia encerram antes da reivindicação.
 
 Cada fonte tem a sua tarefa, então as tentativas, o sucesso e o alerta de uma fonte não interferem nos da outra.
@@ -93,7 +95,7 @@ As tarefas SHALL ser cadastradas pela API de tarefas (`POST /api/v1/tarefas`), c
 | Carga ANBIMA (site) | `carga-download-site` | `fonte`=`ANBIMA`, `destino` da function ANBIMA, caminhos da rota dela (change própria), janela |
 | Carga Bloomberg (Data License) | `carga-data-license` | `fonte`=`BLOOMBERG`, `destino` da function Bloomberg, caminhos da rota dela (change própria) com `{dataBase}` e `{tickers}`, `tickers`, janela |
 
-Os cadastros são feitos pela tela; a sugestão de cada um está em `cadastros-sugeridos.txt` desta change. A tarefa de uma fonte só é cadastrada quando a rota da function dela existir. Depois de cadastrada (`PRONTA`), a tarefa SHALL ser agendada (`POST /api/v1/agendador/tarefas/{id}/agendar`) para disparar sozinha. Não há horário embutido no orquestrador: sem cadastro, a tarefa não existe. Mudar horário, intervalo, limite ou tickers SHALL ser um `PATCH`, sem redeploy; agendar e desagendar é o liga/desliga do disparo automático.
+Os cadastros são feitos pela tela; a sugestão de cada um está em `cadastros-sugeridos.txt` desta change. A tarefa de uma fonte é cadastrada quando a rota da function dela existir ou, antes disso, apontando para o `services/processor` (change `processor-v0`, caminhos `/api/v1/cargas/{fonte}/...`, como na change `orquestrador-v0-disparo-manual`). Depois de cadastrada (`PRONTA`), a tarefa SHALL ser agendada (`POST /api/v1/agendador/tarefas/{id}/agendar`) para disparar sozinha. Não há horário embutido no orquestrador: sem cadastro, a tarefa não existe. Mudar horário, intervalo, limite ou tickers SHALL ser um `PATCH`, sem redeploy; agendar e desagendar é o liga/desliga do disparo automático.
 
 #### Scenario: Mudar o horário sem redeploy
 - **WHEN** um operador faz `PATCH` no `limiteHorario` da tarefa B3
@@ -104,7 +106,7 @@ Os cadastros são feitos pela tela; a sugestão de cada um está em `cadastros-s
 - **THEN** a próxima ocorrência envia a nova lista à function
 
 ### Requirement: Execução manual
-A execução manual SHALL usar a rota do motor (`POST /api/v1/agendador/tarefas/{id}/executar`), aceitando uma `dataBase` opcional, informada pelo front (padrão: a data-base padrão da tarefa), inclusive passada ou não útil, e SHALL seguir as regras da `action`, registrando o usuário. A execução manual SHALL aceitar também `incluirDownload` (padrão `false`): com ele, uma `dataBase` anterior à data-base padrão chama o `caminhoDownload` daquela data, buscando de novo na fonte. Sem ele, uma `dataBase` anterior à data-base padrão SHALL chamar o `caminhoReprocessamento` da tarefa (se houver; senão, o `caminhoDownload`) em vez do download, e a execução manual é uma tentativa só, sem `inicioHorario` nem `limiteHorario` e sem alerta. Execução manual nunca grava alerta.
+A execução manual SHALL usar a rota do motor (`POST /api/v1/agendador/tarefas/{id}/executar`), aceitando uma `dataBase` opcional, informada pelo front (padrão: a data-base padrão da tarefa), inclusive passada ou não útil, e SHALL seguir as regras da `action`, registrando o usuário. A execução manual SHALL aceitar também `incluirDownload` (padrão `false`): com ele, uma `dataBase` anterior à data-base padrão chama o `caminhoDownload` daquela data, buscando de novo na fonte. Sem ele, uma `dataBase` anterior à data-base padrão SHALL chamar o `caminhoReprocessamento` da tarefa (se houver; senão, o `caminhoDownload`) em vez do download, e a execução manual é uma tentativa só, sem `inicioHorario` nem `limiteHorario` e sem alerta. Execução manual nunca grava alerta. Data futura, `defasagemDiasUteis` fora de 0 a 10 ou `calendarios` desconhecido MUST responder 400 `PARAMETRO_INVALIDO`. A resposta SHALL ser 200 com o JSON do resultado (o mesmo do log), inclusive quando o resultado não é `SUCESSO`, como na change `orquestrador-v0-disparo-manual`.
 
 #### Scenario: Forçar uma data antiga
 - **WHEN** o operador executa a tarefa B3 com `dataBase` = `2026-09-10`

@@ -90,7 +90,7 @@ Nenhuma rota do curves faz controle de versão: quem salva por último vence, co
 
 #### Scenario: Digitar uma data sem carga
 - **WHEN** a carga B3 de `2026-09-15` não chegou, e o gestor inclui as linhas da `PRE` dessa data uma a uma
-- **THEN** cada `POST` responde 201 com o id gerado, nada é disparado no engine, e a próxima construção da data (manual ou pelo orquestrador) usa essas linhas
+- **THEN** cada `POST` responde 201 com o id gerado, nada é disparado no engine, e a próxima construção da data (por curva ou da data inteira, pedida pelo operador) usa essas linhas
 
 #### Scenario: Trava da curva não obtida
 - **WHEN** a trava da `PRE` está com outra transação (por exemplo, a construção do engine) por mais de 60 segundos, e o gestor envia um `POST` de linha
