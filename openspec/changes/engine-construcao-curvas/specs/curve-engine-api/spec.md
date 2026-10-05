@@ -29,7 +29,7 @@ As rotas antigas (`POST /api/v1/curvas/construir`, `POST /api/v1/calculo`, `POST
 - **THEN** a resposta é 404
 
 ### Requirement: Sem autenticação; origem do acionamento e usuário
-O engine MUST NOT autenticar nem autorizar requisições: quem expõe API ao front (`services/curves` e o BFF) autentica o usuário, e o engine só é chamado por serviços do projeto. O `acionadoPor` SHALL vir da rota chamada (`POST /cargas` = `CARGA`, `POST /construcoes/{dataBase}` = `ORQUESTRADOR`, as demais = `API`). O `usuario` gravado na auditoria e no log SHALL ser o valor do cabeçalho opcional `X-Usuario` enviado pelo chamador, e nulo quando ausente; o engine confia no chamador e não valida o valor.
+O engine MUST NOT autenticar nem autorizar requisições: quem expõe API ao front (`services/curves` e o BFF) autentica o usuário, e o engine só é chamado por serviços do projeto. O `acionadoPor` SHALL vir da rota chamada (`POST /cargas` = `CARGA`, `POST /construcoes/{dataBase}` = `DATA_INTEIRA`, as demais = `API`). O `usuario` gravado na auditoria e no log SHALL ser o valor do cabeçalho opcional `X-Usuario` enviado pelo chamador, e nulo quando ausente; o engine confia no chamador e não valida o valor.
 
 #### Scenario: Usuário vindo do chamador
 - **WHEN** o `services/curves` chama `POST /api/v1/curvas/PRE/2026-09-14/interpolada` com `X-Usuario: maria`
@@ -103,7 +103,7 @@ Enums das respostas:
 | tipo de modelo | `construcao`, `interpolacao`, `calendario` (os mesmos da rota `/modelos/{tipo}`) |
 | status do script | `RASCUNHO`, `VALIDADA`, `REPROVADA`, `ATIVA`, `INATIVA` |
 | operação na auditoria | `CONSTRUCAO`, `RECONSTRUCAO` |
-| `acionadoPor` | `CARGA`, `CONSTRUCAO_DATA`, `API` |
+| `acionadoPor` | `CARGA`, `DATA_INTEIRA`, `API` |
 | fonte da planilha | `GRAVADA`, `SIMULACAO` |
 
 Avisos do engine:

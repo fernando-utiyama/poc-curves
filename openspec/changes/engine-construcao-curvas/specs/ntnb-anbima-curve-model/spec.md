@@ -7,23 +7,20 @@ Constrói a curva NTN-B de taxa zero real a partir das taxas indicativas por tí
 ### Requirement: Leitura dos títulos
 O modelo `NTNB_BOOTSTRAP_ANBIMA` SHALL exigir origem com fonte `ANBIMA` e produto `MS`, e interpolador `Linear`, `LogLinear` ou `FlatForward`; caso contrário, `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tAnbmaCurvaPrimr` com `cTickerIndcd` = nome da curva e `dBaseReft` = data-base `B`. Cada linha é um título:
 - `vPrecoTx`: taxa indicativa em percentual ao ano; `y = vPrecoTx / 100`;
-- `vVertcCurva`: prazo do título em dias úteis a partir de `B`.
+- `vVertcCurva`: prazo do título em **dias corridos** de `B` até a `Data Vencimento` do arquivo, sem ajuste de dia útil (gravado pelo processor, change `processor-v0`, sem calendário).
 
-`tAnbmaCurvaPrimr` não guarda a data de vencimento, que o arquivo traz em `Data Vencimento`: a ingestão grava o prazo em dias úteis. O modelo reconstrói o vencimento a partir do prazo e da regra da NTN-B (todo título vence no dia 15). O que vem do arquivo é respeitado sem questionamento: não há tolerância nem conferência de mês. Para cada título:
-- data aproximada `A` = `B` avançada `vVertcCurva` dias úteis pelo calendário cadastrado;
-- vencimento nominal `V` = dia 15 do mês de `A`;
+`tAnbmaCurvaPrimr` não guarda a data de vencimento; o prazo em dias corridos a reconstrói sem aproximação. Só o engine usa calendário. Para cada título:
+- vencimento `V` = `B` + `vVertcCurva` dias corridos;
 - data de pagamento do vencimento `P` = `V` ajustado por `Following` no calendário cadastrado; é a data do ponto;
-- dias úteis do ponto = `vVertcCurva`, obedecidos (spec `curve-build-pipeline`); os eventos de cupom, que a fonte não publica, usam o calendário.
+- dias úteis do ponto = dias úteis de `B` a `P` pelo calendário cadastrado (a ANBIMA não publica dias úteis, então não há `CALENDARIO_DIVERGENTE` para a NTN-B); os eventos de cupom também usam o calendário.
 
-Um erro de um ou dois dias no calendário muda `A`, mas não o mês, porque o dia 15 fica no meio dele: o vencimento continua certo.
+#### Scenario: Vencimento em dia útil
+- **WHEN** a data-base é `2026-09-28` e uma linha tem `vVertcCurva` = 3151
+- **THEN** o título tem `V` = `P` = `2035-05-15`, com 2159 dias úteis pelo `Brazil`
 
-#### Scenario: Vencimento derivado do prazo
-- **WHEN** uma linha tem `vVertcCurva` igual à quantidade de dias úteis entre `B` e `2035-05-15` (dia útil)
-- **THEN** o título tem `P` = `V` = `2035-05-15`
-
-#### Scenario: Calendário com um feriado a menos
-- **WHEN** falta no calendário um feriado anterior a `2035-05-15`, e por isso `A` cai em `2035-05-14`
-- **THEN** o vencimento continua `2035-05-15`, o ponto usa o `vVertcCurva` publicado, e a construção traz `CALENDARIO_DIVERGENTE`
+#### Scenario: Vencimento no sábado
+- **WHEN** a data-base é `2026-09-28` e uma linha tem `vVertcCurva` = 229
+- **THEN** `V` = `2027-05-15` (sábado), `P` = `2027-05-17`, com 156 dias úteis pelo `Brazil`
 
 ### Requirement: Regras do arquivo
 Para cada situação das linhas lidas de `tAnbmaCurvaPrimr`, o resultado SHALL ser:
@@ -32,8 +29,7 @@ Para cada situação das linhas lidas de `tAnbmaCurvaPrimr`, o resultado SHALL s
 |---|---|
 | nenhuma linha da curva na data, ou todas descartadas | falha: `INSUMO_AUSENTE` |
 | `vPrecoTx` nulo | descarta o título com o motivo `SEM_TAXA`, no log e na memória; a curva sai com os demais |
-| `vVertcCurva` nulo, menor que 1 ou fracionário (prazo em dias úteis é inteiro) | falha: `INSUMO_INVALIDO` (linha) |
-| `A` diferente de `P`, ou `vVertcCurva` diferente do `DU` de `P` pelo calendário | constrói com o `vVertcCurva` publicado e o vencimento `P`, com o aviso `CALENDARIO_DIVERGENTE` |
+| `vVertcCurva` nulo, menor que 1 ou fracionário (prazo em dias corridos é inteiro) | falha: `INSUMO_INVALIDO` (linha) |
 | dois títulos com o mesmo `V` | falha: `INSUMO_INVALIDO` (as duas linhas): não acontece com a ingestão gravando só o título inteiro, e dois pontos na mesma data não cabem na PK de `tDadoVertcCurva` |
 
 #### Scenario: Só o título inteiro

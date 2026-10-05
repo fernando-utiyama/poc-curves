@@ -80,13 +80,13 @@ Ao receber a chamada, o engine SHALL processar, na própria requisição, toda c
 
 Primeiro SHALL ser processadas as curvas com origem de provedor, em paralelo, com até `engine.construcao-data.paralelismo` (padrão 8) ao mesmo tempo; depois, as derivadas, em cadeia, na ordem das dependências, como no requisito "Construção em cadeia das curvas derivadas". Não há conferência de quantidade (`INSUMO_INCOMPLETO`), porque não há quantidade avisada: vale o que está gravado, como na construção pela API. A rota MUST NOT recalcular nenhuma curva e MUST NOT guardar registro da chamada. A falha de uma curva MUST NOT impedir as demais.
 
-A resposta SHALL ser 200 com a data-base e, por curva, o código, a situação ou o `codigoErro` e a mensagem, o motivo de `IGNORADA`, os avisos e o `hashPontos`. Os `CURVA_GRAVADA` das curvas construídas SHALL ter `acionadoPor` = `CONSTRUCAO_DATA`. O engine SHALL registrar `CONSTRUCAO_DATA_RECEBIDA` (data-base, usuário) e, ao final, `CONSTRUCAO_DATA_PROCESSADA` (data-base, quantidade de curvas por situação, por aviso e por código de erro, duração).
+A resposta SHALL ser 200 com a data-base e, por curva, o código, a situação ou o `codigoErro` e a mensagem, o motivo de `IGNORADA`, os avisos e o `hashPontos`. Os `CURVA_GRAVADA` das curvas construídas SHALL ter `acionadoPor` = `DATA_INTEIRA`. O engine SHALL registrar `CONSTRUCAO_DATA_RECEBIDA` (data-base, usuário) e, ao final, `CONSTRUCAO_DATA_PROCESSADA` (data-base, quantidade de curvas por situação, por aviso e por código de erro, duração).
 
 Se o webhook do processor e esta rota construírem a mesma curva e data ao mesmo tempo, a trava da curva (spec `curve-build-pipeline`) serializa as duas: a existência de pontos SHALL ser conferida depois de obter a trava, e a segunda a obter a trava devolve `EXISTENTE`.
 
 #### Scenario: Derivada depois de uma curva componente construída à mão
 - **WHEN** a carga ANBIMA de `2026-09-14` falhou, o operador construiu a `NTN-B` pela API, e depois pede `POST /api/v1/construcoes/2026-09-14`
-- **THEN** a derivada com componentes `DIxPRE` e `NTN-B` é construída com `acionadoPor` = `CONSTRUCAO_DATA`, e as curvas já construídas vêm como `EXISTENTE`
+- **THEN** a derivada com componentes `DIxPRE` e `NTN-B` é construída com `acionadoPor` = `DATA_INTEIRA`, e as curvas já construídas vêm como `EXISTENTE`
 
 #### Scenario: Aviso de carga perdido
 - **WHEN** o processor gravou a carga B3 de `2026-09-14`, mas o webhook nunca chegou ao engine, e o operador pede a construção da data

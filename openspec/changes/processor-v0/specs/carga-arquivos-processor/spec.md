@@ -69,7 +69,7 @@ O processor SHALL baixar `TS{AAMMDD}.ex_` do endereço configurado da B3 (`https
 O processor SHALL baixar `ms{AAMMDD}.txt` do endereço configurado (`https://www.anbima.com.br/informacoes/merc-sec/arqs/ms{AAMMDD}.txt`), que é texto Latin-1, campos separados por `@` e vírgula decimal. O processor SHALL localizar a linha de cabeçalho (a que começa com `Titulo@`) e ler as colunas pelo nome. Só entram os títulos com `Titulo` = `NTN-B` e `Codigo SELIC` terminado em `99` (título inteiro); as demais são ignoradas. Para cada título:
 - no download, `Data Referencia` (`AAAAMMDD`) MUST ser igual à data pedida, ou a resposta é 503 `ARQUIVO_INDISPONIVEL`;
 - `Tx. Indicativas` é a taxa em percentual ao ano, convertida para `BigDecimal` direto do texto; vazia ou `--` grava nula (o engine descarta o título com `SEM_TAXA`);
-- o prazo é a quantidade de dias úteis, pelo calendário `Brazil`/`Settlement` copiado do engine, entre a data-base e a data de pagamento `P` = `Data Vencimento` ajustada por `Following`, como a spec `ntnb-anbima-curve-model` reconstrói.
+- o prazo é a quantidade de dias corridos entre a data-base e a `Data Vencimento`, sem ajuste de dia útil. O processor MUST NOT usar calendário: o engine reconstrói o vencimento (`data-base + prazo`), ajusta para dia útil e conta os dias úteis (spec `ntnb-anbima-curve-model`).
 
 Arquivo sem a linha de cabeçalho, sem as colunas usadas, sem nenhuma NTN-B inteira, ou com `Data Vencimento` ilegível MUST ser rejeitado inteiro (422 `ARQUIVO_INVALIDO`).
 
@@ -77,9 +77,9 @@ Arquivo sem a linha de cabeçalho, sem as colunas usadas, sem nenhuma NTN-B inte
 - **WHEN** o arquivo traz as NTN-B `760199` e uma NTN-B Principal `760198`
 - **THEN** só os títulos `760199` são gravados
 
-#### Scenario: Prazo em dias úteis
-- **WHEN** a data-base é `2026-09-28` e o título vence em `2035-05-15`, dia útil
-- **THEN** `vVertcCurva` = 2159, a quantidade de dias úteis do calendário `Brazil` entre `2026-09-28` e `2035-05-15`, a mesma conta que o engine faz
+#### Scenario: Prazo em dias corridos
+- **WHEN** a data-base é `2026-09-28` e o título vence em `2027-05-15` (sábado)
+- **THEN** `vVertcCurva` = 229, os dias corridos entre `2026-09-28` e `2027-05-15`, sem ajuste nem calendário
 
 ### Requirement: Obtenção dos nós da SOFR pelo Data License
 O processor SHALL obter os nós da SOFR por um pedido de histórico (`HistoryRequest`) da API do Bloomberg Data License, com o universo = tickers, o campo do valor configurado (padrão `PX_LAST`) e as datas inicial e final iguais à data-base. Os tickers SHALL vir do parâmetro `tickers` (separados por vírgula). Cada ticker MUST ter até 50 caracteres, só letras, dígitos e espaços simples, e no máximo 100 tickers; os repetidos são removidos. Se a chamada não trouxer `tickers` (ausente ou vazio), o processor SHALL usar a lista de reserva cravada no código (os 20 tickers `S0490Z <tenor> BLC2 Curncy` de `1D` a `50Y` de `cadastros-sugeridos.txt` do orquestrador), registrando no log que a reserva foi usada. A lista de reserva SHALL ficar numa única classe, marcada como temporária, de modo que retirá-la seja apagar a classe e o único uso dela.
@@ -130,7 +130,7 @@ Para cada código da carga, o processor SHALL buscar em `tCurvaPrvdr` as curvas 
 | Tabela | Colunas gravadas | Demais |
 |---|---|---|
 | `tBtrsCurvaPrimr` | `cTickerIndcd` = curva, `dBaseReft`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx` (como na spec `b3-carga-processor`) | fatores nulos |
-| `tAnbmaCurvaPrimr` | `cTickerIndcd` = curva, `dBaseReft`, `vPrecoTx` = taxa indicativa, `vVertcCurva` = prazo em dias úteis | — |
+| `tAnbmaCurvaPrimr` | `cTickerIndcd` = curva, `dBaseReft`, `vPrecoTx` = taxa indicativa, `vVertcCurva` = prazo em dias corridos até a `Data Vencimento` | — |
 | `tBbergCurvaPrimr` | `cTickerIndcd` = curva, `dBaseReft`, `cTickerBberg` = ticker completo, como pedido e publicado, `vPrecoUlt` = valor | nulas |
 
 O processor MUST NOT escrever em `tCurvaMercd` nem em `tCurvaPrvdr`. Uma carga sem nenhum código mapeado responde 200 com `verticesPorCodigo` vazio e não avisa o engine.

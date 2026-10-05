@@ -56,8 +56,8 @@ Caminhos a partir do pacote raiz (`src/main/java/...`); testes em `src/test/java
 | 1.6 | `adapter/out/persistence/jdbc/CurvaPrimrPersistenceAdapter`, `CurvaPrimrInsercao` e as três `*CurvaPrimrInsercao` provisórias | — | 7 | `mvn -q compile` |
 | 1.7 | `application/service/AvisoEngineService`, `adapter/out/client/engine/AvisoEngineAdapter`; `AvisoEngineServiceTest` | — | 8, 12 | `AvisoEngineServiceTest` passa |
 | 1.8 | — | `CargaArquivoService` (log) | 9 | `mvn -q test` |
-| 3.1 | `application/model/calendario/Calendario` e `Brazil` (código pronto); `BrazilTest` | — | 10.3, 10.4 | `BrazilTest` passa |
-| 3.2 | `adapter/out/client/anbima/AnbimaMsClient`, `application/model/leiaute/LeiauteAnbimaMs`; `src/test/resources/anbima/ms260928.txt` (cópia de `recursos/`); `LeiauteAnbimaMsTest` e `AnbimaCargaTest` | `AnbimaDownloadSiteProvedor`, `AnbmaCurvaPrimrInsercao` | 7 (INSERT), 10, 12 | `mvn -q test` |
+| 3.1 | `application/model/leiaute/LeiauteAnbimaMs`; `src/test/resources/anbima/ms260928.txt` (cópia de `recursos/`); `LeiauteAnbimaMsTest` | — | 10.2, 10.3, 12 | `LeiauteAnbimaMsTest` passa |
+| 3.2 | `adapter/out/client/anbima/AnbimaMsClient`; `AnbimaCargaTest` | `AnbimaDownloadSiteProvedor`, `AnbmaCurvaPrimrInsercao` | 7 (INSERT), 10.1, 12 | `mvn -q test` |
 | 3.3 | resumo da pausa | — | 14 | resumo escrito; parar |
 | 2.1 | `adapter/out/client/b3/B3TaxaSwapClient`, `application/model/leiaute/LeiauteTaxaSwap`; `B3CargaTest` e `LeiauteTaxaSwapTest` | `B3DownloadSiteProvedor`, `BtrsCurvaPrimrInsercao` | 11.1, 12 | `mvn -q test` |
 | 4.1 | `adapter/out/client/bloomberg/BloombergDataLicenseClient`, `application/model/leiaute/LeiauteRespostaDataLicense`; `BloombergCargaTest` e `LeiauteRespostaDataLicenseTest` | `BloombergDataLicenseProvedor`, `BbergCurvaPrimrInsercao` | 11.2, 12 | `mvn -q test` |
@@ -87,13 +87,12 @@ adapter/out/persistence/jdbc/     CurvaPrimrPersistenceAdapter (comum), CurvaPri
 adapter/out/client/engine/        AvisoEngineAdapter                                                 (base)
 adapter/out/client/anbima/        AnbimaDownloadSiteProvedor, AnbimaMsClient                         (ANBIMA, modelo)
 application/model/leiaute/        LeiauteAnbimaMs (ANBIMA), LeiauteTaxaSwap (dev B3), LeiauteRespostaDataLicense (dev Bloomberg)
-application/model/calendario/     Calendario, Brazil                                                 (ANBIMA)
 adapter/out/client/b3/            B3DownloadSiteProvedor, B3TaxaSwapClient                           (dev B3)
 adapter/out/client/bloomberg/     BloombergDataLicenseProvedor, BloombergDataLicenseClient,
                                   TickersSofrReserva                                                 (dev Bloomberg)
 ```
 
-Cada dev de provedor mexe só na sua pasta `adapter/out/client/{fonte}/`, no seu `Leiaute*` e na sua `*CurvaPrimrInsercao`. O processor não tem pacote `domain`: o domínio (Java puro, sem Spring) fica em `application/model`, como na `processor-carga-b3`, que reaproveita o `LeiauteTaxaSwap`, a gravação, o aviso e o Blob desta change.
+Cada dev de provedor mexe só na sua pasta `adapter/out/client/{fonte}/`, no seu `Leiaute*` e na sua `*CurvaPrimrInsercao`. O processor não tem pacote `domain` nem calendário: o domínio (Java puro, sem Spring) fica em `application/model`, como na `processor-carga-b3`, que reaproveita o `LeiauteTaxaSwap`, a gravação, o aviso e o Blob desta change.
 
 ## 2. Contratos
 
@@ -149,7 +148,7 @@ public record CargaInterpretada(Map<String, List<CurvaPrimr>> verticesPorCodigo,
 
 public sealed interface CurvaPrimr permits BtrsCurvaPrimr, AnbmaCurvaPrimr, BbergCurvaPrimr {}
 public record BtrsCurvaPrimr(int diasCorridos, int diasUteis, BigDecimal valor) implements CurvaPrimr {}
-public record AnbmaCurvaPrimr(int prazoDiasUteis, BigDecimal taxa) implements CurvaPrimr {}      // taxa pode ser null
+public record AnbmaCurvaPrimr(int prazoDiasCorridos, BigDecimal taxa) implements CurvaPrimr {}   // taxa pode ser null
 public record BbergCurvaPrimr(String ticker, BigDecimal valor) implements CurvaPrimr {}
 ```
 
@@ -354,57 +353,11 @@ Um log JSON por carga, no fim do roteiro (sucesso ou erro), com `logstash-logbac
 - Entram só os títulos com `Titulo` = `NTN-B` e `Codigo SELIC` terminando em `99`.
 - Datas `AAAAMMDD` (`DateTimeFormatter.BASIC_ISO_DATE`). `dataBase(...)` = `Data Referencia` das NTN-B (todas iguais, senão 422).
 - Taxa: `,` → `.` e `new BigDecimal(texto)`; vazia ou `--` = `null`.
-- Prazo: `P = brazil.following(vencimento)`; `prazoDiasUteis = brazil.diasUteis(dataBase, P)`.
+- Prazo: `prazoDiasCorridos = (int) ChronoUnit.DAYS.between(dataBase, vencimento)`, sem ajuste de dia útil e sem calendário (o engine ajusta e conta os dias úteis).
 - Código na fonte: `NTN-B` (`verticesPorCodigo` = `{ "NTN-B": [ ... ] }`).
 - 422 `ARQUIVO_INVALIDO`: sem cabeçalho, sem alguma das colunas, sem nenhuma NTN-B inteira, vencimento ilegível.
 
-### 10.3 Calendário (`application/model/calendario/`, cópia do engine)
-
-Mesma regra do engine; o processor só precisa do `Brazil` e do `Following`:
-
-```java
-public abstract class Calendario {
-    private final ConcurrentHashMap<Integer, Set<LocalDate>> cache = new ConcurrentHashMap<>();
-    protected abstract Set<LocalDate> feriados(int ano);
-
-    public boolean isBusinessDay(LocalDate d) {
-        return switch (d.getDayOfWeek()) {
-            case SATURDAY, SUNDAY -> false;
-            default -> !cache.computeIfAbsent(d.getYear(), a -> Set.copyOf(feriados(a))).contains(d);
-        };
-    }
-
-    /** Dias úteis em (de, ate]; 0 se ate <= de. */
-    public int diasUteis(LocalDate de, LocalDate ate) {
-        if (!ate.isAfter(de)) return 0;
-        return (int) de.plusDays(1).datesUntil(ate.plusDays(1)).filter(this::isBusinessDay).count();
-    }
-
-    /** d se útil, senão o próximo dia útil (convenção Following). */
-    public LocalDate following(LocalDate d) {
-        var r = d; while (!isBusinessDay(r)) r = r.plusDays(1); return r;
-    }
-}
-
-public class Brazil extends Calendario {          // Settlement
-    protected Set<LocalDate> feriados(int y) {
-        var p = pascoa(y);
-        var s = new HashSet<>(List.of(LocalDate.of(y, 1, 1), p.minusDays(48), p.minusDays(47), p.minusDays(2),
-            LocalDate.of(y, 4, 21), LocalDate.of(y, 5, 1), p.plusDays(60), LocalDate.of(y, 9, 7),
-            LocalDate.of(y, 10, 12), LocalDate.of(y, 11, 2), LocalDate.of(y, 11, 15), LocalDate.of(y, 12, 25)));
-        if (y >= 2024) s.add(LocalDate.of(y, 11, 20));
-        return s;
-    }
-    static LocalDate pascoa(int y) {   // Meeus/Jones/Butcher
-        int a = y % 19, b = y / 100, c = y % 100, d = b / 4, e = b % 4, f = (b + 8) / 25, g = (b - f + 1) / 3;
-        int h = (19 * a + b - d - g + 15) % 30, i = c / 4, k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
-        int m = (a + 11 * h + 22 * l) / 451, x = h + l - 7 * m + 114;
-        return LocalDate.of(y, x / 31, (x % 31) + 1);
-    }
-}
-```
-
-### 10.4 Vetores reais (`recursos/ms260928.txt` desta change)
+### 10.3 Vetores reais (`recursos/ms260928.txt` desta change)
 
 Copie `openspec/changes/processor-v0/recursos/ms260928.txt` para `src/test/resources/anbima/ms260928.txt` sem alterar nenhum byte (6.698 bytes, Latin-1).
 
@@ -414,13 +367,12 @@ Copie `openspec/changes/processor-v0/recursos/ms260928.txt` para `src/test/resou
 | `idCarga` | `ANBIMA-MS-20260928-ba9fe9dda8d5` |
 | `dataBase` | `2026-09-28` |
 | títulos | 50 no arquivo; entram 14 NTN-B (todas com SELIC `760199`); ignoradas 17 LFT, 12 LTN, 1 NTN-C, 6 NTN-F |
-| 1ª NTN-B | vencimento `2027-05-15` → `P` `2027-05-17` (sábado), prazo **156**, taxa `5.5415` |
-| `2032-08-15` | `P` `2032-08-16` (domingo), prazo **1473**, taxa `7.6863` |
-| `2040-08-15` | `P` igual, prazo **3478**, taxa `7.4` (BigDecimal `7.4`, não `7.4000`) |
-| `2055-05-15` | `P` `2055-05-17` (sábado), prazo **7169**, taxa `7.1956` |
-| última NTN-B | `2060-08-15` → `P` `2060-08-16` (domingo), prazo **8486**, taxa `7.1668` |
-| todos os prazos | 156, 471, 655, 969, 1155, 1473, 1660, 2159, 2660, 3478, 4665, 5980, 7169, 8486 |
-| Páscoa | 2026: `04-05` (Carnaval `02-16`/`02-17`, Sexta-feira Santa `04-03`, Corpus Christi `06-04`); 2027: `03-28` |
+| 1ª NTN-B | vencimento `2027-05-15` (sábado), prazo **229** dias corridos, taxa `5.5415` |
+| `2032-08-15` | prazo **2148**, taxa `7.6863` |
+| `2040-08-15` | prazo **5070**, taxa `7.4` (BigDecimal `7.4`, não `7.4000`) |
+| `2055-05-15` | prazo **10456**, taxa `7.1956` |
+| última NTN-B | `2060-08-15`, prazo **12375**, taxa `7.1668` |
+| todos os prazos | 229, 687, 960, 1417, 1690, 2148, 2421, 3151, 3882, 5070, 6804, 8722, 10456, 12375 |
 
 ## 11. B3 e Bloomberg (depois da pausa)
 
@@ -487,9 +439,8 @@ Sem dependência nova de teste: JUnit 5, Mockito e Spring Test do `spring-boot-s
 | `CargaRotasTest` | MockMvc `standaloneSetup` do `CargaController` (com `Clock.fixed`), `CargaArquivoUseCase` mockado | `@ParameterizedTest` com as 3 rotas × 3 fontes chegando ao caso de uso com fonte, data, origem e tickers certos; os 400 (fonte desconhecida; data ausente, inválida, futura; ticker fora da regra; `tickers` com `b3` ou `anbima`; `X-Usuario` ausente); cada exceção → status e corpo `{codigoErro, mensagem, correlationId}` (400, 404, 422, 501, 502, 503); `X-Correlation-Id` recebido e gerado; 11 MB → 422 |
 | `CargaArquivoServiceTest` | unitário, portas falsas em memória | `@ParameterizedTest` do roteiro: download ok; 503 sem arquivar; data divergente (503); 422 com original arquivado sob a data pedida; upload 422 sem arquivar; upload com data futura; reprocessamento sem original (404); Blob fora (503, nada gravado); carga sem código mapeado (200, sem aviso); ordem das etapas (Blob antes de interpretar, gravar antes de avisar) |
 | `AvisoEngineServiceTest` | unitário, engine falso (`HttpServer`) | 500 → 409 → 200 (3 chamadas, mesmo `idCarga`); 400 → `CARGA_FALHOU` sem repetir; engine fora até a janela → `AVISO_ATRASADO` e `CARGA_FALHOU`; com `aviso-espera-inicial` = 1 ms, `aviso-alerta` = 50 ms e `aviso-janela` = 200 ms (nada de esperar minutos) |
-| `AnbimaCargaTest` | montado à mão: `CargaArquivoService` real com o `AnbimaDownloadSiteProvedor` real apontando para uma ANBIMA falsa (`HttpServer`), `AvisoEngineAdapter` real apontando para um engine falso, Blob e banco falsos em memória | ponta a ponta com o `ms260928.txt`: download de `2026-09-28` → 200 com o `idCarga` e `{"NTN-B": 14}`, original no Blob falso, 14 vértices com os prazos e taxas da seção 10.4, engine avisado; download repetido = mesmo `idCarga`; upload do mesmo arquivo = mesmo `idCarga`; reprocessamento não chama a ANBIMA; ANBIMA 404 → 503; ANBIMA 500 → 502 |
-| `LeiauteAnbimaMsTest` | unitário | o arquivo real (seção 10.4 inteira) e variações geradas no próprio teste a partir dele: sem cabeçalho, sem a coluna `Tx. Indicativas`, sem NTN-B, vencimento ilegível (422); taxa `--` e vazia (null); NTN-B com SELIC sem `99` (ignorada); duas `Data Referencia` diferentes (422) |
-| `BrazilTest` | unitário | Páscoa e feriados móveis 2026 e 2027; os 14 prazos da seção 10.4; `following` em sábado, domingo e feriado |
+| `AnbimaCargaTest` | montado à mão: `CargaArquivoService` real com o `AnbimaDownloadSiteProvedor` real apontando para uma ANBIMA falsa (`HttpServer`), `AvisoEngineAdapter` real apontando para um engine falso, Blob e banco falsos em memória | ponta a ponta com o `ms260928.txt`: download de `2026-09-28` → 200 com o `idCarga` e `{"NTN-B": 14}`, original no Blob falso, 14 vértices com os prazos e taxas da seção 10.3, engine avisado; download repetido = mesmo `idCarga`; upload do mesmo arquivo = mesmo `idCarga`; reprocessamento não chama a ANBIMA; ANBIMA 404 → 503; ANBIMA 500 → 502 |
+| `LeiauteAnbimaMsTest` | unitário | o arquivo real (seção 10.3 inteira) e variações geradas no próprio teste a partir dele: sem cabeçalho, sem a coluna `Tx. Indicativas`, sem NTN-B, vencimento ilegível (422); taxa `--` e vazia (null); NTN-B com SELIC sem `99` (ignorada); duas `Data Referencia` diferentes (422) |
 
 Depois da pausa, cada provedor acrescenta um `*CargaTest` no molde do `AnbimaCargaTest` e um `Leiaute*Test`. Um teste de rota que já cobre um cenário não precisa de outro teste unitário para o mesmo cenário.
 

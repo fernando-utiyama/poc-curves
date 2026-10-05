@@ -91,7 +91,7 @@ Os dias úteis de um ponto que vierem da fonte ou do usuário SHALL ser obedecid
 | Modelo | O que a fonte publica por ponto | Data do ponto | Dias úteis do ponto |
 |---|---|---|---|
 | `PRONTA_TS_B3` | dias corridos (`cDiaCorri`) e dias úteis (`cDiaUtil`) | `B + cDiaCorri` | `cDiaUtil`, obedecido |
-| `NTNB_BOOTSTRAP_ANBIMA` | prazo em dias úteis (`vVertcCurva`) | dia 15 do mês a que o prazo leva, ajustado para dia útil (spec do modelo) | `vVertcCurva`, obedecido |
+| `NTNB_BOOTSTRAP_ANBIMA` | prazo em dias corridos até o vencimento (`vVertcCurva`) | `B + vVertcCurva`, ajustado por `Following` (spec do modelo) | pelo calendário (a fonte não publica) |
 | `SOFR_ZERO_BLOOMBERG` | tenor | pelo tenor, calendário e convenção (spec do modelo) | calendário, na construção |
 
 Quando o modelo publica os dias úteis de um ponto e eles diferem de `DU(d)` pelo calendário cadastrado, ou quando a data do ponto não é dia útil no calendário, a construção MUST NOT falhar por isso: SHALL gravar os dias úteis publicados e trazer o aviso `CALENDARIO_DIVERGENTE`, listando cada ponto com a data, os dias úteis publicados e os calculados, na resposta, no log e na memória de cálculo. O aviso serve para corrigir o calendário; a curva segue a fonte.

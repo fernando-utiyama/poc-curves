@@ -706,7 +706,7 @@ Criada por um método de fábrica com o cadastro, os pontos mantidos, o calendá
 - início do domínio `cal.advance(B, 1)`; fim `max(último ponto, B.plus(horizonte))`;
 - `xs`, `ys` (`baseInterpolacao.paraY`), eixo de dias úteis, políticas de início e fim.
 
-`ValorNoPrazo avaliar(LocalDate d, Integer duPedido)`, com `record ValorNoPrazo(LocalDate data, int du, long dc, BigDecimal x, BigDecimal valor, Classificacao classificacao, BigDecimal fatorAcum, BigDecimal fatorDia)`:
+`ValorNoPrazo interpolar(LocalDate d, Integer duPedido)`, com `record ValorNoPrazo(LocalDate data, int du, long dc, BigDecimal x, BigDecimal valor, Classificacao classificacao, BigDecimal fatorAcum, BigDecimal fatorDia)`:
 1. `d` fora de `[início, fim]` → `PRAZO_FORA_DO_DOMINIO` (prazo e limites).
 2. `du = duPedido != null ? duPedido : eixo.du(d)`; `x` pelo eixo (`dayCounterTempo.fracaoAno(B, d, du)`).
 3. `d` = data de ponto mantido → valor gravado, `PONTO`.
@@ -717,7 +717,7 @@ Criada por um método de fábrica com o cadastro, os pontos mantidos, o calendá
 ### 6.6 `InterpolacaoDadoCurva.java`
 
 - Início: `cal.advance(B, 1)`, ou o primeiro ponto se a extrapolação de início é `Disabled`. Fim: fim do domínio, ou o último ponto se a de fim é `Disabled`.
-- `List<DadoCurva>` (`record DadoCurva(LocalDate data, BigDecimal valor)`), um por dia corrido de `inicio.datesUntil(fim.plusDays(1))`, cada dia pelo mesmo `avaliar` da 6.5, com os dias úteis contados em ordem.
+- `List<DadoCurva>` (`record DadoCurva(LocalDate data, BigDecimal valor)`), um por dia corrido de `inicio.datesUntil(fim.plusDays(1))`, cada dia pelo mesmo `interpolar` da 6.5, com os dias úteis contados em ordem.
 - O valor de cada dia MUST ser igual ao da rota de interpolação para a mesma data.
 
 ---
@@ -727,9 +727,9 @@ Criada por um método de fábrica com o cadastro, os pontos mantidos, o calendá
 ### 7.1 Pedido e resultado (sealed), em `domain/curva/`
 
 ```java
-public enum Acionamento { CARGA, CONSTRUCAO_DATA, API }
+public enum DisparoConstrucao { CARGA, DATA_INTEIRA, API }
 public record PedidoConstrucao(String codigo, LocalDate dataBase, boolean forcarRecalculo, String fonte, String produto,
-    Acionamento acionadoPor, String usuario, String idCarga, Map<String, Integer> linhasAvisadas) {}
+    DisparoConstrucao acionadoPor, String usuario, String idCarga, Map<String, Integer> linhasAvisadas) {}
 
 public sealed interface ResultadoConstrucao permits Construida, Reconstruida, Existente, Ignorada, SemInsumo, Falhou {
   String codigo();
@@ -856,17 +856,17 @@ Tabela "Regras do arquivo" da spec `b3-ready-curve-model` linha a linha. Ponto: 
 Interpolador `Linear`, `LogLinear` ou `FlatForward` (senão `CADASTRO_INVALIDO`); tabela "Regras do arquivo" da spec `ntnb-anbima-curve-model` (sem tolerância). Por título:
 
 ```java
-var a = cal.advance(B, prazo);                                   // data aproximada
-var v = a.withDayOfMonth(15);                                     // vencimento nominal
-var p = cal.adjust(v, BusinessDayConvention.Following);           // data do ponto; DU = prazo publicado
+var v = B.plusDays(prazo);                                        // vencimento exato (prazo em dias corridos)
+var p = cal.adjust(v, BusinessDayConvention.Following);           // data do ponto
+var duP = cal.diasUteis(B, p);                                    // DU do ponto pelo calendário
 var y = taxa.movePointLeft(2);
 var c = BigDecimal.valueOf(100).multiply(DecimalMath.pow(new BigDecimal("1.06"), new BigDecimal("0.5")).subtract(BigDecimal.ONE));
 // eventos: Stream.iterate(v, n -> n.minusMonths(6)).takeWhile(n -> cal.adjust(n, Following).isAfter(B));
-// DU_i pelo calendário; o do vencimento = prazo. Fluxo c por evento, c + 100 no vencimento.
+// DU_i pelo calendário, inclusive o do vencimento (duP). Fluxo c por evento, c + 100 no vencimento.
 // Cotação C = Σ F_i·(1+y)^(−DU_i/252)
 ```
 
-Bootstrap em ordem crescente de `v`, `f(z) = Σ F_i·DF_i(z) − C`, com as origens de DF `INCOGNITA`, `FLAT_INICIO`, `RESOLVIDO`, `INTERPOLADO` da spec; bisseção em `[−0.99, 1.00]` até largura < `1e-14` ou 200 iterações; sem troca de sinal → `MODELO_FALHOU`. Ponto `(p, 100·z, prazo)`. Memória: extras `Vencimento nominal`, `Taxa indicativa`, `Cotacao`, `Iteracoes`, `Residuo`; aba `Fluxos`.
+Bootstrap em ordem crescente de `v`, `f(z) = Σ F_i·DF_i(z) − C`, com as origens de DF `INCOGNITA`, `FLAT_INICIO`, `RESOLVIDO`, `INTERPOLADO` da spec; bisseção em `[−0.99, 1.00]` até largura < `1e-14` ou 200 iterações; sem troca de sinal → `MODELO_FALHOU`. Ponto `(p, 100·z, duP)`. Memória: extras `Vencimento nominal`, `Taxa indicativa`, `Cotacao`, `Iteracoes`, `Residuo`; aba `Fluxos`.
 
 ### 8.5 `SofrZeroBloomberg` (`SOFR_ZERO_BLOOMBERG`, `BLOOMBERG`/`BLC2`)
 
@@ -887,7 +887,7 @@ Corpo: `record NotificacaoCarga(String idCarga, String fonte, String produto, Lo
 
 ### 9.2 `ConstruirDataService` (`POST /api/v1/construcoes/{dataBase}`)
 
-Todas as curvas com código, regras da carga, sem conferência de quantidade, `CONSTRUCAO_DATA`; sem pontos e sem insumo → `SemInsumo`. Curvas de provedor com `Paralelo.executar` (limite `engine.construcao-data.paralelismo`, prazo `engine.timeout.construcao-data-segundos`); depois as derivadas em cadeia. Tempo esgotado: as já gravadas ficam, as outras não começam, resposta `ERRO_INTERNO`. Eventos `CONSTRUCAO_DATA_RECEBIDA` e `CONSTRUCAO_DATA_PROCESSADA`. A existência de pontos é conferida depois da trava.
+Todas as curvas com código, regras da carga, sem conferência de quantidade, `DATA_INTEIRA`; sem pontos e sem insumo → `SemInsumo`. Curvas de provedor com `Paralelo.executar` (limite `engine.construcao-data.paralelismo`, prazo `engine.timeout.construcao-data-segundos`); depois as derivadas em cadeia. Tempo esgotado: as já gravadas ficam, as outras não começam, resposta `ERRO_INTERNO`. Eventos `CONSTRUCAO_DATA_RECEBIDA` e `CONSTRUCAO_DATA_PROCESSADA`. A existência de pontos é conferida depois da trava.
 
 ### 9.3 Cadeia de derivadas
 
@@ -1005,7 +1005,7 @@ Controllers só convertem (records de entrada e saída) e chamam as portas de en
 
 O engine não tem Spring Security, `SegurancaConfig` nem validação de token: **Proibido** acrescentar o Resource Server, `JwtDecoder`, filtro de autorização ou qualquer verificação de papel. Quem autentica o usuário é o `services/curves` (e o BFF), que chama o engine.
 
-- `acionadoPor`: vem da rota (o controller de `POST /cargas` passa `CARGA`, o de `POST /construcoes/{dataBase}` passa `CONSTRUCAO_DATA`, e os demais `API`); não há como o chamador escolher.
+- `acionadoPor`: vem da rota (o controller de `POST /cargas` passa `CARGA`, o de `POST /construcoes/{dataBase}` passa `DATA_INTEIRA`, e os demais `API`); não há como o chamador escolher.
 - `usuario`: cada controller lê o cabeçalho opcional (`@RequestHeader(name = "X-Usuario", required = false)`) e o passa ao caso de uso, que o grava no `usuario` do `CURVA_GRAVADA` e em `cUsuarCalc`; ausente, é nulo (a coluna `cUsuarCalc` aceita nulo). O engine não valida o valor. Só o envio e a ativação de script (segunda parte) exigem o cabeçalho (400 `PARAMETRO_INVALIDO` sem ele), porque o `estado.json` grava `autor` e `aprovador`.
 
 ### 13.4 `GET /valores-cadastro`
@@ -1110,7 +1110,7 @@ Ordem: **verificar, adaptar, criar, rodar**. Só o que já existe no pom (`sprin
 | `EixoDiasUteisTest` | quatro cenários do requisito de dias úteis publicados; calendário certo = calendário puro |
 | `PreparacaoPontosTest` | `2026-12-24` e `2026-12-25`; ponto sozinho no feriado; fora de ordem; na data-base |
 | `CurvaInterpoladaTest` | vetores de `2030-06-10` (valores exatos nas 7 casas) e fatores com tolerância `1e-14` (seção 0.3); domínio; `FlatValue` da `INP`; `PTX` depois do último ponto |
-| `InterpolacaoDadoCurvaTest` | `PRE`: 12.390 dias, fim de semana = sexta, cada dia = `avaliar` da mesma data |
+| `InterpolacaoDadoCurvaTest` | `PRE`: 12.390 dias, fim de semana = sexta, cada dia = `interpolar` da mesma data |
 | `HashPontosTest` | vetor comum e os 5 `hashPontos`; valor com 12 casas dá o mesmo hash |
 | `ValidadorCadastroTest` | um caso por regra de `CADASTRO_INVALIDO`; `'ATIVO' + espaços`; `business252` recusado; `MODELOS_POR_ORIGEM` sem provedor ignorado |
 | `ProntaTsB3Test`, `SofrZeroBloombergTest`, `NtnbBootstrapAnbimaTest` | tabelas "Regras do arquivo"; `15M` → `2027-12-14`; bootstrap sintético que recupera uma curva zero conhecida |

@@ -8,7 +8,7 @@ Esta é a **versão 0**: o próprio `services/processor` busca os três arquivos
 
 - **Processor ganha uma rota de download e uma de reprocessamento, com a fonte no caminho** (`/api/v1/cargas/{fonte}/download` e `.../reprocessamento`, `{fonte}` = `b3`, `anbima` ou `bloomberg`), com as respostas que o orquestrador já espera das functions (200 com `dataBase` e `idCarga`; 503 quando o arquivo do dia ainda não saiu):
   - B3, por download do site: `TS{AAMMDD}.ex_` da B3 → `TaxaSwap.txt` → `tBtrsCurvaPrimr`;
-  - ANBIMA, por download do site: `ms{AAMMDD}.txt` (mercado secundário, só NTN-B inteira) → `tAnbmaCurvaPrimr`, com o prazo em dias úteis;
+  - ANBIMA, por download do site: `ms{AAMMDD}.txt` (mercado secundário, só NTN-B inteira) → `tAnbmaCurvaPrimr`, com o prazo em dias corridos até o vencimento (sem calendário no processor);
   - Bloomberg, pela API do Data License: pedido de histórico (`HistoryRequest`) com os tickers da SOFR → `tBbergCurvaPrimr`.
 - **Upload pelo front**, pelo bff até o processor: o operador envia o arquivo da fonte (`TaxaSwap.txt` ou `.ex_`, `ms{AAMMDD}.txt`, ou o arquivo de resposta do Data License), e ele segue o mesmo caminho do download (`origem` = `UPLOAD`, com o usuário). Serve para quando a fonte está fora do ar ou o download falhou.
 - **Original no Blob para auditoria**, imutável, por carga: `{fonte}/{AAAAMMDD}/cargas/{idCarga}/{arquivo}`. O reprocessamento relê esse original sem baixar de novo.
@@ -28,7 +28,7 @@ Esta é a **versão 0**: o próprio `services/processor` busca os três arquivos
 
 ## Impact
 
-- **services/processor:** rotas REST novas sem autenticação, clientes HTTP da B3, da ANBIMA e do Bloomberg Data License, escrita e leitura no Blob, parsers em Java, gravação JDBC nas três tabelas brutas, cliente do webhook do engine, classes de calendário copiadas do engine (dias úteis da NTN-B). Os consumidores Kafka existentes ficam como estão.
+- **services/processor:** rotas REST novas sem autenticação, clientes HTTP da B3, da ANBIMA e do Bloomberg Data License, escrita e leitura no Blob, parsers em Java, gravação JDBC nas três tabelas brutas, cliente do webhook do engine. Sem calendário: o prazo da NTN-B é gravado em dias corridos. Os consumidores Kafka existentes ficam como estão.
 - **bff:** rota autenticada de upload (multipart), que repassa ao processor com `X-Usuario` e `X-Correlation-Id`; só o bff autentica.
 - **Front:** tela "Carga manual de arquivo", em pt-BR, com a fonte, o arquivo e o resultado da carga.
 - **Orquestrador (`orquestrador-v0-disparo-manual`):** sem código novo além da v0. As três tarefas apontam o `destino` para o processor (`orquestrador.http.destinos`) e usam os caminhos `/api/v1/cargas/{fonte}/...` (guia da v0, seção 12).

@@ -8,7 +8,7 @@ Mantém a trilha de toda construção e recálculo de curva sem alterar o schema
 Toda construção e toda reconstrução por recálculo que gravar pontos SHALL emitir, depois do commit, o evento de log `CURVA_GRAVADA` com nível `AVISO` e os campos:
 - `idAuditoria` (UUID), `codigo`, `nome`, `dataBase`;
 - `operacao`: `CONSTRUCAO` ou `RECONSTRUCAO`;
-- `acionadoPor`: `CARGA` (webhook do processor), `CONSTRUCAO_DATA` (construção da data, sob demanda) ou `API`, `usuario` (cabeçalho `X-Usuario` do chamador, nulo quando ausente), `instante` (horário de Brasília, com fuso), `correlationId`;
+- `acionadoPor`: `CARGA` (webhook do processor), `DATA_INTEIRA` (construção da data, sob demanda) ou `API`, `usuario` (cabeçalho `X-Usuario` do chamador, nulo quando ausente), `instante` (horário de Brasília, com fuso), `correlationId`;
 - `idCarga`, quando a construção veio do webhook (nulo nas demais);
 - `hashPontos` gravado e `hashPontosAnterior` (nulo na primeira construção), quantidade de pontos;
 - `pontosAnteriores`: lista completa (data e valor) dos pontos substituídos (vazia na primeira construção);
