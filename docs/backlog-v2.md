@@ -2,13 +2,13 @@
 
 Itens apontados nas inspeções de 2026-10-06 (`docs/inspecao/`) que ficaram fora da v1.1 (`engine-v1-1`, `curves-v1-1`, `fed-curvas-mercado`, `fed-dados-mercado`).
 
+Onde estão: engine → `engine-modelos-curva`, tarefas 18.x (com a spec nova `pontos-interpolados-engine`); curves → `curves-operacao-curvas`, tarefas 12.x. Os itens de front e de segurança ainda não estão em nenhuma change.
+
 ## Engine
 
-- NTN-B: tirar o `withDayOfMonth(15)` e usar `data-base + vVertcCurva` exato com `Following` (com o prazo exato do arquivo, hoje não muda o resultado).
 - `cDiaUtil` com o DU calculado, não só o publicado (SOFR fica nula).
 - Ler o `X-Usuario` opcional; tirar `"OPERADOR"`/`SISTEMA` fixos.
 - Rota `GET /curvas/{codigo}/{dataBase}/pontos` (lê `tDadoCurva`) para a aba de pontos interpolados.
-- `quantidadePontos` e `avisos` em todos os resultados da construção.
 - Regravar a interpolada sem vértices: apagar de fato (hoje o rollback desfaz) e responder 404.
 - Carga: comparar a quantidade lida com `verticesPorCodigo` → `INSUMO_INCOMPLETO`.
 - Formato de erro com `correlationId` e `detalhes` sempre.
@@ -16,7 +16,6 @@ Itens apontados nas inspeções de 2026-10-06 (`docs/inspecao/`) que ficaram for
 - Teste de vetores reais de verdade (`TaxaSwap.txt` de 2026-09-14: 5 hashes calculados, 278 DU, oráculo, 12.390 linhas).
 - `DisparoConstrucao` = `DATA_INTEIRA` na construção da data.
 - Situação da data completa (insumo, fonte, interpolada desatualizada, tempo esgotado).
-- Interpolador `LogLinear`; `FlatForward` só com `Discount`.
 - Logs `CONSTRUCAO_FALHOU` e `INSUMO_DESCARTADO`.
 - Isolamento `READ_COMMITTED` explícito.
 - SOFR: exigir os 21 tenores (decisão).

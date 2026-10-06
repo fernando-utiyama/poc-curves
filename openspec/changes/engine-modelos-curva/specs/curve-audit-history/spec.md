@@ -20,7 +20,7 @@ Os modelos da `proveniencia` (construção, interpolação e calendário) SHALL 
 O destino dos logs (Log Analytics ou equivalente) SHALL ter retenção definida pela área de risco e ser consultável por `nome`, `dataBase` e evento. Este é o histórico de construções da fase atual.
 
 #### Scenario: Proveniência de script Groovy
-- **WHEN** a `PRE` é construída com o interpolador pelo script Groovy `LogLinearAjustado` versão 3 ativo
+- **WHEN** a `PRE` é construída com o interpolador pelo script Groovy `FlatForwardAjustado` versão 3 ativo
 - **THEN** a proveniência do `CURVA_GRAVADA` traz o interpolador com origem `GROOVY`, versão 3 e o hash do script, e o modelo de construção com origem `JAVA` e a versão do engine
 
 #### Scenario: Construção auditada

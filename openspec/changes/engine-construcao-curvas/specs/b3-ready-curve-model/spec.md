@@ -49,8 +49,8 @@ As cinco curvas SHALL ser cadastradas com construção `PRONTA_TS_B3`, origem `B
 | `PRE` | DIxPRE | `PRE` | `TAXA` | `Discount` + `FlatForward` | `Business252` | `Business252`/`Compounded`/`Annual` | `FlatForward` | 7 | `HALF_UP` |
 | `DCL` | Cupom limpo de dólar | `DCL` | `TAXA` | `Discount` + `FlatForward` | `Business252` | `Actual360`/`Simple` | `FlatForward` | 7 | `HALF_UP` |
 | `DPL` | Cupom Limpo DI X IPCA | `DPL` | `TAXA` | `Discount` + `FlatForward` | `Business252` | `Business252`/`Compounded`/`Annual` | `FlatForward` | 7 | `HALF_UP` |
-| `INP` | IBOVESPA | `INP` | `PONTOS` | `Price` + `LogLinear` | `Business252` | — | `FlatValue` | 7 | `HALF_UP` |
-| `PTX` | PTAX - USD | `PTX` | `PRECO` | `Price` + `LogLinear` | `Business252` | — | `Disabled` | 7 | `DOWN` |
+| `INP` | IBOVESPA | `INP` | `PONTOS` | `Price` + `FlatForward` | `Business252` | — | `FlatValue` | 7 | `HALF_UP` |
+| `PTX` | PTAX - USD | `PTX` | `PRECO` | `Price` + `FlatForward` | `Business252` | — | `Disabled` | 7 | `DOWN` |
 
 #### Scenario: Interpolação da DCL
 - **WHEN** a `DCL` é interpolada entre dois pontos

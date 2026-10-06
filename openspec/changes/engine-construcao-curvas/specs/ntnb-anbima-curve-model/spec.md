@@ -5,7 +5,7 @@ Constrói a curva NTN-B de taxa zero real a partir das taxas indicativas por tí
 ## ADDED Requirements
 
 ### Requirement: Leitura dos títulos
-O modelo `NTNB_BOOTSTRAP_ANBIMA` SHALL exigir origem com fonte `ANBIMA` e produto `MS`, e interpolador `Linear`, `LogLinear` ou `FlatForward`; caso contrário, `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tAnbmaCurvaPrimr` com `cTickerIndcd` = nome da curva e `dBaseReft` = data-base `B`. Cada linha é um título:
+O modelo `NTNB_BOOTSTRAP_ANBIMA` SHALL exigir origem com fonte `ANBIMA` e produto `MS`, e interpolador `Linear` ou `FlatForward`; caso contrário, `CADASTRO_INVALIDO`. O modelo SHALL ler as linhas de `tAnbmaCurvaPrimr` com `cTickerIndcd` = nome da curva e `dBaseReft` = data-base `B`. Cada linha é um título:
 - `vPrecoTx`: taxa indicativa em percentual ao ano; `y = vPrecoTx / 100`;
 - `vVertcCurva`: prazo do título em **dias corridos** de `B` até a `Data Vencimento` do arquivo, sem ajuste de dia útil (gravado pelo processor, change `processor-v0`, sem calendário).
 

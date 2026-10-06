@@ -7,7 +7,7 @@ O engine v1 (change `engine-construcao-curvas`, já aplicada) constrói e serve 
 - **`situacao` na resposta da construção** (`CONSTRUIDA`, `RECONSTRUIDA`, `EXISTENTE`, e os demais resultados que já existem), para a tela Curvas.
 - **Vértice sem dias úteis informados:** com eixo em dias úteis, os dias úteis passam a ser calculados pelo calendário, em vez de virar 0 e descartar o vértice (conferir se ocorre; corrigir se ocorrer).
 
-Fica para a v2 (não entra aqui): NTN-B sem o `withDayOfMonth(15)` (com o prazo exato do arquivo não muda o resultado), `cDiaUtil` com o DU calculado, `X-Usuario`, rota de pontos interpolados, `quantidadePontos` e `avisos` em todos os resultados, regravação sem vértices, `INSUMO_INCOMPLETO`, formato de erro, frequências recusadas, teste de vetores reais, `DATA_INTEIRA`, situação da data completa, `LogLinear`, logs de falha, isolamento explícito, 21 tenores da SOFR, renomes e segurança.
+Fica para a v2 (não entra aqui): `cDiaUtil` com o DU calculado, `X-Usuario`, rota de pontos interpolados, regravação sem vértices, `INSUMO_INCOMPLETO`, formato de erro, frequências recusadas, teste de vetores reais, `DATA_INTEIRA`, situação da data completa, logs de falha, isolamento explícito, 21 tenores da SOFR, renomes e segurança.
 
 ## Capabilities
 

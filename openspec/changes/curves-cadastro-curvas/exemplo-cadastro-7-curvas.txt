@@ -24,8 +24,8 @@ Código  Nome                   Unidade  Origem (provedor/produto/código)  Cons
 PRE     DIxPRE                 TAXA     B3 / TS / PRE                     PRONTA_TS_B3           FlatForward
 DCL     Cupom limpo de dólar   TAXA     B3 / TS / DCL                     PRONTA_TS_B3           FlatForward
 DPL     Cupom Limpo DI X IPCA  TAXA     B3 / TS / DPL                     PRONTA_TS_B3           FlatForward
-INP     IBOVESPA               PONTOS   B3 / TS / INP                     PRONTA_TS_B3           LogLinear
-PTX     PTAX - USD             PRECO    B3 / TS / PTX                     PRONTA_TS_B3           LogLinear
+INP     IBOVESPA               PONTOS   B3 / TS / INP                     PRONTA_TS_B3           FlatForward
+PTX     PTAX - USD             PRECO    B3 / TS / PTX                     PRONTA_TS_B3           FlatForward
 NTNB    NTN-B                  TAXA     ANBIMA / MS / NTN-B               NTNB_BOOTSTRAP_ANBIMA  FlatForward
 SOFR    SOFR                   TAXA     BLOOMBERG / BLC2 / S0490Z         SOFR_ZERO_BLOOMBERG    Linear
 
@@ -200,7 +200,7 @@ POST /api/v1/curvas-mercado/INP/provedores
 POST /api/v1/curvas-mercado/INP/configuracoes
 {
   "modeloConstrucao": "PRONTA_TS_B3",
-  "interpolador": "LogLinear",
+  "interpolador": "FlatForward",
   "inicioVigencia": "2026-01-01",
   "parametros": {
     "BASE_INTERPOLACAO": "Price",
@@ -233,7 +233,7 @@ POST /api/v1/curvas-mercado/PTX/provedores
 POST /api/v1/curvas-mercado/PTX/configuracoes
 {
   "modeloConstrucao": "PRONTA_TS_B3",
-  "interpolador": "LogLinear",
+  "interpolador": "FlatForward",
   "inicioVigencia": "2026-01-01",
   "parametros": {
     "BASE_INTERPOLACAO": "Price",
@@ -352,8 +352,8 @@ Curva                  InicioVig.  ModeloConstrucao       Interpolador  BASE_INT
 DIxPRE                 2026-01-01  PRONTA_TS_B3           FlatForward   Discount           Business252        Annual     Brazil        Settlement          Following                Disabled             FlatForward       10Y        7               HALF_UP
 Cupom limpo de dólar   2026-01-01  PRONTA_TS_B3           FlatForward   Discount           Business252                   Brazil        Settlement          Following                Disabled             FlatForward       10Y        7               HALF_UP
 Cupom Limpo DI X IPCA  2026-01-01  PRONTA_TS_B3           FlatForward   Discount           Business252        Annual     Brazil        Settlement          Following                Disabled             FlatForward       10Y        7               HALF_UP
-IBOVESPA               2026-01-01  PRONTA_TS_B3           LogLinear     Price              Business252                   Brazil        Settlement          Following                Disabled             FlatValue         10Y        7               HALF_UP
-PTAX - USD             2026-01-01  PRONTA_TS_B3           LogLinear     Price              Business252                   Brazil        Settlement          Following                Disabled             Disabled          10Y        7               DOWN
+IBOVESPA               2026-01-01  PRONTA_TS_B3           FlatForward     Price              Business252                   Brazil        Settlement          Following                Disabled             FlatValue         10Y        7               HALF_UP
+PTAX - USD             2026-01-01  PRONTA_TS_B3           FlatForward     Price              Business252                   Brazil        Settlement          Following                Disabled             Disabled          10Y        7               DOWN
 NTN-B                  2026-01-01  NTNB_BOOTSTRAP_ANBIMA  FlatForward   Discount           Business252        Annual     Brazil        Settlement          Following                FlatValue            FlatForward       10Y        8               HALF_UP
 SOFR                   2026-01-01  SOFR_ZERO_BLOOMBERG    Linear        CompoundFactor     Actual360                     UnitedStates  FederalReserve      ModifiedFollowing        Disabled             FlatValue         10Y        7               HALF_UP
 
@@ -384,9 +384,9 @@ cModDado é gravado em JSON compacto, chaves na ordem da tabela do engine:
     {"BASE_INTERPOLACAO":"Discount","DAY_COUNTER_TEMPO":"Business252","CALENDARIO":"Brazil","MERCADO_CALENDARIO":"Settlement","BUSINESS_DAY_CONVENTION":"Following","EXTRAPOLACAO_INICIO":"Disabled","EXTRAPOLACAO_FIM":"FlatForward","HORIZONTE":"10Y","CASAS_DECIMAIS":7,"MODO_ARREDONDAMENTO":"HALF_UP"}
   Cupom Limpo DI X IPCA / PRONTA_TS_B3 / FlatForward
     {"BASE_INTERPOLACAO":"Discount","DAY_COUNTER_TEMPO":"Business252","FREQUENCY":"Annual","CALENDARIO":"Brazil","MERCADO_CALENDARIO":"Settlement","BUSINESS_DAY_CONVENTION":"Following","EXTRAPOLACAO_INICIO":"Disabled","EXTRAPOLACAO_FIM":"FlatForward","HORIZONTE":"10Y","CASAS_DECIMAIS":7,"MODO_ARREDONDAMENTO":"HALF_UP"}
-  IBOVESPA / PRONTA_TS_B3 / LogLinear
+  IBOVESPA / PRONTA_TS_B3 / FlatForward
     {"BASE_INTERPOLACAO":"Price","DAY_COUNTER_TEMPO":"Business252","CALENDARIO":"Brazil","MERCADO_CALENDARIO":"Settlement","BUSINESS_DAY_CONVENTION":"Following","EXTRAPOLACAO_INICIO":"Disabled","EXTRAPOLACAO_FIM":"FlatValue","HORIZONTE":"10Y","CASAS_DECIMAIS":7,"MODO_ARREDONDAMENTO":"HALF_UP"}
-  PTAX - USD / PRONTA_TS_B3 / LogLinear
+  PTAX - USD / PRONTA_TS_B3 / FlatForward
     {"BASE_INTERPOLACAO":"Price","DAY_COUNTER_TEMPO":"Business252","CALENDARIO":"Brazil","MERCADO_CALENDARIO":"Settlement","BUSINESS_DAY_CONVENTION":"Following","EXTRAPOLACAO_INICIO":"Disabled","EXTRAPOLACAO_FIM":"Disabled","HORIZONTE":"10Y","CASAS_DECIMAIS":7,"MODO_ARREDONDAMENTO":"DOWN"}
   NTN-B / NTNB_BOOTSTRAP_ANBIMA / FlatForward
     {"BASE_INTERPOLACAO":"Discount","DAY_COUNTER_TEMPO":"Business252","FREQUENCY":"Annual","CALENDARIO":"Brazil","MERCADO_CALENDARIO":"Settlement","BUSINESS_DAY_CONVENTION":"Following","EXTRAPOLACAO_INICIO":"FlatValue","EXTRAPOLACAO_FIM":"FlatForward","HORIZONTE":"10Y","CASAS_DECIMAIS":8,"MODO_ARREDONDAMENTO":"HALF_UP"}
@@ -412,7 +412,7 @@ Curva (tCurvaMercd):
 
 Configuração (tConfgCurva):
   modeloConstrucao .... PRONTA_TS_B3 | NTNB_BOOTSTRAP_ANBIMA | SOFR_ZERO_BLOOMBERG  (+ Groovy ativos)
-  interpolador ........ Linear | LogLinear | FlatForward | BackwardFlat | ForwardFlat | Cubic      (+ Groovy ativos)
+  interpolador ........ Linear | FlatForward | BackwardFlat | ForwardFlat | Cubic      (+ Groovy ativos)
 
 Parâmetros (cModDado):
   BASE_INTERPOLACAO ....... Discount | CompoundFactor | ZeroYield | Price
@@ -439,8 +439,8 @@ Decimais vão como string ("13.9000000").
 
 Combinações:
   - BASE_INTERPOLACAO Price só com unidade PRECO ou PONTOS; as outras bases de interpolação só com TAXA.
-  - Interpolador FlatForward só com BASE_INTERPOLACAO Discount (taxa a termo constante entre os nós; mesma conta do LogLinear sobre Discount).
-  - Extrapolação FlatForward só com interpolador Linear, LogLinear ou FlatForward.
+  - Interpolador FlatForward: log-linear em qualquer base (Discount: taxa a termo constante entre os nós; Price: interpolação de preços 1.4.5).
+  - Extrapolação FlatForward só com interpolador Linear ou FlatForward.
   - Origem esperada pelo modelo nativo: PRONTA_TS_B3 = B3/TS;
     NTNB_BOOTSTRAP_ANBIMA = ANBIMA/MS; SOFR_ZERO_BLOOMBERG = BLOOMBERG/BLC2.
 

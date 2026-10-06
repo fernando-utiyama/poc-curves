@@ -2,7 +2,7 @@
 > 1. Trabalhe tarefa por tarefa. Cada tarefa cita a seção de [`implementacao.md`](implementacao.md) com o contrato e o código; leia só ela e abra só os arquivos da tabela §0 do guia; não explore o resto do repositório.
 > 2. Não pare para perguntar: o design já decidiu. Se faltar algo, deixe `// TODO(revisao): <dúvida>` e siga.
 > 3. Cada tarefa termina com a verificação dela; corrija até passar e marque a tarefa.
-> 4. Só front. As rotas da curves (listagem com provedor, dono e última execução; repasse ao engine) são da change `curves-v1.1`, e o `situacao` da construção é da `engine-v1.1`; se ainda não existirem, teste com `HttpTestingController`. Fica para a v2: aba de pontos interpolados.
+> 4. Só front. As rotas da curves (listagem com provedor, dono e última execução; repasse ao engine) são da change `curves-v1-1`, e o `situacao` da construção é da `engine-v1-1`; se ainda não existirem, teste com `HttpTestingController`. Fica para a v2: aba de pontos interpolados.
 > 5. Testes só no `fed`, com `HttpTestingController`.
 >
 > **Blocos por modelo.** Cada tarefa é **[básico]** (mecânica, com molde no projeto e verificação objetiva) ou **[forte]** (julgamento, regra ou integração). Rode cada bloco até a PAUSA dele e pare. Para trocar de modelo, abra uma sessão nova com o modelo indicado e rode `/opsx-apply` de novo: ele segue da primeira tarefa desmarcada. O bloco forte começa conferindo o básico (só o diff; corrige o que contradiz a spec, não reescreve).

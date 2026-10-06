@@ -70,7 +70,7 @@ Toda resposta de erro SHALL seguir o formato de erro único do serviço (o padr�
 | `INSUMO_INCOMPLETO` | 422 | quantidade de linhas lidas diferente da avisada na carga |
 | `INSUMO_AUSENTE` | 422 | origem sem dados na data |
 | `INSUMO_INVALIDO` | 422 | dado da origem viola regra do modelo |
-| `PONTOS_NAO_INTERPOLAVEIS` | 422 | pontos gravados que o interpolador não aceita (ex.: `y` não positivo no `LogLinear`); `detalhes` lista os pontos |
+| `PONTOS_NAO_INTERPOLAVEIS` | 422 | pontos gravados que o interpolador não aceita (ex.: `y` não positivo no `FlatForward`); `detalhes` lista os pontos |
 | `PRAZO_FORA_DO_DOMINIO` | 422 | prazo fora do domínio, ou `data` não posterior à data-base |
 | `MODELO_FALHOU` | 422 | modelo não convergiu, estourou o tempo limite ou lançou erro |
 | `SCRIPT_INVALIDO` | 422 | script Groovy reprovado ou versão não validada |

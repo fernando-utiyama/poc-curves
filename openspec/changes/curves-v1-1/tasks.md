@@ -18,4 +18,5 @@
 - [ ] 2.1 [forte] Conferir o diff do bloco básico contra as specs e o guia; corrigir só o que diverge
 - [ ] 2.2 [forte] (guia §1.2) No `CurvaMercadoAcoesService`, o 404 e os dois 400 antes de chamar o engine; no controller, o 4xx do engine no formato de erro da curves; escrever `CurvaMercadoAcoesServiceTest` e fazê-lo passar
 - [ ] 2.3 [forte] (guia §2) Filtros `provedor` e `dono` na consulta da listagem; provedores da página numa consulta só, na ordem de prioridade; `ultimaExecucao` de `dBaseReft`/`cUsuarCalc`; verificar os dois cenários da spec `listagem-curvas-v1-1` com o repositório simulado
-- [ ] 2.4 [forte] Escrever o resumo final: o que foi criado, alterado ou já estava pronto em cada tarefa
+- [ ] 2.4 [forte] (guia §2.3) No `ValidadorParametros` e em `/valores`: interpoladores iguais aos do engine, sem `LogLinear`, e `FlatForward` aceito com qualquer base (spec `validacao-interpolador`); se já estiver assim, anotar e não alterar
+- [ ] 2.5 [forte] Escrever o resumo final: o que foi criado, alterado ou já estava pronto em cada tarefa

@@ -34,8 +34,7 @@ Para unidade `TAXA`, `cNormaDia` e `cTpoJuro` SHALL ser obrigatórios; para `PRE
 - não houver linha vigente em `tConfgCurva`, ou houver mais de uma;
 - `BASE_INTERPOLACAO` = `Price` com unidade `TAXA`, ou `BASE_INTERPOLACAO` diferente de `Price` com unidade `PRECO` ou `PONTOS`;
 - `cTpoJuro` for `SimpleThenCompounded` ou `CompoundedThenSimple` (não suportados nesta fase);
-- o interpolador `FlatForward` for usado com `BASE_INTERPOLACAO` diferente de `Discount`;
-- a política de extrapolação `FlatForward` for usada com interpolador que não seja `Linear`, `LogLinear` ou `FlatForward`;
+- a política de extrapolação `FlatForward` for usada com interpolador que não seja `Linear` ou `FlatForward`;
 - a fonte ou o produto da origem não forem os esperados pelo modelo de construção cadastrado (para a origem principal, `cMotorCalc`; para uma secundária, o modelo de `MODELOS_POR_ORIGEM` ou, sem ele, `cMotorCalc`);
 - `FREQUENCY` for informada sem `cTpoJuro` = `Compounded`, ou for `NoFrequency`, `Once` ou `OtherFrequency`, que não definem `f`;
 - `MERCADO_CALENDARIO` não for o mercado do `CALENDARIO`.
@@ -149,8 +148,7 @@ O valor de um prazo SHALL ser obtido pela conversão inversa do `y` calculado, u
 ### Requirement: Interpoladores
 Entre dois pontos consecutivos `(x_i, y_i)` e `(x_{i+1}, y_{i+1})`, com `w = (x − x_i)/(x_{i+1} − x_i)`, cada interpolador SHALL calcular:
 - `Linear`: `y = y_i + w·(y_{i+1} − y_i)`;
-- `LogLinear`: `y = y_i · (y_{i+1}/y_i)^w`; todos os `y` da curva MUST ser positivos, ou a interpolação falha com `PONTOS_NAO_INTERPOLAVEIS`, citando os pontos (pode acontecer com preço ou pontos não positivos gravados à mão no `services/curves`); a consulta dos pontos gravados continua funcionando;
-- `FlatForward` (Flat Forward do mercado): taxa a termo constante entre dois nós, ou seja, log-linear sobre o fator de desconto, `y = y_i · (y_{i+1}/y_i)^w`, com a mesma exigência de `y` positivos; só vale com `BASE_INTERPOLACAO` = `Discount`. É o nome de mercado do que o `LogLinear` calcula sobre `Discount`; o `LogLinear` continua aceito para essa base e dá os mesmos números;
+- `FlatForward`: log-linear, `y = y_i · (y_{i+1}/y_i)^w`; todos os `y` da curva MUST ser positivos, ou a interpolação falha com `PONTOS_NAO_INTERPOLAVEIS`, citando os pontos (pode acontecer com preço ou pontos não positivos gravados à mão no `services/curves`); a consulta dos pontos gravados continua funcionando. Com `BASE_INTERPOLACAO` = `Discount` é o Flat Forward do mercado (taxa a termo constante entre dois nós); com `Price`, é a interpolação de preços do Manual (1.4.5). Não há interpolador `FlatForward` separado;
 - `BackwardFlat`: `y = y_{i+1}`;
 - `ForwardFlat`: `y = y_i`;
 - `Cubic`: spline cúbica natural (segunda derivada nula no primeiro e no último ponto) sobre todos os pontos.
@@ -162,7 +160,7 @@ Os pontos SHALL ser ordenados por data, e dois pontos com a mesma data MUST NOT 
 | 1.4.2 Flat Forward 252 | `Discount` + `FlatForward` | `Business252` | `Business252`/`Compounded`/`Annual` |
 | 1.4.3 Flat Forward 252 com convenção linear | `Discount` + `FlatForward` | `Business252` | `Actual360`/`Simple` |
 | 1.4.4 Interpolação 360 | `Discount` + `FlatForward` | `Actual360` | `Actual360`/`Compounded`/`Annual` |
-| 1.4.5 Interpolação de preços | `Price` + `LogLinear` | `Business252` | — |
+| 1.4.5 Interpolação de preços | `Price` + `FlatForward` | `Business252` | — |
 | 1.4.11 Interpolação 360 linear | `CompoundFactor` + `Linear` | `Actual360` | `Actual360`/`Simple` |
 
 #### Scenario: Flat forward 252 (PRE)
@@ -327,8 +325,8 @@ Consultar e interpolar SHALL ler os pontos gravados em `tDadoVertcCurva` e monta
 Toda resposta de construção SHALL informar o modelo de construção, o interpolador e o calendário usados, cada um com nome, origem (`JAVA` ou `GROOVY`) e, para Groovy, versão e hash do script, a versão do engine (versão do artefato, fixada no build), o `estadoScript` (`ATUAL`, `DESATUALIZADO` ou `DESCONHECIDO`, spec `curve-engine-resilience`), os avisos da construção (ex.: `PONTOS_DIFERENTES_DA_FONTE`, `CURVA_INATIVA`) e o `hashPontos`: SHA-256, em hexadecimal minúsculo, do texto formado pelas linhas `AAAA-MM-DD;valor` de cada ponto gravado em `tDadoVertcCurva` (`dVertcReft` e `vPrecoTx`), em ordem de data, separadas por `\n`, sem `\n` no fim. O valor SHALL ser escrito na forma canônica, independente da escala com que foi lido do banco (`DECIMAL(28,12)` devolve 12 casas): sem zeros à direita, sem expoente, com ponto decimal, sem ponto quando inteiro e `0` para zero (em Java, `stripTrailingZeros().toPlainString()`, com `0` para zero). Ex.: `13.9000000` e `13.900000000000` são escritos `13.9`; `-117.9600000`, `-117.96`. O mesmo vetor de teste SHALL ser usado pelo engine e pelo `services/curves`: os pontos `2026-09-15` = `13.9000000` e `2026-09-16` = `-117.9600000` formam o texto `2026-09-15;13.9\n2026-09-16;-117.96`. As respostas de consulta e de interpolação SHALL informar o interpolador e o calendário da mesma forma, e o `hashPontos` dos pontos lidos.
 
 #### Scenario: Interpolador sobrescrito por Groovy
-- **WHEN** (com os scripts da change `engine-modelos-curva`) a interpolação é pedida enquanto um script Groovy ativo sobrescreve `LogLinear`
-- **THEN** a resposta informa `LogLinear` com origem `GROOVY`, a versão e o hash do script
+- **WHEN** (com os scripts da change `engine-modelos-curva`) a interpolação é pedida enquanto um script Groovy ativo sobrescreve `FlatForward`
+- **THEN** a resposta informa `FlatForward` com origem `GROOVY`, a versão e o hash do script
 
 #### Scenario: Pontos iguais, hash igual
 - **WHEN** a mesma curva e data é reconstruída sem mudança de insumo, cadastro ou modelo

@@ -56,7 +56,7 @@ E no Swagger: `POST /api/v1/curvas/PRE/{data}/construcao?forcarRecalculo=true` d
 | Modelo | O que olhar |
 |---|---|
 | `TaxaSwapB3` | usa o `cDiaUtil` publicado (deve vir sempre preenchido) |
-| `NtnbBootstrapAnbima` | se calcula os dias úteis pelo calendário ou deixa nulo |
+| `NtnbBootstrapAnbima` | já calcula: `prazoDu = cal.diasUteis(base, p)` e passa ao `VerticeConstruido` (conferido em 2026-10-06) |
 | `SofrZeroBloomberg` | o eixo da SOFR costuma ser `Actual360`; se for, os dias úteis não importam |
 
 Se nenhum modelo com eixo `Business252` deixa `diasUteis` nulo, **não altere** e anote a prova (arquivo e linha).

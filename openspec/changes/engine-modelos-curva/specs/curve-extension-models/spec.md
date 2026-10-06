@@ -13,8 +13,8 @@ Ao resolver um modelo por tipo e nome para uma curva, o catálogo SHALL usar, ne
 Se nenhum existir, a resolução MUST falhar com `CADASTRO_INVALIDO`, informando tipo e nome.
 
 #### Scenario: Sobrescrita de um interpolador nativo
-- **WHEN** existe uma versão `ATIVA` de interpolação chamada `LogLinear`
-- **THEN** toda curva com `LogLinear` sem versão fixada usa o script
+- **WHEN** existe uma versão `ATIVA` de interpolação chamada `FlatForward`
+- **THEN** toda curva com `FlatForward` sem versão fixada usa o script
 
 #### Scenario: Modelo novo só em Groovy
 - **WHEN** um script de construção chamado `EXEMPLO_SO_GROOVY`, sem equivalente Java, é ativado
@@ -25,11 +25,11 @@ Se nenhum existir, a resolução MUST falhar com `CADASTRO_INVALIDO`, informando
 - **THEN** a resolução falha com `CADASTRO_INVALIDO`, informando o tipo calendário e o nome `XPTO`
 
 #### Scenario: Desativação volta ao nativo
-- **WHEN** a versão `ATIVA` que sobrescrevia `LogLinear` é desativada
-- **THEN** as consultas seguintes usam o `LogLinear` nativo
+- **WHEN** a versão `ATIVA` que sobrescrevia `FlatForward` é desativada
+- **THEN** as consultas seguintes usam o `FlatForward` nativo
 
 #### Scenario: Teste numa curva só
-- **WHEN** o cadastro da `DPL` fixa a versão 4 (validada, não ativa) do interpolador `LogLinear`, e a versão ativa é a 3
+- **WHEN** o cadastro da `DPL` fixa a versão 4 (validada, não ativa) do interpolador `FlatForward`, e a versão ativa é a 3
 - **THEN** a `DPL` usa a versão 4, e a `PRE` continua com a versão 3
 
 ### Requirement: Armazenamento dos scripts no Blob Storage
@@ -47,12 +47,12 @@ Os scripts SHALL ficar no Azure Blob Storage já usado pelo projeto (endpoint e 
 Toda resolução de modelo SHALL consultar o `estado.json` do tipo e nome no Blob antes de considerar o modelo Java nativo. A leitura SHALL usar cache local por instância com validade de `engine.groovy.cache-estado-segundos` (padrão 30); expirado o cache, a instância relê o arquivo (requisição condicional por ETag). A inexistência de `estado.json` também SHALL ficar em cache pelo mesmo tempo. O conteúdo compilado de uma versão SHALL ficar em memória por (tipo, nome, versão, hash), sem expiração, porque versões são imutáveis. Ao carregar uma versão, o engine SHALL conferir o SHA-256 do conteúdo contra o `hash` do `estado.json`; se diferir, a operação MUST falhar com `MODELO_FALHOU`, sem executar o script. Se o Blob estiver inacessível, vale a spec `curve-engine-resilience`: a instância segue com o último estado lido e, só quando não tem estado nem a versão necessária em memória, usa o nativo, com erro no log e `estadoScript` = `DESCONHECIDO` na proveniência.
 
 #### Scenario: Ativação chega às demais instâncias
-- **WHEN** a versão 3 de `LogLinear` é ativada pela instância A
+- **WHEN** a versão 3 de `FlatForward` é ativada pela instância A
 - **THEN** em até 30 segundos todas as instâncias usam a versão 3, e cada resposta informa a versão usada
 
 #### Scenario: Blob fora do ar
 - **WHEN** o Blob está inacessível e o cache de estado da instância venceu
-- **THEN** a instância continua usando a versão ativa conhecida de `LogLinear`, registra o aviso, e informa `estadoScript` = `DESATUALIZADO`
+- **THEN** a instância continua usando a versão ativa conhecida de `FlatForward`, registra o aviso, e informa `estadoScript` = `DESATUALIZADO`
 
 #### Scenario: Conteúdo alterado no Blob
 - **WHEN** o arquivo `v3.groovy` foi alterado diretamente no Blob e o hash não bate com o `estado.json`
@@ -72,7 +72,7 @@ Qualquer outra transição MUST resultar em `SCRIPT_INVALIDO`. Cada tipo e nome 
 - **THEN** a versão 3 fica `ATIVA` e a versão 2 fica `INATIVA`
 
 #### Scenario: Reinício do engine
-- **WHEN** o engine reinicia com uma versão `ATIVA` do interpolador `LogLinear`
+- **WHEN** o engine reinicia com uma versão `ATIVA` do interpolador `FlatForward`
 - **THEN** o script continua sendo usado, sem novo envio
 
 ### Requirement: Validação

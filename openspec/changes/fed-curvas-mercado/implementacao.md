@@ -27,9 +27,9 @@ Cabeçalhos curves → engine: `X-Correlation-Id` (o recebido), `X-Usuario` (o r
 Respostas que o front lê. Os nomes são **os que o engine da v1 devolve** (relatório de inspeção do engine); confira no DTO do engine se algo não bater e use o nome real:
 
 ```jsonc
-// construcao (200) — `situacao` vem da change engine-v1.1; `pontos` só em CONSTRUIDA/RECONSTRUIDA
+// construcao (200) — `situacao` vem da change engine-v1-1; `quantidadePontos` e `avisos` já vêm em todos os resultados
 { "situacao": "RECONSTRUIDA", "codigo": "PRE", "dataBase": "2026-09-14", "hashPontos": "7c49...",
-  "pontos": [ ... ], "avisos": [ { "codigo": "ORIGEM_SECUNDARIA", "mensagem": "...", "detalhes": [] } ] }
+  "quantidadePontos": 278, "avisos": [ { "codigo": "ORIGEM_SECUNDARIA", "mensagem": "...", "detalhes": [] } ] }
 // vertices (200) — a lista se chama "pontos"; na tela, "Vértices"
 { "codigo": "PRE", "dataBase": "2026-09-14", "hashPontos": "7c49...", "avisos": [],
   "pontos": [ { "data": "2026-09-15", "valor": "13.9000000", "diasUteis": 1, "diasCorridos": 1,

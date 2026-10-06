@@ -20,7 +20,7 @@ Segunda parte do engine (operação e extensões); a primeira, a construção da
 - [ ] 5.2 Criar o adaptador de Blob (`groovy-models/{tipo}/{nome}/v{n}.groovy` imutável com `If-None-Match: *`; `estado.json` com `If-Match`), com cache de estado por instância (`engine.groovy.cache-estado-segundos`, padrão 30), cache de ausência, conferência de hash na carga e a regra de Blob fora da spec `curve-engine-resilience`; verificar com Azurite: duas instâncias do registro no mesmo teste, ativação numa e uso da versão nova na outra após o vencimento do cache, duas ativações concorrentes (uma recebe `ESTADO_SCRIPT_CONCORRENTE`), conteúdo alterado (hash divergente) e Blob parado
 - [ ] 5.3 Criar o carregador Groovy com `SecureASTCustomizer` por lista permitida, `TimedInterrupt` (`engine.groovy.timeout-segundos`, padrão 5) e checagem do contrato do tipo, substituindo `GroovyDynamicModelCompiler`; verificar com scripts válido, de tipo errado, com acesso à rede (reprovado) e em laço (interrompido com `MODELO_FALHOU`)
 - [ ] 5.4 Implementar os estados `RASCUNHO` → `VALIDADA`/`REPROVADA` → `ATIVA` ↔ `INATIVA` e a validação por tipo (fixture de interpolação, ano corrente de calendário, simulação para construção); verificar cada transição válida e inválida
-- [ ] 5.5 Verificar a sobrescrita parcial ponta a ponta: script que estende `LogLinear` e troca só `valorNoSegmento`, e script que estende `Brazil` com um feriado extra, cada um validado, ativado e refletido na interpolação e na contagem de dias
+- [ ] 5.5 Verificar a sobrescrita parcial ponta a ponta: script que estende `FlatForward` e troca só `valorNoSegmento`, e script que estende `Brazil` com um feriado extra, cada um validado, ativado e refletido na interpolação e na contagem de dias
 
 ## 6. Memória de cálculo
 
@@ -86,3 +86,22 @@ Segunda parte do engine (operação e extensões); a primeira, a construção da
 - [ ] 17.3 Segurança: apagar o `JwtDecoder` próprio, o `mockJwtDecoder` e o `SegurancaConfig` e todo o Resource Server do Spring (o engine não autentica; guia, 13.3); verificar que a aplicação sobe sem emissor nem audiência e que nenhuma classe de segurança sobra no código
 - [ ] 17.5 Proveniência: modelo, interpolador e calendário com a origem, a versão e o hash do que o `RegistroModelos` de fato resolveu; verificar o cenário "Proveniência de script Groovy" da spec `curve-audit-history`
 - [ ] 17.11 Rodar a suíte inteira e `openspec validate engine-modelos-curva --strict`; verificar, com a saída do Maven colada no relatório, que tudo passa (não marcar esta tarefa sem a saída)
+
+## 18. Pendências da v1 (inspeção de 2026-10-06)
+
+> Itens que a inspeção do engine real (`docs/inspecao/inspecao-engine.md` do poc) apontou e que ficaram fora da `engine-v1-1`. A regra de cada um já está nas specs da change `engine-construcao-curvas` (citada entre parênteses), salvo a 18.3. Cada tarefa é de conferência: procure pela funcionalidade, altere só o que diverge e anote a saída.
+
+- [ ] 18.2 `cDiaUtil` com o DU calculado quando a fonte não publica (hoje grava só o publicado; SOFR fica nula) (spec `curve-build-pipeline`, "Dias úteis publicados pela fonte ou informados pelo usuário")
+- [ ] 18.3 Rota `GET /api/v1/curvas/{codigo}/{dataBase}/pontos?de=&ate=` lendo `tDadoCurva` (spec `pontos-interpolados-engine` desta change), para a aba Pontos da tela Curvas
+- [ ] 18.4 Ler o cabeçalho opcional `X-Usuario` em toda rota e gravar nulo sem ele; tirar `"OPERADOR"` e `SISTEMA` fixos (spec `curve-engine-api`, "Sem autenticação; origem do acionamento e usuário")
+- [ ] 18.6 Regravar a interpolada sem vértices: apagar `tDadoCurva` de fato (hoje o rollback desfaz) e responder 404 `CURVA_NAO_CONSTRUIDA` (spec `curve-engine-api`, "Regravar a curva interpolada")
+- [ ] 18.7 Carga: comparar a quantidade lida com `verticesPorCodigo` e emitir `INSUMO_INCOMPLETO` (spec `curve-load-trigger`, "Conferência da quantidade lida na carga")
+- [ ] 18.8 Formato de erro com `correlationId` e `detalhes` sempre presentes (spec `curve-engine-api`, "Erros padronizados")
+- [ ] 18.9 Recusar `NoFrequency`, `Once` e `OtherFrequency` no validador e tirá-las de `/valores-cadastro`; tipo errado em `cModDado` vira `CADASTRO_INVALIDO`, nunca falha de cast (spec `curve-build-pipeline`, "Cadastro da curva e itens obrigatórios")
+- [ ] 18.10 Teste de vetores reais de verdade com o `TaxaSwap.txt` de `2026-09-14`: os 5 `hashPontos` calculados e comparados, o DU dos 278 vértices, o oráculo da B3 e as 12.390 linhas da `PRE` com os valores (guia, seção 0.3); nunca só conferir que não está vazio
+- [ ] 18.11 Construção da data inteira com `DisparoConstrucao.DATA_INTEIRA` e as derivadas depois das curvas de provedor (spec `curve-load-trigger`, "Construção automática da data")
+- [ ] 18.12 Situação da data: conferir insumo, igualdade com a fonte e interpolada desatualizada, e indicar tempo esgotado por curva (spec `curve-engine-api`, "Situação das curvas numa data-base")
+- [ ] 18.14 Logs `CONSTRUCAO_FALHOU` e `INSUMO_DESCARTADO` (spec `curve-build-pipeline`, "Log estruturado da construção")
+- [ ] 18.15 Isolamento `READ_COMMITTED` explícito na configuração (spec `curve-build-pipeline`, "Leitura consistente durante gravações")
+- [ ] 18.16 SOFR: decidir se a carga exige exatamente os 21 tenores; se sim, recusar o que vier diferente (spec `sofr-bloomberg-curve-model`)
+- [ ] 18.17 Renomes, se ainda fizerem sentido: `TaxaSwapB3` → `ProntaTsB3`, `fatorAcum`/`fatorDia` → `fatorAcumulado`/`fatorDiario`, lista `pontos` → `vertices` na consulta (avise o front antes: a tela Curvas lê os nomes atuais)

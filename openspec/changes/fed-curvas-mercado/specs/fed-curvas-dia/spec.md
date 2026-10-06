@@ -39,7 +39,7 @@ A tela SHALL oferecer, para a curva e a data escolhidas, pelas rotas da spec `ac
 | Recalcular por origem secundária | a mesma, com `forcarRecalculo=true`, `fonte` e `produto` de um provedor da curva que não é o de menor prioridade, escolhido numa lista; só aparece se a curva tiver mais de um provedor |
 | Regravar interpolada | `POST .../interpolada` |
 
-O resultado SHALL ser mostrado na tela: situação em pt-BR (campo `situacao`: `CONSTRUIDA` "Construída", `RECONSTRUIDA` "Recalculada", `EXISTENTE` "Já construída"), quantidade de vértices (quando a resposta trouxer a lista), avisos e duração; depois de uma ação bem-sucedida, as abas abertas SHALL ser recarregadas. Em erro, a tela SHALL mostrar a mensagem e o código devolvidos (por exemplo, `INSUMO_AUSENTE`, `CONSTRUCAO_EM_ANDAMENTO`, `ENGINE_INDISPONIVEL`), sem levar à página de erro global. Enquanto uma ação está em andamento, os botões de ação SHALL ficar desabilitados.
+O resultado SHALL ser mostrado na tela: situação em pt-BR (campo `situacao`: `CONSTRUIDA` "Construída", `RECONSTRUIDA` "Recalculada", `EXISTENTE` "Já construída"), quantidade de vértices, avisos e duração; depois de uma ação bem-sucedida, as abas abertas SHALL ser recarregadas. Em erro, a tela SHALL mostrar a mensagem e o código devolvidos (por exemplo, `INSUMO_AUSENTE`, `CONSTRUCAO_EM_ANDAMENTO`, `ENGINE_INDISPONIVEL`), sem levar à página de erro global. Enquanto uma ação está em andamento, os botões de ação SHALL ficar desabilitados.
 
 #### Scenario: Recalcular com confirmação
 - **WHEN** o gestor clica em "Recalcular" na `PRE` de `14/09/2026` e confirma

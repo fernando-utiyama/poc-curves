@@ -58,3 +58,17 @@ Segunda parte do curves (planilha do cadastro, painel, vértices, planilha de v�
 
 - [ ] 11.1 Cadastrar pela planilha as 7 curvas de `exemplo-cadastro-7-curvas.txt` (change `curves-cadastro-curvas`) e conferir que exportar e importar sem editar dá zero mudanças
 - [ ] 11.3 Rodar `openspec validate curves-operacao-curvas --strict` e a suíte de testes do serviço; verificar que tudo passa
+
+## 12. Pendências da v1 (inspeção de 2026-10-06)
+
+> Itens que a inspeção da curves real (`docs/inspecao/inspecao-curves.md` do poc) apontou e que ficaram fora da `curves-v1-1`. A regra de cada um já está nas specs da change `curves-cadastro-curvas` (citada entre parênteses). Cada tarefa é de conferência: procure pela funcionalidade, altere só o que diverge e anote a saída.
+
+- [ ] 12.1 Rotas `/dados-mercado/{provedor}` unificadas (tickers e consulta por código na fonte e data, com avisos) sobre os CRUDs `primaria-*` que já existem (spec `vertices-brutos-provedor`)
+- [ ] 12.2 Repasse de `GET /curvas-mercado/{codigo}/{dataBase}/pontos?de=&ate=` ao engine (depois da rota de pontos do engine, `engine-modelos-curva` 18.3) e do `X-Usuario` recebido (spec `acoes-curva-mercado`)
+- [ ] 12.3 Formato de erro com `correlationId` no lugar de `errorId` e `detalhes` sempre presente (spec `cadastro-curva-mercado`, "Sem autenticação e erros")
+- [ ] 12.4 Decimais da ANBIMA e da Bloomberg como texto, como a B3 (spec `cadastro-curva-mercado`, "Contrato de tipos para o front")
+- [ ] 12.5 Instantes com o deslocamento de Brasília (`-03:00`), não UTC (spec `cadastro-curva-mercado`, "Horário e log")
+- [ ] 12.6 `avisos` sempre presente, inclusive nos provedores da curva e nos brutos (spec `cadastro-curva-mercado`, "Contrato de tipos para o front")
+- [ ] 12.7 `PUT` do provedor da curva que troca o provedor → 422 `DADOS_INVALIDOS`; aviso `CURVA_COM_FILHAS` na inativação (spec `provedor-curva`)
+- [ ] 12.8 Configuração: decidir a correção retroativa (início de vigência no passado) e alinhar código e spec (spec `configuracao-calculo-curva`, "Vigência sem sobreposição e sem buraco")
+- [ ] 12.9 `/valores`: rótulo e descrição dos valores dos parâmetros de construção e os `enum` no Swagger (spec `configuracao-calculo-curva`, "Valores aceitos para o front e o Swagger")

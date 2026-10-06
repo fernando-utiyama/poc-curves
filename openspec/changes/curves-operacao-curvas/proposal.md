@@ -10,6 +10,8 @@ A change `curves-cadastro-curvas` ficou grande demais para uma entrega e foi div
 - **Painel de acompanhamento** por data-base, com a situação de cada curva, atraso (só para data-base passada) e o que precisa de atenção.
 - **Origens secundárias:** `MODELOS_POR_ORIGEM` na configuração, na planilha e no painel, e `diasUteis` opcional nos vértices.
 
+- **Pendências da v1** apontadas pela inspeção da curves real (tarefas 12.x): `/dados-mercado` unificado, repasse de pontos e do `X-Usuario`, formato de erro, decimais, instantes, `avisos`, troca de provedor e `CURVA_COM_FILHAS`, correção retroativa da configuração e rótulos em `/valores`.
+
 ## Capabilities
 
 ### New Capabilities

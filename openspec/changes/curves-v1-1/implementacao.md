@@ -304,6 +304,10 @@ UltimaExecucao ultimaExecucao // dBaseReft == null ? null : new UltimaExecucao(d
 
 `dBaseReft` e `cUsuarCalc` continuam só leitura na entidade (`insertable = false, updatable = false`). O envelope da página (`CurvasMercadoPaginadaResponse`, `totalElementos`, `totalPaginas`) fica como está.
 
+### 2.3 Interpoladores
+
+No `ValidadorParametros` da curves (`:92-97` e as regras de combinação) e na lista de `/valores`: tirar `LogLinear` e a regra "`FlatForward` só com `Discount`", se existirem. O engine já não tem `LogLinear`, e o `FlatForward` é a interpolação log-linear em qualquer base (as curvas `INP` e `PTX` usam `Price` + `FlatForward`).
+
 ## 3. Conferir
 
 | O quê | Como |

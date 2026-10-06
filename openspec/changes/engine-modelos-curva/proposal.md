@@ -19,7 +19,7 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
     - `ntnbbootstrapanbima` (`NTNB_BOOTSTRAP_ANBIMA`): bootstrap sequencial por bisseção sobre `tAnbmaCurvaPrimr`;
     - `sofrzerobloomberg` (`SOFR_ZERO_BLOOMBERG`): nós por tenor, sem bootstrap;
     - `pontosprontos`: código comum aos modelos sem bootstrap.
-  - Interpolação no modelo do QuantLib: base de interpolação (`Discount`, `CompoundFactor`, `ZeroYield`, `Price`) + interpolador (`Linear`, `LogLinear`, `FlatForward`, `BackwardFlat`, `ForwardFlat`, `Cubic`) + `DayCounter` do eixo. As funções do Manual de Curvas B3 viram configuração. Extrapolação por lado: `Disabled`, `FlatForward`, `FlatValue`.
+  - Interpolação no modelo do QuantLib: base de interpolação (`Discount`, `CompoundFactor`, `ZeroYield`, `Price`) + interpolador (`Linear`, `FlatForward`, `BackwardFlat`, `ForwardFlat`, `Cubic`) + `DayCounter` do eixo. As funções do Manual de Curvas B3 viram configuração. Extrapolação por lado: `Disabled`, `FlatForward`, `FlatValue`.
   - Calendários `Brazil`/`Settlement` e `UnitedStates`/`FederalReserve`, com os feriados listados na spec. Feriados também podem ser mantidos por planilha: a importação gera um script Groovy de calendário versionado, e a exportação devolve a planilha no mesmo formato.
   - Construção, interpolação e calendário podem ser criados ou sobrescritos por Groovy, com versões imutáveis no Blob Storage existente (`groovy-models/{tipo}/{nome}/`), propagadas a todas as instâncias em até 30 segundos, validação antes de ativar, sandbox por lista permitida e tempo limite.
 - **Tipos e enums com os nomes do QuantLib** (`Compounding`, `Frequency`, `BusinessDayConvention`, `DayCounter`, calendários), em implementação própria, 100% Java, com valores em `BigDecimal` e `pow`/`ln`/`exp` pelo `StrictMath` do Java. Todo o resto usa o que o Java 21 já tem (`java.time`, `RoundingMode`, records, sealed, virtual threads), em arquitetura hexagonal.
@@ -59,9 +59,12 @@ O `services/engine` da `develop` não trata nem o caso mais simples. A refatora�
   - classes: `ComposableCurveBuilder`, `CurveBuilderRegistry`, `CurveInterpolatorRegistry`, `CurveExtrapolatorRegistry`;
   - gravação em `tMtrizCurva`, e o cabeçalho de versão que o engine antigo gravava junto com `tDadoVertcCurva`.
 
+- **Pendências da v1** apontadas pela inspeção do engine real (tarefas 18.x): `cDiaUtil` calculado, rota de pontos interpolados, `X-Usuario`, regravação sem vértices, `INSUMO_INCOMPLETO`, formato de erro, frequências recusadas, teste de vetores reais, `DATA_INTEIRA` e derivadas, situação da data completa, logs de falha, isolamento explícito, 21 tenores da SOFR e renomes.
+
 ## Capabilities
 
 ### New Capabilities
+- `pontos-interpolados-engine`: leitura dos pontos da curva interpolada gravados em `tDadoCurva` para uma curva e data-base.
 - `curve-calculation-memory`: simulação sem gravação, comparação com os pontos gravados e planilha de memória de cálculo com abas e colunas fixas, e pacote zip.
 - `curve-engine-resilience`: tempos limite, repetição, degradação com o Blob fora, saúde e prontidão, logs de requisição e de dependência, e métricas.
 

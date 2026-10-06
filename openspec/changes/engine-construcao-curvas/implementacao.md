@@ -53,7 +53,7 @@ domain/                       Java puro: nada de Spring, JPA, Jackson, Azure, PO
   quantlib/                   Compounding, Frequency, BusinessDayConvention, DayCounter, InterestRate, Periodos
   matematica/                 DecimalMath
   calendario/                 Calendario, Brazil, UnitedStates, CalendarioPorLista
-  interpolacao/               BaseInterpolacao, Extrapolacao, Classificacao, Interpolador, InterpoladorPorSegmento, Linear, LogLinear, FlatForward,
+  interpolacao/               BaseInterpolacao, Extrapolacao, Classificacao, Interpolador, InterpoladorPorSegmento, Linear, FlatForward,
                               BackwardFlat, ForwardFlat, Cubic, EixoDiasUteis, PreparacaoPontos,
                               CurvaInterpolada, InterpolacaoDadoCurva
   construcao/                 ModeloConstrucao, ContextoConstrucao, CurvaPrimariaPort (porta do domínio),
@@ -589,7 +589,7 @@ O `cModDado` é lido pelo adaptador com o Jackson e entregue ao domínio como `M
 1. `cModDado` é objeto JSON; cada chave existe na tabela; tipo certo.
 2. Obrigatórios presentes; valores nas listas, com caixa exata. Padrão só em `EXTRAPOLACAO_INICIO`/`FIM` (`Disabled`).
 3. `cTpoVlr` ∈ `TAXA|PRECO|PONTOS`; com `TAXA`, `cNormaDia` ∈ constantes de `DayCounter` (`DayCounter.valueOf`) e `cTpoJuro` ∈ `Simple|Compounded|Continuous`.
-4. Combinações: `Price` só com `PRECO`/`PONTOS` e o contrário; `FREQUENCY` só com `Compounded` (e obrigatória nele), nunca `NoFrequency|Once|OtherFrequency`; `MERCADO_CALENDARIO` = `mercado()` do calendário resolvido; interpolador `FlatForward` só com a base `Discount`; extrapolação `FlatForward` só com `Linear|LogLinear|FlatForward`; `CASAS_DECIMAIS` 0..12; `HORIZONTE` por `Periodos.parse`.
+4. Combinações: `Price` só com `PRECO`/`PONTOS` e o contrário; `FREQUENCY` só com `Compounded` (e obrigatória nele), nunca `NoFrequency|Once|OtherFrequency`; `MERCADO_CALENDARIO` = `mercado()` do calendário resolvido; extrapolação `FlatForward` só com `Linear|FlatForward`; `CASAS_DECIMAIS` 0..12; `HORIZONTE` por `Periodos.parse`.
 5. `MODELOS_POR_ORIGEM`: chave `^[^/]+/[^/]+$`, valor texto não vazio; chave sem provedor ou da principal é ignorada.
 6. O modelo de construção da origem usada aceita a fonte e o produto dela.
 7. Derivada: componentes existem, sem ciclo (busca em profundidade pelos provedores da curva `TCEN`), papéis iguais aos declarados pelo modelo.
@@ -630,12 +630,11 @@ public abstract class InterpoladorPorSegmento implements Interpolador {
 | Classe | `valorNoSegmento` |
 |---|---|
 | `Linear` | `yE + w·(yD − yE)` |
-| `LogLinear` | `yE · DecimalMath.pow(yD/yE, w)` (todos os `y` > 0, checado antes; senão `PONTOS_NAO_INTERPOLAVEIS` com os pontos) |
-| `FlatForward` | igual ao `LogLinear` (a classe estende `LogLinear`); o cadastro com `BASE_INTERPOLACAO` diferente de `Discount` é recusado antes, com `CADASTRO_INVALIDO` |
+| `FlatForward` | `yE · DecimalMath.pow(yD/yE, w)` (todos os `y` > 0, checado antes; senão `PONTOS_NAO_INTERPOLAVEIS` com os pontos); vale para qualquer base de interpolação (`Discount`: taxa a termo constante; `Price`: 1.4.5) |
 | `BackwardFlat` | `yD` |
 | `ForwardFlat` | `yE` |
 
-Classes públicas e não finais: um script Groovy pode estender `LogLinear` e sobrescrever só `valorNoSegmento`.
+Classes públicas e não finais: um script Groovy pode estender `FlatForward` e sobrescrever só `valorNoSegmento`.
 
 `Cubic implements Interpolador`: spline natural em `BigDecimal`. `h_i = x_{i+1} − x_i`; segundas derivadas `M` com `M_0 = M_{n-1} = 0` e, para `i = 1..n-2`, `h_{i-1}·M_{i-1} + 2(h_{i-1}+h_i)·M_i + h_i·M_{i+1} = 6·((y_{i+1}−y_i)/h_i − (y_i−y_{i-1})/h_{i-1})`, resolvido pelo algoritmo de Thomas. Avaliação: `S(x) = M_i(x_{i+1}−x)³/(6h_i) + M_{i+1}(x−x_i)³/(6h_i) + (y_i/h_i − M_i h_i/6)(x_{i+1}−x) + (y_{i+1}/h_i − M_{i+1} h_i/6)(x−x_i)`. Com 2 pontos, igual ao linear.
 
@@ -721,7 +720,7 @@ Criada por um método de fábrica com o cadastro, os pontos mantidos, o calendá
 2. `du = duPedido != null ? duPedido : eixo.du(d)`; `x` pelo eixo (`dayCounterTempo.fracaoAno(B, d, du)`).
 3. `d` = data de ponto mantido → valor gravado, `PONTO`.
 4. Antes do primeiro → política de início; depois do último → política de fim; senão interpolador e `baseInterpolacao.deY`.
-5. `Disabled` → `PRAZO_FORA_DO_DOMINIO`; `FlatValue` → valor do ponto adjacente; `FlatForward` (só `Linear`/`LogLinear`/`FlatForward`, ≥ 2 pontos) → `extrapolar(w, yE, yD)` do segmento adjacente com `w` fora de `[0,1]`.
+5. `Disabled` → `PRAZO_FORA_DO_DOMINIO`; `FlatValue` → valor do ponto adjacente; `FlatForward` (só `Linear`/`FlatForward`, ≥ 2 pontos) → `extrapolar(w, yE, yD)` do segmento adjacente com `w` fora de `[0,1]`.
 6. `valor.setScale(casasDecimais, modoArredondamento)`. Para `TAXA`: `fa = cotacao.fator(valorArredondado, B, d, du).setScale(16, RoundingMode.HALF_UP)`, `fd = DecimalMath.pow(fa, BigDecimal.ONE.divide(BigDecimal.valueOf(du), DecimalMath.MC)).setScale(16, RoundingMode.HALF_UP)` (`du` ≥ 1). `PRECO`/`PONTOS`: fatores nulos.
 
 ### 6.6 `InterpolacaoDadoCurva.java`
@@ -863,7 +862,7 @@ Tabela "Regras do arquivo" da spec `b3-ready-curve-model` linha a linha. Ponto: 
 
 ### 8.4 `NtnbBootstrapAnbima` (`NTNB_BOOTSTRAP_ANBIMA`, `ANBIMA`/`MS`)
 
-Interpolador `Linear`, `LogLinear` ou `FlatForward` (senão `CADASTRO_INVALIDO`); tabela "Regras do arquivo" da spec `ntnb-anbima-curve-model` (sem tolerância). Por título:
+Interpolador `Linear` ou `FlatForward` (senão `CADASTRO_INVALIDO`); tabela "Regras do arquivo" da spec `ntnb-anbima-curve-model` (sem tolerância). Por título:
 
 ```java
 var v = B.plusDays(prazo);                                        // vencimento exato (prazo em dias corridos)
@@ -929,7 +928,7 @@ Seis abas, na ordem e com os cabeçalhos exatos da spec `curve-calculation-memor
 
 ### 11.1 `application/service/ResolverModelos`
 
-Por tipo (`construcao`, `interpolacao`, `calendario`): versão fixada no cadastro (validada) → versão `ATIVA` do `estado.json` → nativo (beans `ModeloConstrucao`, `Interpolador` e `Calendario` do domínio, declarados num `@Configuration` e registrados por nome na subida) → `CADASTRO_INVALIDO`. Nativos: `PRONTA_TS_B3`, `NTNB_BOOTSTRAP_ANBIMA`, `SOFR_ZERO_BLOOMBERG`; `Linear`, `LogLinear`, `BackwardFlat`, `ForwardFlat`, `Cubic`; `Brazil`, `UnitedStates`.
+Por tipo (`construcao`, `interpolacao`, `calendario`): versão fixada no cadastro (validada) → versão `ATIVA` do `estado.json` → nativo (beans `ModeloConstrucao`, `Interpolador` e `Calendario` do domínio, declarados num `@Configuration` e registrados por nome na subida) → `CADASTRO_INVALIDO`. Nativos: `PRONTA_TS_B3`, `NTNB_BOOTSTRAP_ANBIMA`, `SOFR_ZERO_BLOOMBERG`; `Linear`, `FlatForward`, `BackwardFlat`, `ForwardFlat`, `Cubic`; `Brazil`, `UnitedStates`.
 
 ### 11.2 `adapter/out/blob/ScriptsBlobAdapter` (implementa `ScriptsPort`)
 
@@ -1115,7 +1114,7 @@ Ordem: **verificar, adaptar, criar, rodar**. Só o que já existe no pom (`sprin
 | `QuantlibTest` | constantes e valores de `Frequency`; `Periodos.parse` válido e inválido; `DayCounter` com `(B,d]` e 30/360 (110, seção 0.3) |
 | `InterestRateTest` | 1.139; 1.0125; ida e volta taxa→fator→taxa igual depois do arredondamento cadastrado |
 | `BrazilTest`, `UnitedStatesTest` | Páscoa e feriados de 2026 e 2027 (seção 0.3); DU dos 278 vértices da `PRE` = publicado; `adjust` nas 7 convenções |
-| `InterpoladoresTest` | valor exato nos nós; `LogLinear` com `y <= 0`; `Cubic` com 2 pontos = linear |
+| `InterpoladoresTest` | valor exato nos nós; `FlatForward` com `y <= 0`; `Cubic` com 2 pontos = linear |
 | `ManualB3Test` | 1.4.2, 1.4.3, 1.4.4, 1.4.5, 1.4.11 e 1.4.6–1.4.10 implementados direto no teste |
 | `EixoDiasUteisTest` | quatro cenários do requisito de dias úteis publicados; calendário certo = calendário puro |
 | `PreparacaoPontosTest` | `2026-12-24` e `2026-12-25`; ponto sozinho no feriado; fora de ordem; na data-base |
@@ -1128,7 +1127,7 @@ Ordem: **verificar, adaptar, criar, rodar**. Só o que já existe no pom (`sprin
 | `RegravarInterpoladaServiceTest`, `ProcessarCargaServiceTest`, `ConstruirDataServiceTest`, `OrigemSecundariaTest` | cenários das specs `curve-engine-api`, `curve-load-trigger` e `curve-build-pipeline`; no paralelo, uma curva lenta estourando o prazo sem afetar as outras |
 | `ParaleloTest` | limite do `Semaphore` respeitado (nunca mais que `limite` tarefas ao mesmo tempo); tempo esgotado cancela só as atrasadas; exceção de uma tarefa vira `Falha` só dela |
 | `ResolverModelosTest` (`ScriptsPort` em memória) | resolução; duas instâncias; ativação concorrente; hash adulterado; Blob parado; circuito |
-| `CarregadorGroovyTest` | válido; tipo errado; rede → reprovado; laço → `MODELO_FALHOU`; `LogLinear` sobrescrevendo só `valorNoSegmento`; script com `DayCounter.Business252` e `new Brazil()` |
+| `CarregadorGroovyTest` | válido; tipo errado; rede → reprovado; laço → `MODELO_FALHOU`; `FlatForward` sobrescrevendo só `valorNoSegmento`; script com `DayCounter.Business252` e `new Brazil()` |
 | `PlanilhaPoiAdapterTest`, `CalendarioPlanilhaTest` | abas, cabeçalhos, tipos de célula; ida e volta do `Brazil` 2001–2100; mesma planilha → mesmo hash |
 | `ApiContratoTest` (MockMvc) | um por `codigoErro`; `X-Usuario` presente e ausente; `X-Correlation-Id`; fator com 16 casas como string; parâmetro desconhecido 400; `data` em sábado |
 | `FusoTest` | `OffsetDateTime.ofInstant(Instant.parse("2026-09-15T01:30:00Z"), ZoneId.systemDefault())` → `2026-09-14T22:30-03:00`; `conferirFuso` falha com outro fuso |

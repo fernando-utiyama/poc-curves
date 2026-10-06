@@ -57,8 +57,8 @@ Com `formato=zip`, as rotas de consulta de pontos, de interpolação e de simula
 Modelos nativos não têm código no pacote; são identificados pelo nome e pela versão do engine. O hash de cada `.groovy` no pacote MUST ser igual ao hash informado na proveniência.
 
 #### Scenario: Curva construída com script Groovy
-- **WHEN** o cliente baixa `GET /api/v1/curvas/PRE/2026-09-14/simulacao?formato=zip` enquanto a versão 3 de `LogLinear` está ativa
-- **THEN** o zip tem `modelos/interpolacao/LogLinear/v3.groovy`, com SHA-256 igual ao hash da versão 3, e o `manifesto.json` lista o `PRONTA_TS_B3` como `JAVA` com a versão do engine
+- **WHEN** o cliente baixa `GET /api/v1/curvas/PRE/2026-09-14/simulacao?formato=zip` enquanto a versão 3 de `FlatForward` está ativa
+- **THEN** o zip tem `modelos/interpolacao/FlatForward/v3.groovy`, com SHA-256 igual ao hash da versão 3, e o `manifesto.json` lista o `PRONTA_TS_B3` como `JAVA` com a versão do engine
 
 ### Requirement: Mesmo conteúdo em JSON
 A simulação em `formato=json` SHALL devolver o mesmo conteúdo da planilha: `resumo`, `insumos`, `pontos`, `fluxos`, `interpolacao` e `eventos`, com os valores em precisão completa, como string decimal (spec `curve-engine-api`, contrato de tipos), sem arredondamento além do definido na spec `curve-build-pipeline`. As rotas de consulta e interpolação em `formato=json` mantêm os corpos definidos na spec `curve-engine-api`.

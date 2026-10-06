@@ -144,7 +144,7 @@ Quando a carga da B3 falha ou traz um vértice errado, o gestor corrige o bruto 
 - **Sem histórico do cadastro consultável pela API.** → Os eventos `CADASTRO_ALTERADO` no log têm o histórico completo; o arquivo de auditoria mostra o estado atual e a última alteração; a tabela de histórico entra quando o banco puder mudar.
 - **Recálculo forçado apaga vértices manuais.** → É ação explícita de um usuário; o log `VERTICES_EDITADOS` da edição anterior e o evento `CURVA_GRAVADA` do recálculo no engine (`pontosAnteriores`) preservam o que existia.
 - **Vértice fora das regras de negócio gravado.** → Aviso na gravação; o engine continua interpolando, descartando com aviso o vértice de prazo não positivo ou repetido no mesmo prazo; o gestor corrige depois.
-- **Preço ou vértices não positivos gravados.** → Aviso `VALOR_NAO_POSITIVO`; a interpolação `LogLinear` dessa data falha no engine com `PONTOS_NAO_INTERPOLAVEIS` até a correção, mas a consulta dos vértices continua funcionando.
+- **Preço ou vértices não positivos gravados.** → Aviso `VALOR_NAO_POSITIVO`; a interpolação `FlatForward` dessa data falha no engine com `PONTOS_NAO_INTERPOLAVEIS` até a correção, mas a consulta dos vértices continua funcionando.
 - **Importação grande de vértices trava muitas curvas.** → Limite de 100.000 vértices; travas em ordem fixa; a simulação não trava.
 - **Fórmula do `hashPontos` em dois serviços.** → Forma canônica do valor definida na spec do engine (sem zeros à direita, independente da escala do banco) e um vetor de teste comum aos dois.
 - **Bruto editado à mão e depois reprocessado.** → O processor substitui as linhas da data inteira; a edição anterior fica no log `CURVA_PRIMARIA_EDITADA` com a linha antes e depois.

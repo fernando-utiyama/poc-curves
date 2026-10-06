@@ -76,7 +76,7 @@ A curva inexistente responde 404 `NAO_ENCONTRADO`. Todas as regras de negócio S
 | `PONTO_ANTES_DA_DATA_BASE` | data igual ou anterior à data-base | o vértice fica fora da interpolação, com `PONTO_DESCARTADO_PRAZO_NAO_POSITIVO` |
 | `PONTO_EM_FIM_DE_SEMANA` | data em sábado ou domingo | sem `diasUteis` informado, tratado como vértice no mesmo prazo do dia útil anterior |
 | `PONTO_EM_FERIADO` | data é feriado no calendário da configuração vigente; o erro pode estar no cadastro de feriados, e não no vértice | sem `diasUteis` informado, tratado como vértice no mesmo prazo do dia útil anterior |
-| `VALOR_NAO_POSITIVO` | unidade `PRECO` ou `PONTOS` com valor menor ou igual a zero | a interpolação `LogLinear` falha no engine com `PONTOS_NAO_INTERPOLAVEIS` até o vértice ser corrigido |
+| `VALOR_NAO_POSITIVO` | unidade `PRECO` ou `PONTOS` com valor menor ou igual a zero | a interpolação `FlatForward` falha no engine com `PONTOS_NAO_INTERPOLAVEIS` até o vértice ser corrigido |
 | `VALOR_ARREDONDADO` | valor com mais casas que `CASAS_DECIMAIS` da configuração vigente | o valor usado é o arredondado, mostrado no aviso |
 | `SEM_CONFIGURACAO` | sem configuração vigente na data-base | valor gravado como enviado, sem arredondar |
 | `CALENDARIO_NAO_VERIFICADO` | engine fora, ou sem configuração vigente (portanto sem calendário) | feriados e dias úteis não conferidos |
