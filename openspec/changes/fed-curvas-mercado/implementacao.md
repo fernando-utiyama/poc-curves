@@ -105,7 +105,7 @@ const base = (codigo: string, dataBase: string) => `${url}/${encodeURIComponent(
 | `consultar(codigo)` | `GET url/{codigo}` (curva + `provedores` + `configuracaoVigente`) |
 | `criar(c)` / `alterar(codigo, c)` | `POST url` / `PUT url/{codigo}` |
 | `inativar(codigo)` / `reativar(codigo)` | `POST url/{codigo}/inativacao` / `.../reativacao` |
-| `baixarAuditoria(codigo)` | `GET url/{codigo}/auditoria?formato=xlsx`, `responseType: 'blob'` |
+| `baixarAuditoria(codigo)` | `GET url/{codigo}/auditoria` (JSON, baixado como `auditoria-{codigo}.json`) |
 | `valores()` | `GET url/valores` |
 | `incluirProvedor`, `alterarProvedor`, `excluirProvedor` | `POST/PUT/DELETE url/{codigo}/provedores[/{idCurvaProvedor}]` |
 | `construir(codigo, dataBase, forcar = false, fonte?, produto?)` | `POST base/construcao`, `ctx(130000)` |

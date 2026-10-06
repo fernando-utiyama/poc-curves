@@ -41,6 +41,11 @@ Segunda parte do curves (planilha do cadastro, painel, vértices, planilha de v�
 - [ ] 9.2 Criar a importação com a semântica da spec, aceitando datas em texto `dd/mm/aaaa` ou `aaaa-mm-dd` e números com vírgula ou ponto decimal (recusando os dois juntos), (cada par curva/data-base como lista completa, pares ausentes intocados, sem exclusão de data inteira) e as mesmas recusas e avisos do `PUT`; verificar que exportar e importar sem editar dá zero mudanças, e a correção de um vértice em 5 datas
 - [ ] 9.3 Criar os modos `SIMULACAO` e `APLICACAO` (transação única, travas em ordem alfabética de nome, 120 segundos, nada aplicado se houver recusa por consistência de banco, `idLote` no log), com gravação pela diferença com conferência do `hashPontos` por par, resposta em JSON ou planilha marcada (`Resultado`, `ValorGravado`, `Resumo`, `Exclusoes`); verificar os cenários da spec
 
+## 9b. Planilha dos vértices brutos
+
+- [ ] 9b.1 Criar a exportação e a importação (`SIMULACAO`/`APLICACAO`, lista completa por `id`, `formato=xlsx`) dos vértices brutos sobre as rotas `/dados-mercado` da primeira parte (guia da change `curves-cadastro-curvas`, §11.4), com `CURVA_PRIMARIA_EDITADA` operação `PLANILHA`; verificar os cenários da spec `vertices-brutos-planilha`
+- [ ] 9b.2 Acrescentar `formato=xlsx` à auditoria do cadastro (`GET /curvas-mercado/{codigo}/auditoria`, abas e nome de arquivo do guia da primeira parte); verificar os dois formatos
+
 ## 10. Origens secundárias
 
 - [ ] 10.1 Aceitar `MODELOS_POR_ORIGEM` em `parametros` (formato da chave, valor de 1 a 100 caracteres) com os avisos `MODELO_POR_ORIGEM_SEM_PROVEDOR`, `ORIGEM_INCOMPATIVEL_COM_MODELO` e `MODELO_NAO_NATIVO`, e o aviso na exclusão de provedor da curva; verificar os dois cenários da spec `configuracao-calculo-curva` e a entrada da tabela embutida no teste de contrato com o engine

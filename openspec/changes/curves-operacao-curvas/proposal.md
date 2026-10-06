@@ -13,6 +13,7 @@ A change `curves-cadastro-curvas` ficou grande demais para uma entrega e foi div
 ## Capabilities
 
 ### New Capabilities
+- `vertices-brutos-planilha`: planilha (exportação e importação) dos vértices brutos dos três provedores, sobre as rotas `/dados-mercado` da primeira parte.
 - `cadastro-curvas-planilha`: exportação e importação em lote por planilha, com simulação e aplicação atômica.
 - `painel-curvas`: painel de acompanhamento das curvas por data-base.
 - `vertices-curva-manual`: edição manual dos vértices de uma curva numa data-base.

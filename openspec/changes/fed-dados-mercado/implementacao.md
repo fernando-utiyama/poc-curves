@@ -20,8 +20,6 @@ Base da curves: `{urlAPI}/api/v1/dados-mercado` (proxy `/api`). Upload: `{urlAPI
 | Consultar | `GET /dados-mercado/{provedor}?codigoNaFonte=PRE&dataBase=2026-09-14` | 3 s |
 | Incluir / alterar / excluir vértice | `POST /dados-mercado/{provedor}/{codigo}/{dataBase}/vertices`, `PUT .../vertices/{id}`, `DELETE .../vertices/{id}` | 3 s |
 | Excluir todos da data | `DELETE /dados-mercado/{provedor}/{codigo}/{dataBase}` | 3 s |
-| Baixar planilha | `GET .../planilha` (`blob`) | 3 s |
-| Importar planilha | `POST .../planilha?modo=SIMULACAO\|APLICACAO` (`FormData`: `arquivo`) | 70 s |
 | Enviar arquivo da fonte | `POST /api/v1/cargas/upload` (`FormData`: `fonte`, `arquivo`) | 130 s |
 
 `{provedor}` = `B3`, `ANBIMA` ou `BLOOMBERG`. Campos do vértice por provedor (decimais sempre string):
@@ -42,9 +40,6 @@ Base da curves: `{urlAPI}/api/v1/dados-mercado` (proxy `/api`). Upload: `{urlAPI
                 "vertices": [ { "id": 101, "dataVertice": "2026-09-15", "diasCorridos": 1, "diasUteis": 1,
                                 "valor": "13.900000000000", "fatorAcumulado": null, "fatorDia": null } ] } ] }
 // POST/PUT vértice (201/200): o vértice gravado + "avisos" da curva na data
-// planilha (200): { "modo": "SIMULACAO", "mudancas": [ { "linha": 3, "tipo": "ALTERACAO", "id": 101 } ],
-//                   "erros": [ { "linha": 12, "coluna": "valor", "motivo": "..." } ], "avisos": [],
-//                   "contagens": { "INCLUSAO": 1, "ALTERACAO": 1, "EXCLUSAO": 0, "SEM_MUDANCA": 276 } }
 // upload (200): { "idCarga": "B3-TS-20260914-46a249c60bec", "dataBase": "2026-09-14", "origem": "UPLOAD",
 //                 "verticesPorCodigo": { "PRE": 278 }, "usuario": "maria", "correlationId": "..." }
 // erro: curves no formato de erro dela (o do CRUD de provedores), com detalhes [ { campo, linha, valor, motivo } ];
@@ -70,14 +65,13 @@ const BFF_TARGET = process.env.PROXY_BFF_TARGET || 'https://curve-bff.poc.local'
 
 ### 3.2 Serviço (`core/services/dados-mercado/dados-mercado.service.ts`)
 
-Molde do `ProvedoresService`. Métodos: `tickers(provedor)`, `consultar(provedor, codigoNaFonte, dataBase)`, `incluir(provedor, codigo, dataBase, campos)`, `alterar(..., id, campos)`, `excluir(..., id)`, `excluirTodos(provedor, codigo, dataBase)`, `baixarPlanilha(...)` (`responseType: 'blob'`), `importarPlanilha(..., arquivo: File, modo)` (`FormData`, `TEMPO_LIMITE_MS` 70000), `enviarArquivo(fonte, arquivo: File)` (`FormData` com `fonte` e `arquivo`, `TEMPO_LIMITE_MS` 130000).
+Molde do `ProvedoresService`. Métodos: `tickers(provedor)`, `consultar(provedor, codigoNaFonte, dataBase)`, `incluir(provedor, codigo, dataBase, campos)`, `alterar(..., id, campos)`, `excluir(..., id)`, `excluirTodos(provedor, codigo, dataBase)`, `enviarArquivo(fonte, arquivo: File)` (`FormData` com `fonte` e `arquivo`, `TEMPO_LIMITE_MS` 130000).
 
 ### 3.3 Tela (`components/dados-mercado/`)
 
 - Topo: provedor (`B3`, `ANBIMA`, `Bloomberg`), ticker (recarrega a cada troca de provedor, limpa a tabela), data (`dd/mm/aaaa`, padrão hoje), "Consultar".
-- Uma tabela do Liquid por curva da resposta (`#table-vertices-{codigo}`), colunas por provedor: B3 Data do vértice, Dias corridos, Dias úteis, Valor; ANBIMA Vencimento, Prazo (dias corridos), Taxa; Bloomberg Ticker, Valor. Botões Editar e Excluir por linha (como em `curva-detalhe`), e acima: Incluir vértice, Excluir todos da data, Baixar planilha, Importar planilha.
+- Uma tabela do Liquid por curva da resposta (`#table-vertices-{codigo}`), colunas por provedor: B3 Data do vértice, Dias corridos, Dias úteis, Valor; ANBIMA Vencimento, Prazo (dias corridos), Taxa; Bloomberg Ticker, Valor. Botões Editar e Excluir por linha (como em `curva-detalhe`), e acima: Incluir vértice e Excluir todos da data.
 - Avisos acima de cada tabela; com `CURVA_JA_CONSTRUIDA`, o link "Recalcular a curva" → `/curvas?codigo={codigo}`.
-- Importar: escolher arquivo → `SIMULACAO` → painel com contagens, erros e o aviso "Vértices ausentes da planilha serão excluídos" → "Aplicar" (só sem erros) → `APLICACAO` com o mesmo `File` → recarregar.
 - Bloco "Enviar arquivo da fonte": provedor + arquivo + aviso de substituição + "Enviar"; no sucesso, mostrar data-base, `idCarga` e `verticesPorCodigo`, e trocar os filtros para o provedor e a data devolvidos.
 - Erros sempre na tela: `error: (e) => this.erro.set(lerErro(e))`, com o helper `core/error/ler-erro.ts` do guia da `fed-curvas-mercado` (§2.3; crie-o como está lá se ainda não existir); `detalhes` do 422 vão para os campos do modal.
 - Decimais: exibir `valor.replace('.', ',')`; ao enviar, `texto.replace(',', '.')`.

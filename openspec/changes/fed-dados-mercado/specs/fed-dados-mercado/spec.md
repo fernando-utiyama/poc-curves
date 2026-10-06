@@ -1,6 +1,6 @@
 ## Purpose
 
-No front `web/fed`, a tela "Dados de mercado" para consultar e manter os vértices brutos de B3, ANBIMA e Bloomberg por provedor, ticker e data, importá-los por planilha e enviar o arquivo original de uma fonte quando o download falha.
+No front `web/fed`, a tela "Dados de mercado" para consultar e manter os vértices brutos de B3, ANBIMA e Bloomberg por provedor, ticker e data e enviar o arquivo original de uma fonte quando o download falha.
 
 ## ADDED Requirements
 
@@ -31,17 +31,6 @@ Em cada curva da consulta, a tela SHALL oferecer "Incluir vértice", "Editar" e 
 - **WHEN** o gestor salva um vértice da B3 sem dias úteis
 - **THEN** o modal continua aberto, com a mensagem no campo dias úteis
 
-### Requirement: Importação por planilha
-Em cada curva da consulta, a tela SHALL oferecer "Baixar planilha" (`GET .../planilha`) e "Importar planilha", que envia o `.xlsx` escolhido primeiro em `modo=SIMULACAO` e mostra as mudanças (inclusões, alterações, exclusões e sem mudança), os erros por linha e os avisos. Só sem erros o botão "Aplicar" SHALL ficar habilitado; ele envia o mesmo arquivo em `modo=APLICACAO`, mostra o resultado e recarrega a curva. A tela SHALL avisar, antes de aplicar, que vértices ausentes da planilha serão excluídos.
-
-#### Scenario: Simulação com erro
-- **WHEN** a simulação devolve um erro na linha 12, coluna `valor`
-- **THEN** a tela lista o erro e "Aplicar" fica desabilitado
-
-#### Scenario: Aplicação
-- **WHEN** a simulação não tem erros e o gestor clica em "Aplicar"
-- **THEN** o front envia o arquivo com `modo=APLICACAO`, mostra as contagens e recarrega os vértices da curva
-
 ### Requirement: Envio do arquivo da fonte
 A tela SHALL ter o bloco "Enviar arquivo da fonte", com o provedor (`B3`, `ANBIMA` ou `Bloomberg`) e o arquivo, sem campo de data: a data-base vem do conteúdo do arquivo. "Enviar" SHALL chamar `POST /api/v1/cargas/upload` do bff (`multipart/form-data` com `fonte` e `arquivo`, capability `upload-carga-bff` da change `processor-v0`). Antes do envio, a tela SHALL avisar que um arquivo da mesma data substitui os vértices brutos já gravados daquela fonte. Com sucesso, a tela SHALL mostrar a data-base lida (`dd/mm/aaaa`), o identificador da carga e os vértices gravados por código, e posicionar os filtros nesse provedor e nessa data. Em erro, SHALL mostrar a mensagem e o código devolvidos (por exemplo, `ARQUIVO_INVALIDO`, `PROVEDOR_NAO_IMPLEMENTADO`), sem a página de erro global. O botão fica desabilitado durante o envio.
 
@@ -54,7 +43,7 @@ A tela SHALL ter o bloco "Enviar arquivo da fonte", com o provedor (`B3`, `ANBIM
 - **THEN** a tela mostra a mensagem e o código, e nada muda nos filtros
 
 ### Requirement: Tempo de espera e corpo de arquivo
-O envio do arquivo da fonte SHALL esperar até 130 segundos e a importação da planilha até 70 segundos; as demais chamadas mantêm o tempo limite padrão de 3 segundos do `fed`. Requisições com arquivo MUST NOT receber `Content-Type: application/json`: o navegador define o `multipart/form-data`.
+O envio do arquivo da fonte SHALL esperar até 130 segundos; as demais chamadas mantêm o tempo limite padrão de 3 segundos do `fed`. Requisições com arquivo MUST NOT receber `Content-Type: application/json`: o navegador define o `multipart/form-data`.
 
 #### Scenario: Envio do arquivo da Bloomberg
 - **WHEN** o envio leva 50 segundos para responder

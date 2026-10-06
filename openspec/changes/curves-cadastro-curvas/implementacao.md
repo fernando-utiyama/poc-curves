@@ -482,7 +482,7 @@ Uma implementação por provedor (`VerticeBrutoB3`, `VerticeBrutoAnbima`, `Verti
 - Tickers: `SELECT cTickerPrvdr, cPrvdrMercd, cTickerIndcd FROM tCurvaPrvdr WHERE iPrvdrDados = ?` agrupado por código na fonte, com código e nome de cada curva de `tCurvaMercd`; `trim()` nas colunas `CHAR`.
 - Nunca escrever em `tCurvaMercd`, `tCurvaPrvdr`, `tDadoVertcCurva`, `tDadoCurva`; nunca chamar o engine.
 
-### 11.4 Planilha (POI, já no projeto)
+### 11.4 Planilha (POI, já no projeto) — parte 2 (`curves-operacao-curvas`), fora da v1
 
 - Exportar: aba `Vertices`, linha 1 = `colunasPlanilha()`, uma linha por vértice; números como célula numérica, texto como célula de texto.
 - Importar: ler a aba `Vertices` pelo nome das colunas da linha 1 (faltou coluna → 422). Linha com `id` gravado → `ALTERACAO` ou `SEM_MUDANCA`; sem `id` → `INCLUSAO`; `id` gravado que não aparece → `EXCLUSAO`; `id` de outra curva ou data → erro da linha. `SIMULACAO` não grava; `APLICACAO` com qualquer erro → 422 sem gravar; sem erro, tudo numa transação com a trava. `formato=xlsx` devolve a planilha enviada com a coluna `Resultado`.
