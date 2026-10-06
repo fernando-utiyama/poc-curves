@@ -64,7 +64,7 @@ O status vem de `tTrefaAgnda` + `tLogTrefa` (caminho que `RecuperarStatusService
 Fora da reivindicação, toda mudança de situação é `UPDATE ... WHERE cIdtfdTrefa = ? AND cSit = <situação esperada>`: zero linhas é conflito, sem sobrescrever (ex.: cancelar numa instância enquanto a outra conclui). A execução manual usa a mesma reivindicação da D3 (ocorrência = agora); com a tarefa `EXECUTANDO`, responde 409, em vez de esperar.
 
 ### D7. Sem autenticação no orquestrador
-O orquestrador não autentica nem chama as functions e o engine com token: só os serviços que expõem a API ao front (o bff e o `services/curves`) autenticam. O usuário das ações manuais vem do cabeçalho opcional `X-Usuario`, enviado pelo bff, e fica nulo se não vier.
+O orquestrador não autentica nem chama as functions e o engine com token: na v0 e na v1, nenhum serviço autentica (nem o bff nem o `services/curves`). O usuário das ações manuais vem do cabeçalho opcional `X-Usuario`, enviado pelo bff, e fica nulo se não vier.
 
 ### D8. Action `http` só chama destino cadastrado (corrige SSRF)
 Sai o parâmetro `url`; entram `destino` (chave de `orquestrador.http.destinos`, com base-URL) e `caminho`.

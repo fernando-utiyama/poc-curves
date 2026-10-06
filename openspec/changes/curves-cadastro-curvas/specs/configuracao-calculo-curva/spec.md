@@ -58,13 +58,13 @@ Não há alteração de versão: para mudar a configuração, cria-se uma versã
 ### Requirement: Rotas da configuração
 O serviço SHALL expor (prefixo `/api/v1`):
 
-| Rota | Uso | Papel |
-|---|---|---|
-| `GET /curvas-mercado/{codigo}/configuracoes` | listar as versões, da mais nova para a mais antiga | `Curvas.Leitura` |
-| `GET /curvas-mercado/{codigo}/configuracoes/vigente?data=AAAA-MM-DD` | versão vigente na data (padrão: hoje) | `Curvas.Leitura` |
-| `POST /curvas-mercado/{codigo}/configuracoes/validacao` | validar uma versão sem gravar, devolvendo erros e avisos | `Curvas.Leitura` |
-| `POST /curvas-mercado/{codigo}/configuracoes` | criar versão | `Curvas.Cadastro` |
-| `DELETE /curvas-mercado/{codigo}/configuracoes/{versao}` | excluir a última versão, se ainda não começou | `Curvas.Cadastro` |
+| Rota | Uso |
+|---|---|
+| `GET /curvas-mercado/{codigo}/configuracoes` | listar as versões, da mais nova para a mais antiga |
+| `GET /curvas-mercado/{codigo}/configuracoes/vigente?data=AAAA-MM-DD` | versão vigente na data (padrão: hoje) |
+| `POST /curvas-mercado/{codigo}/configuracoes/validacao` | validar uma versão sem gravar, devolvendo erros e avisos |
+| `POST /curvas-mercado/{codigo}/configuracoes` | criar versão |
+| `DELETE /curvas-mercado/{codigo}/configuracoes/{versao}` | excluir a última versão, se ainda não começou |
 
 Quem salva por último vence (requisito "Última gravação vence" da spec `cadastro-curva-mercado`).
 
@@ -74,7 +74,7 @@ Quem salva por último vence (requisito "Última gravação vence" da spec `cada
 
 ### Requirement: Valores aceitos para o front, o Swagger e a planilha
 O serviço SHALL expor os valores aceitos no cálculo sem chamar o engine nesta fase: a tabela do validador de parâmetros, embutida no serviço (a mesma que valida `parametros`), com os modelos de construção, interpoladores e calendários nativos. O serviço SHALL:
-- expor `GET /api/v1/curvas-mercado/valores` (papel `Curvas.Leitura`), com essa tabela acrescida dos provedores e produtos de `tPrvdrDadoMercd` e dos enums e catálogos de avisos e erros do próprio serviço (spec `cadastro-curva-mercado`), com `rotulo` e `descricao` em pt-BR de cada valor. O front SHALL montar as listas dos formulários de curva, provedor da curva e configuração só a partir desta rota, sem valores fixos no front. A rota MUST NOT depender do engine, MUST NOT usar cache e SHALL responder 200 também com o engine fora do ar;
+- expor `GET /api/v1/curvas-mercado/valores`, com essa tabela acrescida dos provedores e produtos de `tPrvdrDadoMercd` e dos enums e catálogos de avisos e erros do próprio serviço (spec `cadastro-curva-mercado`), com `rotulo` e `descricao` em pt-BR de cada valor. O front SHALL montar as listas dos formulários de curva, provedor da curva e configuração só a partir desta rota, sem valores fixos no front. A rota MUST NOT depender do engine, MUST NOT usar cache e SHALL responder 200 também com o engine fora do ar;
 - declarar no OpenAPI (Swagger) como `enum` os campos `unidade`, `dayCounterCotacao`, `compounding` e `situacao`, e cada chave de `parametros` (objeto sem propriedades adicionais), com a descrição de cada valor. `modeloConstrucao`, `interpolador` e `CALENDARIO` SHALL ser `string`, com os nativos na descrição e referência a `/valores`, porque scripts Groovy podem acrescentar nomes;
 - gerar a aba `Valores` da planilha (spec `cadastro-curvas-planilha`, change `curves-operacao-curvas`) a partir da mesma resposta.
 

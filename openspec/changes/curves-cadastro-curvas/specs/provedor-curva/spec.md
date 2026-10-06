@@ -49,13 +49,13 @@ O provedor interno `TCEN` (que precisa existir em `tPrvdrDadoMercd`) SHALL ligar
 ### Requirement: Rotas dos provedores da curva
 O serviço SHALL expor (prefixo `/api/v1`):
 
-| Rota | Uso | Papel |
-|---|---|---|
-| `GET /curvas-mercado/{codigo}/provedores` | listar os provedores da curva, por prioridade | `Curvas.Leitura` |
-| `POST /curvas-mercado/{codigo}/provedores` | incluir | `Curvas.Cadastro` |
-| `PUT /curvas-mercado/{codigo}/provedores/{idCurvaProvedor}` | alterar `produto`, `codigoNaFonte` ou `prioridade` | `Curvas.Cadastro` |
-| `DELETE /curvas-mercado/{codigo}/provedores/{idCurvaProvedor}` | excluir | `Curvas.Cadastro` |
-| `GET /curvas-mercado/provedores?provedor=&produto=&codigoNaFonte=` | quais curvas recebem um código da fonte | `Curvas.Leitura` |
+| Rota | Uso |
+|---|---|
+| `GET /curvas-mercado/{codigo}/provedores` | listar os provedores da curva, por prioridade |
+| `POST /curvas-mercado/{codigo}/provedores` | incluir |
+| `PUT /curvas-mercado/{codigo}/provedores/{idCurvaProvedor}` | alterar `produto`, `codigoNaFonte` ou `prioridade` |
+| `DELETE /curvas-mercado/{codigo}/provedores/{idCurvaProvedor}` | excluir |
+| `GET /curvas-mercado/provedores?provedor=&produto=&codigoNaFonte=` | quais curvas recebem um código da fonte |
 
 Excluir um provedor da curva não apaga dados brutos já gravados. Trocar o `iPrvdrDados` de um provedor da curva não é permitido: exclui-se e inclui-se outro. O `PUT` que enviar um `provedor` diferente do gravado MUST ser recusado com 422 `DADOS_INVALIDOS` no campo `provedor`, antes de qualquer gravação.
 

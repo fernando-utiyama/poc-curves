@@ -21,7 +21,7 @@ Esta é a **versão 0**: o próprio `services/processor` busca os três arquivos
 
 ### New Capabilities
 - `carga-arquivos-processor` (processor): rotas de download, upload e reprocessamento das três fontes, obtenção do arquivo, arquivamento do original no Blob, parse e validação, gravação transacional nas tabelas brutas, aviso ao engine e respostas no contrato do orquestrador.
-- `upload-carga-bff` (bff e front): tela de upload em pt-BR e rota autenticada do bff que repassa o arquivo ao processor com o usuário.
+- `upload-carga-bff` (bff e front): tela de upload em pt-BR e rota do bff, sem autenticação, que repassa o arquivo ao processor.
 
 ### Modified Capabilities
 <!-- Nenhuma: não há specs arquivadas dos pipelines do processor. -->
@@ -29,7 +29,7 @@ Esta é a **versão 0**: o próprio `services/processor` busca os três arquivos
 ## Impact
 
 - **services/processor:** rotas REST novas sem autenticação, clientes HTTP da B3, da ANBIMA e do Bloomberg Data License, escrita e leitura no Blob, parsers em Java, gravação JDBC nas três tabelas brutas, cliente do webhook do engine. Sem calendário: o prazo da NTN-B é gravado em dias corridos. Os consumidores Kafka existentes ficam como estão.
-- **bff:** rota autenticada de upload (multipart), que repassa ao processor com `X-Usuario` e `X-Correlation-Id`; só o bff autentica.
+- **bff:** rota de upload (multipart), sem autenticação na v0 e na v1, que repassa ao processor com `X-Correlation-Id` (e `X-Usuario`, quando vier).
 - **Front:** tela "Carga manual de arquivo", em pt-BR, com a fonte, o arquivo e o resultado da carga.
 - **Orquestrador (`orquestrador-v0-disparo-manual`):** sem código novo além da v0. As três tarefas apontam o `destino` para o processor (`orquestrador.http.destinos`) e usam os caminhos `/api/v1/cargas/{fonte}/...` (guia da v0, seção 12).
 - **Blob:** escreve e lê `b3/`, `anbima/` e `bloomberg/`, por Managed Identity. Só originais, como a regra do projeto.

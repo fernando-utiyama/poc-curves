@@ -1,5 +1,16 @@
 ## Context
 
+**Esta change é de conferência: boa parte do engine já foi desenvolvida no repositório real**, muitas vezes com outro nome (por exemplo, `Ponto` ou `Linha` no lugar de `Vertice`, ou em inglês). Esta change já foi aplicada no repositório real numa versão anterior, antes de ser separada em partes e renomeada; por isso há muita coisa feita, com nomes antigos e com peças que hoje estão em outra change (ex.: `engine-modelos-curva`) ou saíram. Cada tarefa SHALL seguir este roteiro:
+1. **Conferir:** procurar pela **funcionalidade** (o que faz, que tabela lê ou grava, que rota expõe), nunca só pelo nome da spec.
+2. Decidir uma de três saídas:
+   - **já existe e cumpre a spec → deixar como está** (não reescrever, não "melhorar"; só o nome segue o passo 3);
+   - **existe e diverge → alterar** só o que diverge, no código que já existe;
+   - **não existe → criar**, com os nomes desta change.
+3. Nunca criar uma segunda versão do que já está pronto. **Nome diferente do desta change é divergência:** renomeie para o nome da change (classe, arquivo, método, campo interno e todas as referências, até compilar), menos o que outro serviço ou o banco já usa (rota exposta, campo de JSON de resposta, coluna, tópico): isso fica como está e vai para a anotação como `nome-real → nome-da-change`.
+4. Ao marcar a tarefa, anotar ao lado a saída e o arquivo: `[conferido: pronto | alterado | renomeado de X | criado] caminho/Arquivo.java`. Na dúvida se é a mesma coisa, `// TODO(revisao): <dúvida>` e siga.
+5. Código que a spec atual não pede (sobra da versão anterior): não apagar; anotar como `[sobra] caminho/Arquivo.java` no resumo, para a revisão decidir.
+
+
 A motivação está no proposal e o comportamento normativo (fórmulas, regras, erros, rotas) nas specs. Este documento registra o estado atual e as decisões de implementação. Em caso de dúvida, a spec prevalece.
 
 **Engine na `develop` (`services/engine`, ~1.900 linhas de domínio):**
@@ -194,11 +205,11 @@ O SOFR é publicado pelo Fed de Nova York nos dias úteis do Federal Reserve. Os
 - Números como células numéricas, para que a planilha possa ser recalculada, com a limitação de 15 dígitos significativos do Excel registrada no `Resumo`. A precisão completa está no JSON.
 
 ### D21. Observabilidade e roteiro de investigação
-Logs JSON (pela biblioteca de log que o serviço já usa) com `correlationId`, código, nome e data-base nos eventos da spec `curve-build-pipeline`. O histórico de quem gravou o quê está no log (`CURVA_GRAVADA` no engine, `PONTOS_EDITADOS` no `services/curves`), e o estado de agora, no arquivo de auditoria montado na hora (D23).
+Logs JSON (pela biblioteca de log que o serviço já usa) com `correlationId`, código, nome e data-base nos eventos da spec `curve-build-pipeline`. O histórico de quem gravou o quê está no log (`CURVA_GRAVADA` no engine, `VERTICES_EDITADOS` no `services/curves`), e o estado de agora, no arquivo de auditoria montado na hora (D23).
 
 Roteiro para "a curva X da data D está errada":
 1. Baixar `GET /curvas/X/D/auditoria?formato=xlsx`: pontos gravados, cadastro vigente, e a aba `Conferencia` com o que a fonte produz agora, ponto a ponto. Pontos `DIFERENTE` indicam edição manual, republicação da fonte ou cadastro alterado depois da construção.
-2. Buscar no log os eventos `CURVA_GRAVADA` e `PONTOS_EDITADOS` da curva e data: quem construiu, recalculou ou editou, quando, de qual carga, com quais modelos, e os pontos substituídos.
+2. Buscar no log os eventos `CURVA_GRAVADA` e `VERTICES_EDITADOS` da curva e data: quem construiu, recalculou ou editou, quando, de qual carga, com quais modelos, e os pontos substituídos.
 3. Se a conferência bater e o valor ainda parecer errado, o erro está no insumo (aba `Insumos`) ou no cadastro (aba `Resumo`).
 4. Se o modelo falhar, a simulação (`GET /curvas/X/D/simulacao?formato=xlsx`) dá o erro em `Resumo` e `Eventos`, e a linha em `Insumos`.
 5. Para um prazo interpolado suspeito: `GET /curvas/X/D/interpolacao?du=N&formato=xlsx`, que mostra os vizinhos, o `W` e o `Y` de cada prazo.

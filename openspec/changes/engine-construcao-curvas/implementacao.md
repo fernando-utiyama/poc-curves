@@ -1,5 +1,15 @@
 # Guia de implementação: engine (changes `engine-construcao-curvas` e `engine-modelos-curva`)
 
+> **Esta change é de conferência: boa parte do engine já foi desenvolvida no repositório real**, muitas vezes com outro nome (por exemplo, `Ponto` ou `Linha` no lugar de `Vertice`, ou em inglês). Esta change já foi aplicada no repositório real numa versão anterior, antes de ser separada em partes e renomeada; por isso há muita coisa feita, com nomes antigos e com peças que hoje estão em outra change (ex.: `engine-modelos-curva`) ou saíram. Cada tarefa SHALL seguir este roteiro:
+> 1. **Conferir:** procurar pela **funcionalidade** (o que faz, que tabela lê ou grava, que rota expõe), nunca só pelo nome da spec.
+> 2. Decidir uma de três saídas:
+>    - **já existe e cumpre a spec → deixar como está** (não reescrever, não "melhorar"; só o nome segue o passo 3);
+>    - **existe e diverge → alterar** só o que diverge, no código que já existe;
+>    - **não existe → criar**, com os nomes desta change.
+> 3. Nunca criar uma segunda versão do que já está pronto. **Nome diferente do desta change é divergência:** renomeie para o nome da change (classe, arquivo, método, campo interno e todas as referências, até compilar), menos o que outro serviço ou o banco já usa (rota exposta, campo de JSON de resposta, coluna, tópico): isso fica como está e vai para a anotação como `nome-real → nome-da-change`.
+> 4. Ao marcar a tarefa, anotar ao lado a saída e o arquivo: `[conferido: pronto | alterado | renomeado de X | criado] caminho/Arquivo.java`. Na dúvida se é a mesma coisa, `// TODO(revisao): <dúvida>` e siga.
+> 5. Código que a spec atual não pede (sobra da versão anterior): não apagar; anotar como `[sobra] caminho/Arquivo.java` no resumo, para a revisão decidir.
+
 Guia passo a passo para aplicar as duas changes do engine com o mínimo de decisões: a `engine-construcao-curvas` (primeira parte, a construção das 7 curvas) e a `engine-modelos-curva` (segunda parte). Cada `tasks.md` diz quais tarefas são dele; as tarefas mantêm a numeração deste guia. **A spec manda; este guia diz onde e como.** Siga a ordem da seção 15. Os testes são escritos só na seção 16, depois de tudo compilar.
 
 > **O código real manda nos detalhes.** Este guia foi escrito sobre a cópia do serviço no poc (`services/engine`, pacote `br.com.poc`). No repositório real, o pacote raiz, as classes de exceção, o tratador de erro que de fato responde, o formato do corpo de erro, a biblioteca de log, a configuração do Jackson, os caches e o registro de beans **são os que o serviço já tem**: onde este guia cita uma classe ou configuração do código, leia "a equivalente do serviço" e confira antes de usar. O que não muda é o comportamento das specs (rotas, códigos de erro e de aviso, regras, formatos, vetores de teste). Divergência entre o guia e o código real não é motivo para parar: siga o código real e cumpra a spec.

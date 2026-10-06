@@ -51,7 +51,7 @@ Nem toda fonte publica o dado do próprio dia no horário da carga. O parâmetro
 Para contar dias úteis, a v0 copia do engine as classes de calendário (parte da tarefa 1.11 da v1), sem a sincronização diária de feriados decretados, que fica para a v1. Um feriado decretado e não conhecido pelo calendário nativo pode deslocar a data-base padrão em um dia; o operador informa a data pelo front nesse caso.
 
 ### D8. Data pelo front, passando pelo bff
-O front fala só com o bff, que autentica e repassa ao orquestrador com `X-Usuario`. Campo vazio significa "data-base padrão", calculada no orquestrador, que é quem conhece a defasagem e os calendários da tarefa; a resposta devolve a data usada para a tela mostrar.
+O front fala só com o bff, que repassa ao orquestrador (sem autenticação na v0 e na v1; `X-Usuario` quando vier). Campo vazio significa "data-base padrão", calculada no orquestrador, que é quem conhece a defasagem e os calendários da tarefa; a resposta devolve a data usada para a tela mostrar.
 
 ### D9. Reprocessar com ou sem novo download
 Uma data anterior à padrão é reprocessamento. Por padrão, o destino relê o original guardado no Blob, sem ir à fonte (`caminhoReprocessamento`). Quando o original está errado ou não existe, o operador marca `incluirDownload`, e o orquestrador chama o `caminhoDownload` com aquela data: o destino busca na fonte, guarda o novo original e grava. A decisão fica no orquestrador, que só escolhe o caminho; o contrato das rotas das functions e do processor não muda (o download já aceita data passada). **Alternativa rejeitada:** um parâmetro novo na rota de reprocessamento do destino, que mudaria o contrato das functions.

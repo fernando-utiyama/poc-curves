@@ -1,11 +1,11 @@
 ## Purpose
 
-No `services/curves`, dar ao gestor uma tela de acompanhamento das curvas: uma linha por curva, numa data-base, com a última publicação, a situação da curva naquela data e o que precisa de atenção. O painel junta o que o curves já tem (cadastro e pontos gravados) com a conferência que o engine faz na hora, contra a fonte atual. Nenhum dos dois guarda estado para o painel: tudo é calculado a cada consulta.
+No `services/curves`, dar ao gestor uma tela de acompanhamento das curvas: uma linha por curva, numa data-base, com a última publicação, a situação da curva naquela data e o que precisa de atenção. O painel junta o que o curves já tem (cadastro e vértices gravados) com a conferência que o engine faz na hora, contra a fonte atual. Nenhum dos dois guarda estado para o painel: tudo é calculado a cada consulta.
 
 ## ADDED Requirements
 
 ### Requirement: Rota do painel
-O serviço SHALL expor `GET /api/v1/curvas-mercado/painel?dataBase=&situacao=&provedor=&nome=&somenteAtencao=` (papel `Curvas.Leitura`), com:
+O serviço SHALL expor `GET /api/v1/curvas-mercado/painel?dataBase=&situacao=&provedor=&nome=&somenteAtencao=`, com:
 - `dataBase`: opcional. Sem ela, SHALL ser hoje (horário de Brasília) se for dia útil no `Brazil`/`Settlement`, senão o dia útil anterior. Com o engine fora, sábado e domingo recuam para sexta-feira, sem conferir feriados, e a regra `NAO_E_DIA_UTIL` só considera sábado e domingo;
 - `situacao`: filtra por uma ou mais situações (repetível);
 - `provedor`: filtra pelo provedor da origem;
@@ -29,9 +29,9 @@ Cada linha SHALL trazer:
 | `modeloConstrucao`, `interpolador`, `versaoConfiguracao` | configuração vigente na data-base em `tConfgCurva` |
 | `ultimaDataPublicada`, `calculadoPor` | `tCurvaMercd.dBaseReft` e `cUsuarCalc` |
 | `situacao`, `motivo`, `atencao`, `atrasada` | regra abaixo |
-| `quantidadePontos`, `hashPontos` | pontos gravados em `tDadoVertcCurva` na data-base, com o `hashPontos` da spec `pontos-curva-manual` |
-| `interpolada` (quantidade de linhas em `tDadoCurva` e se confere com os pontos atuais) | engine |
-| `insumo` (linhas brutas da origem na data, ou componentes com e sem pontos) | engine |
+| `quantidadePontos`, `hashPontos` | vértices gravados em `tDadoVertcCurva` na data-base, com o `hashPontos` da spec `vertices-curva-manual` |
+| `interpolada` (quantidade de linhas em `tDadoCurva` e se confere com os vértices atuais) | engine |
+| `insumo` (linhas brutas da origem na data, ou componentes com e sem vértices) | engine |
 | `conferencia` (`status`, `codigoErro`, mensagem, `pontosDiferentes`) | engine, calculada na hora contra a fonte atual |
 
 Campos sem informação SHALL vir nulos, nunca omitidos. Com `origensSecundarias`, o front SHALL oferecer, na ação de construir ou recalcular a curva, a escolha entre a origem principal e cada secundária, chamando a construção do engine com `fonte` e `produto` da escolhida, e a simulação por ela antes de gravar. Para ver o detalhe de uma linha, o front pede o arquivo de auditoria da curva e data ao engine (spec `curve-audit-history` do change `engine-modelos-curva`), montado na hora.
@@ -45,34 +45,34 @@ A situação SHALL ser decidida nesta ordem, pela primeira regra que se aplica:
 
 | Situação | Regra | `atencao` |
 |---|---|---|
-| `NAO_E_DIA_UTIL` | a data-base não é dia útil no calendário da configuração vigente da curva, e não há pontos gravados | não |
-| `IGNORADA` | curva `INATIVO` ou data-base fora da vigência da curva, e não há pontos gravados | não |
-| `SITUACAO_INDISPONIVEL` | o engine não respondeu; `quantidadePontos` mostra se há pontos gravados | sim |
-| `INTERPOLADA_DESATUALIZADA` | há pontos gravados, mas a curva interpolada em `tDadoCurva` não confere com eles (edição manual com o engine fora); `motivo` traz a quantidade de dias diferentes | sim |
-| `CONSTRUIDA` | há pontos gravados, e a conferência com a fonte atual está `OK` com 0 pontos diferentes | não |
-| `DIVERGENTE_DA_FONTE` | há pontos gravados, mas eles não batem com a fonte atual; `motivo`: `PONTOS_DIFERENTES` (edição manual, republicação ou cadastro alterado, com a quantidade), `FONTE_COM_ERRO` (a fonte atual não gera a curva, com o código) ou `SEM_INSUMO` (pontos digitados sem dado da fonte, ou componentes sem pontos) | sim |
-| `AGUARDANDO_COMPONENTES` | curva derivada sem pontos gravados, com alguma curva componente ainda sem pontos na data | não |
-| `AGUARDANDO_CARGA` | curva com origem de provedor, sem pontos gravados e sem linhas brutas na data | só se `atrasada` |
-| `COM_ERRO` | sem pontos gravados, com insumo, e a conferência dá erro (é o erro que a construção dá) | sim |
-| `NAO_CONSTRUIDA` | sem pontos gravados, com insumo, e a conferência está `OK`: a curva poderia ser construída e não foi | sim |
+| `NAO_E_DIA_UTIL` | a data-base não é dia útil no calendário da configuração vigente da curva, e não há vértices gravados | não |
+| `IGNORADA` | curva `INATIVO` ou data-base fora da vigência da curva, e não há vértices gravados | não |
+| `SITUACAO_INDISPONIVEL` | o engine não respondeu; `quantidadePontos` mostra se há vértices gravados | sim |
+| `INTERPOLADA_DESATUALIZADA` | há vértices gravados, mas a curva interpolada em `tDadoCurva` não confere com eles (edição manual com o engine fora); `motivo` traz a quantidade de dias diferentes | sim |
+| `CONSTRUIDA` | há vértices gravados, e a conferência com a fonte atual está `OK` com 0 vértices diferentes | não |
+| `DIVERGENTE_DA_FONTE` | há vértices gravados, mas eles não batem com a fonte atual; `motivo`: `VERTICES_DIFERENTES` (edição manual, republicação ou cadastro alterado, com a quantidade), `FONTE_COM_ERRO` (a fonte atual não gera a curva, com o código) ou `SEM_INSUMO` (vértices digitados sem dado da fonte, ou componentes sem vértices) | sim |
+| `AGUARDANDO_COMPONENTES` | curva derivada sem vértices gravados, com alguma curva componente ainda sem vértices na data | não |
+| `AGUARDANDO_CARGA` | curva com origem de provedor, sem vértices gravados e sem linhas brutas na data | só se `atrasada` |
+| `COM_ERRO` | sem vértices gravados, com insumo, e a conferência dá erro (é o erro que a construção dá) | sim |
+| `NAO_CONSTRUIDA` | sem vértices gravados, com insumo, e a conferência está `OK`: a curva poderia ser construída e não foi | sim |
 
 `atrasada` SHALL ser `true` quando a situação for `AGUARDANDO_CARGA` ou `NAO_CONSTRUIDA` e a data-base for anterior a hoje (horário de Brasília). Na data-base de hoje, `atrasada` é sempre `false`: o serviço não guarda horário de publicação por provedor, e a carga do dia ainda pode chegar.
 
 #### Scenario: Curva editada à mão
-- **WHEN** a `PRE` de `2026-09-14` foi construída pelo engine e depois teve um ponto alterado no `services/curves`
-- **THEN** a linha da `PRE` tem `situacao` = `DIVERGENTE_DA_FONTE`, `motivo` = `PONTOS_DIFERENTES`, `conferencia.pontosDiferentes` = 1 e `atencao` = `true`
+- **WHEN** a `PRE` de `2026-09-14` foi construída pelo engine e depois teve um vértice alterado no `services/curves`
+- **THEN** a linha da `PRE` tem `situacao` = `DIVERGENTE_DA_FONTE`, `motivo` = `VERTICES_DIFERENTES`, `conferencia.pontosDiferentes` = 1 e `atencao` = `true`
 
 #### Scenario: Data construída pela origem secundária
 - **WHEN** a `DI_BACKUP` de `2026-09-14` foi construída pela reserva `B3`/`TS`, e a origem principal `ANBIMA`/`CZ` carregou depois com valores diferentes
-- **THEN** a linha tem `situacao` = `DIVERGENTE_DA_FONTE`, `motivo` = `PONTOS_DIFERENTES`, porque a conferência é sempre contra a principal, e `origensSecundarias` lista a `B3`/`TS` com o modelo `PRONTA_TS_B3`
+- **THEN** a linha tem `situacao` = `DIVERGENTE_DA_FONTE`, `motivo` = `VERTICES_DIFERENTES`, porque a conferência é sempre contra a principal, e `origensSecundarias` lista a `B3`/`TS` com o modelo `PRONTA_TS_B3`
 
 #### Scenario: Republicação sem recálculo
 - **WHEN** a B3 republicou o arquivo de `2026-09-14` com um vértice da `DCL` corrigido depois da construção, e ninguém recalculou
-- **THEN** a `DCL` aparece como `DIVERGENTE_DA_FONTE`, com `motivo` = `PONTOS_DIFERENTES` e 1 ponto diferente, e as curvas B3 sem mudança continuam `CONSTRUIDA`
+- **THEN** a `DCL` aparece como `DIVERGENTE_DA_FONTE`, com `motivo` = `VERTICES_DIFERENTES` e 1 vértice diferente, e as curvas B3 sem mudança continuam `CONSTRUIDA`
 
 #### Scenario: Derivada com curva componente recalculada
 - **WHEN** a `DIxPRE` de uma data foi recalculada com valores diferentes depois da construção de uma curva derivada dela
-- **THEN** a derivada aparece como `DIVERGENTE_DA_FONTE`, com `motivo` = `PONTOS_DIFERENTES`
+- **THEN** a derivada aparece como `DIVERGENTE_DA_FONTE`, com `motivo` = `VERTICES_DIFERENTES`
 
 #### Scenario: Carga atrasada
 - **WHEN** a SOFR não tem linhas brutas na data-base de ontem, dia útil nos Estados Unidos
@@ -83,7 +83,7 @@ A situação SHALL ser decidida nesta ordem, pela primeira regra que se aplica:
 - **THEN** a linha da `SOFR` tem `situacao` = `AGUARDANDO_CARGA`, `atrasada` = `false` e `atencao` = `false`
 
 #### Scenario: Curva que poderia ter sido construída
-- **WHEN** a carga B3 de `2026-09-14` gravou as linhas brutas da `DCL`, a conferência do engine está `OK`, e a `DCL` não tem pontos em `tDadoVertcCurva` na data
+- **WHEN** a carga B3 de `2026-09-14` gravou as linhas brutas da `DCL`, a conferência do engine está `OK`, e a `DCL` não tem vértices em `tDadoVertcCurva` na data
 - **THEN** a linha da `DCL` tem `situacao` = `NAO_CONSTRUIDA`, `atencao` = `true` e `atrasada` = `true` (a data-base é anterior a hoje)
 
 #### Scenario: Feriado americano
@@ -91,8 +91,8 @@ A situação SHALL ser decidida nesta ordem, pela primeira regra que se aplica:
 - **THEN** a `SOFR` aparece como `NAO_E_DIA_UTIL`, sem `atencao`, e as curvas B3 seguem as demais regras
 
 ### Requirement: Dados do engine sem bloquear o painel
-O serviço SHALL obter o insumo e a conferência por `GET /api/v1/curvas/situacao?dataBase=` do engine (spec `curve-engine-api` do change `engine-construcao-curvas`), calculados na hora, e os calendários pela exportação de calendário do engine, com token de serviço, numa chamada de cada por consulta do painel, com tempo limite de 60 segundos para a situação e 10 segundos para o calendário. O painel MUST NOT falhar por causa do engine: se ele não responder, as linhas SHALL vir com o que o curves tem (cadastro, última data publicada, pontos gravados), `situacao` = `SITUACAO_INDISPONIVEL`, e o aviso geral `ENGINE_INDISPONIVEL`.
+O serviço SHALL obter o insumo e a conferência por `GET /api/v1/curvas/situacao?dataBase=` do engine (spec `curve-engine-api` do change `engine-construcao-curvas`), calculados na hora, e os calendários pela exportação de calendário do engine, com token de serviço, numa chamada de cada por consulta do painel, com tempo limite de 60 segundos para a situação e 10 segundos para o calendário. O painel MUST NOT falhar por causa do engine: se ele não responder, as linhas SHALL vir com o que o curves tem (cadastro, última data publicada, vértices gravados), `situacao` = `SITUACAO_INDISPONIVEL`, e o aviso geral `ENGINE_INDISPONIVEL`.
 
 #### Scenario: Engine fora
 - **WHEN** o engine não responde e o gestor abre o painel
-- **THEN** a resposta é 200 com todas as curvas, a última data publicada e a quantidade de pontos de cada uma, `situacao` = `SITUACAO_INDISPONIVEL` e o aviso `ENGINE_INDISPONIVEL`
+- **THEN** a resposta é 200 com todas as curvas, a última data publicada e a quantidade de vértices de cada uma, `situacao` = `SITUACAO_INDISPONIVEL` e o aviso `ENGINE_INDISPONIVEL`

@@ -15,7 +15,7 @@ Toda construção e toda reconstrução por recálculo que gravar pontos SHALL e
 - `origem`: fonte, produto, código na fonte e prioridade do provedor usado, e se é o principal ou um secundário;
 - `proveniencia`: versão do engine, `estadoScript`, avisos, modelos (nome, origem, versão, hash), todos os itens do cadastro vigente e, para curva derivada, as curvas componentes (nome, papel e `hashPontos` usado).
 
-Os modelos da `proveniencia` (construção, interpolação e calendário) SHALL ser os que de fato executaram: modelo nativo com origem `JAVA` e a versão do engine; script com origem `GROOVY`, a versão e o hash do script usado. Valores fixos (ex.: sempre `JAVA` versão 1) MUST NOT ser gravados. Se o commit falhar, o evento MUST NOT ser emitido; o erro sai em `CONSTRUCAO_FALHOU`. A construção sem recálculo que devolve `EXISTENTE` e a simulação MUST NOT gerar `CURVA_GRAVADA`. A edição manual de pontos é feita pelo `services/curves` (change `curves-cadastro-curvas`), como operação de contingência, e registrada no log dele (`PONTOS_EDITADOS`). O engine MUST NOT gravar registro de auditoria no Blob Storage nem em tabela.
+Os modelos da `proveniencia` (construção, interpolação e calendário) SHALL ser os que de fato executaram: modelo nativo com origem `JAVA` e a versão do engine; script com origem `GROOVY`, a versão e o hash do script usado. Valores fixos (ex.: sempre `JAVA` versão 1) MUST NOT ser gravados. Se o commit falhar, o evento MUST NOT ser emitido; o erro sai em `CONSTRUCAO_FALHOU`. A construção sem recálculo que devolve `EXISTENTE` e a simulação MUST NOT gerar `CURVA_GRAVADA`. A edição manual de pontos é feita pelo `services/curves` (change `curves-cadastro-curvas`), como operação de contingência, e registrada no log dele (`VERTICES_EDITADOS`). O engine MUST NOT gravar registro de auditoria no Blob Storage nem em tabela.
 
 O destino dos logs (Log Analytics ou equivalente) SHALL ter retenção definida pela área de risco e ser consultável por `nome`, `dataBase` e evento. Este é o histórico de construções da fase atual.
 
@@ -38,7 +38,7 @@ O destino dos logs (Log Analytics ou equivalente) SHALL ter retenção definida 
 - **`Conferencia`**: os pontos que o modelo produz agora a partir da fonte, lado a lado com os gravados, com a diferença e a situação de cada ponto (`IGUAL`, `DIFERENTE`, `SO_SIMULADO`, `SO_GRAVADO`, os mesmos da simulação), como a comparação da simulação (spec `curve-calculation-memory`), ou o erro da fonte, se o modelo falhar;
 - **`Insumos`**: as linhas brutas da origem lidas na data (ou, para curva derivada, os pontos das curvas componentes), com as colunas da spec do modelo.
 
-O nome do arquivo SHALL ser `{codigo}_{dataBase}_AUDITORIA_{AAAAMMDDHHmmss}.xlsx`. Sem pontos gravados, o arquivo SHALL sair do mesmo jeito, com `Pontos` vazia. O arquivo mostra o estado de agora; quem gravou os pontos em cada momento anterior, e os pontos substituídos, estão nos eventos `CURVA_GRAVADA` do engine e `PONTOS_EDITADOS` do `services/curves`, no log.
+O nome do arquivo SHALL ser `{codigo}_{dataBase}_AUDITORIA_{AAAAMMDDHHmmss}.xlsx`. Sem pontos gravados, o arquivo SHALL sair do mesmo jeito, com `Pontos` vazia. O arquivo mostra o estado de agora; quem gravou os pontos em cada momento anterior, e os pontos substituídos, estão nos eventos `CURVA_GRAVADA` do engine e `VERTICES_EDITADOS` do `services/curves`, no log.
 
 #### Scenario: Auditoria de uma curva editada
 - **WHEN** o gestor pede pelo front a auditoria da `PRE` de `2026-09-14`, que teve um ponto editado à mão depois da construção

@@ -19,7 +19,7 @@ A motivação está no proposal e o comportamento na spec. Estado atual:
 - Alterar ou remover os consumidores Kafka existentes (é da change `processor-carga-b3`).
 - Curva Zero da ANBIMA (`CZ`), outras fontes (LSEG, CME, LCH, Treasury).
 - Infraestrutura nova: tópico, fila, tabela ou coluna.
-- Autenticação no processor: ele não autentica, como o engine e as functions; o bff autentica o upload e repassa o usuário.
+- Autenticação: nenhuma na v0 e na v1, nem no processor nem no bff; o usuário, quando vier, segue no `X-Usuario`.
 
 ## Decisions
 
@@ -51,7 +51,7 @@ A v0 grava `cTickerBberg` com o ticker completo, como a Bloomberg publica (`S049
 Nada depende de estado em memória além do aviso em segundo plano (D2). O orquestrador reivindica a tarefa antes de chamar (na v0, só execução manual; na v1, cada ocorrência), então normalmente só uma instância é chamada por vez para a mesma fonte. Se um upload coincidir com uma execução pelo orquestrador, a trava das curvas em `tCurvaMercd` serializa as gravações, e as duas gravam os mesmos vértices.
 
 ### D10. Upload pelo front, passando pelo bff
-O upload é o plano B quando a fonte está fora ou o arquivo veio errado: o operador baixa o arquivo por outro meio e envia pela tela. O front fala só com o bff, que autentica e repassa o arquivo ao processor com `X-Usuario` (como o conector faz com o upload). No processor, o arquivo enviado segue o mesmo caminho do baixado: forma canônica (B3), identidade, original no Blob, parse, validação, gravação e aviso, com `origem` = `UPLOAD`. A data-base vem do conteúdo, não de um campo da tela, para não haver arquivo de um dia gravado em outro. No B3, aceita tanto o `TaxaSwap.txt` quanto o `.ex_` (reconhecido pelo cabeçalho de zip). Na Bloomberg, o arquivo é o de resposta do Data License; os tickers são os do arquivo, e qualquer ticker sem valor rejeita o envio (422), porque aqui não há "ainda não saiu". **Alternativa rejeitada:** front chamando o processor direto, que obrigaria o processor a autenticar.
+O upload é o plano B quando a fonte está fora ou o arquivo veio errado: o operador baixa o arquivo por outro meio e envia pela tela. O front fala só com o bff, que repassa o arquivo ao processor com `X-Usuario` (como o conector faz com o upload). No processor, o arquivo enviado segue o mesmo caminho do baixado: forma canônica (B3), identidade, original no Blob, parse, validação, gravação e aviso, com `origem` = `UPLOAD`. A data-base vem do conteúdo, não de um campo da tela, para não haver arquivo de um dia gravado em outro. No B3, aceita tanto o `TaxaSwap.txt` quanto o `.ex_` (reconhecido pelo cabeçalho de zip). Na Bloomberg, o arquivo é o de resposta do Data License; os tickers são os do arquivo, e qualquer ticker sem valor rejeita o envio (422), porque aqui não há "ainda não saiu". **Alternativa rejeitada:** front chamando o processor direto, que obrigaria o processor a autenticar.
 
 ### D11. Base comum primeiro, um provedor por dev
 As rotas, o caso de uso (`CargaArquivoUseCase`, porta de entrada), o roteiro comum (Blob, identidade, gravação, aviso ao engine) e uma porta de saída por fonte (`ProvedorCargaPort`) são feitos primeiro. Cada fonte nasce com um provedor provisório que responde 501. Depois, cada dev implementa o provedor da sua fonte (cliente, leiaute e o `INSERT` da sua tabela) sem tocar no código das outras, e cada fonte entra em produção quando fica pronta. **Alternativa rejeitada:** um serviço inteiro por fonte, que repetiria três vezes o Blob, a trava, o `MAX + 1` e o aviso.
@@ -71,7 +71,7 @@ As rotas, o caso de uso (`CargaArquivoUseCase`, porta de entrada), o roteiro com
 2. Liberar a saída do processor para `www.b3.com.br`, `www.anbima.com.br` e o host do Data License; dar ao processor escrita e leitura em `b3/`, `anbima/` e `bloomberg/` do Blob por Managed Identity; guardar a credencial do Data License no Key Vault.
 3. Cadastro em `tCurvaPrvdr`: `B3`/`TS`/código para PRE, DCL, DPL, INP e PTX; `ANBIMA`/`MS`/`NTN-B` para a NTNB; `BLOOMBERG`/`BLC2`/`S0490Z` para a SOFR.
 4. Implantar o processor.
-5. No bff, configurar o endereço do processor e liberar a tela de upload para o perfil de operação.
+5. No bff, configurar o endereço do processor.
 6. No orquestrador, apontar `orquestrador.http.destinos.conector-b3`, `conector-anbima` e `conector-bloomberg` para o endereço do processor (tempo limite de 120 s) e cadastrar as três tarefas da seção 12 do guia da `orquestrador-v0-disparo-manual` sem agendar: na v0 do orquestrador (change `orquestrador-v0-disparo-manual`) elas são executadas manualmente; o agendamento vem com a v1.
 7. **Saída desta versão:** quando cada function existir, trocar o destino e os caminhos da tarefa daquela fonte (e o destino do upload no bff); depois, apagar as rotas e os clientes de download e upload do processor e a classe `TickersSofrReserva`.
 8. **Rollback:** parar de executar as tarefas no orquestrador e voltar o deploy do processor. Nada no schema muda; os vértices gravados ficam e podem ser regravados.

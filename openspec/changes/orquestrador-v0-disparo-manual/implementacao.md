@@ -428,7 +428,7 @@ public ResultadoExecucao executeTask(Long id, LocalDate dataBase, boolean inclui
 
 ## 10. bff e front (tarefas 2.3 e 2.4)
 
-- bff: `POST /api/v1/tarefas/{id}/executar?dataBase=&incluirDownload=` (opcionais), segurança e perfil como as outras ações de operação do bff; repassa ao orquestrador `POST /api/v1/agendador/tarefas/{id}/executar` com a mesma `dataBase` (ou sem ela) e o `incluirDownload`, `X-Usuario` = usuário do token, `X-Correlation-Id`, sem `Authorization`; tempo limite de 150 s.
+- bff: `POST /api/v1/tarefas/{id}/executar?dataBase=&incluirDownload=` (opcionais), sem autenticação nem perfil na v0 e na v1; repassa ao orquestrador `POST /api/v1/agendador/tarefas/{id}/executar` com a mesma `dataBase` (ou sem ela) e o `incluirDownload`, `X-Usuario` = usuário do token, `X-Correlation-Id`, sem `Authorization`; tempo limite de 150 s.
 - Front: na lista de tarefas, "Executar" abre o campo "Data-base" (`dd/mm/aaaa`, opcional, dica "Vazio: data-base padrão da tarefa"), a caixa "Baixar de novo da fonte" (desmarcada; habilitada só com data) e "Confirmar"; botão desabilitado enquanto espera; resultado em pt-BR (`SUCESSO` → "Sucesso", `NAO_RECEBIDA` → "Arquivo ainda não recebido", `NAO_IMPLEMENTADA` → "Fonte ainda não implementada", `ERRO` → "Erro"), data-base usada em `dd/mm/aaaa`, identificador da carga e detalhe.
 
 ## 11. Testes (poucos e amplos)

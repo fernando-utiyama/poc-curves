@@ -15,7 +15,7 @@ Esta **v0** entrega a base que a v1 usa (fuso de Brasília, campos do cadastro c
   - `POST /api/v1/agendador/tarefas/{id}/executar` aceita `dataBase` opcional, informada pelo front (via bff). Sem ela, vale a data-base padrão da tarefa: hoje menos o parâmetro `defasagemDiasUteis` (padrão 0), em dias úteis dos `calendarios` da tarefa.
   - A partir da data-base padrão → `caminhoDownload`; antes dela → `caminhoReprocessamento`, ou `caminhoDownload` daquela data se vier `incluirDownload` = `true` (buscar de novo na fonte). `{dataBase}` e `{tickers}` são trocados no caminho.
   - Calendários nativos do engine copiados para o orquestrador (sem a sincronização de feriados, que é da v1).
-  - Front: executar cada tarefa com data opcional e ver o resultado; bff autentica e repassa.
+  - Front: executar cada tarefa com data opcional e ver o resultado, ajustando a tela de tarefas que já existe; o bff repassa, sem autenticação.
   - A resposta da function (na v0, o processor) é classificada em sucesso, não recebida ou erro, gravada em `tLogTrefa` com a data-base em JSON e devolvida ao operador.
   - A reivindicação no banco impede duas execuções da mesma tarefa ao mesmo tempo, em qualquer instância (409).
 - **Sem agendamento na v0:** as três tarefas ficam `PRONTA`. Janela, repetição a cada 10 minutos, alerta `CARGA_NAO_RECEBIDA`, calendário e recuperação de ocorrências são da v1.
@@ -32,7 +32,7 @@ Esta **v0** entrega a base que a v1 usa (fuso de Brasília, campos do cadastro c
 ## Impact
 
 - **services/orchestrator:** `Application` (fuso), `application.yml` (`orquestrador.http.destinos`, sem `jackson.time-zone`), `TarefaJpaMapper`, `HttpTaskActionAdapter` (destino + caminho), novo `CargaFonteTaskActionAdapter`, cliente de saída comum, classes de calendário copiadas do engine, rota de execução manual com `dataBase` e defasagem, e reivindicação condicional da tarefa no `TaskJpaPersistenceAdapter`.
-- **bff e front:** rota autenticada de execução com data opcional, repassada ao orquestrador com `X-Usuario`; na tela de tarefas, executar com data e ver o resultado.
+- **bff e front:** rota de execução com data opcional, sem autenticação, repassada ao orquestrador com `X-Usuario`; na tela de tarefas, executar com data e ver o resultado.
 - **Processor:** os destinos `conector-b3`, `conector-anbima` e `conector-bloomberg` apontam para o `services/processor` (change `processor-v0`). Quando as functions existirem, mudam a base-URL de cada destino e os caminhos de cada tarefa (parâmetros, sem redeploy).
 - **Banco:** sem mudança de schema; usa `tTrefaAgnda`, `tParmTrefa` e `tLogTrefa` como já existem.
 - **v1 (`orquestrador-curvas`):** parte das tarefas já sai feita; a v1 completa a reivindicação por ocorrência, o agendamento, a janela, o alerta e o calendário.

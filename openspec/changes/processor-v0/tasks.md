@@ -35,8 +35,8 @@ Guia de implementação: [`implementacao.md`](implementacao.md). A seção 1 (ba
 
 ## 5. bff e front (depois da pausa 3.3; independente dos provedores)
 
-- [ ] 5.1 bff: `POST /api/v1/cargas/upload` (multipart, perfil de operação), repasse a `POST /api/v1/cargas/{fonte}/upload` do processor com `X-Usuario` e `X-Correlation-Id`, sem token, resposta do processor sem alteração, 503 com processor fora; verificar 401, 403, `fonte` inválida, arquivo grande e repasse sem `Authorization`
-- [ ] 5.2 Front: tela "Carga manual de arquivo" (pt-BR, fonte, arquivo, aviso de substituição, botão desabilitado durante o envio, resultado com data `dd/mm/aaaa` e vértices por código, erro com mensagem e código); verificar no navegador o envio com sucesso, um arquivo rejeitado e o 501 de um provedor ainda não implementado
+- [ ] 5.1 bff: `POST /api/v1/cargas/upload` (multipart, sem autenticação), repasse a `POST /api/v1/cargas/{fonte}/upload` do processor com `X-Usuario` e `X-Correlation-Id`, sem token, resposta do processor sem alteração, 503 com processor fora; verificar 401, 403, `fonte` inválida, arquivo grande e repasse sem `Authorization`
+- [ ] 5.2 Front: bloco "Enviar arquivo da fonte" da tela "Dados de mercado" (feito pela change `fed-dados-mercado`, tarefa 2.6) (pt-BR, fonte, arquivo, aviso de substituição, botão desabilitado durante o envio, resultado com data `dd/mm/aaaa` e vértices por código, erro com mensagem e código); verificar no navegador o envio com sucesso, um arquivo rejeitado e o 501 de um provedor ainda não implementado
 
 ## 6. Fechamento
 

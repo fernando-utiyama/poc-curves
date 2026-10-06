@@ -1,5 +1,15 @@
 Segunda parte do engine (operação e extensões); a primeira, a construção das 7 curvas, está na change [`engine-construcao-curvas`](../engine-construcao-curvas/tasks.md) e vem antes. Guia de implementação passo a passo (arquivos, assinaturas, código das partes difíceis, SQL, configuração e vetores de teste reais): [`implementacao.md`](../engine-construcao-curvas/implementacao.md). Siga a ordem da seção 15 do guia. Os "verificar" de cada tarefa viram testes escritos ao final, na seção 16 do guia; durante a implementação, cada tarefa termina com `mvn -q compile`.
 
+> **Esta change é de conferência: boa parte do engine já foi desenvolvida no repositório real**, muitas vezes com outro nome (por exemplo, `Ponto` ou `Linha` no lugar de `Vertice`, ou em inglês). A primeira parte (`engine-construcao-curvas`) já foi aplicada no repositório real numa versão anterior, que ainda incluía parte do que hoje está aqui; por isso algo desta change pode já existir. Cada tarefa SHALL seguir este roteiro:
+> 1. **Conferir:** procurar pela **funcionalidade** (o que faz, que tabela lê ou grava, que rota expõe), nunca só pelo nome da spec.
+> 2. Decidir uma de três saídas:
+>    - **já existe e cumpre a spec → deixar como está** (não reescrever, não "melhorar"; só o nome segue o passo 3);
+>    - **existe e diverge → alterar** só o que diverge, no código que já existe;
+>    - **não existe → criar**, com os nomes desta change.
+> 3. Nunca criar uma segunda versão do que já está pronto. **Nome diferente do desta change é divergência:** renomeie para o nome da change (classe, arquivo, método, campo interno e todas as referências, até compilar), menos o que outro serviço ou o banco já usa (rota exposta, campo de JSON de resposta, coluna, tópico): isso fica como está e vai para a anotação como `nome-real → nome-da-change`.
+> 4. Ao marcar a tarefa, anotar ao lado a saída e o arquivo: `[conferido: pronto | alterado | renomeado de X | criado] caminho/Arquivo.java`. Na dúvida se é a mesma coisa, `// TODO(revisao): <dúvida>` e siga.
+> 5. Código que a spec atual não pede (sobra da versão anterior): não apagar; anotar como `[sobra] caminho/Arquivo.java` no resumo, para a revisão decidir.
+
 ## 4. Cadastro
 
 - [ ] 4.2b Implementar a origem secundária: `fonte` e `produto` na construção e na simulação (os dois ou nenhum), escolha do provedor da curva em `tCurvaPrvdr` (nenhum ou mais de uma → `CADASTRO_INVALIDO` com as origens cadastradas, `TCEN` recusada), modelo por `MODELOS_POR_ORIGEM` ou `cMotorCalc`, resto do cadastro da curva, aviso `ORIGEM_SECUNDARIA`, origem na proveniência, na memória e no `CURVA_GRAVADA`, e comparação do `EXISTENTE` contra a origem informada; verificar os quatro cenários da spec `curve-build-pipeline`, os dois da `curve-engine-api` e que a carga e a construção da data usam sempre a principal

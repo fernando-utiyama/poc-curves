@@ -279,7 +279,7 @@ O reprocessamento também passa os `tickers` por `parametros(...)`, só para rec
 Validação no controller, lançando `InvalidInputException(PARAMETRO_INVALIDO)`:
 - data `AAAA-MM-DD` (`LocalDate.parse`) e não futura (`LocalDate.now(clock)`);
 - `tickers` (separados por vírgula): cada um com `^[A-Za-z0-9]+( [A-Za-z0-9]+)*$`, até 50 caracteres, até 100 tickers; os repetidos são removidos;
-- `X-Usuario` obrigatório e não vazio no upload.
+- `X-Usuario` opcional no upload (`required = false`; ausente = usuário nulo). Sem autenticação na v0 e na v1.
 
 `X-Correlation-Id`: lido da requisição ou gerado (`UUID.randomUUID()`), posto no MDC (`correlationId`) e devolvido no cabeçalho da resposta, num `OncePerRequestFilter` em `adapter/in/api/rest/config/`. O `CargaResponse` é o `ResultadoCarga` mais o `correlationId`; datas em ISO.
 
@@ -446,8 +446,8 @@ Depois da pausa, cada provedor acrescenta um `*CargaTest` no molde do `AnbimaCar
 
 ## 13. bff e front (depois da pausa)
 
-- bff: `POST /api/v1/cargas/upload`, segurança e perfil como as outras ações de operação do bff; repassar, com o cliente HTTP que o bff já usa, para `POST {processor}/api/v1/cargas/{fonte em minúsculas}/upload`; `X-Usuario` = nome do usuário do token; não repassar `Authorization`; tempo limite de 120 s.
-- Front: tela "Carga manual de arquivo" no menu de operação; textos e datas em pt-BR (`dd/mm/aaaa`); mensagens de erro vindas do processor.
+- bff: `POST /api/v1/cargas/upload`, sem autenticação nem perfil na v0 e na v1; repassar, com o cliente HTTP que o bff já usa, para `POST {processor}/api/v1/cargas/{fonte em minúsculas}/upload`; `X-Usuario` = nome do usuário do token; não repassar `Authorization`; tempo limite de 120 s.
+- Front: o envio fica no bloco "Enviar arquivo da fonte" da tela "Dados de mercado", especificado e implementado pela change `fed-dados-mercado` (guia dela, §3.3); textos e datas em pt-BR (`dd/mm/aaaa`); mensagens de erro vindas do processor.
 
 ## 14. Ordem
 

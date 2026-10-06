@@ -39,7 +39,7 @@ Todo erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlationId" }`, sem
 - **THEN** a resposta é 400 `PARAMETRO_INVALIDO`, sem chamar a fonte
 
 ### Requirement: Upload do arquivo
-O processor SHALL expor, sem autenticação própria, `POST /api/v1/cargas/{fonte}/upload` (`{fonte}` = `b3`, `anbima` ou `bloomberg`), em `multipart/form-data` com a parte `arquivo` (até 10 MB) e o cabeçalho `X-Usuario` obrigatório (ausente: 400 `PARAMETRO_INVALIDO`). Essas rotas são chamadas só pelo bff (capability `upload-carga-bff`), que autentica. O arquivo enviado SHALL seguir o mesmo caminho do baixado: forma canônica (B3), identidade da carga, original no Blob, parse, validação, gravação e aviso ao engine, com `origem` = `UPLOAD` e o usuário no log. A data-base SHALL ser a do conteúdo; conteúdo com data futura MUST ser rejeitado (422 `ARQUIVO_INVALIDO`). Por fonte:
+O processor SHALL expor, sem autenticação própria, `POST /api/v1/cargas/{fonte}/upload` (`{fonte}` = `b3`, `anbima` ou `bloomberg`), em `multipart/form-data` com a parte `arquivo` (até 10 MB) e o cabeçalho opcional `X-Usuario` (ausente: usuário nulo; não há autenticação na v0 e na v1). Essas rotas são chamadas só pelo bff (capability `upload-carga-bff`). O arquivo enviado SHALL seguir o mesmo caminho do baixado: forma canônica (B3), identidade da carga, original no Blob, parse, validação, gravação e aviso ao engine, com `origem` = `UPLOAD` e o usuário no log. A data-base SHALL ser a do conteúdo; conteúdo com data futura MUST ser rejeitado (422 `ARQUIVO_INVALIDO`). Por fonte:
 - B3: aceita o `TaxaSwap.txt` ou o `.ex_` (reconhecido pelo cabeçalho de zip, com no máximo dois níveis e um único `TaxaSwap.txt`);
 - ANBIMA: aceita o `ms{AAMMDD}.txt`, com as regras da ANBIMA;
 - Bloomberg: aceita o arquivo de resposta do pedido de histórico do Data License; os tickers são os do arquivo, e um ticker sem valor MUST rejeitar o envio (422 `ARQUIVO_INVALIDO`, citando o ticker).
@@ -56,7 +56,7 @@ A resposta SHALL ser a mesma das outras rotas, mais o `usuario`. Arquivo vazio, 
 
 #### Scenario: Upload sem usuário
 - **WHEN** a rota de upload é chamada sem `X-Usuario`
-- **THEN** a resposta é 400 `PARAMETRO_INVALIDO`, e nada é arquivado
+- **THEN** a carga segue normalmente, com `usuario` nulo na resposta e no log
 
 ### Requirement: Obtenção do arquivo B3 por download do site
 O processor SHALL baixar `TS{AAMMDD}.ex_` do endereço configurado da B3 (`https://www.b3.com.br/pesquisapregao/download?filelist=TS{AAMMDD}.ex_`), extrair o `TaxaSwap.txt` (o `.ex_` é um zip com outro zip dentro) e convertê-lo à forma canônica da spec `b3-taxaswap-publicacao` (change `conector-b3-webhook-ingest`). Resposta da B3 sem o arquivo (404, corpo vazio ou que não é zip) MUST resultar em 503 `ARQUIVO_INDISPONIVEL`. O leiaute, a conversão de valores e as regras de validação SHALL ser as da spec `b3-carga-processor` (change `processor-carga-b3`): vértice ilegível rejeita o arquivo; campo inválido rejeita só aquele código. No download, data dos vértices diferente da pedida MUST resultar em 503 `ARQUIVO_INDISPONIVEL`, sem arquivar nem gravar.

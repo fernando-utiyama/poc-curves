@@ -1,5 +1,15 @@
 # Guia de implementação: curves-cadastro-curvas
 
+> **Esta change é de conferência: boa parte do curves já foi desenvolvida no repositório real**, muitas vezes com outro nome (por exemplo, `Ponto` ou `Linha` no lugar de `Vertice`, ou em inglês). Esta change já foi aplicada no repositório real numa versão anterior, antes de ser separada em partes e renomeada; por isso há muita coisa feita, com nomes antigos e com peças que hoje estão em outra change (ex.: cliente do engine, vértices manuais, `/primaria-b3`) ou saíram. Cada tarefa SHALL seguir este roteiro:
+> 1. **Conferir:** procurar pela **funcionalidade** (o que faz, que tabela lê ou grava, que rota expõe), nunca só pelo nome da spec.
+> 2. Decidir uma de três saídas:
+>    - **já existe e cumpre a spec → deixar como está** (não reescrever, não "melhorar"; só o nome segue o passo 3);
+>    - **existe e diverge → alterar** só o que diverge, no código que já existe;
+>    - **não existe → criar**, com os nomes desta change.
+> 3. Nunca criar uma segunda versão do que já está pronto. **Nome diferente do desta change é divergência:** renomeie para o nome da change (classe, arquivo, método, campo interno e todas as referências, até compilar), menos o que outro serviço ou o banco já usa (rota exposta, campo de JSON de resposta, coluna, tópico): isso fica como está e vai para a anotação como `nome-real → nome-da-change`.
+> 4. Ao marcar a tarefa, anotar ao lado a saída e o arquivo: `[conferido: pronto | alterado | renomeado de X | criado] caminho/Arquivo.java`. Na dúvida se é a mesma coisa, `// TODO(revisao): <dúvida>` e siga.
+> 5. Código que a spec atual não pede (sobra da versão anterior): não apagar; anotar como `[sobra] caminho/Arquivo.java` no resumo, para a revisão decidir.
+
 Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec manda; este guia diz onde e como.** Siga as seções na ordem. Os testes são escritos só na seção 14, depois de tudo compilar.
 
 > **O código real manda nos detalhes.** Este guia foi escrito sobre a cópia transcrita do serviço (`services/curves`, pacote `br.com.poc`). No repositório real, o pacote raiz, as classes de exceção, o tratador de erro que de fato responde, o record de erro, a biblioteca de log, a configuração do Jackson, o cache e o registro de beans **são os que o serviço já tem**: onde este guia cita uma classe ou configuração do código, leia "a equivalente do serviço" e confira antes de usar. O que não muda é o comportamento das specs (rotas, códigos de erro, avisos, regras, formatos). Divergência entre o guia e o código real não é motivo para parar: siga o código real e cumpra a spec.
@@ -48,8 +58,8 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 | `tCurvaPrvdr` | CRUD dos provedores da curva; `cIdtfdUnic` por `MAX + 1` com trava |
 | `tConfgCurva` | cria e exclui versões de configuração (`cIdtfdConfg` é identity) |
 | `tPrvdrDadoMercd` | só lê (provedores, do CRUD do outro dev) |
-| `tDadoVertcCurva` | **pontos da curva** (curva construída): edição manual |
-| `tDadoCurva` | curva interpolada: só **apaga** a da data quando os pontos da data são apagados; quem grava é o engine |
+| `tDadoVertcCurva` | **vértices da curva** (curva construída): edição manual |
+| `tDadoCurva` | curva interpolada: só **apaga** a da data quando os vértices da data são apagados; quem grava é o engine |
 | `tBtrsCurvaPrimr` | **dado bruto da B3**: listagem geral e CRUD por linha (seção 11); `cIdtfdUnic` por `MAX + 1` com trava, como o processor |
 
 ### 0.2 Vetores de teste reais
@@ -57,9 +67,9 @@ Guia passo a passo para aplicar esta change com o mínimo de decisões. **A spec
 | Item | Valor esperado |
 |---|---|
 | `hashPontos` do vetor comum com o engine (`2026-09-15;13.9\n2026-09-16;-117.96`) | `8dcff432fa5271ff16bdaef72940792811802e0a5ae59e8c2bf5cead818d5544` |
-| `hashPontos` da `PRE` de `2026-09-14` construída pelo engine (278 pontos) | `7c4982b34ca35f784863118902e63f28e7d49362d940cc27eb77961d526fca20` |
-| ponto da `PRE` em `2027-01-04` (data-base `2026-09-14`) | valor 13.589, 75 dias úteis publicados, 112 dias corridos, 110 dias 30/360 |
-| `PUT` com esse ponto e `"diasUteis": 76` | aviso `DIAS_UTEIS_DIFERENTES_DO_CALENDARIO` (calendário: 75); linha com `cDiaUtil` 76, `cQtdDiaPer` 112, `cQtdDiaReft` 110, fatores nulos |
+| `hashPontos` da `PRE` de `2026-09-14` construída pelo engine (278 vértices) | `7c4982b34ca35f784863118902e63f28e7d49362d940cc27eb77961d526fca20` |
+| vértice da `PRE` em `2027-01-04` (data-base `2026-09-14`) | valor 13.589, 75 dias úteis publicados, 112 dias corridos, 110 dias 30/360 |
+| `PUT` com esse vértice e `"diasUteis": 76` | aviso `DIAS_UTEIS_DIFERENTES_DO_CALENDARIO` (calendário: 75); linha com `cDiaUtil` 76, `cQtdDiaPer` 112, `cQtdDiaReft` 110, fatores nulos |
 | `13.123456789` na `PRE` (7 casas, `HALF_UP`) | gravado `13.1234568`, aviso `VALOR_ARREDONDADO` |
 
 ---
@@ -82,7 +92,7 @@ Nada mais: o cliente do engine (fase 2) usa o `java.net.http.HttpClient` do JDK 
 
 ### 1.2 `application.yml` (conferir e acrescentar)
 
-> **Adiado:** a autenticação do curves (Entra ID, papéis, 401/403) entra numa change própria, depois. Até lá, fica de fora `spring.security`; o engine não exige autenticação, então não existe `curves.engine.escopo`. **Fase 1: o bloco `curves.engine` também fica de fora** (o curves não chama o engine); ele entra na fase 2, na change `curves-operacao-curvas`, e está abaixo só como referência.
+> **Adiado:** a autenticação do curves (Entra ID, papéis, 401/403) entra numa change própria, depois. Até lá, fica de fora `spring.security`; o engine não exige autenticação, então não existe `curves.engine.escopo`. **Fase 1: do bloco `curves.engine`, só `url`** (para o repasse da seção 16); o resto entra na fase 2, na change `curves-operacao-curvas`, e está abaixo só como referência.
 
 ```yaml
 curves:
@@ -109,9 +119,9 @@ Conferir no `application.yml` que já existe, ajustando só o que conflita (o re
 | Chave existente | Ajuste |
 |---|---|
 | `spring.threads.virtual.enabled`, `spring.datasource.hikari.*`, `spring.jpa.open-in-view` e `hibernate.jdbc.*` | **não mexer**: o `application.yml` existente fica como está nesses blocos (mínimo de mudança no serviço); só se acrescenta o bloco `curves.timeout` acima |
-| `spring.jackson.default-property-inclusion: NON_NULL` | manter (é do CRUD de provedores); todo `record` de resposta **novo** leva `@JsonInclude(JsonInclude.Include.ALWAYS)` na classe, porque as specs exigem nulo presente, nunca omitido (painel, pontos, curva) e `avisos` sempre presente |
+| `spring.jackson.default-property-inclusion: NON_NULL` | manter (é do CRUD de provedores); todo `record` de resposta **novo** leva `@JsonInclude(JsonInclude.Include.ALWAYS)` na classe, porque as specs exigem nulo presente, nunca omitido (painel, vértices, curva) e `avisos` sempre presente |
 | `spring.jackson.time-zone: UTC` e `date-format` | os instantes da resposta saem `-03:00` (seção 1.4): o `record` leva `OffsetDateTime` já no fuso de Brasília, e o `time-zone` não se aplica a `OffsetDateTime` |
-| `spring.jpa.show-sql: true` | manter em `default`; nos demais perfis `false` (a escrita de pontos tem centenas de `INSERT`) |
+| `spring.jpa.show-sql: true` | manter em `default`; nos demais perfis `false` (a escrita de vértices tem centenas de `INSERT`) |
 | `spring.jpa.properties.hibernate.dialect` | manter |
 | tratadores de erro | o serviço pode ter mais de um (no real há um tratador em Problem Details além do que usa o record de erro, e `spring.mvc.problemdetails.enabled` não desliga um tratador próprio). Deixar **um formato só** para as rotas desta change: decidir qual tratador responde (`@Order` ou retirar o outro) e conferir com um teste de rota que 400, 404, 409, 422 e os erros do próprio Spring MVC saem nesse formato |
 
@@ -122,10 +132,10 @@ Erros **no padrão que o serviço já tem**. O que a spec exige, e o que o teste
 ```java
 // um enum de códigos no molde dos enums de erro que o serviço já tem (código = name(), mensagem em pt-BR)
 public enum CadastroErrorCode implements ErrorCode {
-  PARAMETRO_INVALIDO("Parâmetro inválido"), NAO_AUTENTICADO("Token ausente ou inválido"), SEM_PERMISSAO("Sem permissão"),
+  PARAMETRO_INVALIDO("Parâmetro inválido"),
   NAO_ENCONTRADO("Recurso não encontrado"), CODIGO_EM_USO("Código em uso"), NOME_EM_USO("Nome em uso"),
   PROVEDOR_DUPLICADO("Provedor da curva duplicado"), PRIORIDADE_EM_USO("Prioridade em uso"),
-  DADOS_INVALIDOS("Dados inválidos"), PONTOS_INVALIDOS("Pontos inválidos"), ERRO_INTERNO("Erro interno");
+  DADOS_INVALIDOS("Dados inválidos"), VERTICES_INVALIDOS("Vértices inválidos"), ERRO_INTERNO("Erro interno");
 }
 // domain: dados puros, sem Spring
 public enum CodigoAvisoCurva { /* os 23 códigos da tabela "Avisos do serviço" da spec cadastro-curva-mercado, na ordem da tabela */ }
@@ -135,12 +145,12 @@ public record AvisoCurva(CodigoAvisoCurva codigo, String mensagem, List<Detalhe>
 }
 ```
 
-- **Exceções:** lançar as exceções do serviço **com o código da spec**. Se uma exceção existente só produz um código genérico (ex.: uma de "não encontrado" que sempre responde `NOT_FOUND`), acrescentar a ela um construtor que recebe `ErrorCode`, ou lançar a exceção que já aceita `ErrorCode`; não criar uma segunda hierarquia. Os status: 400 `PARAMETRO_INVALIDO`, 404 `NAO_ENCONTRADO`, 409 `CODIGO_EM_USO`/`NOME_EM_USO`/`PROVEDOR_DUPLICADO`/`PRIORIDADE_EM_USO`, 422 `DADOS_INVALIDOS`/`PONTOS_INVALIDOS`, 500 `ERRO_INTERNO`. Para 409, criar a exceção que faltar no mesmo molde das existentes.
+- **Exceções:** lançar as exceções do serviço **com o código da spec**. Se uma exceção existente só produz um código genérico (ex.: uma de "não encontrado" que sempre responde `NOT_FOUND`), acrescentar a ela um construtor que recebe `ErrorCode`, ou lançar a exceção que já aceita `ErrorCode`; não criar uma segunda hierarquia. Os status: 400 `PARAMETRO_INVALIDO`, 404 `NAO_ENCONTRADO`, 409 `CODIGO_EM_USO`/`NOME_EM_USO`/`PROVEDOR_DUPLICADO`/`PRIORIDADE_EM_USO`, 422 `DADOS_INVALIDOS`/`VERTICES_INVALIDOS`, 500 `ERRO_INTERNO`. Para 409, criar a exceção que faltar no mesmo molde das existentes.
 - **Tratador:** no tratador que responde (tabela da seção 1.2), acrescentar o que faltar para esses status e para JSON malformado e parâmetro inválido (400 `PARAMETRO_INVALIDO`), sem reescrever o que existe.
 - **Record de erro:** o que o tratador **realmente usa** (conferir; pode haver cópias sem uso) ganha `correlationId` e `detalhes` no fim, com um construtor no formato antigo para o código que já o chama. Os demais componentes, inclusive o tipo do `timestamp`, ficam como estão. `detalhes` usa o `record Detalhe` do domínio; o domínio nunca importa o pacote do record de erro.
 - Sem stack trace na resposta.
 
-Enums da tabela "Enums do serviço" da spec `cadastro-curva-mercado` (`Unidade`, `DayCounterCotacao`, `CompoundingCotacao`, `SituacaoCurva`, `SituacaoPainel`, `MotivoPainel`, `TipoAlteracao`, `OperacaoAlteracao`, `OperacaoPontos`, `OrigemPontos`, `ModoImportacao`, `ResultadoLinha`): enums simples em `domain`, com rótulo e descrição em `messages.properties` (`poc.valores.<Enum>.<CONSTANTE>.rotulo` e `.descricao`), lidos pelo `MessageSource` no adaptador da API (o `application.yml` já tem `spring.messages`, hoje sem `basename`: definir `basename: messages`). O catálogo de `GET /curvas-mercado/valores` lista cada enum de forma explícita (`itens(Unidade.class)`). Teste obrigatório: toda constante tem as suas chaves. Os enums de resultado fechado (`ResultadoLinha`, `SituacaoPainel`) são lidos com `switch` por pattern, sem `default`.
+Enums da tabela "Enums do serviço" da spec `cadastro-curva-mercado` (`Unidade`, `DayCounterCotacao`, `CompoundingCotacao`, `SituacaoCurva`, `SituacaoPainel`, `MotivoPainel`, `TipoAlteracao`, `OperacaoAlteracao`, `OperacaoVertices`, `OrigemVertices`, `ModoImportacao`, `ResultadoLinha`): enums simples em `domain`, com rótulo e descrição em `messages.properties` (`poc.valores.<Enum>.<CONSTANTE>.rotulo` e `.descricao`), lidos pelo `MessageSource` no adaptador da API (o `application.yml` já tem `spring.messages`, hoje sem `basename`: definir `basename: messages`). O catálogo de `GET /curvas-mercado/valores` lista cada enum de forma explícita (`itens(Unidade.class)`). Teste obrigatório: toda constante tem as suas chaves. Os enums de resultado fechado (`ResultadoLinha`, `SituacaoPainel`) são lidos com `switch` por pattern, sem `default`.
 
 Filtro de correlação (`OncePerRequestFilter`): `X-Correlation-Id` recebido ou `UUID.randomUUID()`, no MDC (`correlationId`) e em toda resposta (inclusive `xlsx` e erro); limpar o MDC no `finally`.
 
@@ -154,18 +164,7 @@ Igual ao engine (seção 1.4 do guia do engine): o `main` (`Application.java`) f
 
 ### 1.5 Segurança
 
-> **Adiado** (change própria, depois): esta seção descreve o alvo e não se implementa agora. Até lá, nenhuma rota exige token.
-
-```java
-.requestMatchers("/actuator/health/**").permitAll()
-.requestMatchers(HttpMethod.GET, "/api/v1/**").hasAnyAuthority("Curvas.Leitura", "Curvas.Cadastro", "Curvas.Operador")
-.requestMatchers("/api/v1/curvas-mercado/*/pontos/**", "/api/v1/curvas-mercado/pontos/importacao").hasAuthority("Curvas.Operador")
-.requestMatchers(HttpMethod.POST, "/api/v1/curvas-mercado/*/configuracoes/validacao").hasAnyAuthority("Curvas.Leitura", "Curvas.Cadastro")
-.requestMatchers("/api/v1/**").hasAuthority("Curvas.Cadastro")
-// papéis pelo claim "roles", sem prefixo (JwtGrantedAuthoritiesConverter com authoritiesClaimName "roles" e prefixo "")
-```
-
-A ordem importa: as regras de `GET` e de pontos vêm antes da regra geral de escrita. Usuário: `preferred_username`, senão `appid`. **Enquanto a autenticação está adiada, não há usuário:** `usuario` sai nulo (ausente) nos eventos de log e `cUsuarAtulz` fica sem preencher (a coluna aceita nulo).
+**Sem autenticação na v0 e na v1:** sem Spring Security, sem Resource Server, sem papéis, sem 401 e sem 403. Usuário: o cabeçalho opcional `X-Usuario` (`@RequestHeader(name = "X-Usuario", required = false)`), gravado em `cUsuarAtulz` e nos eventos de log; ausente, fica nulo (a coluna aceita nulo). A autenticação entra numa change própria, depois.
 
 ### 1.6 Cliente do engine: porta `EnginePort` e adaptador `adapter/out/client/engine/EngineHttpClient.java`
 
@@ -184,7 +183,7 @@ Toda falha (rede, tempo, 4xx, 5xx, JSON ilegível) vira `Indisponivel` com o mot
 
 ### 1.7 Log
 
-JSON com `correlationId`. Enquanto a autenticação está adiada, o campo `usuario` de todos os eventos sai nulo (ausente). `REQUISICAO_CONCLUIDA` (usuário, rota com molde, status, `codigoErro`, duração) em toda requisição. `CADASTRO_ALTERADO` (seção 2.5), `PONTOS_EDITADOS` (seção 10.5) e `CURVA_PRIMARIA_EDITADA` (seção 11) depois do commit (`TransactionSynchronizationManager.registerSynchronization` com `afterCommit`), emitidos pelo adaptador de `EventosPort` com a API fluente do SLF4J (`log.atWarn().addKeyValue("codigo", ...).log("CADASTRO_ALTERADO")`), pela biblioteca de log JSON que o serviço já usa (no poc, `LogstashEncoder`; no real, a do serviço). Conferir que os pares chave-valor saem como campos do JSON; se a biblioteca não os levar, usar o mecanismo dela para campos estruturados. Nunca token nem corpo inteiro.
+JSON com `correlationId`. Enquanto a autenticação está adiada, o campo `usuario` de todos os eventos sai nulo (ausente). `REQUISICAO_CONCLUIDA` (usuário, rota com molde, status, `codigoErro`, duração) em toda requisição. `CADASTRO_ALTERADO` (seção 2.5), `VERTICES_EDITADOS` (seção 10.5) e `CURVA_PRIMARIA_EDITADA` (seção 11) depois do commit (`TransactionSynchronizationManager.registerSynchronization` com `afterCommit`), emitidos pelo adaptador de `EventosPort` com a API fluente do SLF4J (`log.atWarn().addKeyValue("codigo", ...).log("CADASTRO_ALTERADO")`), pela biblioteca de log JSON que o serviço já usa (no poc, `LogstashEncoder`; no real, a do serviço). Conferir que os pares chave-valor saem como campos do JSON; se a biblioteca não os levar, usar o mecanismo dela para campos estruturados. Nunca token nem corpo inteiro.
 
 ---
 
@@ -213,7 +212,7 @@ Tabela "Campos da curva de mercado" da spec, campo a campo:
 - Coerência com a configuração (spec `configuracao-calculo-curva`): mudança de `unidade`, `dayCounterCotacao` ou `compounding` que invalide a versão vigente ou futura → 422 citando a versão.
 - Inativar uma curva componente de derivada ativa → aviso `CURVA_COM_FILHAS` (filhas: provedores da curva `TCEN` com `cTickerPrvdr` = nome desta curva).
 
-Listagem: filtros `nome` (trecho normalizado), `codigo` (exato), `unidade`, `situacao`; paginação `pagina` (≥ 0) e `tamanho` (padrão 50, máximo 500); ordem por código.
+Listagem: filtros `nome` (trecho normalizado), `codigo` (exato), `unidade`, `situacao`, `provedor` (`EXISTS` em `tCurvaPrvdr` com `iPrvdrDados` = o valor, depois de `trim`) e `dono` (trecho de `cPprioDado`, normalizado); paginação `pagina` (≥ 0) e `tamanho` (padrão 50, máximo 500); ordem por código. Resposta `{ itens, pagina, tamanho, total }`; cada item com `provedores` (de `tCurvaPrvdr`, ordem de prioridade, sem repetição, numa consulta só para a página inteira, `WHERE cTickerIndcd IN (...)`, nunca uma por curva), `dono` (`cPprioDado`) e `ultimaExecucao` (`dBaseReft` + `cUsuarCalc`, nulo sem `dBaseReft`).
 
 ### 2.3 Sem controle de concorrência
 
@@ -333,17 +332,17 @@ Exportar e importar sem editar MUST dar zero mudanças e nenhuma escrita.
 
 ---
 
-## 8. Pontos: consulta e exclusão (`DadoVerticeCurvaService`)
+## 8. Vértices: consulta e exclusão (`DadoVerticeCurvaService`)
 
 Entidades: `DadoVertcCurvaEntity` (`tDadoVertcCurva`, `@IdClass` com `dBaseReft`, `cTickerIndcd`, `dVertcReft`; `cDiaUtil`, `vFatorDia`, `vFatorAcum`, `cQtdDiaPer`, `cQtdDiaReft`, `vPrecoTx`) e `DadoCurvaEntity` (`tDadoCurva`, só para o `DELETE`).
 
-- `GET .../pontos?de=&ate=` (até 366 dias): datas-base com pontos, quantidade e `hashPontos` de cada uma.
-- `GET .../pontos/{dataBase}`: pontos (`data` = `dVertcReft`, `valor` = `vPrecoTx`, `diasUteis` = `cDiaUtil` ou nulo) e `hashPontos`.
-- `DELETE .../pontos/{dataBase}`: trava (seção 10.2), apaga `tDadoVertcCurva` e `tDadoCurva` da curva e data, log `PONTOS_EDITADOS` (`EXCLUSAO`).
+- `GET .../vertices?de=&ate=` (até 366 dias): datas-base com vértices, quantidade e `hashPontos` de cada uma.
+- `GET .../vertices/{dataBase}`: vértices (`data` = `dVertcReft`, `valor` = `vPrecoTx`, `diasUteis` = `cDiaUtil` ou nulo) e `hashPontos`.
+- `DELETE .../vertices/{dataBase}`: trava (seção 10.2), apaga `tDadoVertcCurva` e `tDadoCurva` da curva e data, log `VERTICES_EDITADOS` (`EXCLUSAO`).
 
 `hashPontos` (igual ao engine):
 ```java
-String texto = pontos.stream().sorted(comparing(Ponto::data))
+String texto = pontos.stream().sorted(comparing(Vertice::data))
   .map(p -> p.data() + ";" + (p.valor().signum() == 0 ? "0" : p.valor().stripTrailingZeros().toPlainString()))
   .collect(joining("\n"));
 return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(texto.getBytes(UTF_8)));
@@ -351,34 +350,34 @@ return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text
 
 ---
 
-## 9. Planilha de pontos (`DadoVerticeCurvaPlanilhaService`)
+## 9. Planilha de vértices (`DadoVerticeCurvaPlanilhaService`)
 
-Aba única `Pontos`, colunas `Curva`, `DataBase`, `DataPonto`, `Valor`, `DiasUteis`, ordenadas por curva, data-base e data. `Valor`: célula numérica se tiver até 15 dígitos significativos (`v.precision() <= 15`), senão texto com vírgula decimal. `DiasUteis`: `cDiaUtil` gravado, célula vazia se nulo. Exportação: até 50 códigos, 366 dias, 100.000 pontos (acima → 400); arquivo `pontos-curvas_{AAAAMMDDHHmmss}.xlsx`.
+Aba única `Vertices`, colunas `Curva`, `DataBase`, `DataVertice`, `Valor`, `DiasUteis`, ordenadas por curva, data-base e data. `Valor`: célula numérica se tiver até 15 dígitos significativos (`v.precision() <= 15`), senão texto com vírgula decimal. `DiasUteis`: `cDiaUtil` gravado, célula vazia se nulo. Exportação: até 50 códigos, 366 dias, 100.000 vértices (acima → 400); arquivo `pontos-curvas_{AAAAMMDDHHmmss}.xlsx`.
 
 Importação: planilha sem a coluna `DiasUteis` é aceita como vazia; colunas extras ignoradas. Cada par (`Curva`, `DataBase`) é a lista completa, com o mesmo efeito do `PUT` (seção 10). `APLICACAO`: uma transação, travas em ordem alfabética de nome, 120 s; recusa por consistência de banco em qualquer par → 422 e nada aplicado. Depois do commit, `regravarInterpolada` por par presente; falha → aviso `INTERPOLADA_DESATUALIZADA` nas linhas do par. `formato=xlsx`: colunas `Resultado` e `ValorGravado`, abas `Resumo` e `Exclusoes`.
 
 ---
 
-## 10. Edição manual dos pontos (`PUT .../pontos/{dataBase}`)
+## 10. Edição manual dos vértices (`PUT .../vertices/{dataBase}`)
 
-### 10.1 Validação (recusa só por consistência de banco → 422 `PONTOS_INVALIDOS`, um `Detalhe` por ponto)
+### 10.1 Validação (recusa só por consistência de banco → 422 `VERTICES_INVALIDOS`, um `Detalhe` por vértice)
 
-Lista vazia; ponto sem data ou valor; data inválida; valor não decimal; `diasUteis` não inteiro; datas repetidas; valor arredondado que não cabe em `DECIMAL(28,12)` (mais de 16 dígitos inteiros), ou, sem configuração vigente, com mais de 12 casas. Curva inexistente → 404 `NAO_ENCONTRADO`.
+Lista vazia; vértice sem data ou valor; data inválida; valor não decimal; `diasUteis` não inteiro; datas repetidas; valor arredondado que não cabe em `DECIMAL(28,12)` (mais de 16 dígitos inteiros), ou, sem configuração vigente, com mais de 12 casas. Curva inexistente → 404 `NAO_ENCONTRADO`.
 
 ### 10.2 Gravação (uma transação; até 60 s para obter a trava)
 
-Os 60 s são só para obter a trava, no próprio comando: `query.setHint("jakarta.persistence.query.timeout", 60000)` (vai ao JDBC como `Statement.setQueryTimeout` e não fica na conexão do pool). O estouro desse comando (`jakarta.persistence.QueryTimeoutException`) responde `ERRO_INTERNO` com a mensagem "trava da curva não obtida em 60 segundos" (a spec `pontos-curva-manual` não tem código próprio para isso); outra falha de banco, `ERRO_INTERNO` com a própria mensagem. **Proibido** `SET LOCK_TIMEOUT` e `@Transactional(timeout = ...)` (a mesma regra do engine, spec `curve-engine-resilience`).
+Os 60 s são só para obter a trava, no próprio comando: `query.setHint("jakarta.persistence.query.timeout", 60000)` (vai ao JDBC como `Statement.setQueryTimeout` e não fica na conexão do pool). O estouro desse comando (`jakarta.persistence.QueryTimeoutException`) responde `ERRO_INTERNO` com a mensagem "trava da curva não obtida em 60 segundos" (a spec `vertices-curva-manual` não tem código próprio para isso); outra falha de banco, `ERRO_INTERNO` com a própria mensagem. **Proibido** `SET LOCK_TIMEOUT` e `@Transactional(timeout = ...)` (a mesma regra do engine, spec `curve-engine-resilience`).
 
 ```sql
 SELECT cTickerIndcd FROM tCurvaMercd WITH (UPDLOCK, ROWLOCK) WHERE cTickerIndcd = ?;     -- a mesma trava do engine; tempo limite do comando: 60 s
 SELECT dVertcReft, vPrecoTx, cDiaUtil FROM tDadoVertcCurva WHERE cTickerIndcd = ? AND dBaseReft = ?;
 ```
 1. Arredondar cada valor pela configuração vigente na data-base (`CASAS_DECIMAIS`, `MODO_ARREDONDAMENTO`); mudou → aviso `VALOR_ARREDONDADO` (enviado e gravado). Sem configuração → grava como enviado, aviso `SEM_CONFIGURACAO`.
-2. Comparar com o gravado: um ponto muda se o valor (`compareTo`) ou os `diasUteis` mudarem. Nada mudou → aviso `SEM_MUDANCA`, sem escrita e sem log (mas segue para o passo 5).
-3. Escrever só a diferença em `tDadoVertcCurva`: `DELETE` dos ausentes da lista; para cada novo ou alterado, gravar `dBaseReft`, `cTickerIndcd` (nome), `dVertcReft`, `vPrecoTx` (arredondado), `cDiaUtil` = `diasUteis` (nulo se não informado), `cQtdDiaPer` = dias corridos da data-base ao ponto, `cQtdDiaReft` = 30/360 (Bond Basis: `d1 = min(dia1,30)`; `d2 = (dia2 == 31 && d1 == 30) ? 30 : dia2`; `360·Δano + 30·Δmês + (d2 − d1)`), `vFatorAcum` e `vFatorDia` nulos. Pontos que não mudaram: intocados.
-4. Reler os pontos da data e conferir o `hashPontos` contra o da lista arredondada; diferente → desfaz tudo, 500 `ERRO_INTERNO`.
+2. Comparar com o gravado: um vértice muda se o valor (`compareTo`) ou os `diasUteis` mudarem. Nada mudou → aviso `SEM_MUDANCA`, sem escrita e sem log (mas segue para o passo 5).
+3. Escrever só a diferença em `tDadoVertcCurva`: `DELETE` dos ausentes da lista; para cada novo ou alterado, gravar `dBaseReft`, `cTickerIndcd` (nome), `dVertcReft`, `vPrecoTx` (arredondado), `cDiaUtil` = `diasUteis` (nulo se não informado), `cQtdDiaPer` = dias corridos da data-base ao vértice, `cQtdDiaReft` = 30/360 (Bond Basis: `d1 = min(dia1,30)`; `d2 = (dia2 == 31 && d1 == 30) ? 30 : dia2`; `360·Δano + 30·Δmês + (d2 − d1)`), `vFatorAcum` e `vFatorDia` nulos. Vértices que não mudaram: intocados.
+4. Reler os vértices da data e conferir o `hashPontos` contra o da lista arredondada; diferente → desfaz tudo, 500 `ERRO_INTERNO`.
 5. Depois do commit (também com `SEM_MUDANCA`): `regravarInterpolada(codigo, dataBase)`; falha → aviso `INTERPOLADA_DESATUALIZADA` com o motivo. A edição já está gravada.
-6. Log `PONTOS_EDITADOS` (seção 10.5) se algo mudou.
+6. Log `VERTICES_EDITADOS` (seção 10.5) se algo mudou.
 
 Nunca escrever `dBaseReft`/`cUsuarCalc` de `tCurvaMercd`, nem `tDadoCurva` (exceto o `DELETE` da seção 8). Sem conferência de versão: quem salva por último vence.
 
@@ -394,55 +393,111 @@ Feriados: `feriados(CALENDARIO, MERCADO_CALENDARIO, anos das datas)` da configur
 | `VALOR_NAO_POSITIVO` | unidade `PRECO`/`PONTOS` e valor ≤ 0 |
 | `DIAS_UTEIS_DIFERENTES_DO_CALENDARIO` | `diasUteis` ≠ dias úteis do calendário em (data-base, data] |
 | `DIAS_UTEIS_INCOERENTES` | `diasUteis` < 1 ou > dias corridos |
-| `DIAS_UTEIS_FORA_DE_ORDEM` | em ordem de data, `diasUteis` ≤ o de um ponto anterior com `diasUteis` |
+| `DIAS_UTEIS_FORA_DE_ORDEM` | em ordem de data, `diasUteis` ≤ o de um vértice anterior com `diasUteis` |
 
 Taxa negativa: sem aviso.
 
 ### 10.4 Resposta
 
-200 com os pontos relidos (valor como string na escala gravada), `hashPontos` novo e `avisos`.
+200 com os vértices relidos (valor como string na escala gravada), `hashPontos` novo e `avisos`.
 
-### 10.5 `PONTOS_EDITADOS`
+### 10.5 `VERTICES_EDITADOS`
 
-Nível `AVISO`: `correlationId`, `usuario`, `codigo`, `nome`, `dataBase`, `operacao` (`SUBSTITUICAO`/`EXCLUSAO`), `origem` (`API`/`PLANILHA`), `idLote`, quantidade de pontos antes e depois, `hashPontos` antes e depois, instante de Brasília. Sem registro de auditoria.
-
----
-
-## 11. Curva primária B3 (`BtrsCurvaPrimrService`, spec `curva-primaria-b3`)
-
-Entidade `BtrsCurvaPrimrEntity` (`tBtrsCurvaPrimr`: `cIdtfdUnic` `@Id` sem geração, `cTickerIndcd`, `dBaseReft`, `cDiaCorri`, `cDiaUtil`, `vPrecoTx`, `vFatorAcum`, `vFatorDia`), porta `BtrsCurvaPrimrRepositoryPort`. Record do domínio `BtrsCurvaPrimr(Integer id, int diasCorridos, int diasUteis, BigDecimal valor, BigDecimal fatorAcumulado, BigDecimal fatorDia)`; o resultado da validação de coluna é um `sealed interface` (`Valida(BtrsCurvaPrimr linha)` ou `Invalida(List<Detalhe> erros)`), lido com `switch` por pattern.
-
-Listagem geral (uma consulta; `codigosNaFonte` numa segunda consulta só para as curvas da página):
-```sql
-SELECT m.cTickerIdtfdUnic, m.cTickerIndcd, m.cSitReg, b.dBaseReft, COUNT(*) AS quantidade,
-       CASE WHEN EXISTS (SELECT 1 FROM tDadoVertcCurva v WHERE v.cTickerIndcd = b.cTickerIndcd AND v.dBaseReft = b.dBaseReft) THEN 1 ELSE 0 END AS construida
-  FROM tBtrsCurvaPrimr b JOIN tCurvaMercd m ON m.cTickerIndcd = b.cTickerIndcd
- WHERE b.dBaseReft BETWEEN ? AND ? AND m.cTickerIdtfdUnic IS NOT NULL   -- + filtros de código e nome
- GROUP BY m.cTickerIdtfdUnic, m.cTickerIndcd, m.cSitReg, b.dBaseReft
- ORDER BY b.dBaseReft DESC, m.cTickerIdtfdUnic
-OFFSET ? ROWS FETCH NEXT ? ROWS ONLY;
-SELECT cTickerIndcd, cTickerPrvdr FROM tCurvaPrvdr WHERE iPrvdrDados = 'B3' AND cPrvdrMercd = 'TS' AND cTickerIndcd IN (...);
-```
-Filtros `de`/`ate`: `de` posterior a `ate`, ou intervalo acima de 366 dias → 400 `PARAMETRO_INVALIDO`, antes de consultar.
-
-Escrita (uma transação, trava como na seção 10.2, com o mesmo tempo limite de 60 s no comando (`@QueryHints` `jakarta.persistence.query.timeout=60000` na consulta da trava **e** na do `MAX + 1`, que é o `proximoId` da `BtrsCurvaPrimr`; estouro de qualquer das duas → 500 `ERRO_INTERNO`, sem gravar e sem evento) e a mesma proibição de `SET LOCK_TIMEOUT` e `@Transactional(timeout)`):
-```sql
-SELECT cTickerIndcd FROM tCurvaMercd WITH (UPDLOCK, ROWLOCK) WHERE cTickerIndcd = ?;
-SELECT ISNULL(MAX(cIdtfdUnic), 0) FROM tBtrsCurvaPrimr WITH (UPDLOCK, HOLDLOCK);          -- só no POST
-INSERT INTO tBtrsCurvaPrimr (cIdtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-UPDATE tBtrsCurvaPrimr SET cDiaCorri = ?, cDiaUtil = ?, vPrecoTx = ?, vFatorAcum = ?, vFatorDia = ? WHERE cIdtfdUnic = ? AND cTickerIndcd = ? AND dBaseReft = ?;
-DELETE FROM tBtrsCurvaPrimr WHERE cIdtfdUnic = ? AND cTickerIndcd = ? AND dBaseReft = ?;   -- 0 linhas → 404
-DELETE FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ?;                       -- data inteira
-SELECT cIdtfdUnic, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia FROM tBtrsCurvaPrimr WHERE cTickerIndcd = ? AND dBaseReft = ? ORDER BY cDiaCorri, cIdtfdUnic;
-```
-`PUT` e `DELETE` de linha filtram por id, nome e data-base: linha de outra curva ou data dá 0 linhas → 404 `NAO_ENCONTRADO`.
-
-1. Validação de coluna (422 `DADOS_INVALIDOS`, um `Detalhe` por campo): `diasCorridos`, `diasUteis` e `valor` obrigatórios; inteiros em `INT`; `valor` com `precision() - scale() <= 16` e `scale() <= 12`; fatores com `precision() - scale() <= 12` e `scale() <= 16`. Nada é arredondado.
-2. Avisos (seção 1.3, `AvisoCurva`), sobre as linhas relidas da data: `DIAS_CORRIDOS_NAO_POSITIVO` (< 1), `DIAS_UTEIS_INCOERENTES` (< 1 ou > dias corridos), `DIAS_CORRIDOS_REPETIDOS` (agrupar por dias corridos, um aviso por grupo com mais de uma linha, citando os ids), `CURVA_SEM_PROVEDOR_B3` (nenhum provedor `B3`/`TS`), `CURVA_JA_CONSTRUIDA` (`EXISTS` em `tDadoVertcCurva` na data). A consulta calcula os mesmos avisos.
-3. Depois do commit: log `CURVA_PRIMARIA_EDITADA` (nível `AVISO`: `correlationId`, `usuario`, `fonte` = `B3`, `codigo`, `nome`, `dataBase`, `operacao` `INCLUSAO`/`ALTERACAO`/`EXCLUSAO`/`EXCLUSAO_DATA`, `linhaAntes`, `linhaDepois` ou `linhasApagadas`, `quantidadeAntes`, `quantidadeDepois`). Sem auditoria, sem chamada ao engine, sem escrita em `tDadoVertcCurva`, `tDadoCurva` ou `tCurvaMercd`.
-4. Resposta: `POST` 201 com a linha gravada e `avisos`; `PUT` 200 com a linha e `avisos`; `DELETE` 200 com `avisos` da data (vazio se a data ficou sem linhas).
+Nível `AVISO`: `correlationId`, `usuario`, `codigo`, `nome`, `dataBase`, `operacao` (`SUBSTITUICAO`/`EXCLUSAO`), `origem` (`API`/`PLANILHA`), `idLote`, quantidade de vértices antes e depois, `hashPontos` antes e depois, instante de Brasília. Sem registro de auditoria.
 
 ---
+
+## 11. Vértices brutos dos provedores (`/dados-mercado`, spec `vertices-brutos-provedor`)
+
+Os CRUDs dos três provedores **já existem**: reaproveite os serviços, entidades e repositórios deles (`BtrsCurvaPrimr*`, `AnbmaCurvaPrimr*`, `BbergCurvaPrimr*`); as classes abaixo são a camada que a tela usa. Onde houver `Linha` no nome, trocar por `Vertice`. As rotas atuais desses CRUDs podem ficar.
+
+### 11.1 Contrato
+
+Base da curves: `{urlAPI}/api/v1/dados-mercado` (proxy `/api`). Upload: `{urlAPI}/api/v1/cargas/upload` (proxy `/api/v1/cargas` → bff).
+
+| Ação | Chamada | Tempo front |
+|---|---|---|
+| Tickers | `GET /dados-mercado/{provedor}/tickers` | 3 s |
+| Consultar | `GET /dados-mercado/{provedor}?codigoNaFonte=PRE&dataBase=2026-09-14` | 3 s |
+| Incluir / alterar / excluir vértice | `POST /dados-mercado/{provedor}/{codigo}/{dataBase}/vertices`, `PUT .../vertices/{id}`, `DELETE .../vertices/{id}` | 3 s |
+| Excluir todos da data | `DELETE /dados-mercado/{provedor}/{codigo}/{dataBase}` | 3 s |
+| Baixar planilha | `GET .../planilha` (`blob`) | 3 s |
+| Importar planilha | `POST .../planilha?modo=SIMULACAO\|APLICACAO` (`FormData`: `arquivo`) | 70 s |
+| Enviar arquivo da fonte | `POST /api/v1/cargas/upload` (`FormData`: `fonte`, `arquivo`) | 130 s |
+
+`{provedor}` = `B3`, `ANBIMA` ou `BLOOMBERG`. Campos do vértice por provedor (decimais sempre string):
+
+| Provedor | Corpo do POST/PUT | Só leitura na resposta |
+|---|---|---|
+| `B3` | `{ "diasCorridos": 112, "diasUteis": 75, "valor": "13.589", "fatorAcumulado": null, "fatorDia": null }` | `id`, `dataVertice` |
+| `ANBIMA` | `{ "prazoDiasCorridos": 229, "taxa": "5.5415" }` | `id`, `vencimento` |
+| `BLOOMBERG` | `{ "ticker": "S0490Z 15M BLC2 Curncy", "valor": "4.31" }` | `id` |
+
+```jsonc
+// GET /dados-mercado/B3/tickers
+[ { "codigoNaFonte": "PRE", "produto": "TS", "curvas": [ { "codigo": "PRE", "nome": "DIxPRE" } ] } ]
+// GET /dados-mercado/B3?codigoNaFonte=PRE&dataBase=2026-09-14
+{ "provedor": "B3", "codigoNaFonte": "PRE", "dataBase": "2026-09-14",
+  "curvas": [ { "codigo": "PRE", "nome": "DIxPRE", "curvaConstruida": true,
+                "avisos": [ { "codigo": "CURVA_JA_CONSTRUIDA", "mensagem": "...", "detalhes": [] } ],
+                "vertices": [ { "id": 101, "dataVertice": "2026-09-15", "diasCorridos": 1, "diasUteis": 1,
+                                "valor": "13.900000000000", "fatorAcumulado": null, "fatorDia": null } ] } ] }
+// POST/PUT vértice (201/200): o vértice gravado + "avisos" da curva na data
+// planilha (200): { "modo": "SIMULACAO", "mudancas": [ { "linha": 3, "tipo": "ALTERACAO", "id": 101 } ],
+//                   "erros": [ { "linha": 12, "coluna": "valor", "motivo": "..." } ], "avisos": [],
+//                   "contagens": { "INCLUSAO": 1, "ALTERACAO": 1, "EXCLUSAO": 0, "SEM_MUDANCA": 276 } }
+// upload (200): { "idCarga": "B3-TS-20260914-46a249c60bec", "dataBase": "2026-09-14", "origem": "UPLOAD",
+//                 "verticesPorCodigo": { "PRE": 278 }, "usuario": "maria", "correlationId": "..." }
+// erro: curves no formato de erro dela (o do CRUD de provedores), com detalhes [ { campo, linha, valor, motivo } ];
+//       upload pelo bff no formato do processor { codigoErro, mensagem, correlationId }. O front lê os dois pelo lerErro.
+```
+
+
+### 11.2 Estratégia por provedor
+
+```java
+// application/service/verticebruto/VerticeBrutoProvedor.java
+public interface VerticeBrutoProvedor {
+    String provedor();                                    // "B3" | "ANBIMA" | "BLOOMBERG" (= iPrvdrDados)
+    List<VerticeBruto> listar(String nomeCurva, LocalDate dataBase);   // já na ordem da spec
+    VerticeBruto incluir(String nomeCurva, LocalDate dataBase, Map<String, Object> campos, int id);
+    VerticeBruto alterar(String nomeCurva, LocalDate dataBase, int id, Map<String, Object> campos);
+    void excluir(String nomeCurva, LocalDate dataBase, Integer id);   // id nulo = todos da data
+    int proximoId();                                      // MAX(cIdtfdUnic) + 1 com UPDLOCK, HOLDLOCK
+    List<DetalheErro> validar(Map<String, Object> campos);            // só regra de coluna → 422
+    List<AvisoCurva> avisos(List<VerticeBruto> verticesDaData);       // avisos próprios do provedor
+    List<String> colunasPlanilha();                       // "id" + campos editáveis
+}
+public record VerticeBruto(int id, Map<String, Object> campos) {}     // campos em ordem, decimais como String
+```
+
+Uma implementação por provedor (`VerticeBrutoB3`, `VerticeBrutoAnbima`, `VerticeBrutoBloomberg`) sobre as entidades e repositórios que já existem. Regras de coluna (422 `DADOS_INVALIDOS`): obrigatórios (B3 `diasCorridos`, `diasUteis`, `valor`; ANBIMA `prazoDiasCorridos`; Bloomberg `ticker`, `valor`), inteiro em `INT`, `prazoDiasCorridos` sem fração, decimal que cabe em `DECIMAL(28,12)` (16 inteiros, 12 casas) ou `DECIMAL(28,16)` nos fatores (`new BigDecimal(texto)`, `precision() - scale()` e `scale()`), `ticker` até 50. Avisos próprios: B3 `DIAS_CORRIDOS_NAO_POSITIVO`, `DIAS_UTEIS_INCOERENTES`, `DIAS_CORRIDOS_REPETIDOS`; ANBIMA `PRAZO_NAO_POSITIVO`, `PRAZO_REPETIDO`, `TAXA_AUSENTE`; Bloomberg `TICKER_REPETIDO`.
+
+### 11.3 Serviço comum (`VerticeBrutoService`)
+
+- `Map<String, VerticeBrutoProvedor>` montado das implementações; provedor fora → `InvalidInputException(PARAMETRO_INVALIDO)`.
+- Curva: pelo código, com `CurvaMercdRepositoryPort` (sem código ou inexistente → 404 `NAO_ENCONTRADO`); a gravação usa o **nome** (`cTickerIndcd`).
+- Gravação em `@Transactional`: `SELECT cTickerIndcd FROM tCurvaMercd WITH (UPDLOCK, ROWLOCK) WHERE cTickerIndcd = ?` (60 s) → `validar` → `proximoId` → `incluir`/`alterar`/`excluir` → `listar` → avisos.
+- Avisos comuns: `CURVA_SEM_PROVEDOR` (`SELECT COUNT(*) FROM tCurvaPrvdr WHERE cTickerIndcd = ? AND iPrvdrDados = ?` = 0); `CURVA_JA_CONSTRUIDA` (`SELECT COUNT(*) FROM tDadoVertcCurva WHERE cTickerIndcd = ? AND dBaseReft = ?` > 0).
+- Tickers: `SELECT cTickerPrvdr, cPrvdrMercd, cTickerIndcd FROM tCurvaPrvdr WHERE iPrvdrDados = ?` agrupado por código na fonte, com código e nome de cada curva de `tCurvaMercd`; `trim()` nas colunas `CHAR`.
+- Nunca escrever em `tCurvaMercd`, `tCurvaPrvdr`, `tDadoVertcCurva`, `tDadoCurva`; nunca chamar o engine.
+
+### 11.4 Planilha (POI, já no projeto)
+
+- Exportar: aba `Vertices`, linha 1 = `colunasPlanilha()`, uma linha por vértice; números como célula numérica, texto como célula de texto.
+- Importar: ler a aba `Vertices` pelo nome das colunas da linha 1 (faltou coluna → 422). Linha com `id` gravado → `ALTERACAO` ou `SEM_MUDANCA`; sem `id` → `INCLUSAO`; `id` gravado que não aparece → `EXCLUSAO`; `id` de outra curva ou data → erro da linha. `SIMULACAO` não grava; `APLICACAO` com qualquer erro → 422 sem gravar; sem erro, tudo numa transação com a trava. `formato=xlsx` devolve a planilha enviada com a coluna `Resultado`.
+
+### 11.5 Controller
+
+`DadosMercadoAPI` + `DadosMercadoController` (`@RequestMapping("/api/v1/dados-mercado")`), rotas da spec; o corpo do vértice entra como `Map<String, Object>` e sai como o `VerticeBruto` achatado (`id` + campos + só leitura) mais `avisos`.
+
+### 11.6 Testes
+
+| Classe | Cobre |
+|---|---|
+| `VerticeBrutoServiceTest` | gravação, 422 por coluna, avisos comuns e por provedor, tickers, código com duas curvas (portas simuladas) |
+| `PlanilhaVerticeBrutoTest` | planilhas montadas no teste: alteração, inclusão, exclusão, sem mudança, erro de linha, aba ausente |
+| `DadosMercadoRotasTest` | MockMvc `standaloneSetup`: 400 provedor, 404, 422 com `detalhes`, 201 com avisos |
 
 ## 12. Remover e conferir
 
@@ -450,7 +505,7 @@ Nada a remover no serviço (é novo ou é do outro dev). Conferir que nenhum có
 
 ### 12.1 Conferência da primeira parte (tarefas 1 a 5), antes do commit
 
-- **Só o que é das tarefas 1 a 5:** curva de mercado, provedores da curva, configuração de cálculo com valores aceitos, curva primária B3 e a base comum (erros, correlação, log `CADASTRO_ALTERADO` e `CURVA_PRIMARIA_EDITADA`, contrato de tipos, catálogo de enums). Os enums de painel e de pontos entram porque o catálogo de `/valores` lista todos (tarefa 1.2b); o evento `PONTOS_EDITADOS`, as rotas de pontos, painel e planilha ficam para a change `curves-operacao-curvas`.
+- **Só o que é das tarefas 1 a 5b:** curva de mercado, provedores da curva, configuração de cálculo com valores aceitos, vértices brutos dos três provedores (seção 11), repasse ao engine (seção 16) e a base comum (erros, correlação, log `CADASTRO_ALTERADO` e `CURVA_PRIMARIA_EDITADA`, contrato de tipos, catálogo de enums). Os enums de painel e de vértices entram porque o catálogo de `/valores` lista todos (tarefa 1.2b); o evento `VERTICES_EDITADOS`, as rotas de vértices, painel e planilha ficam para a change `curves-operacao-curvas`.
 - **Camadas:** cada classe no lugar da tabela "Onde fica cada tipo de classe" (seção 0).
 - **`pom.xml`:** sem Resource Server nem `azure-identity` enquanto a autenticação estiver adiada; `poi-ooxml` só se a auditoria em `xlsx` (tarefa 2.2) entrar agora.
 - **Jackson:** a configuração de `BigDecimal` como texto está no mapper que o Spring MVC usa (Jackson 3); conferido por um teste de rota.
@@ -470,7 +525,7 @@ Os passos seguintes são da segunda parte, a change `curves-operacao-curvas` (as
 
 5. Seção 1.6, cliente do engine (1.1 da change da segunda parte), com a consulta ao engine em `/valores` (seção 5, fase 2); seção 7, planilha do cadastro (6.x).
 6. Seção 6, painel (7.1).
-7. Seções 8 e 10, pontos (8.x), seção 9, planilha de pontos (9.x), origens e dias úteis (10.x).
+7. Seções 8 e 10, vértices (8.x), seção 9, planilha de vértices (9.x), origens e dias úteis (10.x).
 8. Seção 14 (testes) e seção 15 (homologação) da segunda parte.
 
 ## 14. Testes (ao final)
@@ -492,9 +547,9 @@ Ordem: **verificar, adaptar, criar, rodar**. Só `spring-boot-starter-test` (JUn
 | `ValoresServiceTest` | fase 1: tabela embutida, provedores de `tPrvdrDadoMercd` e catálogos do serviço, sem nenhuma chamada ao engine; todo valor com `rotulo` e `descricao`. Fase 2 (change `curves-operacao-curvas`): engine respondendo; engine fora com `VALORES_SEM_ENGINE`; tabela embutida igual à parte fixa da resposta do engine (resposta gravada em `src/test/resources/valores-engine.json`) |
 | `CadastroPlanilhaServiceTest` | exportar e importar sem editar → zero mudanças; 30 prioridades trocadas; provedor removido; versão existente editada → erro; erro impede o lote; vírgula e ponto juntos → erro; `MODELOS_POR_ORIGEM` malformado |
 | `PainelServiceTest` (fase 2) | todos os cenários da spec `painel-curvas`, uma linha por situação e por `motivo`, engine fora, feriado americano, carga atrasada (ontem) e carga de hoje não atrasada, origem secundária |
-| `DadoVerticeCurvaServiceTest` | vetores da seção 0.2 (`hashPontos`, arredondamento, `diasUteis` 76 com 30/360 = 110); cenários da spec `pontos-curva-manual` (um valor, ponto retirado, casas a mais, lista igual sem escrita, conferência divergente desfaz, data sem construção, engine fora com `INTERPOLADA_DESATUALIZADA`, feriado, sábado, repetida); regravação chamada também com `SEM_MUDANCA` |
-| `BtrsCurvaPrimrServiceTest` | cenários da spec `curva-primaria-b3` (listagem da carga, consulta da PRE, linha de outra data → 404, repetidos, valor com 13 casas → 422, correção depois da construção, data sem carga digitada, `de` maior que `ate` → 400, trava não obtida em 60 s → 500 sem gravar); nenhuma chamada ao engine; `MAX + 1` com `UPDLOCK, HOLDLOCK` enviado ao repositório; log sem o evento quando o commit falha |
-| `DadoVerticeCurvaPlanilhaServiceTest` | cenários da spec `pontos-curva-planilha`; planilha sem `DiasUteis`; `DiasUteis` apagado → `ALTERACAO`; valor da `PTX` 56,3772259 numérico |
+| `DadoVerticeCurvaServiceTest` | vetores da seção 0.2 (`hashPontos`, arredondamento, `diasUteis` 76 com 30/360 = 110); cenários da spec `vertices-curva-manual` (um valor, vértice retirado, casas a mais, lista igual sem escrita, conferência divergente desfaz, data sem construção, engine fora com `INTERPOLADA_DESATUALIZADA`, feriado, sábado, repetida); regravação chamada também com `SEM_MUDANCA` |
+| `VerticeBrutoServiceTest` (seção 11.6) | cenários da spec `vertices-brutos-provedor` (listagem da carga, consulta da PRE, linha de outra data → 404, repetidos, valor com 13 casas → 422, correção depois da construção, data sem carga digitada, `de` maior que `ate` → 400, trava não obtida em 60 s → 500 sem gravar); nenhuma chamada ao engine; `MAX + 1` com `UPDLOCK, HOLDLOCK` enviado ao repositório; log sem o evento quando o commit falha |
+| `DadoVerticeCurvaPlanilhaServiceTest` | cenários da spec `vertices-curva-planilha`; planilha sem `DiasUteis`; `DiasUteis` apagado → `ALTERACAO`; valor da `PTX` 56,3772259 numérico |
 | `ApiContratoTest` (MockMvc) | um teste por rota com 401, 403 e papel certo (**adiado** com a autenticação: por ora só a rota com sucesso); um por `codigoErro`; `X-Correlation-Id` em sucesso, erro e `xlsx`; decimais como string |
 | `FusoTest` | `OffsetDateTime.ofInstant(Instant.parse("2026-09-15T01:30:00Z"), ZoneId.systemDefault())` → `2026-09-14T22:30-03:00`; subida recusada com outro fuso |
 
@@ -508,11 +563,116 @@ Com o banco e o Entra ID do projeto (o curves não depende do engine; o engine s
 - `GET /api/v1/curvas-mercado/valores` responde 200 com a tabela embutida, os provedores e os catálogos, com o engine desligado;
 - as 7 curvas do `exemplo-cadastro-7-curvas.txt` cadastradas pela API e pela planilha, e a simulação do engine sem `CADASTRO_INVALIDO` em nenhuma;
 - duas inclusões de provedor da curva simultâneas com `idCurvaProvedor` diferentes;
-- edição de pontos enquanto o engine constrói a mesma curva: espera e grava por cima;
+- edição de vértices enquanto o engine constrói a mesma curva: espera e grava por cima;
 - tarefa 11.2 do `tasks.md` da change `curves-operacao-curvas` (construir, editar, interpolar, carga sem sobrescrever, painel `DIVERGENTE_DA_FONTE`, recálculo forçado);
 - `openspec validate curves-cadastro-curvas --strict`.
 
 ---
+
+## 16. Ações e consultas via engine (spec `acoes-curva-mercado`)
+
+Única chamada da primeira parte ao engine: **repasse** para a tela Curvas. Sem cache, sem `/valores-cadastro`, sem `EnginePort` da fase 2 (seção 1.6). A rota `GET /api/v1/curvas/{codigo}/{dataBase}/pontos` do engine vem da change `fed-curvas-mercado` (tarefa 1.1); antes dela, o repasse de pontos responde o 404 do engine.
+
+### 16.1 Contrato ponta a ponta
+
+Front → curves (`{urlAPI}/api/v1/curvas-mercado/{codigo}/{dataBase}/...`, proxy `/api`) → engine (`{curves.engine.url}/api/v1/curvas/{codigo}/{dataBase}/...`). No 2xx, a curves repassa **status e corpo sem alterar**; no 4xx, mantém status, código, mensagem e `detalhes` do engine no **formato de erro da curves**; tempo esgotado, rede ou 5xx viram `503 ENGINE_INDISPONIVEL`.
+
+| Ação | Front → curves | curves → engine | Tempo front / curves |
+|---|---|---|---|
+| Construir | `POST .../construcao` | `POST .../construcao` | 130 s / 120 s |
+| Recalcular | `POST .../construcao?forcarRecalculo=true` | idem | 130 s / 120 s |
+| Origem secundária | `POST .../construcao?forcarRecalculo=true&fonte=B3&produto=TS` | idem | 130 s / 120 s |
+| Regravar interpolada | `POST .../interpolada` | `POST .../interpolada` | 70 s / 60 s |
+| Vértices | `GET .../vertices` | `GET /api/v1/curvas/{codigo}/{dataBase}` | 40 s / 30 s |
+| Pontos | `GET .../pontos?de=&ate=` | `GET .../pontos?de=&ate=` | 40 s / 30 s |
+| Interpolar | `GET .../interpolacao?du=21&du=252&data=2027-01-04` | idem (repetir os parâmetros como vieram) | 40 s / 30 s |
+
+Cabeçalhos curves → engine: `X-Correlation-Id` (o recebido), `X-Usuario` (o recebido, quando vier; sem autenticação na v0 e na v1), **nunca** `Authorization`.
+
+Respostas que o front lê (só estes campos; o resto é ignorado):
+
+```jsonc
+// construcao (200)
+{ "codigo": "PRE", "nome": "DIxPRE", "dataBase": "2026-09-14", "situacao": "RECONSTRUIDA",
+  "quantidadePontos": 278, "hashPontos": "7c49...", "duracaoMs": 1840,
+  "avisos": [ { "codigo": "ORIGEM_SECUNDARIA", "mensagem": "..." } ] }
+// vertices (200) — "pontos" é o nome do campo no engine; na tela, "Vértices"
+{ "codigo": "PRE", "dataBase": "2026-09-14", "hashPontos": "7c49...", "avisos": [],
+  "pontos": [ { "data": "2026-09-15", "valor": "13.9000000", "diasUteis": 1, "diasCorridos": 1, "dias30360": 1,
+                "fatorAcumulado": "1.0005166043641946", "fatorDiario": "1.0005166043641946",
+                "recalculado": { "diasUteis": 1, "diasCorridos": 1, "dias30360": 1,
+                                 "fatorAcumulado": "1.0005166043641946", "fatorDiario": "1.0005166043641946" } } ] }
+// pontos (200) — rota nova do engine (change fed-curvas-mercado, tarefa 1.1)
+{ "codigo": "PRE", "dataBase": "2026-09-14", "total": 12390, "hashPontos": "7c49...", "avisos": [],
+  "pontos": [ { "data": "2026-09-15", "valor": "13.9000000" } ] }
+// interpolacao (200)
+{ "prazos": [ { "pedido": "21", "data": "2026-10-14", "du": 21, "dc": 30, "valor": "13.8123456",
+                "classificacao": "INTERPOLADO", "fatorAcumulado": "...", "fatorDiario": "..." } ] }
+// erro: sempre no formato de erro da curves (o mesmo do CRUD de provedores); o front lê pelo helper lerErro
+```
+
+
+### 16.2 Porta e adaptador do engine
+
+```java
+// application/port/out/EngineRepassePort.java  (nome próprio: não colide com a EnginePort da fase 2 da curves)
+public interface EngineRepassePort {
+    RespostaEngine construir(String codigo, LocalDate dataBase, boolean forcarRecalculo, String fonte, String produto, String usuario, String correlationId);
+    RespostaEngine regravarInterpolada(String codigo, LocalDate dataBase, String usuario, String correlationId);
+    RespostaEngine consultarVertices(String codigo, LocalDate dataBase, String correlationId);
+    RespostaEngine consultarPontos(String codigo, LocalDate dataBase, LocalDate de, LocalDate ate, String correlationId);
+    RespostaEngine interpolar(String codigo, LocalDate dataBase, String queryString, String correlationId);
+    record RespostaEngine(int status, String corpoJson) {}
+}
+```
+
+```java
+// adapter/out/client/engine/EngineHttpClient.java  (@Component, implements EngineRepassePort; se a EnginePort da fase 2 já existir, a mesma classe implementa as duas)
+private final HttpClient http = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)
+        .connectTimeout(Duration.ofSeconds(5)).build();
+@Value("${curves.engine.url}") private String baseUrl;          // sem valor padrão: falta → não sobe
+
+private RespostaEngine enviar(String metodo, String caminho, Duration limite, String usuario, String correlationId) {
+    var b = HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/curvas/" + caminho)).timeout(limite)
+            .header("Accept", "application/json").header("X-Correlation-Id", correlationId)
+            .method(metodo, HttpRequest.BodyPublishers.noBody());
+    if (usuario != null) b.header("X-Usuario", usuario);
+    try {
+        var r = http.send(b.build(), HttpResponse.BodyHandlers.ofString());
+        if (r.statusCode() >= 500) throw new EngineIndisponivelException();
+        return new RespostaEngine(r.statusCode(), r.body());
+    } catch (IOException e) { throw new EngineIndisponivelException(); }   // inclui HttpTimeoutException
+      catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new EngineIndisponivelException(); }
+}
+// construir: POST "{codigo}/{dataBase}/construcao?forcarRecalculo=..&fonte=..&produto=.." (só os presentes), 120 s
+// regravarInterpolada: POST ".../interpolada", 60 s · consultarVertices: GET "{codigo}/{dataBase}", 30 s
+// consultarPontos: GET ".../pontos?de=..&ate=..", 30 s · interpolar: GET ".../interpolacao?" + queryString, 30 s
+// codigo sempre com URLEncoder.encode(codigo, UTF_8)
+```
+
+`EngineIndisponivelException` (nova, no molde da `ServiceUnavailableException` da curves) com o código `ENGINE_INDISPONIVEL` (503) no enum de códigos de erro, um método no handler que responde as rotas e o texto em `messages.properties` ("O engine não respondeu. Tente de novo em instantes.").
+
+### 16.3 Serviço e controller
+
+- `CurvaMercadoAcoesService`: confere a curva pelo `CurvaMercdRepositoryPort` (404 `NAO_ENCONTRADO`); valida (400 `PARAMETRO_INVALIDO`): `fonte` e `produto` juntos ou nenhum; `de <= ate`; interpolação com ao menos um `du` ou `data`. Depois chama o `EngineRepassePort`.
+- `CurvaMercadoAcoesController` + `CurvaMercadoAcoesAPI` (`@RequestMapping("/api/v1/curvas-mercado/{codigo}/{dataBase}")`, `@DateTimeFormat(iso = DATE) LocalDate dataBase`): no 2xx, cada método devolve **o corpo do engine como veio**; no 4xx, lança a exceção de negócio da curves com o status, o código, a mensagem e os `detalhes` lidos do Problem Details do engine (campos `code` ou `codigoErro`, `detail`, `detalhes`), para o handler montar o formato da curves:
+
+```java
+private ResponseEntity<String> repassar(RespostaEngine r) {
+    if (r.status() >= 400) throw ErroDoEngine.de(r, jsonMapper);   // vira o formato de erro da curves
+    return ResponseEntity.status(r.status()).contentType(MediaType.APPLICATION_JSON).body(r.corpoJson());
+}
+```
+
+- Interpolação: passar a `request.getQueryString()` adiante sem remontar (mantém `du` e `data` repetidos e na ordem).
+- `application.yml`: `curves.engine.url: ${CURVES_ENGINE_URL}`.
+
+### 16.4 Testes
+
+| Classe | Cobre |
+|---|---|
+| `CurvaMercadoAcoesServiceTest` | 404, os 400, repasse do status, `EngineIndisponivelException` → 503 |
+| `CurvaMercadoAcoesRotasTest` | MockMvc `standaloneSetup`: corpo e status do engine repassados no 2xx, 422 do engine no formato da curves, query string da interpolação intacta |
 
 ## Extras não finalizados (fora das tarefas e das specs)
 
@@ -539,7 +699,7 @@ Com o banco e o Entra ID do projeto (o curves não depende do engine; o engine s
 
 Vetor de teste: esse texto dá `0a45962d58276782018cb313962646ae889877c9c01279cab32aa3909c654936`. Provedores da curva ordenados por `idCurvaProvedor`, configurações por `versao`. Ficavam **fora** do cálculo `dBaseReft`, `cUsuarCalc`, `cUsuarAtulz`, `dCriacReg` e `dUltAtulz`: assim uma construção do engine (que grava `dBaseReft`) não invalidava a edição de ninguém. Não se usava o `dUltAtulz` porque o `datetime` do SQL Server tem precisão de cerca de 3 ms. As colunas `CHAR` eram aparadas antes do cálculo, e o hash era o mesmo antes e depois de reler uma curva. Com Jackson: `JsonMapper.builder().enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS).enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)`, montando o documento com `Map`/`record` só com esses campos.
 
-**Regras de escrita.** Toda alteração (curva, inativação, reativação, provedor da curva, configuração): sem `If-Match` → 428 `IF_MATCH_AUSENTE`; `If-Match` diferente do `ETag` calculado **dentro da transação, depois de travar a curva** (`SELECT ... WITH (UPDLOCK, ROWLOCK)`, com o `@QueryHints` de 60 s da seção 2.1) → 412 `ALTERADO_POR_OUTRO`, nada gravado. A resposta de sucesso trazia o `ETag` novo. A edição de pontos e a do bruto da B3 nunca usaram `If-Match`.
+**Regras de escrita.** Toda alteração (curva, inativação, reativação, provedor da curva, configuração): sem `If-Match` → 428 `IF_MATCH_AUSENTE`; `If-Match` diferente do `ETag` calculado **dentro da transação, depois de travar a curva** (`SELECT ... WITH (UPDLOCK, ROWLOCK)`, com o `@QueryHints` de 60 s da seção 2.1) → 412 `ALTERADO_POR_OUTRO`, nada gravado. A resposta de sucesso trazia o `ETag` novo. A edição de vértices e a do bruto da B3 nunca usaram `If-Match`.
 
 **Cenários da spec `cadastro-curva-mercado` (requisito "Concorrência otimista"):**
 - *Duas pessoas editando a mesma curva:* duas pessoas leem a `PRE` e as duas enviam alterações com o mesmo `ETag`; a primeira é gravada, e a segunda recebe 412 `ALTERADO_POR_OUTRO`.

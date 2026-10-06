@@ -20,8 +20,8 @@ Guia de implementação: [`implementacao.md`](implementacao.md). Cada tarefa diz
 
 - [ ] 2.1 `ExecucaoManualActionPort`, `ResultadoExecucao`, `TipoResultado` e `CargaFonteTaskActionAdapter` (seção 8) (v1 2.1, parte manual); escrever o `CargaFonteTaskActionAdapterTest`
 - [ ] 2.2 Nova assinatura de `SchedulerUseCase.executeTask`, o `SchedulerService.executeTask` reescrito, `SchedulerAPI`/`SchedulerController.executar` e `ExecucaoManualResponseDto` (seção 9); escrever o `ExecucaoManualServiceTest` e o `SchedulerExecutarRotaTest`
-- [ ] 2.3 bff: rota autenticada de execução (perfil de operação) com `dataBase` e `incluirDownload` opcionais, repassada ao orquestrador com `X-Usuario` e `X-Correlation-Id`, sem token, devolvendo a resposta sem alteração; verificar 401, 403, repasse com e sem data e sem `Authorization`
-- [ ] 2.4 Front: na lista de tarefas de download, "Executar" com campo de data opcional (`dd/mm/aaaa`, vazio = data-base padrão) e a opção "Baixar de novo da fonte" quando há data e o resultado em pt-BR (situação, data-base usada, identificador da carga, detalhe do erro); verificar no navegador sem data, com data passada e com o processor respondendo 503
+- [ ] 2.3 bff: rota de execução, sem autenticação, com `dataBase` e `incluirDownload` opcionais, repassada ao orquestrador com `X-Usuario` e `X-Correlation-Id`, sem token, devolvendo a resposta sem alteração; verificar o repasse com e sem data e sem `Authorization`
+- [ ] 2.4 Front (change `fed-tarefas-orquestrador`; a tela já existe, só ajustar): na lista de tarefas de download, "Executar" com campo de data opcional (`dd/mm/aaaa`, vazio = data-base padrão) e a opção "Baixar de novo da fonte" quando há data e o resultado em pt-BR (situação, data-base usada, identificador da carga, detalhe do erro); verificar no navegador sem data, com data passada e com o processor respondendo 503
 
 ## 3. Fechamento
 

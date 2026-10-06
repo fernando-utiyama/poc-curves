@@ -25,14 +25,14 @@ Datas SHALL ser células de data, números SHALL ser células numéricas, e cél
 - **THEN** a aba `Configuracoes` tem uma coluna para cada chave de parâmetro, e cada versão ocupa uma linha, com o valor de cada parâmetro na sua coluna
 
 ### Requirement: Exportação
-`GET /api/v1/curvas-mercado/exportacao?nome=&codigo=&situacao=` (papel `Curvas.Leitura`) SHALL devolver a planilha com as curvas filtradas (todas, sem filtro), com todos os seus provedores e todas as versões de configuração, passadas incluídas. O nome do arquivo SHALL ser `cadastro-curvas_{AAAAMMDDHHmmss}.xlsx`, no horário de Brasília.
+`GET /api/v1/curvas-mercado/exportacao?nome=&codigo=&situacao=` SHALL devolver a planilha com as curvas filtradas (todas, sem filtro), com todos os seus provedores e todas as versões de configuração, passadas incluídas. O nome do arquivo SHALL ser `cadastro-curvas_{AAAAMMDDHHmmss}.xlsx`, no horário de Brasília.
 
 #### Scenario: Exportar uma curva
 - **WHEN** o cliente exporta com `codigo=PRE`
 - **THEN** a planilha tem uma linha em `Curvas` para `DIxPRE`, os provedores da curva dela em `Provedores` e todas as versões dela em `Configuracoes`
 
 ### Requirement: Semântica da importação
-`POST /api/v1/curvas-mercado/importacao?modo=SIMULACAO|APLICACAO` (papel `Curvas.Cadastro`, `multipart/form-data`, campo `arquivo`, até 5 MB e até 1.000 curvas) SHALL tratar a planilha como o **estado desejado das curvas listadas na aba `Curvas`**:
+`POST /api/v1/curvas-mercado/importacao?modo=SIMULACAO|APLICACAO` (`multipart/form-data`, campo `arquivo`, até 5 MB e até 1.000 curvas) SHALL tratar a planilha como o **estado desejado das curvas listadas na aba `Curvas`**:
 - **Curvas:** linha com nome inexistente cria a curva; linha com nome existente altera os campos diferentes do atual, inclusive o código. Curvas fora da aba `Curvas` MUST NOT ser tocadas. Não há exclusão de curva: inativa-se pela coluna `Situacao`.
 - **Provedores da curva:** para cada curva listada, as linhas de `Provedores` dela são o conjunto completo de provedores da curva. Provedor da curva existente com o mesmo (`Provedor`, `Produto`) é alterado, se `CodigoNaFonte` ou `Prioridade` mudaram; provedor novo é incluído; provedor da curva existente ausente da aba é excluído.
 - **Configurações:** linha com `Versao` preenchida MUST ser igual à versão existente em todos os campos (versões não se alteram); linha com `Versao` vazia cria uma versão nova, pelas regras de vigência da spec `configuracao-calculo-curva`; a última versão existente que ainda não começou e está ausente da aba é excluída. Várias versões novas da mesma curva são criadas em ordem de `InicioVigencia`.

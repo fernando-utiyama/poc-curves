@@ -154,7 +154,7 @@ Uma nova `action` SHALL poder ser adicionada implementando `TaskActionPort` (`ge
 - **THEN** a execução falha com erro claro sobre o parâmetro, sem nenhuma chamada
 
 ### Requirement: Rotas sem autenticação própria
-O orquestrador MUST NOT autenticar chamadas: quem expõe a API ao usuário (o bff e o `services/curves`) autentica. O usuário das ações manuais (executar, cancelar, resetar e as mutações de tarefa) SHALL vir do cabeçalho opcional `X-Usuario` e ficar nulo se ele não vier.
+O orquestrador MUST NOT autenticar chamadas; na v0 e na v1, nenhum serviço autentica (nem o bff nem o `services/curves`). O usuário das ações manuais (executar, cancelar, resetar e as mutações de tarefa) SHALL vir do cabeçalho opcional `X-Usuario` e ficar nulo se ele não vier.
 
 #### Scenario: Execução sem cabeçalho de usuário
 - **WHEN** `POST /api/v1/agendador/tarefas/{id}/executar` chega sem `X-Usuario`
