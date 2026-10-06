@@ -12,7 +12,7 @@ Guia de implementação: [`implementacao.md`](implementacao.md). Cada tarefa diz
 - [ ] 1.1 Fuso de Brasília (guia, seção 2): `fixarFuso()` no `main`, sem `jackson.time-zone` e sem `APP_ZONE`/`UTC_3` (v1 1.0); escrever o `ApplicationFusoTest`
 - [ ] 1.2 Corrigir o `TarefaJpaMapper` (seção 3) (v1 1.10); escrever o `TarefaJpaMapperTest`
 - [ ] 1.3 `DestinosProperties`, `ChamadaSaidaClient`/`RestClientChamadaSaidaClient`, `ExecucaoErrorCode`, `ConflictException` com o método no handler, e o `HttpTaskActionAdapter` com `destino` e `caminho` (seção 4) (v1 1.7 e 2.2); escrever o `ChamadaSaidaClientTest` e ajustar os testes existentes da action `http`
-- [ ] 1.4 `reivindicar`, `devolver` e `registrarLog` no `TaskRepositoryPort`/`TaskJpaPersistenceAdapter` (seção 5) (v1 1.2 e 1.3, sem ocorrência); verificar com `mvn -q compile` (SQL real na homologação, 3.2)
+- [ ] 1.4 `reivindicar`, `devolver` e `registrarLog` no `TaskRepositoryPort`/`TaskJpaPersistenceAdapter` (seção 5) (v1 1.2 e 1.3, sem ocorrência); verificar com `mvn -q compile`
 - [ ] 1.5 `Calendario`, `Brazil`, `UnitedStates` e `Calendarios` em `application/model/calendario/` (seção 6, código pronto) (v1 1.11, parte); escrever o `CalendariosTest` com os vetores da seção 6
 - [ ] 1.6 **PAUSA:** com 1.1 a 1.5 prontas, rodar `mvn compile` e `mvn test`; escrever um resumo curto (arquivos criados, arquivos alterados, testes e resultado, `TODO(revisao)` deixados) e parar até a revisão; não começar a seção 2 antes disso
 
@@ -26,4 +26,3 @@ Guia de implementação: [`implementacao.md`](implementacao.md). Cada tarefa diz
 ## 3. Fechamento
 
 - [ ] 3.1 Rodar a suíte do orquestrador e `openspec validate orquestrador-v0-disparo-manual --strict`; verificar que tudo passa
-- [ ] 3.2 Homologação: configurar os destinos apontando para o processor, cadastrar as três tarefas da seção 12 do guia sem agendar, executar cada uma pelo front sem data e com uma data passada, com duas instâncias no ar; verificar uma execução por pedido, o resultado na resposta e no log, e as tarefas de volta a `PRONTA`

@@ -1,4 +1,4 @@
-Guia de implementação: ajustes no `services/orchestrator` real já transcrito. Cada item diz a classe a mexer. Testes com mocks (sem banco real); o que exige duas instâncias reais vai para homologação (3.2). Nenhum script de banco.
+Guia de implementação: ajustes no `services/orchestrator` real já transcrito. Cada item diz a classe a mexer. Testes com mocks (sem banco real). Nenhum script de banco.
 
 A change `orquestrador-v0-disparo-manual` antecipa, do mesmo jeito, as tarefas 1.0, 1.7, 1.10 e 2.2 inteiras, a reivindicação condicional da 1.2/1.3 (sem a ocorrência), a cópia dos calendários da 1.11 (sem a sincronização) e a parte manual da 2.1 (com a `defasagemDiasUteis` e a data vinda do front). Se ela já estiver implantada, aqui só se completa o que falta, **estendendo as classes que ela criou, sem duplicar**: `ChamadaSaidaClient`/`RestClientChamadaSaidaClient` e `DestinosProperties` (1.7 e 2.2); `reivindicar`, `devolver` e `registrarLog` do `TaskRepositoryPort` (1.2 e 1.3, acrescentando a ocorrência); `Calendario`, `Brazil`, `UnitedStates` e `Calendarios` em `application/model/calendario/` (1.11); `CargaFonteTaskActionAdapter`, `ExecucaoManualActionPort`, `ResultadoExecucao` e `TipoResultado` (2.1); `ExecucaoErrorCode` e `ConflictException`. Nomes, parâmetros, classificação e JSON de log são os da v0 (guia dela, seções 4 a 9).
 
@@ -27,4 +27,3 @@ A change `orquestrador-v0-disparo-manual` antecipa, do mesmo jeito, as tarefas 1
 ## 3. Fechamento
 
 - [ ] 3.1 Rodar `openspec validate orquestrador-curvas --strict` e a suíte do orquestrador; verificar que tudo passa
-- [ ] 3.2 Homologação (infra real, não é teste automatizado): duas instâncias no mesmo banco — cada ocorrência roda uma vez, inclusive com uma instância atrasada; derrubar uma no meio de uma execução e ver a recuperação; parar as duas no horário de um disparo e ver a execução única ao voltar; `PATCH` numa instância valendo na outra em até 30 s; cadastrar e agendar as tarefas de download e acompanhar um dia completo com o alerta no dashboard

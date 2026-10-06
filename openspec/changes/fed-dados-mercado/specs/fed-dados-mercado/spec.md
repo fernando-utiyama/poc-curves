@@ -1,42 +1,49 @@
 ## Purpose
 
-No front `web/fed`, a tela "Dados de mercado" para consultar e manter os vértices brutos de B3, ANBIMA e Bloomberg por provedor, ticker e data e enviar o arquivo original de uma fonte quando o download falha.
+No front `web/fed`, a tela "Dados de mercado" para listar e manter os vértices brutos de B3, ANBIMA e Bloomberg pelos CRUDs que já existem na `services/curves`, e enviar o arquivo original de uma fonte quando o download falha.
 
 ## ADDED Requirements
 
-### Requirement: Filtros da tela
+### Requirement: Listagem do bruto por provedor
 A tela `/dados-mercado`, no menu do cabeçalho como "Dados de mercado", SHALL ter os filtros:
-- **Provedor:** `B3`, `ANBIMA` ou `Bloomberg` (as fontes com vértices brutos), padrão `B3`;
-- **Ticker:** os códigos na fonte do provedor escolhido, de `GET /api/v1/dados-mercado/{provedor}/tickers`, recarregados a cada troca de provedor; cada opção mostra o código e as curvas ligadas;
-- **Data de referência:** `dd/mm/aaaa`, padrão hoje em Brasília.
+- **Provedor:** `B3`, `ANBIMA` ou `Bloomberg`, padrão `B3`;
+- **Período:** data inicial e final (`dd/mm/aaaa`), padrão os últimos 30 dias até hoje em Brasília;
+- **Curva:** trecho do código ou do nome (opcional).
 
-"Consultar" SHALL chamar `GET /api/v1/dados-mercado/{provedor}?codigoNaFonte=&dataBase=` e mostrar, para cada curva ligada ao ticker, o código e o nome da curva, se já está construída e a tabela dos vértices com os campos do provedor (spec `vertices-brutos-provedor`), mais a quantidade de vértices e os avisos. Sem ticker escolhido, "Consultar" fica desabilitado.
+"Consultar" SHALL chamar a listagem geral do provedor na curves (`GET /api/v1/curvas-mercado/primaria-b3`, `/primaria-anbima` ou `/primaria-bloomberg`, com `de`, `ate`, `codigo`, `nome`, `pagina` e `tamanho`) e mostrar uma linha por curva e data-base com bruto: código, nome, data-base, quantidade de vértices, códigos na fonte e se a curva já está construída, paginada de 50 em 50. Trocar de provedor SHALL limpar a listagem e os vértices abertos.
 
-#### Scenario: Tickers dependentes do provedor
+#### Scenario: Bruto da B3 no período
+- **WHEN** o gestor escolhe `B3`, o período de `01/09/2026` a `30/09/2026` e clica em "Consultar"
+- **THEN** a tabela mostra uma linha por curva e data-base com bruto da B3 no período, inclusive a `PRE` de `14/09/2026` com 278 vértices
+
+#### Scenario: Troca de provedor
 - **WHEN** o gestor troca o provedor de `B3` para `ANBIMA`
-- **THEN** a lista de tickers passa a ter só `NTN-B`, e a tabela anterior é limpa
+- **THEN** a listagem e os vértices abertos são limpos até a próxima consulta
 
-#### Scenario: Consulta da PRE
-- **WHEN** o gestor escolhe `B3`, o ticker `PRE` e `14/09/2026`, e clica em "Consultar"
-- **THEN** a tela mostra cada curva ligada ao `PRE` com os seus 278 vértices (data do vértice, dias corridos, dias úteis e valor)
+### Requirement: Vértices de uma curva numa data
+Clicar numa linha da listagem SHALL abrir os vértices daquela curva naquela data-base (`GET /api/v1/curvas-mercado/{codigo}/primaria-{provedor}/{dataBase}`), numa tabela com os campos do provedor como a curves os devolve, se a curva já está construída e os avisos devolvidos.
+
+#### Scenario: Vértices da PRE
+- **WHEN** o gestor clica na linha da `PRE` de `14/09/2026` da B3
+- **THEN** a tela mostra os 278 vértices com data do vértice, dias corridos, dias úteis e valor
 
 ### Requirement: Manutenção dos vértices
-Em cada curva da consulta, a tela SHALL oferecer "Incluir vértice", "Editar" e "Excluir" por linha, e "Excluir todos da data", por modais, com os campos do provedor, pelas rotas da spec `vertices-brutos-provedor`. As exclusões SHALL pedir confirmação. Depois de cada gravação, a tela SHALL recarregar a curva e mostrar os avisos devolvidos; 422 `DADOS_INVALIDOS` SHALL aparecer junto dos campos, no modal, sem fechá-lo. Com o aviso `CURVA_JA_CONSTRUIDA`, a tela SHALL lembrar que a correção só vale num recálculo e oferecer o link "Recalcular a curva" para a tela Curvas, `/curvas?codigo={codigo}`.
+Na tabela de vértices, a tela SHALL oferecer "Incluir vértice", "Editar" e "Excluir" por linha, e "Excluir todos da data", por modais, com os campos de entrada do provedor, pelas rotas do CRUD do provedor (`POST .../vertices`, `PUT .../vertices/{id}`, `DELETE .../vertices/{id}` e `DELETE /curvas-mercado/{codigo}/primaria-{provedor}/{dataBase}`). As exclusões SHALL pedir confirmação. Depois de cada gravação, a tela SHALL recarregar os vértices e a linha da listagem e mostrar os avisos devolvidos; erro de validação (4xx com `detalhes`) SHALL aparecer junto dos campos, no modal, sem fechá-lo. Com a curva já construída, a tela SHALL lembrar que a correção só vale num recálculo e oferecer o link "Recalcular a curva" para a tela Curvas, `/curvas?codigo={codigo}`.
 
 #### Scenario: Correção de um valor já construído
 - **WHEN** o gestor altera um valor da `PRE` de `14/09/2026`, que já está construída
-- **THEN** a tela mostra o aviso `CURVA_JA_CONSTRUIDA` e o link "Recalcular a curva", que abre `/curvas?codigo=PRE`
+- **THEN** a tela mostra os avisos devolvidos e o link "Recalcular a curva", que abre `/curvas?codigo=PRE`
 
 #### Scenario: Campo inválido
-- **WHEN** o gestor salva um vértice da B3 sem dias úteis
+- **WHEN** o gestor salva um vértice da B3 sem dias úteis e a curves responde erro com `detalhes` no campo `diasUteis`
 - **THEN** o modal continua aberto, com a mensagem no campo dias úteis
 
 ### Requirement: Envio do arquivo da fonte
-A tela SHALL ter o bloco "Enviar arquivo da fonte", com o provedor (`B3`, `ANBIMA` ou `Bloomberg`) e o arquivo, sem campo de data: a data-base vem do conteúdo do arquivo. "Enviar" SHALL chamar `POST /api/v1/cargas/upload` do bff (`multipart/form-data` com `fonte` e `arquivo`, capability `upload-carga-bff` da change `processor-v0`). Antes do envio, a tela SHALL avisar que um arquivo da mesma data substitui os vértices brutos já gravados daquela fonte. Com sucesso, a tela SHALL mostrar a data-base lida (`dd/mm/aaaa`), o identificador da carga e os vértices gravados por código, e posicionar os filtros nesse provedor e nessa data. Em erro, SHALL mostrar a mensagem e o código devolvidos (por exemplo, `ARQUIVO_INVALIDO`, `PROVEDOR_NAO_IMPLEMENTADO`), sem a página de erro global. O botão fica desabilitado durante o envio.
+A tela SHALL ter o bloco "Enviar arquivo da fonte", com o provedor (`B3`, `ANBIMA` ou `Bloomberg`) e o arquivo, sem campo de data: a data-base vem do conteúdo do arquivo. "Enviar" SHALL chamar `POST /api/v1/cargas/upload` do bff (`multipart/form-data` com `fonte` e `arquivo`, capability `upload-carga-bff` da change `processor-v0`). Antes do envio, a tela SHALL avisar que um arquivo da mesma data substitui os vértices brutos já gravados daquela fonte. Com sucesso, a tela SHALL mostrar a data-base lida (`dd/mm/aaaa`), o identificador da carga e os vértices gravados por código, e posicionar os filtros nesse provedor, com o período terminando nessa data. Em erro, SHALL mostrar a mensagem e o código devolvidos (por exemplo, `ARQUIVO_INVALIDO`, `PROVEDOR_NAO_IMPLEMENTADO`), sem a página de erro global. O botão fica desabilitado durante o envio.
 
 #### Scenario: TaxaSwap enviado
 - **WHEN** o gestor envia o `TaxaSwap.txt` de `2026-09-14` com o provedor `B3`
-- **THEN** a tela mostra "Data-base: 14/09/2026", o `idCarga` e os vértices por código, e os filtros passam a `B3` e `14/09/2026`
+- **THEN** a tela mostra "Data-base: 14/09/2026", o `idCarga` e os vértices por código, e os filtros passam a `B3` com o período até `14/09/2026`
 
 #### Scenario: Arquivo rejeitado
 - **WHEN** o processor responde 422 `ARQUIVO_INVALIDO`
@@ -50,8 +57,8 @@ O envio do arquivo da fonte SHALL esperar até 130 segundos; as demais chamadas 
 - **THEN** o front espera e mostra o resultado, sem erro de tempo esgotado
 
 ### Requirement: Textos e formatos
-Todos os textos SHALL estar em pt-BR, com acentuação. Datas SHALL ser mostradas em `dd/mm/aaaa` e enviadas em `AAAA-MM-DD`; decimais, recebidos como texto, SHALL ser mostrados com vírgula decimal, sem perder casas, e digitados com vírgula ou ponto.
+Todos os textos SHALL estar em pt-BR, com acentuação. Datas SHALL ser mostradas em `dd/mm/aaaa` e enviadas em `AAAA-MM-DD`. Decimais SHALL ser mostrados com vírgula decimal, sem fazer conta no front e sem perder as casas que vierem (a B3 devolve texto; ANBIMA e Bloomberg podem devolver número), e digitados com vírgula ou ponto, enviados com ponto.
 
 #### Scenario: Taxa da NTN-B
-- **WHEN** a API devolve a taxa `"5.541500000000"`
-- **THEN** a tabela mostra `5,541500000000`
+- **WHEN** a API devolve a taxa `5.5415`
+- **THEN** a tabela mostra `5,5415`

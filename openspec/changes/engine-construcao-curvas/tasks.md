@@ -42,7 +42,7 @@ Planilhas (importação, exportação e `formato=xlsx`) **não fazem parte da v0
 ## 6. Construção e gravação
 
 - [ ] 6.1 **Construir e gravar** (spec `curve-build-pipeline`: "Construção grava a curva construída e a curva interpolada", "Curva interpolada gravada", "Reconstrução da mesma data", "Proveniência e hash dos pontos", "Determinismo"; spec `curve-audit-history`; guia §7.2 e §7.6). Pronto quando: a `PRE` grava 278 linhas em `tDadoVertcCurva` e 12.390 em `tDadoCurva` (de `2026-09-15` a `2060-08-16`, fim de semana com o valor da sexta), nada em `tMtrizCurva`; situações `CONSTRUIDA`/`RECONSTRUIDA`/`EXISTENTE`; recálculo apaga e regrava as duas; `hashPontos` igual ao vetor da spec e ao relido do banco; `dBaseReft`/`cUsuarCalc` atualizados em `tCurvaMercd`.
-- [ ] 6.2 **Trava e leitura consistente** (spec `curve-build-pipeline`: "Leitura consistente durante gravações"; guia §7.2). Pronto quando: tempo limite só no comando da trava (30 s), estouro → `CONSTRUCAO_EM_ANDAMENTO`, outra falha de banco → erro interno, sem `@Transactional(timeout)` nem `SET LOCK_TIMEOUT`; leituras só em `READ COMMITTED`, sem `NOLOCK` (consulta durante a reconstrução vê os vértices novos inteiros: homologação).
+- [ ] 6.2 **Trava e leitura consistente** (spec `curve-build-pipeline`: "Leitura consistente durante gravações"; guia §7.2). Pronto quando: tempo limite só no comando da trava (30 s), estouro → `CONSTRUCAO_EM_ANDAMENTO`, outra falha de banco → erro interno, sem `@Transactional(timeout)` nem `SET LOCK_TIMEOUT`; leituras só em `READ COMMITTED`, sem `NOLOCK`.
 
 ## 7. Consulta, interpolação e regravação
 

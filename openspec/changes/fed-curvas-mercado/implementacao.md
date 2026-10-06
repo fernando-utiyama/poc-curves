@@ -6,7 +6,6 @@ A spec manda no comportamento; este guia dá o contrato e o código. Tudo o que 
 
 | Tarefa | Abrir só | Criar |
 |---|---|---|
-| 1.1 (engine) | o controller de curva do engine (o de `GET /api/v1/curvas/{codigo}/{dataBase}`) e a `DadoCurvaPort` | caso de uso de leitura (§4) |
 | 3.1 (fed) | `core/interceptors/request.interceptor.ts` | — |
 | 3.2 a 3.7 (fed) | `core/services/provedores/provedores.service.ts` (molde), `app.routes.ts`, `components/header/header.component.ts` e os três componentes de curva | §2 |
 
@@ -21,31 +20,24 @@ Front → curves (`{urlAPI}/api/v1/curvas-mercado/{codigo}/{dataBase}/...`, prox
 | Origem secundária | `POST .../construcao?forcarRecalculo=true&fonte=B3&produto=TS` | idem | 130 s / 120 s |
 | Regravar interpolada | `POST .../interpolada` | `POST .../interpolada` | 70 s / 60 s |
 | Vértices | `GET .../vertices` | `GET /api/v1/curvas/{codigo}/{dataBase}` | 40 s / 30 s |
-| Pontos | `GET .../pontos?de=&ate=` | `GET .../pontos?de=&ate=` | 40 s / 30 s |
 | Interpolar | `GET .../interpolacao?du=21&du=252&data=2027-01-04` | idem (repetir os parâmetros como vieram) | 40 s / 30 s |
 
 Cabeçalhos curves → engine: `X-Correlation-Id` (o recebido), `X-Usuario` (o recebido, quando vier; sem autenticação na v0 e na v1), **nunca** `Authorization`.
 
-Respostas que o front lê (só estes campos; o resto é ignorado):
+Respostas que o front lê. Os nomes são **os que o engine da v1 devolve** (relatório de inspeção do engine); confira no DTO do engine se algo não bater e use o nome real:
 
 ```jsonc
-// construcao (200)
-{ "codigo": "PRE", "nome": "DIxPRE", "dataBase": "2026-09-14", "situacao": "RECONSTRUIDA",
-  "quantidadePontos": 278, "hashPontos": "7c49...", "duracaoMs": 1840,
-  "avisos": [ { "codigo": "ORIGEM_SECUNDARIA", "mensagem": "..." } ] }
-// vertices (200) — "pontos" é o nome do campo no engine; na tela, "Vértices"
+// construcao (200) — `situacao` vem da change engine-v1.1; `pontos` só em CONSTRUIDA/RECONSTRUIDA
+{ "situacao": "RECONSTRUIDA", "codigo": "PRE", "dataBase": "2026-09-14", "hashPontos": "7c49...",
+  "pontos": [ ... ], "avisos": [ { "codigo": "ORIGEM_SECUNDARIA", "mensagem": "...", "detalhes": [] } ] }
+// vertices (200) — a lista se chama "pontos"; na tela, "Vértices"
 { "codigo": "PRE", "dataBase": "2026-09-14", "hashPontos": "7c49...", "avisos": [],
-  "pontos": [ { "data": "2026-09-15", "valor": "13.9000000", "diasUteis": 1, "diasCorridos": 1, "dias30360": 1,
-                "fatorAcumulado": "1.0005166043641946", "fatorDiario": "1.0005166043641946",
-                "recalculado": { "diasUteis": 1, "diasCorridos": 1, "dias30360": 1,
-                                 "fatorAcumulado": "1.0005166043641946", "fatorDiario": "1.0005166043641946" } } ] }
-// pontos (200) — rota nova, §4
-{ "codigo": "PRE", "dataBase": "2026-09-14", "total": 12390, "hashPontos": "7c49...", "avisos": [],
-  "pontos": [ { "data": "2026-09-15", "valor": "13.9000000" } ] }
-// interpolacao (200)
-{ "prazos": [ { "pedido": "21", "data": "2026-10-14", "du": 21, "dc": 30, "valor": "13.8123456",
-                "classificacao": "INTERPOLADO", "fatorAcumulado": "...", "fatorDiario": "..." } ] }
-// erro: sempre no formato de erro da curves (o mesmo do CRUD de provedores); o front lê pelo helper lerErro (§2.3)
+  "pontos": [ { "data": "2026-09-15", "valor": "13.9000000", "diasUteis": 1, "diasCorridos": 1,
+                "fatorAcum": "1.0005166043641946", "fatorDia": "1.0005166043641946" } ] }
+// interpolacao (200) — sem "pedido": a lista vem na ordem pedida
+{ "prazos": [ { "data": "2026-10-14", "du": 21, "dc": 30, "x": "...", "valor": "13.8123456",
+                "classificacao": "INTERPOLADO", "fatorAcum": "...", "fatorDia": "..." } ] }
+// erro: no formato de erro da curves (code, error, message, detalhes); o front lê pelo helper lerErro (§2.3)
 ```
 
 ## 2. web/fed
@@ -91,7 +83,7 @@ export interface ItemListaCurvas extends Pick<CurvaMercado, 'codigo' | 'nome' | 
   provedores: string[];                                       // ordem de prioridade; [0] = principal
   ultimaExecucao: { dataBase: string; usuario: string | null } | null;
 }
-export interface PaginaCurvas { itens: ItemListaCurvas[]; pagina: number; tamanho: number; total: number; }
+export interface PaginaCurvas { /* nomes do CurvasMercadoPaginadaResponse real: a lista de itens, totalElementos, totalPaginas */ itens: ItemListaCurvas[]; totalElementos: number; totalPaginas: number; }
 export interface ProvedorDaCurva { idCurvaProvedor: number; provedor: string; produto: string; codigoNaFonte: string; prioridade: number; }
 export interface FiltroCurvas { nome?: string; codigo?: string; provedor?: string; dono?: string; unidade?: string; situacao?: string; pagina: number; tamanho: number; }
 
@@ -111,7 +103,6 @@ const base = (codigo: string, dataBase: string) => `${url}/${encodeURIComponent(
 | `construir(codigo, dataBase, forcar = false, fonte?, produto?)` | `POST base/construcao`, `ctx(130000)` |
 | `regravarInterpolada(codigo, dataBase)` | `POST base/interpolada`, `ctx(70000)` |
 | `vertices(codigo, dataBase)` | `GET base/vertices`, `ctx(40000)` |
-| `pontos(codigo, dataBase, de?, ate?)` | `GET base/pontos`, `ctx(40000)` |
 | `interpolar(codigo, dataBase, dus: number[], datas: string[])` | `GET base/interpolacao` com um `du` e um `data` por item (`params.append`), `ctx(40000)` |
 
 ### 2.3 Telas
@@ -134,27 +125,15 @@ export function lerErro(e: HttpErrorResponse): ErroTela {
  Tempo esgotado (`e.name === 'TimeoutError'`) → "A ação não respondeu a tempo; consulte os vértices para conferir se terminou."
 - **Formato**: datas `dd/mm/aaaa` na tela e `AAAA-MM-DD` na API; decimais exibidos com `valor.replace('.', ',')` (são strings; nunca `Number(...)`).
 - **Tabelas**: tabela do Liquid como em `provedores-lista` (`BradTableService.getInstance({ targetSelector, table })`, `patchLiquidA11yCheckboxBug`, `rowClick`).
-- **Curvas (`curvas-dia`)**: topo com seleção da curva (pesquisa pelo `listar`) e data; barra de ações; abas `Vértices` (padrão), `Pontos` (`de` = data-base + 1, `ate` = data-base + 30) e `Interpolar`. Depois de ação 2xx, recarregar a aba aberta. "Origem secundária" só se `provedores.length > 1`, listando os de prioridade maior que a menor.
+- **Curvas (`curvas-dia`)**: topo com seleção da curva (pesquisa pelo `listar`) e data; barra de ações; abas `Vértices` (padrão) e `Interpolar`. Depois de ação 2xx, recarregar a aba aberta. "Origem secundária" só se `provedores.length > 1`, listando os de prioridade maior que a menor.
 - **Textos de situação**: `CONSTRUIDA` "Construída", `RECONSTRUIDA` "Recalculada", `EXISTENTE` "Já construída"; classificação `PONTO` "Vértice", `INTERPOLADO` "Interpolado", `EXTRAPOLADO_INICIO` "Extrapolado no início", `EXTRAPOLADO_FIM` "Extrapolado no fim".
 
 ## 3. services/curves
 
 Implementado na change `curves-cadastro-curvas` (spec `acoes-curva-mercado`, guia §16). Aqui só o contrato da §1.
 
-## 4. engine: pontos gravados
-
-- Rota no controller de curva: `@GetMapping("/{codigo}/{dataBase}/pontos")` com `de` e `ate` opcionais (`LocalDate`), resolvendo a curva como as outras rotas por código.
-- Caso de uso `ConsultarPontosInterpoladosService`: (1) sem vértices em `DadoVerticeCurvaPort` → `CURVA_NAO_CONSTRUIDA` (404); (2) `total` e lista de `DadoCurvaPort` (método novo `listar(nome, dataBase, de, ate)` + `contar(nome, dataBase)`); (3) aviso `INTERPOLADA_DESATUALIZADA` pela mesma conferência que a consulta de vértices já faz; (4) `hashPontos` dos vértices atuais.
-
-```sql
-SELECT dVertcReft, vPrecoTx FROM tDadoCurva
- WHERE cTickerIndcd = ? AND dBaseReft = ? AND (? IS NULL OR dVertcReft >= ?) AND (? IS NULL OR dVertcReft <= ?)
- ORDER BY dVertcReft;
-```
-
 ## 5. Testes (poucos, sem subir o Spring)
 
 | Classe | Onde | Cobre |
 |---|---|---|
-| `ConsultarPontosInterpoladosServiceTest` | engine | os três cenários de `pontos-interpolados-engine`, portas simuladas |
 | `curvas-mercado.service.spec.ts` | fed | `HttpTestingController`: URL, parâmetros e `TEMPO_LIMITE_MS` de cada ação |

@@ -24,5 +24,4 @@ Guia de implementação passo a passo (arquivos, assinaturas, SQL, configuraçã
 
 ## 4. Verificação ponta a ponta
 
-- [ ] 4.1 Na homologação, com Kafka e Blob do projeto: obter o arquivo pelo `.ex_` (B3 simulada), forçar o processamento da mesma data pelo `b3/taxa-swap/reprocessamento` e enviar o mesmo conteúdo pelo upload; verificar um único `idCarga`, a cópia imutável em `b3/{AAAAMMDD}/cargas/{idCarga}/TaxaSwap.txt` e três avisos idênticos em `tp-event-b3-curve` (a gravação em `tBtrsCurvaPrimr` e o aviso ao engine são conferidos no change `processor-carga-b3`, tarefa 5.1)
 - [ ] 4.2 Rodar `openspec validate conector-b3-webhook-ingest --strict` e a suíte do conector; verificar que tudo passa

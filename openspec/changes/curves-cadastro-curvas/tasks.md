@@ -34,7 +34,7 @@ Primeira parte do curves. Guia: [`implementacao.md`](implementacao.md). Cada tar
 
 ## 3. Provedores da curva
 
-- [ ] 3.1 [forte] **CRUD dos provedores da curva** (spec `provedor-curva`: "Campos do provedor da curva", "Rotas dos provedores da curva", "Curvas componentes como provedor", "Avisos de coerência com o engine"; guia §3). Pronto quando: os cenários da spec passam (provedor existente, unicidade por curva e por prioridade, mesmo código em várias curvas, `PUT` que troca o provedor → 422, `TCEN` sem ciclo, `CURVA_COM_FILHAS`, `CURVA_SEM_ORIGEM`, `ORIGEM_INCOMPATIVEL_COM_MODELO`); `idCurvaProvedor` por `MAX + 1` com trava (duas inclusões simultâneas: homologação).
+- [ ] 3.1 [forte] **CRUD dos provedores da curva** (spec `provedor-curva`: "Campos do provedor da curva", "Rotas dos provedores da curva", "Curvas componentes como provedor", "Avisos de coerência com o engine"; guia §3). Pronto quando: os cenários da spec passam (provedor existente, unicidade por curva e por prioridade, mesmo código em várias curvas, `PUT` que troca o provedor → 422, `TCEN` sem ciclo, `CURVA_COM_FILHAS`, `CURVA_SEM_ORIGEM`, `ORIGEM_INCOMPATIVEL_COM_MODELO`); `idCurvaProvedor` por `MAX + 1` com trava.
 
 ## 4. Configuração de cálculo
 
@@ -51,6 +51,5 @@ Primeira parte do curves. Guia: [`implementacao.md`](implementacao.md). Cada tar
 
 ## 7. Fechamento
 
-- [ ] 7.1 [forte] **Cadastro das 7 curvas** (`exemplo-cadastro-7-curvas.txt`). Pronto quando: cadastradas pela API, o engine as lê sem `CADASTRO_INVALIDO` (homologação).
 - [ ] 7.2 [forte] **Sobras**. O que sobrar da versão anterior e a spec atual não pede (ex.: `EnginePort`/cache de valores, rotas de vértices manuais, 412/428) fica e vai para o resumo como `[sobra]`.
 - [ ] 7.3 [forte] Escrever o resumo com a anotação de cada tarefa (`pronto`, `alterado`, `renomeado de X`, `criado`) e as `[sobra]`.

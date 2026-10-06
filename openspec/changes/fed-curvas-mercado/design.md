@@ -35,10 +35,10 @@ As chamadas de ação e de gravação usam `subscribe({ error })` e mostram o er
 
 ### D6. Duas telas: cadastro e dia a dia
 - **Cadastro de curvas** (`/cadastro-curvas`, `/cadastro-curvas/nova`, `/cadastro-curvas/:codigo`): os componentes `curvas-lista`, `curva-add` e `curva-detalhe` reescritos. O detalhe tem dois blocos: dados da curva (leitura e edição) e provedores da curva (tabela do Liquid com Editar e Excluir por linha). Nenhuma ação sobre datas.
-- **Curvas** (`/curvas`): componente novo `curvas-dia`, com a seleção da curva e da data no topo, a barra de ações (Construir, Recalcular, Origem secundária, Regravar interpolada) e as abas Vértices, Pontos e Interpolar. **Por quê:** o cadastro muda pouco e é de quem administra; a curva do dia é consultada e recalculada a toda hora, por quem opera. Misturar os dois numa tela só alongava o detalhe e escondia as ações.
+- **Curvas** (`/curvas`): componente novo `curvas-dia`, com a seleção da curva e da data no topo, a barra de ações (Construir, Recalcular, Origem secundária, Regravar interpolada) e as abas Vértices e Interpolar. **Por quê:** o cadastro muda pouco e é de quem administra; a curva do dia é consultada e recalculada a toda hora, por quem opera. Misturar os dois numa tela só alongava o detalhe e escondia as ações.
 
-### D7. Pontos lidos do que está gravado
-A aba Pontos usa uma rota nova do engine que lê `tDadoCurva` (`GET /curvas/{codigo}/{dataBase}/pontos?de=&ate=`), repassada pela curves. **Por quê:** mostra exatamente o que os consumidores leem do banco, e o aviso `INTERPOLADA_DESATUALIZADA` diz quando isso diverge dos vértices. **Alternativa rejeitada:** montar a lista pela `/interpolacao`, que recalcula na hora e esconderia uma interpolada desatualizada. A rota só lê; o padrão da tela é um intervalo de 30 dias, para não trazer os 12.390 pontos da `PRE` sem pedir.
+### D7. Pontos interpolados na v2
+A aba de pontos (um por dia corrido, lidos de `tDadoCurva`) depende de uma rota nova no engine e fica para a v2. Na v1.1, a tela tem Vértices e Interpolar.
 
 ## Risks / Trade-offs
 

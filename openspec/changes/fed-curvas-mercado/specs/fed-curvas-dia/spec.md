@@ -1,6 +1,6 @@
 ## Purpose
 
-No front `web/fed`, a tela "Curvas" do dia a dia: escolher uma curva e uma data-base e, nelas, ver os vértices construídos e os pontos interpolados, interpolar prazos e disparar construção, recálculo e regravação da curva interpolada, mostrando o resultado devolvido pelo engine.
+No front `web/fed`, a tela "Curvas" do dia a dia: escolher uma curva e uma data-base e, nelas, ver os vértices construídos, interpolar prazos e disparar construção, recálculo e regravação da curva interpolada, mostrando o resultado devolvido pelo engine.
 
 ## ADDED Requirements
 
@@ -12,7 +12,7 @@ A tela `/curvas`, no menu como "Curvas", SHALL ter a seleção da curva (pesquis
 - **THEN** a curva `PRE` vem selecionada, com a data de hoje, e a tela carrega os vértices dela
 
 ### Requirement: Vértices
-A aba "Vértices" SHALL mostrar o resultado de `GET /api/v1/curvas-mercado/{codigo}/{dataBase}/vertices` (spec `acoes-curva-mercado`): a quantidade de vértices, o `hashPontos`, o interpolador e o calendário com origem e versão, e a tabela com data, valor, dias úteis, dias corridos, dias 30/360 e, só para `TAXA`, fator acumulado e fator diário, com os valores gravados e os recalculados lado a lado e a diferença destacada. Os avisos (por exemplo, `CALENDARIO_DIVERGENTE`, `INTERPOLADA_DESATUALIZADA`) SHALL aparecer acima da tabela. Com 404 `CURVA_NAO_CONSTRUIDA`, a aba SHALL mostrar "Curva ainda não construída nesta data" e o botão "Construir".
+A aba "Vértices" SHALL mostrar o resultado de `GET /api/v1/curvas-mercado/{codigo}/{dataBase}/vertices` (spec `acoes-curva-mercado`), com os campos como o engine os devolve: a quantidade de vértices, o `hashPontos` e a tabela com data, valor, dias úteis, dias corridos e, só para `TAXA`, fator acumulado e fator diário; quando a resposta trouxer os valores recalculados, eles aparecem ao lado, com a diferença destacada. Os avisos (por exemplo, `CALENDARIO_DIVERGENTE`, `INTERPOLADA_DESATUALIZADA`) SHALL aparecer acima da tabela. Com 404 `CURVA_NAO_CONSTRUIDA`, a aba SHALL mostrar "Curva ainda não construída nesta data" e o botão "Construir".
 
 #### Scenario: Curva construída
 - **WHEN** o gestor escolhe a `PRE` e `14/09/2026`
@@ -22,15 +22,8 @@ A aba "Vértices" SHALL mostrar o resultado de `GET /api/v1/curvas-mercado/{codi
 - **WHEN** a consulta responde 404 `CURVA_NAO_CONSTRUIDA`
 - **THEN** a aba mostra "Curva ainda não construída nesta data" e o botão "Construir"
 
-### Requirement: Pontos interpolados
-A aba "Pontos" SHALL mostrar os pontos gravados da curva interpolada, de `GET /api/v1/curvas-mercado/{codigo}/{dataBase}/pontos`, com filtro de intervalo de datas (padrão: os próximos 30 dias corridos depois da data-base) e a quantidade total de pontos gravados; a tabela tem data e valor. Com o aviso `INTERPOLADA_DESATUALIZADA`, a aba SHALL destacar o aviso e oferecer "Regravar interpolada".
-
-#### Scenario: Primeira semana da PRE
-- **WHEN** o gestor abre a aba "Pontos" da `PRE` de `14/09/2026` e filtra de `15/09/2026` a `21/09/2026`
-- **THEN** a tabela mostra 7 pontos, os de `19/09/2026` e `20/09/2026` com o valor de `18/09/2026`, e o total de 12.390 pontos gravados
-
 ### Requirement: Interpolar prazos
-A aba "Interpolar" SHALL aceitar uma lista de prazos em dias úteis e de datas, chamar `GET /api/v1/curvas-mercado/{codigo}/{dataBase}/interpolacao` com todos, e mostrar, para cada prazo na ordem pedida, a data, os dias úteis, os dias corridos, o valor, a classificação em pt-BR (`PONTO` "Vértice", `INTERPOLADO` "Interpolado", `EXTRAPOLADO_INICIO` "Extrapolado no início", `EXTRAPOLADO_FIM` "Extrapolado no fim") e, só para `TAXA`, os fatores. Com 422 `PRAZO_FORA_DO_DOMINIO`, SHALL listar os prazos recusados.
+A aba "Interpolar" SHALL aceitar uma lista de prazos em dias úteis e de datas, chamar `GET /api/v1/curvas-mercado/{codigo}/{dataBase}/interpolacao` com todos, e mostrar, para cada prazo na ordem pedida (a resposta vem na mesma ordem), a data, os dias úteis, os dias corridos, o valor, a classificação em pt-BR (`PONTO` "Vértice", `INTERPOLADO` "Interpolado", `EXTRAPOLADO_INICIO` "Extrapolado no início", `EXTRAPOLADO_FIM` "Extrapolado no fim") e, só para `TAXA`, os fatores. Com 422 `PRAZO_FORA_DO_DOMINIO`, SHALL listar os prazos recusados.
 
 #### Scenario: Interpolação por dias úteis
 - **WHEN** o gestor pede 21 e 252 dias úteis na `PRE` de `14/09/2026`
@@ -46,7 +39,7 @@ A tela SHALL oferecer, para a curva e a data escolhidas, pelas rotas da spec `ac
 | Recalcular por origem secundária | a mesma, com `forcarRecalculo=true`, `fonte` e `produto` de um provedor da curva que não é o de menor prioridade, escolhido numa lista; só aparece se a curva tiver mais de um provedor |
 | Regravar interpolada | `POST .../interpolada` |
 
-O resultado SHALL ser mostrado na tela: situação em pt-BR (`CONSTRUIDA` "Construída", `RECONSTRUIDA` "Recalculada", `EXISTENTE` "Já construída"), quantidade de vértices, avisos e duração; depois de uma ação bem-sucedida, as abas abertas SHALL ser recarregadas. Em erro, a tela SHALL mostrar a mensagem e o código devolvidos (por exemplo, `INSUMO_AUSENTE`, `CONSTRUCAO_EM_ANDAMENTO`, `ENGINE_INDISPONIVEL`), sem levar à página de erro global. Enquanto uma ação está em andamento, os botões de ação SHALL ficar desabilitados.
+O resultado SHALL ser mostrado na tela: situação em pt-BR (campo `situacao`: `CONSTRUIDA` "Construída", `RECONSTRUIDA` "Recalculada", `EXISTENTE` "Já construída"), quantidade de vértices (quando a resposta trouxer a lista), avisos e duração; depois de uma ação bem-sucedida, as abas abertas SHALL ser recarregadas. Em erro, a tela SHALL mostrar a mensagem e o código devolvidos (por exemplo, `INSUMO_AUSENTE`, `CONSTRUCAO_EM_ANDAMENTO`, `ENGINE_INDISPONIVEL`), sem levar à página de erro global. Enquanto uma ação está em andamento, os botões de ação SHALL ficar desabilitados.
 
 #### Scenario: Recalcular com confirmação
 - **WHEN** o gestor clica em "Recalcular" na `PRE` de `14/09/2026` e confirma
@@ -61,7 +54,7 @@ O resultado SHALL ser mostrado na tela: situação em pt-BR (`CONSTRUIDA` "Const
 - **THEN** a chamada leva `forcarRecalculo=true&fonte=B3&produto=TS`, e a tela mostra o aviso `ORIGEM_SECUNDARIA` devolvido
 
 ### Requirement: Tempo de espera
-As chamadas ao engine pela curves SHALL esperar a resposta por até 130 segundos (construção e recálculo), 70 segundos (regravação da interpolada) e 40 segundos (vértices, pontos e interpolação), acima do tempo limite da curves para cada uma; as demais chamadas do `fed` mantêm o tempo limite padrão de 3 segundos. Esgotado o tempo do front numa ação, a tela SHALL mostrar "A ação não respondeu a tempo; consulte os vértices para conferir se terminou."
+As chamadas ao engine pela curves SHALL esperar a resposta por até 130 segundos (construção e recálculo), 70 segundos (regravação da interpolada) e 40 segundos (vértices e interpolação), acima do tempo limite da curves para cada uma; as demais chamadas do `fed` mantêm o tempo limite padrão de 3 segundos. Esgotado o tempo do front numa ação, a tela SHALL mostrar "A ação não respondeu a tempo; consulte os vértices para conferir se terminou."
 
 #### Scenario: Construção demorada
 - **WHEN** a construção leva 40 segundos para responder
