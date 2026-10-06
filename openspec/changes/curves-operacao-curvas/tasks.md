@@ -12,7 +12,7 @@ Segunda parte do curves (planilha do cadastro, painel, vértices, planilha de v�
 
 ## 1. Cliente do engine (chegou da primeira parte)
 
-> A primeira parte já tem o `EngineHttpClient` só de repasse (`EngineRepassePort`, change `curves-cadastro-curvas`, tarefa 5b.1): acrescente a `EnginePort` desta fase na mesma classe, sem outro cliente HTTP.
+> A v1.1 já tem a `EnginePort` e o `EngineHttpClient` de repasse (change `curves-v1-1`): acrescente os métodos desta fase nessa mesma porta e nesse mesmo cliente, sem outra porta nem outro cliente HTTP.
 
 - [ ] 1.1 Configurar o cliente HTTP do engine, sem autenticação (o engine não exige token), com tempo limite de 10 s nas consultas leves (calendário, `valores-cadastro`) e 60 s em `situacao` e na regravação da interpolada, `X-Correlation-Id` e falha (rede, tempo, 4xx, 5xx, JSON ilegível) como resultado "engine indisponível", nunca exceção (guia, seção 1.6); acrescentar ao `GET /api/v1/curvas-mercado/valores` a consulta ao engine (`GET /api/v1/valores-cadastro`, cache de 5 minutos), que traz os scripts Groovy ativos, devolvendo a tabela local com o aviso `VALORES_SEM_ENGINE` quando o engine não responde, e o teste de contrato que compara a tabela local com a parte fixa da resposta do engine; verificar o cliente com resposta simulada em cada falha, os dois cenários "Scripts Groovy no formulário" e "Engine fora" da spec `configuracao-calculo-curva`, e que qualquer diferença entre a tabela local e a do engine falha o build
 

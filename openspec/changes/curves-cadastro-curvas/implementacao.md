@@ -615,8 +615,8 @@ Respostas que o front lê (só estes campos; o resto é ignorado):
 ### 16.2 Porta e adaptador do engine
 
 ```java
-// application/port/out/EngineRepassePort.java  (nome próprio: não colide com a EnginePort da fase 2 da curves)
-public interface EngineRepassePort {
+// application/port/out/EnginePort.java  (a fase 2 da curves acrescenta métodos nesta mesma porta)
+public interface EnginePort {
     RespostaEngine construir(String codigo, LocalDate dataBase, boolean forcarRecalculo, String fonte, String produto, String usuario, String correlationId);
     RespostaEngine regravarInterpolada(String codigo, LocalDate dataBase, String usuario, String correlationId);
     RespostaEngine consultarVertices(String codigo, LocalDate dataBase, String correlationId);
@@ -627,7 +627,7 @@ public interface EngineRepassePort {
 ```
 
 ```java
-// adapter/out/client/engine/EngineHttpClient.java  (@Component, implements EngineRepassePort; se a EnginePort da fase 2 já existir, a mesma classe implementa as duas)
+// adapter/out/client/engine/EngineHttpClient.java  (@Component, implements EnginePort)
 private final HttpClient http = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)
         .connectTimeout(Duration.ofSeconds(5)).build();
 @Value("${curves.engine.url}") private String baseUrl;          // sem valor padrão: falta → não sobe
@@ -654,7 +654,7 @@ private RespostaEngine enviar(String metodo, String caminho, Duration limite, St
 
 ### 16.3 Serviço e controller
 
-- `CurvaMercadoAcoesService`: confere a curva pelo `CurvaMercdRepositoryPort` (404 `NAO_ENCONTRADO`); valida (400 `PARAMETRO_INVALIDO`): `fonte` e `produto` juntos ou nenhum; `de <= ate`; interpolação com ao menos um `du` ou `data`. Depois chama o `EngineRepassePort`.
+- `CurvaMercadoAcoesService`: confere a curva pelo `CurvaMercdRepositoryPort` (404 `NAO_ENCONTRADO`); valida (400 `PARAMETRO_INVALIDO`): `fonte` e `produto` juntos ou nenhum; `de <= ate`; interpolação com ao menos um `du` ou `data`. Depois chama o `EnginePort`.
 - `CurvaMercadoAcoesController` + `CurvaMercadoAcoesAPI` (`@RequestMapping("/api/v1/curvas-mercado/{codigo}/{dataBase}")`, `@DateTimeFormat(iso = DATE) LocalDate dataBase`): no 2xx, cada método devolve **o corpo do engine como veio**; no 4xx, lança a exceção de negócio da curves com o status, o código, a mensagem e os `detalhes` lidos do Problem Details do engine (campos `code` ou `codigoErro`, `detail`, `detalhes`), para o handler montar o formato da curves:
 
 ```java

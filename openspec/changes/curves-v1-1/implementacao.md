@@ -12,10 +12,10 @@ A spec manda no comportamento; este guia dá o código. Linhas citadas são as d
 
 ## 1. Repasse ao engine
 
-### 1.1 Porta e resposta (`application/port/out/EngineRepassePort.java`)
+### 1.1 Porta e resposta (`application/port/out/EnginePort.java`)
 
 ```java
-public interface EngineRepassePort {
+public interface EnginePort {
     RespostaEngine construir(String codigo, LocalDate dataBase, Boolean forcarRecalculo, String fonte, String produto, String correlationId);
     RespostaEngine regravarInterpolada(String codigo, LocalDate dataBase, String correlationId);
     RespostaEngine consultarVertices(String codigo, LocalDate dataBase, String correlationId);
@@ -29,7 +29,7 @@ public interface EngineRepassePort {
 
 ```java
 @Component
-public class EngineHttpClient implements EngineRepassePort {
+public class EngineHttpClient implements EnginePort {
 
     private static final Duration CONSTRUCAO = Duration.ofSeconds(120);
     private static final Duration REGRAVACAO = Duration.ofSeconds(60);
@@ -160,7 +160,7 @@ public ResponseEntity</* o tipo de corpo que o tratador já usa */> engine(Engin
 public class CurvaMercadoAcoesService {
 
     private final CurvaMercdRepositoryPort curvas;     // a porta que o CRUD da curva já usa
-    private final EngineRepassePort engine;
+    private final EnginePort engine;
 
     public RespostaEngine construir(String codigo, LocalDate dataBase, Boolean forcar, String fonte, String produto, String cid) {
         exigirCurva(codigo);
