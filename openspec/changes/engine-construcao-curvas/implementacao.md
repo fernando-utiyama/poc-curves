@@ -69,7 +69,7 @@ application/
   port/out/                   uma porta por tabela: CurvaMercadoPort (com a trava e o resumo de tCurvaMercd),
                               CurvaProvedorPort, ConfiguracaoCurvaPort, DadoVerticeCurvaPort, DadoCurvaPort; e ScriptsPort, CompiladorScriptsPort, PlanilhaPort, EventosPort
   service/                    uma classe por caso de uso, registrada do mesmo jeito que os serviços existentes (`@Service` ou `@Bean` numa configuração); @Transactional quando grava;
-                              Paralelo (virtual threads), ResolverModelos
+                              ExecucaoParalela (virtual threads), ResolverModelos
 adapter/
   in/rest/                    controllers, DTOs (records), FiltroCorrelacao, configuração do Jackson (erros: o tratador do serviço, seção 1.5)
   out/persistence/            entidades JPA, repositórios Spring Data, adaptadores das portas
@@ -182,7 +182,7 @@ spring:
 
 Perfil `local` (e só ele): `engine.blob.connection-string` para o Azurite.
 
-### 1.3 Virtual threads: `config/ExecutorConfig.java` e `application/service/Paralelo.java`
+### 1.3 Virtual threads: `config/ExecutorConfig.java` e `application/service/ExecucaoParalela.java`
 
 ```java
 @Configuration
@@ -201,7 +201,7 @@ public sealed interface Resultado<R> {
   record Falha<R>(Throwable erro) implements Resultado<R> {}
 }
 
-public final class Paralelo {
+public final class ExecucaoParalela {
   public static <T, R> List<Resultado<R>> executar(ExecutorService exec, List<T> itens, int limite,
       Duration prazo, Function<T, R> tarefa) {
     var vagas = new Semaphore(limite);
@@ -896,7 +896,7 @@ Corpo: `record NotificacaoCarga(String idCarga, String fonte, String produto, Lo
 
 ### 9.2 `ConstruirDataService` (`POST /api/v1/construcoes/{dataBase}`)
 
-Todas as curvas com código, regras da carga, sem conferência de quantidade, `DATA_INTEIRA`; sem pontos e sem insumo → `SemInsumo`. Curvas de provedor com `Paralelo.executar` (limite `engine.construcao-data.paralelismo`, prazo `engine.timeout.construcao-data-segundos`); depois as derivadas em cadeia. Tempo esgotado: as já gravadas ficam, as outras não começam, resposta `ERRO_INTERNO`. Eventos `CONSTRUCAO_DATA_RECEBIDA` e `CONSTRUCAO_DATA_PROCESSADA`. A existência de pontos é conferida depois da trava.
+Todas as curvas com código, regras da carga, sem conferência de quantidade, `DATA_INTEIRA`; sem pontos e sem insumo → `SemInsumo`. Curvas de provedor com `ExecucaoParalela.executar` (limite `engine.construcao-data.paralelismo`, prazo `engine.timeout.construcao-data-segundos`); depois as derivadas em cadeia. Tempo esgotado: as já gravadas ficam, as outras não começam, resposta `ERRO_INTERNO`. Eventos `CONSTRUCAO_DATA_RECEBIDA` e `CONSTRUCAO_DATA_PROCESSADA`. A existência de pontos é conferida depois da trava.
 
 ### 9.3 Cadeia de derivadas
 
@@ -904,7 +904,7 @@ Até não mudar nada: derivadas ativas, vigentes, sem pontos e com todas as curv
 
 ### 9.4 `ConsultarSituacaoService` (`GET /api/v1/curvas/situacao?dataBase=`)
 
-Por curva, com `Paralelo.executar` (limite `engine.situacao.paralelismo`, prazo `engine.timeout.situacao-segundos`), sem gravar: `insumo`, `pontosGravados`, `interpolada` (7.5), `conferencia` (simulação). Falha ou tempo de uma → `conferencia.status = ERRO` só dela.
+Por curva, com `ExecucaoParalela.executar` (limite `engine.situacao.paralelismo`, prazo `engine.timeout.situacao-segundos`), sem gravar: `insumo`, `pontosGravados`, `interpolada` (7.5), `conferencia` (simulação). Falha ou tempo de uma → `conferencia.status = ERRO` só dela.
 
 ---
 
