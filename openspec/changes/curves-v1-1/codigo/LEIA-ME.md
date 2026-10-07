@@ -9,7 +9,7 @@ Pacotes estão como `br.com.poc`: troque por `br.com.bradesco` (Ctrl+R no arquiv
 | Arquivo deste diretório | Onde fica no repositório | O que muda |
 |---|---|---|
 | `parametros/ParametrosCalculo.java` | `domain/cadastro/` | novo |
-| `parametros/BaseInterpolacao.java`, `DayCounterTempo.java`, `Frequency.java`, `BusinessDayConvention.java`, `Extrapolacao.java`, `ModoArredondamento.java` | `domain/cadastro/` | novos enums, um por arquivo |
+| `parametros/BaseInterpolacao.java`, `DayCounter.java`, `Frequency.java`, `BusinessDayConvention.java`, `Extrapolacao.java`, `ModoArredondamento.java` | `domain/cadastro/` | novos enums, um por arquivo |
 | `ValidadorParametros.java` | `domain/cadastro/` | substitui: recebe `ParametrosCalculo`; os `Set<String>` para `/valores` vêm dos enums |
 | `ConfiguracaoCurva.java` | `domain/cadastro/` | substitui: `ParametrosCalculo parametros`, **sem** `parametrosJson`, com `comFimVigencia(...)` |
 | `CriarConfiguracaoCurvaInput.java` | `domain/cadastro/` | substitui: `ParametrosCalculo parametros` |
@@ -45,7 +45,7 @@ Vão quebrar os que montam `Map<String, Object>` de parâmetros e os que criam `
 ```java
 static ParametrosCalculo pre() {
     return new ParametrosCalculo(
-        BaseInterpolacao.Discount, DayCounterTempo.Business252, Frequency.Annual,
+        BaseInterpolacao.Discount, DayCounter.Business252, Frequency.Annual,
         "Brazil", "Settlement", BusinessDayConvention.Following,
         Extrapolacao.Disabled, Extrapolacao.FlatValue, "60Y", 7, ModoArredondamento.HALF_UP,
         null, null, null, Map.of());

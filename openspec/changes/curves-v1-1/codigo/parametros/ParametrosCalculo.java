@@ -13,7 +13,7 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ParametrosCalculo(
     @JsonProperty("BASE_INTERPOLACAO") BaseInterpolacao baseInterpolacao,
-    @JsonProperty("DAY_COUNTER_TEMPO") DayCounterTempo dayCounterTempo,
+    @JsonProperty("DAY_COUNTER_TEMPO") DayCounter dayCounterTempo,
     @JsonProperty("FREQUENCY") Frequency frequency,
     @JsonProperty("CALENDARIO") String calendario,
     @JsonProperty("MERCADO_CALENDARIO") String mercadoCalendario,
