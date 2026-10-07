@@ -11,7 +11,7 @@ Pacotes estão como `br.com.poc`: troque por `br.com.bradesco`.
    - `ParametrosCalculo.java` (novo)
    - `CadastroCurva.java`
    - `ValidadorCadastro.java`
-3. **Ajustar à mão o `CurvaMercadoJpaAdapter.montarLida`** (abaixo).
+3. **Copiar o `CurvaMercadoJpaAdapter.java`** (abaixo).
 4. **Testes** que montam `CurvaMercadoLida`/`CadastroCurva` com `Map` (abaixo).
 
 ## O que muda no `CadastroCurva` (antigo `CurvaMercadoLida`)
@@ -26,38 +26,13 @@ Pacotes estão como `br.com.poc`: troque por `br.com.bradesco`.
 
 ## `CurvaMercadoJpaAdapter`
 
-Campo novo, montado uma vez no construtor (Jackson 3):
+Copiar por cima o `CurvaMercadoJpaAdapter.java` desta pasta (em `adapter/out/persistence/jpa/`). Muda:
 
-```java
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.DeserializationFeature;
-import tools.jackson.databind.ObjectReader;
+- o construtor guarda um `ObjectReader` de `ParametrosCalculo` com `FAIL_ON_UNKNOWN_PROPERTIES` ligado e `ACCEPT_FLOAT_AS_INT` desligado, no lugar do `ObjectMapper`;
+- `montarLida` virou `montarCadastro`: sem as seis variáveis anuláveis, sem `Map` e sem `TypeReference`; a leitura do `cModDado` está em `lerParametros`, que devolve os parâmetros ou o motivo do erro;
+- sai o `curva.getUsuarCalc()` (campo removido do `CadastroCurva`).
 
-private final ObjectReader leitorParametros;
-
-// no construtor, depois de receber o objectMapper:
-this.leitorParametros = objectMapper.readerFor(ParametrosCalculo.class)
-        .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)    // chave desconhecida → CADASTRO_INVALIDO
-        .without(DeserializationFeature.ACCEPT_FLOAT_AS_INT);      // 7.9 em CASAS_DECIMAIS → CADASTRO_INVALIDO
-```
-
-Se o adaptador usa `@RequiredArgsConstructor`, troque por um construtor escrito à mão com os mesmos campos mais essa linha.
-
-No `montarLida`, troque o bloco que lia o `Map` (o `TypeReference<Map<String, Object>>`, o `params` e o `erroJson`) por:
-
-```java
-ParametrosCalculo parametros = null;
-String erroParametros = null;
-if (rawJson != null && !rawJson.isBlank()) {
-    try {
-        parametros = leitorParametros.readValue(rawJson);
-    } catch (JacksonException e) {
-        erroParametros = e.getOriginalMessage();
-    }
-}
-```
-
-E no `new CadastroCurva(...)`: passe `parametros` e `erroParametros` no lugar de `params` e `erroJson`, e tire o argumento do `usuarioCalculo`. Apague os imports de `TypeReference`, `Map` e `Collections` que sobrarem.
+Rotas, trava, resumo e provedores ficam iguais.
 
 ## O que muda no comportamento
 
