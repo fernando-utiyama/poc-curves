@@ -13,7 +13,7 @@ Esta **v0** entrega a base que a v1 usa (fuso de Brasília, campos do cadastro c
   - Chamadas sem `Authorization`, com `X-Correlation-Id`.
 - **Execução manual das três tarefas de download:**
   - `POST /api/v1/agendador/tarefas/{id}/executar` aceita `dataBase` opcional, informada pelo front (via bff). Sem ela, vale a data-base padrão da tarefa: hoje menos o parâmetro `defasagemDiasUteis` (padrão 0), em dias úteis dos `calendarios` da tarefa.
-  - A partir da data-base padrão → `caminhoDownload`; antes dela → `caminhoReprocessamento`, ou `caminhoDownload` daquela data se vier `incluirDownload` = `true` (buscar de novo na fonte). `{dataBase}` e `{tickers}` são trocados no caminho.
+  - A partir da data-base padrão → `caminhoDownload`; antes dela → `caminhoReprocessamento`, ou `caminhoDownload` daquela data se vier `incluirDownload` = `true` (buscar de novo na fonte). A chamada é `POST` com corpo JSON (`dataBase` e, na Bloomberg, `tickers` em lista).
   - Calendários nativos do engine copiados para o orquestrador (sem a sincronização de feriados, que é da v1).
   - Front: executar cada tarefa com data opcional e ver o resultado, ajustando a tela de tarefas que já existe; o bff repassa, sem autenticação.
   - A resposta da function (na v0, o processor) é classificada em sucesso, não recebida ou erro, gravada em `tLogTrefa` com a data-base em JSON e devolvida ao operador.

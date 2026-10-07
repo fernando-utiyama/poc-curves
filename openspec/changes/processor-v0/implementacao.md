@@ -1,5 +1,11 @@
 # Guia de implementação: processor v0
 
+> **Jackson 3 (Spring Boot 4):** para injetar o mapper do Spring, use `tools.jackson.databind.ObjectMapper` (ou `tools.jackson.databind.json.JsonMapper`), com `tools.jackson.core.type.TypeReference` e `JsonNode` de `tools.jackson.databind`. **Nunca** `com.fasterxml.jackson.databind.ObjectMapper`/`JsonMapper`: o Boot 4 não cria esse bean, e a aplicação não sobe ("required a bean of type 'com.fasterxml.jackson.databind.ObjectMapper' that could not be found"). Só as anotações continuam em `com.fasterxml.jackson.annotation`. No Jackson 3, `asText()` virou `asString()`.
+
+> **Parâmetros de rota em objeto:** controller não recebe uma fila de `@RequestParam`. Com mais de dois parâmetros, agrupe num record: `@ModelAttribute FiltroX filtro` para consultas `GET` (o Spring preenche os campos pelos nomes da query) e `@RequestBody PedidoX pedido` para comandos `POST`/`PUT`. `@PathVariable` (identificadores como `codigo` e `dataBase`) continua separado.
+
+> **Tipagem forte (Java 21):** dentro do domínio e das portas, nada de `Map<String, Object>`, `Object[]`, `Object` genérico ou `String` com JSON dentro. Valores fechados viram `enum`; dados viram `record`; variantes viram `sealed interface` com records. JSON cru só na borda (controller, cliente HTTP, coluna `cModDado`), desserializado direto num record; consultas nativas devolvem projeção em record.
+
 A spec (`specs/carga-arquivos-processor/spec.md`) manda no comportamento; este guia diz **onde, com que nome e como**. Ele foi escrito para ser suficiente sozinho: tudo o que você precisaria buscar em outras changes ou em outros serviços já está copiado aqui.
 
 ## 0. Antes de começar (leia isto primeiro)
@@ -252,11 +258,20 @@ Ligue com um `@ConfigurationProperties(prefix = "processor")` em record (`Durati
 
 | Rota | Caso de uso | `origem` |
 |---|---|---|
-| `GET /api/v1/cargas/{fonte}/download?dataBase=&tickers=` | `baixar(fonte, data, parametros)` | `DOWNLOAD` |
-| `GET /api/v1/cargas/{fonte}/reprocessamento?dataBase=` (`tickers` aceito e ignorado) | `reprocessar(fonte, data)` | `REPROCESSAMENTO` |
+| `POST /api/v1/cargas/{fonte}/download`, corpo `PedidoCarga` | `baixar(fonte, data, parametros)` | `DOWNLOAD` |
+| `POST /api/v1/cargas/{fonte}/reprocessamento`, corpo `PedidoCarga` (`tickers` aceito e ignorado) | `reprocessar(fonte, data)` | `REPROCESSAMENTO` |
 | `POST /api/v1/cargas/{fonte}/upload` (multipart `arquivo`, cabeçalho `X-Usuario`) | `receber(fonte, bytes, nome, usuario)` | `UPLOAD` |
 
-Um só `CargaController` (`@RequestMapping("/api/v1/cargas/{fonte}")`) para as três fontes:
+Um só `CargaController` (`@RequestMapping("/api/v1/cargas/{fonte}")`) para as três fontes. Download e reprocessamento recebem `@RequestBody PedidoCarga pedido`:
+
+```java
+// adapter/in/api/rest/dto/PedidoCarga.java
+public record PedidoCarga(String dataBase, List<String> tickers) {
+    public List<String> tickersOuVazio() { return tickers == null ? List.of() : tickers; }
+}
+```
+
+Corpo ausente ou JSON malformado → 400 `PARAMETRO_INVALIDO` (tratar `HttpMessageNotReadableException` no handler).
 
 ```java
 private static Fonte fonte(String texto) {        // b3 | anbima | bloomberg
@@ -278,7 +293,7 @@ O reprocessamento também passa os `tickers` por `parametros(...)`, só para rec
 
 Validação no controller, lançando `InvalidInputException(PARAMETRO_INVALIDO)`:
 - data `AAAA-MM-DD` (`LocalDate.parse`) e não futura (`LocalDate.now(clock)`);
-- `tickers` (separados por vírgula): cada um com `^[A-Za-z0-9]+( [A-Za-z0-9]+)*$`, até 50 caracteres, até 100 tickers; os repetidos são removidos;
+- `tickers` (lista JSON): cada um com `^[A-Za-z0-9]+( [A-Za-z0-9]+)*$`, até 50 caracteres, até 1.000 tickers; os repetidos são removidos;
 - `X-Usuario` opcional no upload (`required = false`; ausente = usuário nulo). Sem autenticação na v0 e na v1.
 
 `X-Correlation-Id`: lido da requisição ou gerado (`UUID.randomUUID()`), posto no MDC (`correlationId`) e devolvido no cabeçalho da resposta, num `OncePerRequestFilter` em `adapter/in/api/rest/config/`. O `CargaResponse` é o `ResultadoCarga` mais o `correlationId`; datas em ISO.

@@ -5,14 +5,16 @@ O `services/processor` SHALL expor, sem autenticação, as rotas abaixo, chamada
 
 | Uso | Rota |
 |---|---|
-| Download | `GET /api/v1/cargas/{fonte}/download?dataBase={dataBase}` (Bloomberg: `&tickers={tickers}`) |
-| Reprocessamento | `GET /api/v1/cargas/{fonte}/reprocessamento?dataBase={dataBase}` |
+| Download | `POST /api/v1/cargas/{fonte}/download`, corpo `{ "dataBase": "AAAA-MM-DD", "tickers": ["..."] }` (`tickers` só na Bloomberg, opcional) |
+| Reprocessamento | `POST /api/v1/cargas/{fonte}/reprocessamento`, corpo `{ "dataBase": "AAAA-MM-DD" }` |
+
+Os parâmetros vão no corpo JSON (`Content-Type: application/json`), não na URL: a chamada grava (por isso `POST`) e a lista de `tickers` pode ser grande. `tickers` é uma lista JSON de textos, sem limite de tamanho na URL.
 
 `{fonte}` SHALL ser `b3`, `anbima` ou `bloomberg`; as três fontes têm as mesmas rotas, e a fonte só escolhe quem obtém e interpreta o arquivo. `tickers` SHALL ser aceito só com `bloomberg` (no reprocessamento, aceito e ignorado); com outra fonte, MUST resultar em 400.
 
 A data SHALL ser `AAAA-MM-DD` e não pode ser futura no horário de Brasília. O download SHALL aceitar data passada (o orquestrador usa isso no reprocessamento com `incluirDownload`): busca na fonte o arquivo daquela data, como no download do dia. As respostas SHALL ser:
 - 200 com `{ "idCarga", "dataBase", "hashArquivo", "origem", "verticesPorCodigo", "correlationId" }`, depois do commit da gravação; `origem` é `DOWNLOAD`, `REPROCESSAMENTO` ou `UPLOAD`; `dataBase` é a do conteúdo do arquivo;
-- 400 `PARAMETRO_INVALIDO`: fonte desconhecida, data ausente, inválida ou futura, `tickers` fora da regra ou informado para fonte que não é `bloomberg`;
+- 400 `PARAMETRO_INVALIDO`: fonte desconhecida, corpo ausente ou JSON malformado, data ausente, inválida ou futura, `tickers` fora da regra ou informado para fonte que não é `bloomberg`;
 - 404 `ARQUIVO_NAO_ENCONTRADO`: no reprocessamento, nenhum original da fonte e data no Blob;
 - 422 `ARQUIVO_INVALIDO`: o arquivo foi obtido, mas é rejeitado inteiro pela validação; nada é gravado no banco, e o original fica arquivado quando a data-base é conhecida (requisito "Identidade da carga e original no Blob");
 - 502 `FONTE_INDISPONIVEL`: a fonte respondeu com erro inesperado;
@@ -23,7 +25,7 @@ A data SHALL ser `AAAA-MM-DD` e não pode ser futura no horário de Brasília. O
 Todo erro SHALL ter o corpo `{ "codigoErro", "mensagem", "correlationId" }`, sem stack trace. Toda resposta SHALL trazer `X-Correlation-Id`.
 
 #### Scenario: Arquivo do dia ainda não publicado
-- **WHEN** o orquestrador chama `/api/v1/cargas/anbima/download?dataBase=2026-09-28` às 18h e a ANBIMA ainda não publicou `ms260928.txt`
+- **WHEN** o orquestrador chama `POST /api/v1/cargas/anbima/download` com `dataBase` = `2026-09-28` às 18h e a ANBIMA ainda não publicou `ms260928.txt`
 - **THEN** a resposta é 503 `ARQUIVO_INDISPONIVEL`, nada é arquivado nem gravado, e o orquestrador tenta de novo na próxima ocorrência
 
 #### Scenario: Carga gravada
@@ -91,7 +93,7 @@ O pedido SHALL ter um identificador determinístico, formado pela data-base, pel
 - **THEN** a resposta é 503 `ARQUIVO_INDISPONIVEL`; a chamada das 18h20, na mesma faixa, consulta o mesmo pedido em vez de fazer outro
 
 #### Scenario: Chamada sem tickers
-- **WHEN** a rota é chamada sem o parâmetro `tickers`
+- **WHEN** a rota é chamada sem o campo `tickers` no corpo
 - **THEN** o pedido usa a lista de reserva, e o log registra `TICKERS_RESERVA`
 
 #### Scenario: Tenor sem valor

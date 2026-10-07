@@ -1,5 +1,11 @@
 # Guia de implementação: orquestrador v0, disparo manual
 
+> **Jackson 3 (Spring Boot 4):** para injetar o mapper do Spring, use `tools.jackson.databind.ObjectMapper` (ou `tools.jackson.databind.json.JsonMapper`), com `tools.jackson.core.type.TypeReference` e `JsonNode` de `tools.jackson.databind`. **Nunca** `com.fasterxml.jackson.databind.ObjectMapper`/`JsonMapper`: o Boot 4 não cria esse bean, e a aplicação não sobe ("required a bean of type 'com.fasterxml.jackson.databind.ObjectMapper' that could not be found"). Só as anotações continuam em `com.fasterxml.jackson.annotation`. No Jackson 3, `asText()` virou `asString()`.
+
+> **Parâmetros de rota em objeto:** controller não recebe uma fila de `@RequestParam`. Com mais de dois parâmetros, agrupe num record: `@ModelAttribute FiltroX filtro` para consultas `GET` (o Spring preenche os campos pelos nomes da query) e `@RequestBody PedidoX pedido` para comandos `POST`/`PUT`. `@PathVariable` (identificadores como `codigo` e `dataBase`) continua separado.
+
+> **Tipagem forte (Java 21):** dentro do domínio e das portas, nada de `Map<String, Object>`, `Object[]`, `Object` genérico ou `String` com JSON dentro. Valores fechados viram `enum`; dados viram `record`; variantes viram `sealed interface` com records. JSON cru só na borda (controller, cliente HTTP, coluna `cModDado`), desserializado direto num record; consultas nativas devolvem projeção em record.
+
 A spec (`specs/disparo-manual-carga/spec.md`) manda no comportamento; este guia diz **onde, com que nome e como**. Ele foi escrito para ser suficiente sozinho: o que você precisaria buscar no engine, na v1 (`orquestrador-curvas`) ou no processor já está copiado aqui.
 
 ## 0. Antes de começar (leia isto primeiro)
@@ -184,7 +190,8 @@ public record DestinosProperties(Map<String, Destino> destinos) {
 
 public interface ChamadaSaidaClient {
     /** Não lança exceção por status HTTP; lança ResourceAccessException em rede ou tempo esgotado. */
-    ResponseEntity<String> chamar(HttpMethod metodo, String destino, String caminho, String correlationId);
+    /** corpo nulo = sem corpo; senão, serializado em JSON com Content-Type application/json. */
+    ResponseEntity<String> chamar(HttpMethod metodo, String destino, String caminho, Object corpo, String correlationId);
 }
 ```
 
@@ -192,10 +199,11 @@ public interface ChamadaSaidaClient {
 - na subida, um `RestClient` por destino: `RestClient.builder().baseUrl(baseUrl).requestFactory(fabrica)` com `JdkClientHttpRequestFactory(HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).connectTimeout(Duration.ofSeconds(timeoutSegundos)).build())` e `setReadTimeout(Duration.ofSeconds(timeoutSegundos))`. Sem seguir redirecionamento: um 3xx volta como resposta e vira `ERRO`;
 - destino ausente do mapa → `BusinessException(ExecucaoErrorCode.DESTINO_NAO_CADASTRADO)`, sem chamada;
 - caminho que não começa com `/`, ou contém `://`, `//`, `..`, `\` ou `@` → `BusinessException(ExecucaoErrorCode.CAMINHO_INVALIDO)`, sem chamada;
-- cabeçalho só `X-Correlation-Id`; nunca `Authorization` nem outro;
+- cabeçalho só `X-Correlation-Id` (e `Content-Type: application/json` quando há corpo); nunca `Authorization` nem outro;
+- com corpo: `.contentType(MediaType.APPLICATION_JSON).body(corpo)`;
 - `.retrieve().onStatus(s -> true, (req, res) -> {}).toEntity(String.class)`: quem classifica o status é quem chamou.
 
-`HttpTaskActionAdapter`: parâmetros `destino`, `caminho` e `method` (opcional, padrão `GET`); remover `url`, `header.*`, `body` e `contentType`; chamar pelo `ChamadaSaidaClient` com um `UUID` novo de correlação; não 2xx continua lançando a mesma exceção de hoje.
+`HttpTaskActionAdapter`: parâmetros `destino`, `caminho` e `method` (opcional, padrão `GET`); remover `url`, `header.*`, `body` e `contentType`; chamar pelo `ChamadaSaidaClient` com corpo nulo e um `UUID` novo de correlação; não 2xx continua lançando a mesma exceção de hoje.
 
 Códigos novos (no molde do `BusinessErrorCode`):
 
@@ -237,7 +245,7 @@ INSERT INTO tLogTrefa (cIdtfdTrefa, dAtaCriac, cSitExcuc, rLogTrefa) VALUES (?, 
 
 - Origem `EXECUTANDO` → `ConflictException(TAREFA_EM_EXECUCAO)` sem tentar o `UPDATE`; `UPDATE` com 0 linhas → a mesma; `DESABILITADA` ou `REMOVIDA` → `InvalidInputException(PARAMETRO_INVALIDO)`.
 - `cIdtfdEntrd` é identidade (não entra no `INSERT`); `dAtaCriac` = `LocalDateTime.now()`.
-- `jsonInicio` = `{ "origem", "dataBase", "usuario", "instancia", "correlationId" }`, com `instancia` = `System.getenv("HOSTNAME")` ou, ausente, `InetAddress.getLocalHost().getHostName()`. Monte os JSON com o `ObjectMapper` do Spring.
+- `jsonInicio` = `{ "origem", "dataBase", "usuario", "instancia", "correlationId" }`, com `instancia` = `System.getenv("HOSTNAME")` ou, ausente, `InetAddress.getLocalHost().getHostName()`. Monte os JSON com o `ObjectMapper` do Spring de Jackson 3 (`tools.jackson.databind.ObjectMapper`).
 - Não use o `TarefaStatusTransitionService` aqui: a volta de `EXECUTANDO` para a origem é feita só pelo `UPDATE`.
 
 ## 6. Calendários (tarefa 1.5)
@@ -364,9 +372,9 @@ public record ResultadoExecucao(TipoResultado resultado, String fonte, LocalDate
 2. `defasagemDiasUteis` ausente = 0; não inteiro ou fora de 0 a 10 → `InvalidInputException(PARAMETRO_INVALIDO)`; `calendarios` por `Calendarios.de(...)`.
 3. `hoje = LocalDate.now()`; `padrao = Calendarios.dataBasePadrao(hoje, defasagem, calendarios)`; `dataBase` nula → `padrao`; `dataBase.isAfter(hoje)` → `InvalidInputException(PARAMETRO_INVALIDO)`.
 4. Caminho: `!dataBase.isBefore(padrao)` → `caminhoDownload`; senão, `incluirDownload` → `caminhoDownload`; senão `caminhoReprocessamento` ou, ausente, `caminhoDownload`.
-5. Em `carga-data-license` sem `tickers` (ausente ou vazio), ou caminho com `{tickers}` e sem o parâmetro → `ResultadoExecucao.erro(..., "parâmetro tickers ausente")`, sem chamada.
-6. Trocar `{dataBase}` por `dataBase.toString()` e `{tickers}` por `URLEncoder.encode(tickers, UTF_8).replace("+", "%20")`.
-7. `chamadaSaida.chamar(GET, destino, caminho, correlationId)`; `ResourceAccessException` → `NAO_RECEBIDA`; `BusinessException` de destino ou caminho → `ERRO` com o código no `detalhe`.
+5. Em `carga-data-license` sem `tickers` (ausente ou vazio) → `ResultadoExecucao.erro(..., "parâmetro tickers ausente")`, sem chamada.
+6. Corpo: `Map<String, Object>` com `"dataBase"` = `dataBase.toString()` e, em `carga-data-license`, `"tickers"` = `Arrays.stream(tickers.split(",")).map(String::strip).filter(t -> !t.isEmpty()).toList()`.
+7. `chamadaSaida.chamar(POST, destino, caminho, corpo, correlationId)`; `ResourceAccessException` → `NAO_RECEBIDA`; `BusinessException` de destino ou caminho → `ERRO` com o código no `detalhe`.
 8. Classificar:
 
 | Resposta | Resultado |
@@ -439,7 +447,7 @@ Sem dependência nova: JUnit 5, Mockito e Spring Test do `spring-boot-starter-te
 |---|---|---|
 | `CalendariosTest` | unitário | todos os vetores da seção 6; `calendarios` desconhecido → `PARAMETRO_INVALIDO` |
 | `ChamadaSaidaClientTest` | unitário, destino falso | destino não cadastrado e caminhos inválidos (`http://x`, `//x`, `/a/../b`, `a`, `/a\b`, `/@x`) sem nenhuma chamada; `X-Correlation-Id` presente e `Authorization` ausente; 3xx não seguido; tempo esgotado → `ResourceAccessException` |
-| `CargaFonteTaskActionAdapterTest` | unitário, destino falso | `@ParameterizedTest`: as três fontes; caminho escolhido (padrão, data passada com e sem `incluirDownload`, sem `caminhoReprocessamento`); `{tickers}` com espaço → `%20`; `carga-data-license` sem `tickers` sem chamada; classificação de 200 igual, 200 outra data, 200 ilegível, 404, 422, 500, 501, 502, 503 e tempo esgotado; defasagem 11 e data futura → `InvalidInputException` |
+| `CargaFonteTaskActionAdapterTest` | unitário, destino falso | `@ParameterizedTest`: as três fontes; caminho escolhido (padrão, data passada com e sem `incluirDownload`, sem `caminhoReprocessamento`); corpo com `dataBase` e `tickers` em lista (com espaços preservados); `carga-data-license` sem `tickers` sem chamada; classificação de 200 igual, 200 outra data, 200 ilegível, 404, 422, 500, 501, 502, 503 e tempo esgotado; defasagem 11 e data futura → `InvalidInputException` |
 | `ExecucaoManualServiceTest` | unitário, repositório e action falsos | `SchedulerService.executeTask`: logs `102` e `200`/`500` com o JSON da spec; volta à origem com sucesso, `NAO_RECEBIDA` e exceção; `EXECUTANDO` → 409; `DESABILITADA` → 400; duas threads ao mesmo tempo → uma 409 e uma chamada só (o repositório falso faz o "UPDATE condicional" com `compareAndSet`); usuário nulo |
 | `SchedulerExecutarRotaTest` | MockMvc `standaloneSetup` do `SchedulerController`, caso de uso mockado | `dataBase` e `incluirDownload` opcionais e repassados; `X-Usuario` e `X-Correlation-Id`; 400 e 409 do handler; resposta 200 com o JSON em todos os resultados |
 | `TarefaJpaMapperTest` e `ApplicationFusoTest` | unitários | ida e volta de `action`/`descricao`; `fixarFuso()` com o padrão da JVM em UTC passa a `America/Sao_Paulo` |
@@ -452,9 +460,9 @@ Parâmetros das três tarefas (todas `PRONTA`, sem agendar):
 
 | Tarefa | `action` | `destino` | `caminhoDownload` | `caminhoReprocessamento` | Outros |
 |---|---|---|---|---|---|
-| B3 | `carga-download-site` | `conector-b3` | `/api/v1/cargas/b3/download?dataBase={dataBase}` | `/api/v1/cargas/b3/reprocessamento?dataBase={dataBase}` | `fonte` = `B3`, `calendarios` = `Brazil/Settlement`, `defasagemDiasUteis` = 0 |
-| ANBIMA | `carga-download-site` | `conector-anbima` | `/api/v1/cargas/anbima/download?dataBase={dataBase}` | `/api/v1/cargas/anbima/reprocessamento?dataBase={dataBase}` | `fonte` = `ANBIMA`, `calendarios` = `Brazil/Settlement`, `defasagemDiasUteis` = 0 |
-| Bloomberg | `carga-data-license` | `conector-bloomberg` | `/api/v1/cargas/bloomberg/download?dataBase={dataBase}&tickers={tickers}` | `/api/v1/cargas/bloomberg/reprocessamento?dataBase={dataBase}` | `fonte` = `BLOOMBERG`, `calendarios` = `Brazil/Settlement,UnitedStates/FederalReserve`, `defasagemDiasUteis` = 0 [A CONFIRMAR], `tickers` = os 20 da SOFR |
+| B3 | `carga-download-site` | `conector-b3` | `/api/v1/cargas/b3/download` | `/api/v1/cargas/b3/reprocessamento` | `fonte` = `B3`, `calendarios` = `Brazil/Settlement`, `defasagemDiasUteis` = 0 |
+| ANBIMA | `carga-download-site` | `conector-anbima` | `/api/v1/cargas/anbima/download` | `/api/v1/cargas/anbima/reprocessamento` | `fonte` = `ANBIMA`, `calendarios` = `Brazil/Settlement`, `defasagemDiasUteis` = 0 |
+| Bloomberg | `carga-data-license` | `conector-bloomberg` | `/api/v1/cargas/bloomberg/download` | `/api/v1/cargas/bloomberg/reprocessamento` | `fonte` = `BLOOMBERG`, `calendarios` = `Brazil/Settlement,UnitedStates/FederalReserve`, `defasagemDiasUteis` = 0 [A CONFIRMAR], `tickers` = os 20 da SOFR |
 
 `inicioHorario` e `limiteHorario` podem ser cadastrados já (são ignorados na v0).
 

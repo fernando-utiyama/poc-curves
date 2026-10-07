@@ -32,14 +32,14 @@ As `actions` de carga SHALL dizer como a fonte entrega o dado: `carga-download-s
 |---|---|
 | `fonte` | `B3`, `ANBIMA` ou `BLOOMBERG`, só para log e resultado |
 | `destino` | chave de `orquestrador.http.destinos` |
-| `caminhoDownload` | caminho com `{dataBase}` e, na Bloomberg, `{tickers}` |
-| `caminhoReprocessamento` | opcional; caminho usado para data-base passada |
-| `tickers` | obrigatório em `carga-data-license` (lista separada por vírgula); ausente ou vazio MUST falhar com erro claro, sem chamada |
+| `caminhoDownload` | caminho do download, sem parâmetros (ex.: `/api/v1/cargas/b3/download`) |
+| `caminhoReprocessamento` | opcional; caminho usado para data-base passada (ex.: `/api/v1/cargas/b3/reprocessamento`) |
+| `tickers` | obrigatório em `carga-data-license` (lista separada por vírgula no cadastro da tarefa, enviada no corpo como lista); ausente ou vazio MUST falhar com erro claro, sem chamada |
 | `defasagemDiasUteis` | opcional; inteiro de 0 a 10 (padrão 0): quantos dias úteis a data-base padrão fica antes de hoje |
 | `calendarios` | opcional (padrão `Brazil/Settlement`); calendários em que se contam os dias úteis da defasagem (na v1, também os dias em que a tarefa roda) |
 | `inicioHorario`, `limiteHorario` | aceitos e guardados, sem efeito na v0 (usados pelo agendamento da v1) |
 
-A **data-base padrão** da tarefa SHALL ser hoje em Brasília recuado `defasagemDiasUteis` dias úteis, contando só os dias úteis em **todos** os `calendarios` da tarefa (com defasagem 0, é hoje, mesmo que não seja dia útil). Com a data-base igual ou posterior à padrão, a `action` SHALL chamar o `caminhoDownload`. Anterior à padrão, é um reprocessamento: com `incluirDownload` = `false` (padrão), a `action` SHALL chamar o `caminhoReprocessamento` (o destino relê o original já guardado; sem `caminhoReprocessamento`, o `caminhoDownload`); com `incluirDownload` = `true`, SHALL chamar o `caminhoDownload` com aquela data, para buscar o arquivo de novo na fonte. Data futura MUST ser recusada (400 `PARAMETRO_INVALIDO`), assim como `defasagemDiasUteis` fora de 0 a 10 ou `calendarios` desconhecido. `{dataBase}` SHALL ser trocado pela data em `AAAA-MM-DD`, e `{tickers}` pelo parâmetro `tickers` com codificação de URL; caminho com `{tickers}` e tarefa sem o parâmetro MUST falhar com erro claro, sem chamada. O método SHALL ser `GET`. A resposta SHALL ser classificada:
+A **data-base padrão** da tarefa SHALL ser hoje em Brasília recuado `defasagemDiasUteis` dias úteis, contando só os dias úteis em **todos** os `calendarios` da tarefa (com defasagem 0, é hoje, mesmo que não seja dia útil). Com a data-base igual ou posterior à padrão, a `action` SHALL chamar o `caminhoDownload`. Anterior à padrão, é um reprocessamento: com `incluirDownload` = `false` (padrão), a `action` SHALL chamar o `caminhoReprocessamento` (o destino relê o original já guardado; sem `caminhoReprocessamento`, o `caminhoDownload`); com `incluirDownload` = `true`, SHALL chamar o `caminhoDownload` com aquela data, para buscar o arquivo de novo na fonte. Data futura MUST ser recusada (400 `PARAMETRO_INVALIDO`), assim como `defasagemDiasUteis` fora de 0 a 10 ou `calendarios` desconhecido. A chamada SHALL ser `POST` no caminho, com corpo JSON `{ "dataBase": "AAAA-MM-DD" }` e, em `carga-data-license`, também `"tickers"`: a lista do parâmetro `tickers`, separada por vírgula e sem espaços nas pontas de cada item. A resposta SHALL ser classificada:
 
 | Resposta | Resultado |
 |---|---|
@@ -52,7 +52,7 @@ Cada execução é uma tentativa só: a v0 não repete, não consulta janela, n�
 
 #### Scenario: Download do dia com sucesso
 - **WHEN** o operador executa a tarefa B3 sem `dataBase` em `2026-09-14`, e o destino responde 200 com `dataBase` = `2026-09-14` e `idCarga` = `B3-TS-20260914-1a2b3c4d5e6f`
-- **THEN** o orquestrador chamou `{base-url do conector-b3}/api/v1/cargas/b3/download?dataBase=2026-09-14`, e o resultado é `SUCESSO` com o `idCarga`
+- **THEN** o orquestrador chamou `POST {base-url do conector-b3}/api/v1/cargas/b3/download` (hoje, o processor) com o corpo `{ "dataBase": "2026-09-14" }`, e o resultado é `SUCESSO` com o `idCarga`
 
 #### Scenario: Defasagem de um dia útil
 - **WHEN** a tarefa Bloomberg tem `defasagemDiasUteis` = 1 e `calendarios` = `Brazil/Settlement,UnitedStates/FederalReserve`, e o operador executa sem data na segunda-feira `2026-09-14`
@@ -72,7 +72,7 @@ Cada execução é uma tentativa só: a v0 não repete, não consulta janela, n�
 
 #### Scenario: Bloomberg com tickers
 - **WHEN** o operador executa a tarefa Bloomberg com o parâmetro `tickers` = `S0490Z 1M BLC2 Curncy,S0490Z 3M BLC2 Curncy`
-- **THEN** a chamada leva a data e os tickers codificados no lugar de `{tickers}`
+- **THEN** o corpo da chamada é `{ "dataBase": "...", "tickers": ["S0490Z 1M BLC2 Curncy", "S0490Z 3M BLC2 Curncy"] }`
 
 #### Scenario: Arquivo do dia ainda não saiu
 - **WHEN** o destino responde 503

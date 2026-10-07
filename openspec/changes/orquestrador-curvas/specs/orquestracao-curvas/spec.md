@@ -11,13 +11,13 @@ Define o que o orquestrador faz no processo das curvas: disparar, em cada functi
 |---|---|
 | `fonte` | rótulo da fonte nos logs e no alerta (`B3`, `ANBIMA`, `BLOOMBERG`) |
 | `destino` | a function da fonte (chave de `orquestrador.http.destinos`, ex.: `conector-b3`, `conector-anbima`, `conector-bloomberg`; lista de destinos da spec `agendamento-tarefas`) |
-| `caminhoDownload` | caminho com `{dataBase}` (ex.: function B3 `/api/b3/taxa-swap/download?date={dataBase}`; processor da change `processor-v0`, enquanto a function não existe, `/api/v1/cargas/b3/download?dataBase={dataBase}`) e, na Bloomberg, também `{tickers}` |
-| `caminhoReprocessamento` | opcional; caminho com `{dataBase}` (e `{tickers}`) usado na execução manual de data passada |
-| `tickers` | só na Bloomberg: lista separada por vírgula dos tickers a buscar (ex.: `S0490Z 1M BLC2 Curncy,S0490Z 3M BLC2 Curncy`), enviada à function junto com a data no lugar de `{tickers}`, com codificação de URL; obrigatório quando um caminho tem `{tickers}`, e MUST NOT ser exigido nas outras fontes |
+| `caminhoDownload` | caminho do download, sem parâmetros (ex.: processor da change `processor-v0` `/api/v1/cargas/b3/download`) |
+| `caminhoReprocessamento` | opcional; caminho usado na execução manual de data passada (ex.: `/api/v1/cargas/b3/reprocessamento`) |
+| `tickers` | só na Bloomberg: lista separada por vírgula dos tickers a buscar (ex.: `S0490Z 1M BLC2 Curncy,S0490Z 3M BLC2 Curncy`), enviada no corpo como lista; obrigatório em `carga-data-license`, e MUST NOT ser exigido nas outras fontes |
 | `inicioHorario`, `limiteHorario` | janela de tentativas (`HH:mm`, Brasília) |
 | `defasagemDiasUteis` | opcional, 0 a 10 (padrão 0): a data-base padrão é hoje recuado essa quantidade de dias úteis nos `calendarios` da tarefa (como na change `orquestrador-v0-disparo-manual`) |
 
-A tarefa SHALL ter `regraIntervalo` com o intervalo entre tentativas (ex.: `PT10M`, ocorrências alinhadas à meia-noite de Brasília); o cron não é usado porque uma janela "a cada 10 minutos" não cabe nos 15 caracteres da coluna. A function de cada fonte MUST responder no contrato do download B3 (change `conector-b3-webhook-ingest`): 200 com a `dataBase` do arquivo e o `idCarga`. Enquanto a function de uma fonte não existe, o `destino` da tarefa aponta para o `services/processor` (change `processor-v0`), que responde no mesmo contrato; a troca é só de `destino` e caminhos, por `PATCH`.
+A chamada SHALL ser `POST` no caminho, com corpo JSON `{ "dataBase": "AAAA-MM-DD" }` e, na Bloomberg, `"tickers"` em lista. A tarefa SHALL ter `regraIntervalo` com o intervalo entre tentativas (ex.: `PT10M`, ocorrências alinhadas à meia-noite de Brasília); o cron não é usado porque uma janela "a cada 10 minutos" não cabe nos 15 caracteres da coluna. A function de cada fonte MUST responder no contrato do download B3 (change `conector-b3-webhook-ingest`): 200 com a `dataBase` do arquivo e o `idCarga`. Enquanto a function de uma fonte não existe, o `destino` da tarefa aponta para o `services/processor` (change `processor-v0`), que responde no mesmo contrato; a troca é só de `destino` e caminhos, por `PATCH`.
 
 O orquestrador MUST NOT disparar o engine: o 200 da function encerra o trabalho dele naquele dia, e a construção das curvas segue pelo fluxo da function e do processor.
 
@@ -49,7 +49,7 @@ Cada fonte tem a sua tarefa, então as tentativas, o sucesso e o alerta de uma f
 - **THEN** a chamada à function da Bloomberg leva a data-base e os tickers, e o 200 com a `dataBase` do dia é o sucesso da tarefa
 
 #### Scenario: Tickers ausentes na Bloomberg
-- **WHEN** o caminho da tarefa tem `{tickers}` e o parâmetro `tickers` não está cadastrado
+- **WHEN** a tarefa `carga-data-license` não tem o parâmetro `tickers` cadastrado
 - **THEN** a execução falha com erro claro sobre o parâmetro, sem nenhuma chamada
 
 #### Scenario: Horário limite sem sucesso
@@ -91,9 +91,9 @@ As tarefas SHALL ser cadastradas pela API de tarefas (`POST /api/v1/tarefas`), c
 
 | Tarefa | `action` | Parâmetros |
 |---|---|---|
-| Carga B3 (site) | `carga-download-site` | `fonte`=`B3`, `destino` da function B3, `caminhoDownload`=`/api/b3/taxa-swap/download?date={dataBase}`, `caminhoReprocessamento`=`/api/b3/taxa-swap/reprocessamento?dataBase={dataBase}`, janela |
+| Carga B3 (site) | `carga-download-site` | `fonte`=`B3`, `destino` da function B3, `caminhoDownload`=`/api/v1/cargas/b3/download`, `caminhoReprocessamento`=`/api/v1/cargas/b3/reprocessamento`, janela |
 | Carga ANBIMA (site) | `carga-download-site` | `fonte`=`ANBIMA`, `destino` da function ANBIMA, caminhos da rota dela (change própria), janela |
-| Carga Bloomberg (Data License) | `carga-data-license` | `fonte`=`BLOOMBERG`, `destino` da function Bloomberg, caminhos da rota dela (change própria) com `{dataBase}` e `{tickers}`, `tickers`, janela |
+| Carga Bloomberg (Data License) | `carga-data-license` | `fonte`=`BLOOMBERG`, `destino` da function Bloomberg, caminhos da rota dela (change própria), `tickers`, janela |
 
 Os cadastros são feitos pela tela; a sugestão de cada um está em `cadastros-sugeridos.txt` desta change. A tarefa de uma fonte é cadastrada quando a rota da function dela existir ou, antes disso, apontando para o `services/processor` (change `processor-v0`, caminhos `/api/v1/cargas/{fonte}/...`, como na change `orquestrador-v0-disparo-manual`). Depois de cadastrada (`PRONTA`), a tarefa SHALL ser agendada (`POST /api/v1/agendador/tarefas/{id}/agendar`) para disparar sozinha. Não há horário embutido no orquestrador: sem cadastro, a tarefa não existe. Mudar horário, intervalo, limite ou tickers SHALL ser um `PATCH`, sem redeploy; agendar e desagendar é o liga/desliga do disparo automático.
 

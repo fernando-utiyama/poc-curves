@@ -1,8 +1,8 @@
 ANTES DAS FUNCTIONS (change processor-v0): enquanto a function de uma fonte nao
 existir, a tarefa aponta o destino para o services/processor e usa os caminhos
-/api/v1/cargas/{fonte}/download?dataBase={dataBase} e
-/api/v1/cargas/{fonte}/reprocessamento?dataBase={dataBase} (fonte = b3, anbima ou
-bloomberg; na Bloomberg, o download leva tambem &tickers={tickers}). Ver a
+/api/v1/cargas/{fonte}/download e /api/v1/cargas/{fonte}/reprocessamento
+(fonte = b3, anbima ou bloomberg), chamados com POST e corpo JSON
+{ "dataBase": "AAAA-MM-DD" } (na Bloomberg, tambem "tickers" em lista). Ver a
 tabela da secao 12 do guia da change orquestrador-v0-disparo-manual. Quando a
 function existir, troca-se destino e caminhos por PATCH, sem recadastro.
 
@@ -41,8 +41,8 @@ REGRAS DO CADASTRO (valem para todas)
 - defasagemDiasUteis (0 a 10, padrão 0): sem data informada, a data-base é hoje
   recuado essa quantidade de dias úteis nos calendarios da tarefa. [A CONFIRMAR]
   o valor de cada fonte; 0 nas três por enquanto.
-- {dataBase} nos caminhos é trocado pela data-base (AAAA-MM-DD); {tickers}
-  (só na Bloomberg) é trocado pelo parâmetro tickers, com codificação de URL.
+- A chamada é POST no caminho, com corpo JSON { "dataBase": "AAAA-MM-DD" } e,
+  só na Bloomberg, "tickers" (o parâmetro tickers, separado por vírgula, vira lista).
 - destino: chave de orquestrador.http.destinos, uma por function (os nomes
   abaixo são sugestão; a base-URL de cada uma vem da configuração).
 - Uma tarefa por fonte: o sucesso, as tentativas e o alerta de uma fonte
@@ -65,8 +65,8 @@ Depende de: rotas da function B3 (change conector-b3-webhook-ingest).
     { "nome": "calendarios",            "valor": "Brazil/Settlement",                                      "tipo": "TEXTO" },
     { "nome": "fonte",                  "valor": "B3",                                                     "tipo": "TEXTO" },
     { "nome": "destino",                "valor": "conector-b3",                                            "tipo": "TEXTO" },
-    { "nome": "caminhoDownload",        "valor": "/api/b3/taxa-swap/download?date={dataBase}",             "tipo": "TEXTO" },
-    { "nome": "caminhoReprocessamento", "valor": "/api/b3/taxa-swap/reprocessamento?dataBase={dataBase}",  "tipo": "TEXTO" },
+    { "nome": "caminhoDownload",        "valor": "/api/v1/cargas/b3/download",             "tipo": "TEXTO" },
+    { "nome": "caminhoReprocessamento", "valor": "/api/v1/cargas/b3/reprocessamento",  "tipo": "TEXTO" },
     { "nome": "defasagemDiasUteis",     "valor": "0",     "tipo": "NUMERO" },
     { "nome": "inicioHorario",          "valor": "18:00",                                                  "tipo": "HORARIO" },
     { "nome": "limiteHorario",          "valor": "22:00",                                                  "tipo": "HORARIO" }
@@ -98,8 +98,8 @@ da change da function quando ela existir.
     { "nome": "calendarios",            "valor": "Brazil/Settlement",                                 "tipo": "TEXTO" },
     { "nome": "fonte",                  "valor": "ANBIMA",                                            "tipo": "TEXTO" },
     { "nome": "destino",                "valor": "conector-anbima",                                   "tipo": "TEXTO" },
-    { "nome": "caminhoDownload",        "valor": "/api/anbima/ms/download?date={dataBase}",           "tipo": "TEXTO" },
-    { "nome": "caminhoReprocessamento", "valor": "/api/anbima/ms/reprocessamento?dataBase={dataBase}", "tipo": "TEXTO" },
+    { "nome": "caminhoDownload",        "valor": "/api/v1/cargas/anbima/download",           "tipo": "TEXTO" },
+    { "nome": "caminhoReprocessamento", "valor": "/api/v1/cargas/anbima/reprocessamento", "tipo": "TEXTO" },
     { "nome": "defasagemDiasUteis",     "valor": "0",     "tipo": "NUMERO" },
     { "nome": "inicioHorario",          "valor": "18:00",                                             "tipo": "HORARIO" },
     { "nome": "limiteHorario",          "valor": "22:00",                                             "tipo": "HORARIO" }
@@ -142,8 +142,8 @@ se aparecer alguma linha com a forma curta "S0490Z 15M", completar com
     { "nome": "fonte",                  "valor": "BLOOMBERG",                                                              "tipo": "TEXTO" },
     { "nome": "destino",                "valor": "conector-bloomberg",                                                     "tipo": "TEXTO" },
     { "nome": "tickers",                "valor": "S0490Z 1D BLC2 Curncy,S0490Z 1M BLC2 Curncy,S0490Z 3M BLC2 Curncy,S0490Z 6M BLC2 Curncy,S0490Z 9M BLC2 Curncy,S0490Z 1Y BLC2 Curncy,S0490Z 15M BLC2 Curncy,S0490Z 2Y BLC2 Curncy,S0490Z 3Y BLC2 Curncy,S0490Z 4Y BLC2 Curncy,S0490Z 5Y BLC2 Curncy,S0490Z 7Y BLC2 Curncy,S0490Z 10Y BLC2 Curncy,S0490Z 12Y BLC2 Curncy,S0490Z 15Y BLC2 Curncy,S0490Z 20Y BLC2 Curncy,S0490Z 25Y BLC2 Curncy,S0490Z 30Y BLC2 Curncy,S0490Z 40Y BLC2 Curncy,S0490Z 50Y BLC2 Curncy", "tipo": "TEXTO" },
-    { "nome": "caminhoDownload",        "valor": "/api/bloomberg/sofr/download?date={dataBase}&tickers={tickers}",         "tipo": "TEXTO" },
-    { "nome": "caminhoReprocessamento", "valor": "/api/bloomberg/sofr/reprocessamento?dataBase={dataBase}&tickers={tickers}", "tipo": "TEXTO" },
+    { "nome": "caminhoDownload",        "valor": "/api/v1/cargas/bloomberg/download",         "tipo": "TEXTO" },
+    { "nome": "caminhoReprocessamento", "valor": "/api/v1/cargas/bloomberg/reprocessamento", "tipo": "TEXTO" },
     { "nome": "defasagemDiasUteis",     "valor": "0",     "tipo": "NUMERO" },
     { "nome": "inicioHorario",          "valor": "18:00",                                                                  "tipo": "HORARIO" },
     { "nome": "limiteHorario",          "valor": "22:00",                                                                  "tipo": "HORARIO" }

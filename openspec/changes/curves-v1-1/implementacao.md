@@ -1,5 +1,11 @@
 # Guia de implementação: curves-v1-1 (dá para fazer na mão)
 
+> **Jackson 3 (Spring Boot 4):** para injetar o mapper do Spring, use `tools.jackson.databind.ObjectMapper` (ou `tools.jackson.databind.json.JsonMapper`), com `tools.jackson.core.type.TypeReference` e `JsonNode` de `tools.jackson.databind`. **Nunca** `com.fasterxml.jackson.databind.ObjectMapper`/`JsonMapper`: o Boot 4 não cria esse bean, e a aplicação não sobe ("required a bean of type 'com.fasterxml.jackson.databind.ObjectMapper' that could not be found"). Só as anotações continuam em `com.fasterxml.jackson.annotation`. No Jackson 3, `asText()` virou `asString()`.
+
+> **Parâmetros de rota em objeto:** controller não recebe uma fila de `@RequestParam`. Com mais de dois parâmetros, agrupe num record: `@ModelAttribute FiltroX filtro` para consultas `GET` (o Spring preenche os campos pelos nomes da query) e `@RequestBody PedidoX pedido` para comandos `POST`/`PUT`. `@PathVariable` (identificadores como `codigo` e `dataBase`) continua separado.
+
+> **Tipagem forte (Java 21):** dentro do domínio e das portas, nada de `Map<String, Object>`, `Object[]`, `Object` genérico ou `String` com JSON dentro. Valores fechados viram `enum`; dados viram `record`; variantes viram `sealed interface` com records. JSON cru só na borda (controller, cliente HTTP, coluna `cModDado`), desserializado direto num record; consultas nativas devolvem projeção em record.
+
 A spec manda no comportamento; este guia dá o código. Linhas citadas são as do relatório de inspeção (`docs/inspecao/inspecao-curves.md` do poc); confira no código. Use os nomes reais de classes, atributos e pacotes do projeto onde o guia usa um nome de exemplo.
 
 **Código já existe:** a v1 está aplicada. Se algo já existe e cumpre, deixe; se diverge, altere só o que diverge.
@@ -109,46 +115,35 @@ curves:
 ### 1.3 Erros
 
 - **`ENGINE_INDISPONIVEL`:** constante nova no enum de códigos de erro da curves (o mesmo usado pelo `ApplicationExceptionHandler`), com status 503 e texto em `messages.properties`: "O engine não respondeu. Tente de novo em instantes." `EngineIndisponivelException` estende a exceção base do projeto (`application/exception/BaseException` ou a que o tratador já trata) com esse código.
-- **Erro de negócio do engine (4xx):** o código vem do engine (`INSUMO_AUSENTE`, `CURVA_NAO_CONSTRUIDA`, `CONSTRUCAO_EM_ANDAMENTO`...) e não está no enum da curves. Crie `EngineErroException` com status, código e mensagem em texto, e um `@ExceptionHandler` no `ApplicationExceptionHandler` que monta o corpo **no mesmo formato** que ele já monta para os outros erros (os campos `code`, `error`, `message` que ele usa hoje), só trocando a origem dos valores:
+- **Erro de negócio do engine (4xx):** o adaptador não lê o corpo do erro. Qualquer 4xx vira `EngineErroException(status, corpo)`, e o tratador devolve o corpo do engine como veio (Problem Details), com o mesmo status:
 
 ```java
 public class EngineErroException extends RuntimeException {
     private final int status;
-    private final String codigo;
-    public EngineErroException(int status, String codigo, String mensagem) {
-        super(mensagem);
+    public EngineErroException(int status, String corpo) {
+        super(corpo);
         this.status = status;
-        this.codigo = codigo;
     }
     public int status() { return status; }
-    public String codigo() { return codigo; }
-
-    /** Lê o Problem Details do engine: código em "code", mensagem em "detail". */
-    public static EngineErroException de(RespostaEngine r, ObjectMapper mapper) {   // o mapper que o projeto já injeta
-        String codigo = null, mensagem = null;
-        try {
-            JsonNode n = mapper.readTree(r.corpoJson());
-            codigo = texto(n, "code", "codigoErro");
-            mensagem = texto(n, "detail", "mensagem", "message");
-        } catch (Exception ignorada) { /* corpo vazio ou não JSON */ }
-        return new EngineErroException(r.status(), codigo != null ? codigo : "ERRO_ENGINE",
-                mensagem != null ? mensagem : "O engine recusou a operação.");
-    }
-
-    private static String texto(JsonNode n, String... campos) {
-        for (String c : campos) if (n.hasNonNull(c)) return n.get(c).asText();
-        return null;
-    }
 }
 ```
 
-No tratador (copie o jeito que ele já monta a resposta dos outros erros):
+No `EngineHttpClient.enviar`, depois do `if (r.statusCode() >= 500)`:
+
+```java
+if (r.statusCode() >= 400) {
+    throw new EngineErroException(r.statusCode(), r.body());
+}
+```
+
+No `ApplicationExceptionHandler`:
 
 ```java
 @ExceptionHandler(EngineErroException.class)
-public ResponseEntity</* o tipo de corpo que o tratador já usa */> engine(EngineErroException e, HttpServletRequest req) {
-    // mesmo corpo dos outros erros: code = e.codigo(), message = e.getMessage(), error = reason do status
-    return ResponseEntity.status(e.status()).body(/* ... */);
+public ResponseEntity<String> handleException(EngineErroException ex) {
+    return ResponseEntity.status(ex.status())
+            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+            .body(ex.getMessage());
 }
 ```
 
@@ -205,7 +200,6 @@ public class CurvaMercadoAcoesService {
 public class CurvaMercadoAcoesController {
 
     private final CurvaMercadoAcoesService service;
-    private final ObjectMapper mapper;
 
     @PostMapping("/construcao")
     public ResponseEntity<String> construir(@PathVariable String codigo,
@@ -236,7 +230,6 @@ public class CurvaMercadoAcoesController {
     }
 
     private ResponseEntity<String> repassar(RespostaEngine r) {
-        if (r.status() >= 400) throw EngineErroException.de(r, mapper);
         return ResponseEntity.status(r.status()).contentType(MediaType.APPLICATION_JSON).body(r.corpoJson());
     }
 

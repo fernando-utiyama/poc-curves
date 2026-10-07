@@ -3,7 +3,7 @@
 A motivação está no proposal e o comportamento na spec. Estado atual:
 
 - **Processor** (`services/processor`): só consome Kafka (`B3KafkaConsumer`, `AnbimaKafkaConsumer`, `BloombergKafkaConsumer` e outros) e grava em tabelas `mkt.*Raw`, que o engine não lê. Não baixa nada e não escreve no Blob.
-- **Orquestrador** (`orquestrador-curvas`): três tarefas de carga (`carga-download-site` e `carga-data-license`) (B3, ANBIMA e Bloomberg) chamam um `destino` com `{dataBase}` e, na Bloomberg, `{tickers}`. 200 com a `dataBase` do dia é sucesso; 503, erro de rede ou tempo esgotado é "ainda não recebida", e ele tenta de novo; no `limiteHorario` gera `CARGA_NAO_RECEBIDA`. Tempo limite de 120 segundos por chamada.
+- **Orquestrador** (`orquestrador-curvas`): três tarefas de carga (`carga-download-site` e `carga-data-license`) (B3, ANBIMA e Bloomberg) chamam um `destino` com `POST` e corpo JSON (`dataBase` e, na Bloomberg, `tickers` em lista). 200 com a `dataBase` do dia é sucesso; 503, erro de rede ou tempo esgotado é "ainda não recebida", e ele tenta de novo; no `limiteHorario` gera `CARGA_NAO_RECEBIDA`. Tempo limite de 120 segundos por chamada.
 - **Engine** (`engine-construcao-curvas`): lê `tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr` e `tBbergCurvaPrimr` pelo nome da curva e constrói ao receber `POST /api/v1/cargas`.
 - **Fontes:** B3 `TS{AAMMDD}.ex_` (zip dentro de zip, `TaxaSwap.txt`); ANBIMA `ms{AAMMDD}.txt` (`@`, vírgula decimal, um título por registro); Bloomberg Data License, pedido de histórico com os tickers `S0490Z <tenor> BLC2 Curncy`.
 
