@@ -1,9 +1,7 @@
 package br.com.poc.domain.cadastro;
 
 import br.com.poc.application.exception.BusinessException;
-import br.com.poc.domain.calendario.Brazil;
-import br.com.poc.domain.calendario.Calendario;
-import br.com.poc.domain.construcao.ModeloConstrucao;
+import br.com.poc.application.service.ResolverModelos;
 import br.com.poc.domain.curva.CurvaMercado;
 import br.com.poc.domain.curva.CurvaProvedor;
 import br.com.poc.domain.interpolacao.BaseInterpolacao;
@@ -11,145 +9,146 @@ import br.com.poc.domain.interpolacao.Extrapolacao;
 import br.com.poc.domain.quantlib.BusinessDayConvention;
 import br.com.poc.domain.quantlib.DayCounter;
 import br.com.poc.domain.quantlib.Frequency;
-import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ValidadorCadastroTest {
 
-    private static final String RAW = "{\"BASE_INTERPOLACAO\":\"Discount\"}";
+    private static final CurvaProvedor B3_PRE = new CurvaProvedor("B3", "TS", "PRE", 1);
 
-    private final Function<String, Calendario> resolverCalendario = nome -> "Brazil".equals(nome) ? new Brazil() : null;
+    private ResolverModelos resolverModelos;
 
-    private final Function<String, ModeloConstrucao> resolverModelo = nome -> {
-        ModeloConstrucao modelo = mock(ModeloConstrucao.class);
-        when(modelo.fonte()).thenReturn("B3");
-        when(modelo.produto()).thenReturn("TS");
-        return modelo;
-    };
-
-    /** Parâmetros válidos da PRE; cada teste troca só o que precisa. */
-    private static ParametrosCalculo parametros(BaseInterpolacao base, Frequency frequency, Integer casasDecimais) {
-        return new ParametrosCalculo(
-            base,
-            DayCounter.Business252,
-            frequency,
-            "Brazil",
-            "Settlement",
-            BusinessDayConvention.Following,
-            Extrapolacao.Disabled,
-            Extrapolacao.FlatValue,
-            "60Y",
-            casasDecimais,
-            RoundingMode.HALF_UP,
-            null, null, null,
-            Map.of()
-        );
+    @BeforeEach
+    void setup() {
+        resolverModelos = new ResolverModelos();
     }
 
-    private static CadastroCurva cadastro(ParametrosCalculo parametros, String erroParametros, int configuracoesVigentes) {
+    /** Parâmetros válidos da PRE. */
+    private static ParametrosCalculo paramsPRE() {
+        return paramsPRE(BaseInterpolacao.Discount, Frequency.Annual, "Settlement", 7, Map.of());
+    }
+
+    private static ParametrosCalculo paramsPRE(BaseInterpolacao base, Frequency freq, String mercado, int casas,
+                                               Map<String, String> modelosPorOrigem) {
+        return new ParametrosCalculo(
+            base, DayCounter.Business252, freq,
+            "Brazil", mercado, BusinessDayConvention.Following,
+            null, Extrapolacao.FlatForward, "10Y", casas, RoundingMode.HALF_UP,
+            null, null, null, modelosPorOrigem);
+    }
+
+    /** Cadastro da PRE; cada teste troca só o que precisa. */
+    private static CadastroCurva cadastro(String normaDia, String situacao, List<CurvaProvedor> origens, String rotina,
+                                          ParametrosCalculo parametros, String erroParametros, int vigentes) {
         return new CadastroCurva(
-            "PRE",
-            "DIxPRE",
-            "TAXA",
-            "Business252",
-            "Compounded",
-            "ATIVO",
-            LocalDate.of(2026, 1, 1),
-            null,
-            null,
-            List.of(new CurvaProvedor("B3", "TS", "PRE", 1)),
-            List.of(),
-            1L,
-            "TAXA_SWAP_B3",
-            "FlatForward",
-            RAW,
-            parametros,
-            erroParametros,
-            configuracoesVigentes
-        );
+            "PRE", "DIxPRE", "TAXA", normaDia, "Compounded", situacao,
+            LocalDate.of(2020, 1, 1), null, LocalDate.of(2026, 9, 14),
+            origens, List.of(),
+            1L, "TAXA_SWAP_B3", rotina,
+            "{}", parametros, erroParametros, vigentes);
+    }
+
+    private static CadastroCurva cadastroValidoPRE() {
+        return cadastro("Business252", "ATIVO", List.of(B3_PRE), "FlatForward", paramsPRE(), null, 1);
+    }
+
+    private static CadastroCurva comParametros(ParametrosCalculo p) {
+        return cadastro("Business252", "ATIVO", List.of(B3_PRE), "FlatForward", p, null, 1);
     }
 
     private CurvaMercado montar(CadastroCurva cadastro) {
-        return ValidadorCadastro.montar(cadastro, resolverModelo, resolverCalendario);
+        return ValidadorCadastro.montar(cadastro, resolverModelos::resolverModelo, resolverModelos::resolverCalendario);
+    }
+
+    private void assertRejeitado(CadastroCurva cadastro) {
+        assertThatThrownBy(() -> montar(cadastro)).isInstanceOf(BusinessException.class);
     }
 
     @Test
-    @DisplayName("Cadastro válido da PRE monta a curva")
-    void cadastroValidoMonta() {
-        CurvaMercado curva = montar(cadastro(parametros(BaseInterpolacao.Discount, Frequency.Annual, 7), null, 1));
-
-        assertNotNull(curva);
-        assertEquals("PRE", curva.codigo());
+    void testCadastroValidoPRE() {
+        var curva = montar(cadastroValidoPRE());
+        assertThat(curva.codigo()).isEqualTo("PRE");
+        assertThat(curva.ativa()).isTrue();
     }
 
     @Test
-    @DisplayName("FREQUENCY sem período (NoFrequency) é recusada com Compounded")
-    void frequencySemPeriodoRecusada() {
-        var cad = cadastro(parametros(BaseInterpolacao.Discount, Frequency.NoFrequency, 7), null, 1);
-
-        assertThrows(BusinessException.class, () -> montar(cad));
+    void testAtivoComEspacos() {
+        var cad = cadastro("Business252", "ATIVO    ", List.of(B3_PRE), "FlatForward", paramsPRE(), null, 1);
+        assertThat(montar(cad).ativa()).isTrue();
     }
 
     @Test
-    @DisplayName("FREQUENCY ausente com Compounded é recusada")
-    void frequencyAusenteRecusada() {
-        var cad = cadastro(parametros(BaseInterpolacao.Discount, null, 7), null, 1);
-
-        assertThrows(BusinessException.class, () -> montar(cad));
+    void testCurvaInativaNaoLancaCadastroInvalido() {
+        var cad = cadastro("Business252", "INATIVO", List.of(B3_PRE), "FlatForward", paramsPRE(), null, 1);
+        assertThat(montar(cad).ativa()).isFalse();
     }
 
     @Test
-    @DisplayName("Casas decimais fora de 0..12 são recusadas")
-    void casasDecimaisForaDaFaixa() {
-        var cad = cadastro(parametros(BaseInterpolacao.Discount, Frequency.Annual, 15), null, 1);
-
-        assertThrows(BusinessException.class, () -> montar(cad));
+    void testChaveDesconhecidaRejeitada() {
+        // Chave desconhecida é recusada na leitura de cModDado (adaptador), que entrega o motivo em erroParametros.
+        var cad = cadastro("Business252", "ATIVO", List.of(B3_PRE), "FlatForward", null,
+            "Unrecognized field \"CHAVE_INEXISTENTE\"", 1);
+        assertRejeitado(cad);
     }
 
     @Test
-    @DisplayName("Base Price com unidade TAXA é recusada")
-    void basePriceComTaxa() {
-        var cad = cadastro(parametros(BaseInterpolacao.Price, Frequency.Annual, 7), null, 1);
-
-        assertThrows(BusinessException.class, () -> montar(cad));
+    void testBusiness252MinusculoRejeitado() {
+        assertRejeitado(cadastro("business252", "ATIVO", List.of(B3_PRE), "FlatForward", paramsPRE(), null, 1));
     }
 
     @Test
-    @DisplayName("cModDado ilegível vira CADASTRO_INVALIDO")
-    void cModDadoIlegivel() {
-        var cad = cadastro(null, "Unrecognized field \"PARAMETRO_INVENTADO\"", 1);
-
-        BusinessException ex = assertThrows(BusinessException.class, () -> montar(cad));
-        assertTrue(ex.getMessage().contains("PRE"));
+    void testMercadoCalendarioDivergenteRejeitado() {
+        assertRejeitado(comParametros(paramsPRE(BaseInterpolacao.Discount, Frequency.Annual, "FederalReserve", 7, Map.of())));
     }
 
     @Test
-    @DisplayName("Sem configuração vigente é recusado")
-    void semConfiguracaoVigente() {
-        var cad = cadastro(null, null, 0);
-
-        assertThrows(BusinessException.class, () -> montar(cad));
+    void testDuasConfiguracoesVigentesRejeitado() {
+        assertRejeitado(cadastro("Business252", "ATIVO", List.of(B3_PRE), "FlatForward", paramsPRE(), null, 2));
     }
 
     @Test
-    @DisplayName("Calendário com mercado divergente é recusado")
-    void mercadoDivergente() {
-        ParametrosCalculo p = new ParametrosCalculo(
-            BaseInterpolacao.Discount, DayCounter.Business252, Frequency.Annual,
-            "Brazil", "FederalReserve", BusinessDayConvention.Following,
-            Extrapolacao.Disabled, Extrapolacao.FlatValue, "60Y", 7, RoundingMode.HALF_UP,
-            null, null, null, Map.of());
+    void testFlatForwardComCubicRejeitado() {
+        assertRejeitado(cadastro("Business252", "ATIVO", List.of(B3_PRE), "Cubic", paramsPRE(), null, 1));
+    }
 
-        assertThrows(BusinessException.class, () -> montar(cadastro(p, null, 1)));
+    @Test
+    void testFrequencySemPeriodoRejeitada() {
+        assertRejeitado(comParametros(paramsPRE(BaseInterpolacao.Discount, Frequency.NoFrequency, "Settlement", 7, Map.of())));
+    }
+
+    @Test
+    void testFrequencyAusenteComCompoundedRejeitada() {
+        assertRejeitado(comParametros(paramsPRE(BaseInterpolacao.Discount, null, "Settlement", 7, Map.of())));
+    }
+
+    @Test
+    void testCasasDecimaisForaDaFaixaRejeitadas() {
+        assertRejeitado(comParametros(paramsPRE(BaseInterpolacao.Discount, Frequency.Annual, "Settlement", 15, Map.of())));
+    }
+
+    @Test
+    void testBasePriceComTaxaRejeitada() {
+        assertRejeitado(comParametros(paramsPRE(BaseInterpolacao.Price, Frequency.Annual, "Settlement", 7, Map.of())));
+    }
+
+    @Test
+    void testOrigemPedidaSecundariaValida() {
+        var params = paramsPRE(BaseInterpolacao.Discount, Frequency.Annual, "Settlement", 7,
+            Map.of("BLOOMBERG/BLC2", "SOFR_ZERO_BLOOMBERG"));
+        var origens = List.of(B3_PRE, new CurvaProvedor("BLOOMBERG", "BLC2", "SOFR", 2));
+        var cad = cadastro("Business252", "ATIVO", origens, "FlatForward", params, null, 1);
+
+        var curva = ValidadorCadastro.montar(cad, new CurvaProvedor("BLOOMBERG", "BLC2", null, 0),
+            resolverModelos::resolverModelo, resolverModelos::resolverCalendario);
+
+        assertThat(curva.modeloConstrucao()).isEqualTo("SOFR_ZERO_BLOOMBERG");
     }
 }
