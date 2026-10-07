@@ -154,7 +154,7 @@ public final class ValidadorParametros {
             .findFirst()
             .orElse(null);
 
-        if (principal != null && modeloConstrucao != null && !origemCompativel(modeloConstrucao, principal.provedor(), principal.produto())) {
+        if (principal != null && modeloConstrucao != null && origemIncompativel(modeloConstrucao, principal.provedor(), principal.produto())) {
             avisos.add(new AvisoCurva(CodigoAvisoCurva.ORIGEM_INCOMPATIVEL_COM_MODELO,
                 "Provedor ou produto da origem principal incompatível com o modelo " + modeloConstrucao, List.of()));
         }
@@ -167,7 +167,7 @@ public final class ValidadorParametros {
                     "Chave de MODELOS_POR_ORIGEM sem provedor secundário correspondente: " + chave, List.of()));
             }
             String[] partes = chave.split("/");
-            if (!origemCompativel(modelo, partes[0], partes.length > 1 ? partes[1] : "")) {
+            if (origemIncompativel(modelo, partes[0], partes.length > 1 ? partes[1] : "")) {
                 avisos.add(new AvisoCurva(CodigoAvisoCurva.ORIGEM_INCOMPATIVEL_COM_MODELO,
                     "Modelo " + modelo + " incompatível com a origem " + chave, List.of()));
             }
@@ -176,12 +176,12 @@ public final class ValidadorParametros {
     }
 
     /** Modelos nativos exigem a fonte e o produto deles; modelos Groovy aceitam qualquer origem. */
-    private static boolean origemCompativel(String modelo, String provedor, String produto) {
+    private static boolean origemIncompativel(String modelo, String provedor, String produto) {
         return switch (modelo) {
-            case "TAXA_SWAP_B3" -> "B3".equalsIgnoreCase(provedor) && "TS".equalsIgnoreCase(produto);
-            case "NTNB_BOOTSTRAP_ANBIMA" -> "ANBIMA".equalsIgnoreCase(provedor) && "MS".equalsIgnoreCase(produto);
-            case "SOFR_ZERO_BLOOMBERG" -> "BLOOMBERG".equalsIgnoreCase(provedor) && "BLC2".equalsIgnoreCase(produto);
-            default -> true;
+            case "TAXA_SWAP_B3" -> !("B3".equalsIgnoreCase(provedor) && "TS".equalsIgnoreCase(produto));
+            case "NTNB_BOOTSTRAP_ANBIMA" -> !("ANBIMA".equalsIgnoreCase(provedor) && "MS".equalsIgnoreCase(produto));
+            case "SOFR_ZERO_BLOOMBERG" -> !("BLOOMBERG".equalsIgnoreCase(provedor) && "BLC2".equalsIgnoreCase(produto));
+            default -> false;
         };
     }
 

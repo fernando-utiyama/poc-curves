@@ -92,7 +92,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
 
         // Se houver versão anterior, fecha com data fim = início da nova - 1 dia
         ultimaOpt.ifPresent(anterior ->
-            configuracaoRepositoryPort.salvar(anterior.comFimVigencia(input.inicioVigencia().minusDays(1))));
+            configuracaoRepositoryPort.salvar(anterior.comFimVigencia(Objects.requireNonNull(input.inicioVigencia()).minusDays(1))));
 
         ConfiguracaoCurva nova = new ConfiguracaoCurva(
             null,
