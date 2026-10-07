@@ -58,6 +58,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
     @Transactional
     public ConfiguracaoCurvaResultado criar(String codigoCurva, CriarConfiguracaoCurvaInput input) {
         CurvaMercado curva = obterCurva(codigoCurva);
+        curvaRepositoryPort.travarPorNome(curva.nome());   // fila entre criações/exclusões da mesma curva
 
         List<Detalhe> erros = new ArrayList<>();
         ValidadorParametros.ValidacaoResultado res = validarSemLancar(curva, input, erros);
@@ -115,6 +116,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
     @Transactional
     public ConfiguracaoCurvaResultado excluir(String codigoCurva, int versao) {
         CurvaMercado curva = obterCurva(codigoCurva);
+        curvaRepositoryPort.travarPorNome(curva.nome());   // fila entre criações/exclusões da mesma curva
 
         ConfiguracaoCurva ultima = configuracaoRepositoryPort.findUltimaVersao(curva.nome())
             .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(),
