@@ -104,6 +104,8 @@ Fora dessa ordem, a resposta é 409 dizendo o que ainda falta apagar.
 
 - **`GET /curvas-mercado/provedores`**: fica como está. O front (`fed-cadastro-curvas`) filtra por provedor na própria listagem (`GET /curvas-mercado?provedor=`) e não usa essa rota; ela tem filtros a mais (`produto`, `tickerProvedor`) e não atrapalha.
 
+- **Curva derivada (`TCEN`)**: sem aviso `CURVA_COM_FILHAS` no `inativar` e sem 409 `CURVA_COMPONENTE` no `excluir`; o `findByProvedor` da `CurvaPrvdrRepositoryPort` foi apagado por falta de uso e volta quando a derivada existir.
+
 - **Aviso ao alterar curva com histórico** (`PUT /curvas-mercado/{nome}`): o gestor sabe que as datas já construídas usaram a regra anterior.
 
 - **Descrição "Buscar provedor por id"**: o usuário corrige direto no repositório.

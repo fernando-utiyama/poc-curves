@@ -51,3 +51,7 @@ Substituem arquivos: `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository
 ## Renomeado: `codigoNaFonte` → `tickerProvedor` (provedor da curva)
 
 É o `cTickerPrvdr` da `tCurvaPrvdr`. No repositório da curves, trocar com Shift+F6 (renomear), para a IDE acompanhar os usos: o campo do record `CriarCurvaProvedorRequest` e do `CriarCurvaProvedorInput`, o record de domínio `CurvaProvedor` (`codigoNaFonte()` → `tickerProvedor()`), o parâmetro do `buscarCurvasProvedor(provedor, produto, tickerProvedor)`, o campo da `CurvaPrvdrEntity` (a coluna fica no `@Column`), as respostas e o filtro `?tickerProvedor=` das rotas `GET /curvas-mercado/provedores` e `/dados-mercado/{provedor}`. O `AgregadoPrimr` e o `CurvaMercadoService` desta pasta já usam o nome novo. O `CurvaProvedor` do **engine** é outro record e não muda.
+
+## Removido por falta de uso (feito pelo usuário)
+
+- `CurvaPrvdrRepositoryPort.findByProvedor(String provedor)` e a implementação no adaptador: só o `inativar` do `CurvaMercadoService` o usava (aviso `CURVA_COM_FILHAS` do provedor `TCEN`), que saiu porque curva derivada não entra nesta versão. Quando a derivada existir, o método volta junto com o aviso.
