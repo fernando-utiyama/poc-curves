@@ -9,7 +9,6 @@ import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.application.port.out.DadoVertcCurvaRepositoryPort;
 import br.com.poc.application.port.out.EventosPort;
-import br.com.poc.domain.aviso.AvisoCurva;
 import br.com.poc.domain.aviso.Detalhe;
 import br.com.poc.domain.cadastro.*;
 import br.com.poc.domain.evento.EventoCadastroAlterado;
@@ -53,15 +52,13 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AvisoCurva> validar(String nomeCurva, CriarConfiguracaoCurvaInput input) {
-        CurvaMercado curva = obterCurva(nomeCurva);
-        ValidadorParametros.ValidacaoResultado res = validarEntrada(curva, input);
-        return res.avisos();
+    public void validar(String nomeCurva, CriarConfiguracaoCurvaInput input) {
+        validarEntrada(obterCurva(nomeCurva), input);   // recusa com a mensagem do erro; sem erro, 200 vazio
     }
 
     @Override
     @Transactional
-    public ConfiguracaoCurvaResultado criar(String nomeCurva, CriarConfiguracaoCurvaInput input) {
+    public ConfiguracaoCurva criar(String nomeCurva, CriarConfiguracaoCurvaInput input) {
         CurvaMercado curva = obterCurva(nomeCurva);
 
         List<Detalhe> erros = new ArrayList<>();
@@ -113,7 +110,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
 
         publicarEvento(curva.codigo(), curva.nome(), "CRIACAO", null, salva);
 
-        return new ConfiguracaoCurvaResultado(salva, res.avisos());
+        return salva;
     }
 
     /**

@@ -1,11 +1,8 @@
 package br.com.poc.adapter.in.api.rest.controller;
 
-import br.com.poc.adapter.in.api.rest.dto.ConfiguracaoCurvaComAvisosResponse;
 import br.com.poc.adapter.in.api.rest.dto.ConfiguracaoCurvaResponse;
 import br.com.poc.adapter.in.api.rest.dto.CriarConfiguracaoCurvaRequest;
 import br.com.poc.application.port.in.usecase.ConfiguracaoCurvaUseCase;
-import br.com.poc.domain.aviso.AvisoCurva;
-import br.com.poc.domain.cadastro.ConfiguracaoCurvaResultado;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -43,26 +40,23 @@ public class ConfiguracaoCurvaController {
     }
 
     @PostMapping("/validacao")
-    @Operation(summary = "Validar versão", description = "Valida os parâmetros de uma versão sem persistir alterações, retornando avisos de cálculo")
-    public ResponseEntity<List<AvisoCurva>> validar(
+    @Operation(summary = "Validar versão", description = "Valida os parâmetros de uma versão sem gravar nada: 200 se estiver correta, ou o erro explicado")
+    public ResponseEntity<Void> validar(
             @PathVariable String nome,
             @RequestBody CriarConfiguracaoCurvaRequest request) {
 
-        return ResponseEntity.ok(useCase.validar(nome, request.toDomain()));
+        useCase.validar(nome, request.toDomain());
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping
     @Operation(summary = "Criar nova versão", description = "Cria uma nova versão de configuração, fechando a anterior se houver")
-    public ResponseEntity<ConfiguracaoCurvaComAvisosResponse> criar(
+    public ResponseEntity<ConfiguracaoCurvaResponse> criar(
             @PathVariable String nome,
             @RequestBody CriarConfiguracaoCurvaRequest request) {
 
-        ConfiguracaoCurvaResultado resultado = useCase.criar(nome, request.toDomain());
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(new ConfiguracaoCurvaComAvisosResponse(
-                ConfiguracaoCurvaResponse.fromDomain(resultado.configuracao()),
-                resultado.avisos()
-            ));
+            .body(ConfiguracaoCurvaResponse.fromDomain(useCase.criar(nome, request.toDomain())));
     }
 
     @DeleteMapping

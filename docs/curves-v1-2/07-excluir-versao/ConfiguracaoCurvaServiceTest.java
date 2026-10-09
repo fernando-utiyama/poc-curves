@@ -15,7 +15,6 @@ import br.com.poc.domain.Unidade;
 import br.com.poc.domain.cadastro.BaseInterpolacao;
 import br.com.poc.domain.cadastro.BusinessDayConvention;
 import br.com.poc.domain.cadastro.ConfiguracaoCurva;
-import br.com.poc.domain.cadastro.ConfiguracaoCurvaResultado;
 import br.com.poc.domain.cadastro.CriarConfiguracaoCurvaInput;
 import br.com.poc.domain.cadastro.CurvaMercado;
 import br.com.poc.domain.cadastro.DayCounter;
@@ -122,13 +121,13 @@ class ConfiguracaoCurvaServiceTest {
             LocalDate.of(2026, 1, 1)
         );
 
-        ConfiguracaoCurvaResultado res = service.criar("DIxPRE", input);
+        ConfiguracaoCurva res = service.criar("DIxPRE", input);
 
         assertNotNull(res);
-        assertNotNull(res.configuracao());
-        assertEquals(1, res.configuracao().versao());
-        assertEquals("DIxPRE", res.configuracao().nomeCurva());
-        assertEquals(paramsPadrao(), res.configuracao().parametros());
+        assertNotNull(res);
+        assertEquals(1, res.versao());
+        assertEquals("DIxPRE", res.nomeCurva());
+        assertEquals(paramsPadrao(), res.parametros());
         verify(configuracaoRepositoryPort).salvar(any(ConfiguracaoCurva.class));
         verify(eventosPort).publicarCadastroAlterado(any());
     }
@@ -152,9 +151,9 @@ class ConfiguracaoCurvaServiceTest {
             amanha
         );
 
-        ConfiguracaoCurvaResultado res = service.criar("DIxPRE", input);
+        ConfiguracaoCurva res = service.criar("DIxPRE", input);
 
-        assertEquals(2, res.configuracao().versao());
+        assertEquals(2, res.versao());
 
         // A versão anterior foi fechada com fim = amanhã - 1 dia (hoje)
         ArgumentCaptor<ConfiguracaoCurva> captor = ArgumentCaptor.forClass(ConfiguracaoCurva.class);
