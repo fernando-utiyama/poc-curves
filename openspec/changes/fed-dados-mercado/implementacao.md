@@ -18,9 +18,9 @@ Base: `{urlAPI}/api/v1/curvas-mercado` (proxy `/api`). `{p}` = `b3`, `anbima` ou
 | Ação | Chamada | Tempo front |
 |---|---|---|
 | Listagem geral | `GET /primaria-{p}?de=&ate=&codigo=&nome=&pagina=&tamanho=` | 3 s |
-| Vértices da curva na data | `GET /{codigo}/primaria-{p}/{dataBase}` | 3 s |
-| Incluir / alterar / excluir vértice | `POST /{codigo}/primaria-{p}/{dataBase}/vertices`, `PUT .../vertices/{id}`, `DELETE .../vertices/{id}` | 3 s |
-| Excluir todos da data | `DELETE /{codigo}/primaria-{p}/{dataBase}` | 3 s |
+| Vértices da curva na data | `GET /{nome}/primaria-{p}/{dataBase}` | 3 s |
+| Incluir / alterar / excluir vértice | `POST /{nome}/primaria-{p}/{dataBase}/vertices`, `PUT .../vertices/{id}`, `DELETE .../vertices/{id}` | 3 s |
+| Excluir todos da data | `DELETE /{nome}/primaria-{p}/{dataBase}` | 3 s |
 | Enviar arquivo da fonte | `POST /api/v1/cargas/upload` (`FormData`: `fonte` = `B3`/`ANBIMA`/`BLOOMBERG`, `arquivo`) | 130 s |
 
 Referência: a B3 (os nomes exatos, inclusive o da lista de vértices e o envelope da página, são os dos DTOs do repositório; confira antes de codificar):
@@ -58,15 +58,15 @@ const BFF_TARGET = process.env.PROXY_BFF_TARGET || 'https://curve-bff.poc.local'
 
 ### 2.2 Serviço (`core/services/dados-mercado/dados-mercado.service.ts`)
 
-Molde do `ProvedoresService`. `type Provedor = 'b3' | 'anbima' | 'bloomberg'`. Métodos: `listar(p, filtro)`, `vertices(p, codigo, dataBase)`, `incluir(p, codigo, dataBase, campos)`, `alterar(p, codigo, dataBase, id, campos)`, `excluir(p, codigo, dataBase, id)`, `excluirData(p, codigo, dataBase)`, `enviarArquivo(fonte, arquivo: File)` (`FormData`, `TEMPO_LIMITE_MS` 130000). Uma tabela de colunas e campos por provedor (`COLUNAS[p]`, `CAMPOS[p]`), com os nomes dos DTOs.
+Molde do `ProvedoresService`. `type Provedor = 'b3' | 'anbima' | 'bloomberg'`. Métodos: `listar(p, filtro)`, `vertices(p, nome, dataBase)`, `incluir(p, nome, dataBase, campos)`, `alterar(p, nome, dataBase, id, campos)`, `excluir(p, nome, dataBase, id)`, `excluirData(p, nome, dataBase)`, `enviarArquivo(fonte, arquivo: File)` (`FormData`, `TEMPO_LIMITE_MS` 130000). Uma tabela de colunas e campos por provedor (`COLUNAS[p]`, `CAMPOS[p]`), com os nomes dos DTOs.
 
 ### 2.3 Tela (`components/dados-mercado/`)
 
 - Topo: provedor, período (`dd/mm/aaaa`, padrão últimos 30 dias), curva (texto), "Consultar". Trocar de provedor limpa tudo.
 - Listagem geral numa tabela do Liquid (como `provedores-lista`): código, nome, data-base, quantidade, códigos na fonte, "Construída"/"Não construída"; paginação de 50. Clique na linha abre os vértices abaixo.
-- Vértices: tabela com as colunas do provedor; Editar e Excluir por linha; acima, "Incluir vértice" e "Excluir todos da data"; avisos acima da tabela; com `curvaConstruida`, o lembrete e o link "Recalcular a curva" → `/curvas?codigo={codigo}`.
+- Vértices: tabela com as colunas do provedor; Editar e Excluir por linha; acima, "Incluir vértice" e "Excluir todos da data"; com `curvaConstruida`, o lembrete e o link "Recalcular a curva" → `/curvas?nome={nome}`.
 - Bloco "Enviar arquivo da fonte": provedor + arquivo + aviso de substituição + "Enviar"; no sucesso, data-base, `idCarga` e `verticesPorCodigo`, e filtros no provedor com o período até a data devolvida.
-- Erros sempre na tela: `error: (e) => this.erro.set(lerErro(e))`; `detalhes` vão para os campos do modal.
+- Erros sempre na tela: `error: (e) => this.erro.set(lerErro(e))`; no modal, só a mensagem.
 - Decimais: exibir `String(valor).replace('.', ',')`; ao enviar, `texto.replace(',', '.')`, sem conta.
 - Rota `dados-mercado` em `app.routes.ts`; item "Dados de mercado" em `subMenuItems` e `'dados-mercado': 'Dados de mercado'` em `BREADCRUMB_LABELS`.
 

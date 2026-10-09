@@ -1,7 +1,7 @@
 ## Context
 
 - **`web/fed`**: mesmo padrão da change `fed-curvas-mercado` (tabelas do Liquid, modais, serviço por recurso, `lerErro`). O `request.interceptor` força `Content-Type: application/json` e 3 s de tempo limite; a change `fed-curvas-mercado` cria o `HttpContextToken` `TEMPO_LIMITE_MS`, que esta change reaproveita. O proxy só tem `/api` → curves.
-- **`services/curves`** (v1, já implantada): os CRUDs do bruto dos três provedores existem, com a mesma forma de rota (relatório `docs/inspecao/inspecao-curves.md` do poc): listagem geral `GET /curvas-mercado/primaria-{b3|anbima|bloomberg}`, consulta `GET /curvas-mercado/{codigo}/primaria-{p}/{dataBase}`, `POST/PUT/DELETE .../vertices[/{id}]` e `DELETE .../{dataBase}`. A B3 devolve decimais como texto; ANBIMA e Bloomberg, como número.
+- **`services/curves`** (v1, já implantada): os CRUDs do bruto dos três provedores existem, com a mesma forma de rota (relatório `docs/inspecao/inspecao-curves.md` do poc): listagem geral `GET /curvas-mercado/primaria-{b3|anbima|bloomberg}`, consulta `GET /curvas-mercado/{nome}/primaria-{p}/{dataBase}`, `POST/PUT/DELETE .../vertices[/{id}]` e `DELETE .../{dataBase}`. A B3 devolve decimais como texto; ANBIMA e Bloomberg, como número.
 - **Upload**: a rota `POST /api/v1/cargas/upload` é do bff (change `processor-v0`, `upload-carga-bff`). A data-base vem do conteúdo do arquivo.
 
 ## Goals / Non-Goals

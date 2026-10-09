@@ -51,10 +51,10 @@ O serviço SHALL expor (prefixo `/api/v1`):
 
 | Rota | Uso |
 |---|---|
-| `GET /curvas-mercado/{codigo}/provedores` | listar os provedores da curva, por prioridade |
-| `POST /curvas-mercado/{codigo}/provedores` | incluir |
-| `PUT /curvas-mercado/{codigo}/provedores/{idCurvaProvedor}` | alterar `produto`, `tickerProvedor` ou `prioridade` |
-| `DELETE /curvas-mercado/{codigo}/provedores/{idCurvaProvedor}` | excluir |
+| `GET /curvas-mercado/{nome}/provedores` | listar os provedores da curva, por prioridade |
+| `POST /curvas-mercado/{nome}/provedores` | incluir |
+| `PUT /curvas-mercado/{nome}/provedores/{idCurvaProvedor}` | alterar `produto`, `tickerProvedor` ou `prioridade` |
+| `DELETE /curvas-mercado/{nome}/provedores/{idCurvaProvedor}` | excluir |
 | `GET /curvas-mercado/provedores?provedor=&produto=&tickerProvedor=` | quais curvas recebem um código da fonte |
 
 Excluir um provedor da curva não apaga dados brutos já gravados. Trocar o `iPrvdrDados` de um provedor da curva não é permitido: exclui-se e inclui-se outro. O `PUT` que enviar um `provedor` diferente do gravado MUST ser recusado com 422 `DADOS_INVALIDOS` no campo `provedor`, antes de qualquer gravação.

@@ -21,22 +21,22 @@ A tela `/dados-mercado`, no menu do cabeçalho como "Dados de mercado", SHALL te
 - **THEN** a listagem e os vértices abertos são limpos até a próxima consulta
 
 ### Requirement: Vértices de uma curva numa data
-Clicar numa linha da listagem SHALL abrir os vértices daquela curva naquela data-base (`GET /api/v1/curvas-mercado/{codigo}/primaria-{provedor}/{dataBase}`), numa tabela com os campos do provedor como a curves os devolve, se a curva já está construída e os avisos devolvidos.
+Clicar numa linha da listagem SHALL abrir os vértices daquela curva naquela data-base (`GET /api/v1/curvas-mercado/{nome}/primaria-{provedor}/{dataBase}`), numa tabela com os campos do provedor como a curves os devolve e se a curva já está construída.
 
 #### Scenario: Vértices da PRE
 - **WHEN** o gestor clica na linha da `PRE` de `14/09/2026` da B3
 - **THEN** a tela mostra os 278 vértices com data do vértice, dias corridos, dias úteis e valor
 
 ### Requirement: Manutenção dos vértices
-Na tabela de vértices, a tela SHALL oferecer "Incluir vértice", "Editar" e "Excluir" por linha, e "Excluir todos da data", por modais, com os campos de entrada do provedor, pelas rotas do CRUD do provedor (`POST .../vertices`, `PUT .../vertices/{id}`, `DELETE .../vertices/{id}` e `DELETE /curvas-mercado/{codigo}/primaria-{provedor}/{dataBase}`). As exclusões SHALL pedir confirmação. Depois de cada gravação, a tela SHALL recarregar os vértices e a linha da listagem e mostrar os avisos devolvidos; erro de validação (4xx com `detalhes`) SHALL aparecer junto dos campos, no modal, sem fechá-lo. Com a curva já construída, a tela SHALL lembrar que a correção só vale num recálculo e oferecer o link "Recalcular a curva" para a tela Curvas, `/curvas?codigo={codigo}`.
+Na tabela de vértices, a tela SHALL oferecer "Incluir vértice", "Editar" e "Excluir" por linha, e "Excluir todos da data", por modais, com os campos de entrada do provedor, pelas rotas do CRUD do provedor (`POST .../vertices`, `PUT .../vertices/{id}`, `DELETE .../vertices/{id}` e `DELETE /curvas-mercado/{nome}/primaria-{provedor}/{dataBase}`). As exclusões SHALL pedir confirmação. Depois de cada gravação, a tela SHALL recarregar os vértices e a linha da listagem; em erro, o modal SHALL continuar aberto com a mensagem da API. "Excluir todos da data" com a data já construída responde 409 com a mensagem explicada (apagar antes a curva construída na tela Curvas). Com a curva já construída, a tela SHALL lembrar que a correção só vale num recálculo e oferecer o link "Recalcular a curva" para a tela Curvas, `/curvas?nome={nome}`.
 
 #### Scenario: Correção de um valor já construído
 - **WHEN** o gestor altera um valor da `PRE` de `14/09/2026`, que já está construída
-- **THEN** a tela mostra os avisos devolvidos e o link "Recalcular a curva", que abre `/curvas?codigo=PRE`
+- **THEN** a tela mostra o link "Recalcular a curva", que abre `/curvas?nome=PRE`
 
 #### Scenario: Campo inválido
-- **WHEN** o gestor salva um vértice da B3 sem dias úteis e a curves responde erro com `detalhes` no campo `diasUteis`
-- **THEN** o modal continua aberto, com a mensagem no campo dias úteis
+- **WHEN** o gestor salva um vértice da B3 sem dias úteis e a curves responde 422
+- **THEN** o modal continua aberto, com a mensagem da API
 
 ### Requirement: Envio do arquivo da fonte
 A tela SHALL ter o bloco "Enviar arquivo da fonte", com o provedor (`B3`, `ANBIMA` ou `Bloomberg`) e o arquivo, sem campo de data: a data-base vem do conteúdo do arquivo. "Enviar" SHALL chamar `POST /api/v1/cargas/upload` do bff (`multipart/form-data` com `fonte` e `arquivo`, capability `upload-carga-bff` da change `processor-v0`). Antes do envio, a tela SHALL avisar que um arquivo da mesma data substitui os vértices brutos já gravados daquela fonte. Com sucesso, a tela SHALL mostrar a data-base lida (`dd/mm/aaaa`), o identificador da carga e os vértices gravados por código, e posicionar os filtros nesse provedor, com o período terminando nessa data. Em erro, SHALL mostrar a mensagem e o código devolvidos (por exemplo, `ARQUIVO_INVALIDO`, `PROVEDOR_NAO_IMPLEMENTADO`), sem a página de erro global. O botão fica desabilitado durante o envio.
