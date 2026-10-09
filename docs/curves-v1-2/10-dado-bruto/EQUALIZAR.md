@@ -4,6 +4,7 @@ Padrão único, o que a ANBIMA e a Bloomberg já seguiam:
 - **campos da entidade** = nome da coluna sem o prefixo (`cTickerIndcd` → `tickerIndcd`; colunas `d...` com "data" na frente: `dBaseReft` → `dataBaseReft`);
 - **id `Integer`**, porque `cIdtfdUnic` é `int` nas três tabelas (script do banco);
 - **repositórios com os mesmos métodos, na mesma ordem e com os mesmos nomes**: `proximoId`, `findByTickerIndcdAndDataBaseReftOrderBy<ordem>AscIdtfdUnicAsc`, `findByIdtfdUnicAndTickerIndcdAndDataBaseReft`, `deleteByIdtfdUnicAndTickerIndcdAndDataBaseReft`, `deleteByTickerIndcdAndDataBaseReft`, `existsCurvaConstruida`, `listarAgregado`, `listarUltimaData`. Só mudam a tabela e a coluna de ordem (`DiaCorri`, `VertcCurva`, `DataVctoContr`);
+- **sem relação `@ManyToOne` com a curva** nas entidades do bruto: não é usada (as consultas são nativas, com `JOIN` próprio) e relação `LAZY` em entidade costuma dar `LazyInitializationException` ou erro no Jackson. Antes de apagar, Alt+F7 em `curvaMercd` para confirmar que ninguém chama `getCurvaMercd()`;
 - **projection em arquivo próprio** (`CurvaPrimrAgregadoProjection`), em vez de a ANBIMA e a Bloomberg usarem a de dentro do repositório da B3.
 
 ## Arquivos (copiar por cima, pacote `br.com.poc` → `br.com.bradesco`)
@@ -13,6 +14,8 @@ Padrão único, o que a ANBIMA e a Bloomberg já seguiam:
 | `CurvaPrimrAgregadoProjection.java` | `adapter/out/persistence/repository/` | novo (sai a interface de dentro do `BtrsCurvaPrimrRepository`) |
 | `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository.java`, `BbergCurvaPrimrRepository.java` | `adapter/out/persistence/repository/` | os três com a mesma forma |
 | `BtrsCurvaPrimrEntity.java` | `adapter/out/persistence/entity/` | campos renomeados e id `Integer` (a ordem dos campos não mudou, o `new BtrsCurvaPrimrEntity(...)` do adaptador continua compilando) |
+| `AnbmaCurvaPrimrEntity.java` | `adapter/out/persistence/entity/` | sem o `@ManyToOne(LAZY) curvaMercd` e sem o construtor escrito à mão: o `@AllArgsConstructor` passa a ter os mesmos 5 argumentos (`idtfdUnic, tickerIndcd, dataBaseReft, precoTx, vertcCurva`), então o adaptador continua compilando |
+| `BbergCurvaPrimrEntity.java` | `adapter/out/persistence/entity/` | sem o `@ManyToOne(LAZY) curvaMercd`; `ultNegoc` → `dataUltNegoc` (troque `getUltNegoc`/`setUltNegoc` no adaptador). Se o adaptador usa `new BbergCurvaPrimrEntity(...)` com o `curvaMercd`, tire esse argumento |
 | `BtrsCurvaPrimrRepositoryPort.java` | `application/port/out/` | `proximoId`, `findBy...` e `excluir` com id `Integer` |
 | `AgregadoPrimr.java` | `adapter/out/persistence/` | usa a projection nova |
 
