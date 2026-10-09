@@ -1,7 +1,6 @@
 package br.com.poc.adapter.in.api.rest.controller;
 
 import br.com.poc.application.port.out.EnginePort.RespostaEngine;
-import br.com.poc.application.service.ApagarConstrucaoService;
 import br.com.poc.application.service.CurvaMercadoAcoesService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,7 +22,6 @@ import java.util.UUID;
 public class CurvaMercadoAcoesController {
 
     private final CurvaMercadoAcoesService service;
-    private final ApagarConstrucaoService apagarConstrucaoService;
 
     @PostMapping("/construcao")
     public ResponseEntity<String> construir(
@@ -56,7 +54,7 @@ public class CurvaMercadoAcoesController {
     public ResponseEntity<Void> apagarConstrucao(
             @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase) {
-        apagarConstrucaoService.apagar(nome, dataBase);
+        service.apagarConstrucao(nome, dataBase);
         return ResponseEntity.ok().build();
     }
 

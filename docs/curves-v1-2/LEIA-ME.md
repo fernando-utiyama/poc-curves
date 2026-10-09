@@ -17,10 +17,7 @@ Todos os arquivos desta pasta já identificam a curva pelo **nome** (`findByNome
    - `ConfiguracaoCurvaController.java` → `adapter/in/api/rest/controller/` (substitui)
    - `ConfiguracaoCurvaServiceTest.java` → teste do serviço (substitui)
 3. Item 5, `05-excluir-curva/`: **dentro do `CurvaMercadoService`** (sem service novo): os trechos de `TRECHOS.md` (use case, porta e adaptador da curva, método e campo no service, código de erro, método no controller) o `CurvaMercadoController.java` completo (com `{nome}`, o delete e a auditoria tipada) e os 3 testes para colar no seu `CurvaMercadoServiceTest` (seção 6 do `TRECHOS.md`).
-4. Item 6, `06-apagar-construcao/`:
-   - `ApagarConstrucaoService.java` → `application/service/`
-   - `CurvaMercadoAcoesController.java` → `adapter/in/api/rest/controller/` (substitui; ganha só o `DELETE /vertices` e o campo `apagarConstrucaoService`)
-   - `ApagarConstrucaoServiceTest.java` → teste novo
+4. Item 6, `06-apagar-construcao/`: **dentro do `CurvaMercadoAcoesService`** (sem service novo). `CurvaMercadoAcoesService.java` (`application/service/`) e `CurvaMercadoAcoesController.java` (`adapter/in/api/rest/controller/`) substituem os seus; os testes para colar no seu `CurvaMercadoAcoesServiceTest` estão no `TRECHOS.md` da pasta.
 
 ## Mexer à mão
 
@@ -37,7 +34,7 @@ Todos os arquivos desta pasta já identificam a curva pelo **nome** (`findByNome
 
 ## Feito pelo usuário (não é v1.2): identificador da curva pelo nome
 
-A troca de `codigo` para `nome` (a PK) no `CurvaMercadoUseCase`, no service, no controller e no repositório já foi feita no repositório real. `09-identificador-nome/` fica só como referência. `09-identificador-nome/CurvaMercadoAcoesService.java` (`application/service/`, substitui): recebe o nome, busca a curva com `findByNome` e repassa `curva.codigo()` ao engine; curva sem código → 422 `DADOS_INVALIDOS`. Testes que montam o service à mão e stubs de `existsByCodigo` passam a usar `findByNome`.
+A troca de `codigo` para `nome` (a PK) no `CurvaMercadoUseCase`, no service, no controller e no repositório já foi feita no repositório real. `09-identificador-nome/` fica só como referência. O `CurvaMercadoAcoesService` (recebe o nome e repassa `curva.codigo()` ao engine; curva sem código → 422) está na pasta `06-apagar-construcao/`, junto com o apagar da construção.
 
 ## Dado bruto (itens 3, 4 e 9 do backlog), `10-dado-bruto/`
 
