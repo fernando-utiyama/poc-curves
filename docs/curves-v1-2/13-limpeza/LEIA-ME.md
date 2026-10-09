@@ -1,6 +1,6 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de comportamento nem de rota: só tira código sobrando e repartido em métodos. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Os 6 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/12-sem-avisos/`).
+Sem mudança de comportamento nem de rota: só tira código sobrando e repartido em métodos. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Os 7 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/12-sem-avisos/`).
 
 | Arquivo | Onde |
 |---|---|
@@ -9,6 +9,7 @@ Sem mudança de comportamento nem de rota: só tira código sobrando e repartido
 | `CurvaMercadoUseCase.java` | `application/port/in/usecase/` |
 | `CurvaMercado.java` | `domain/cadastro/` |
 | `CurvaProvedorService.java` | `application/service/` |
+| `CurvaPorOrigem.java` | `domain/cadastro/` |
 | `CurvaProvedorUseCase.java` | `application/port/in/usecase/` (deduzido do service: confira os imports dos inputs) |
 
 ## O que mudou
@@ -106,4 +107,7 @@ Imports: `org.springframework.data.jpa.domain.Specification`, `jakarta.persisten
 3. **Testes**: `CurvaProvedorServiceTest` monta o service com 4 mocks; saem os testes de TCEN e de avisos, e os que liam `resultado.curvaProvedor()` passam a ler o retorno direto. `CurvaProvedorControllerWebTest` também perde os avisos.
 4. **Front**: as respostas de provedor da curva não trazem mais `avisos`.
 
-**Não mexi, mas vale uma nota (hexagonal)**: o service importa `SpringDataProvedorRepository` (de `adapter.out`) e `CurvaProvedorCurvaResponse` (de `adapter.in`). A aplicação não deveria depender dos dois lados. O certo é uma porta `ProvedorRepositoryPort.existsByNome` e um record de domínio no lugar do response; fica para outra rodada porque mexe em mais arquivos.
+**Hexagonal (feito)**
+- O service não importa mais `adapter.out` nem `adapter.in`: o `SpringDataProvedorRepository` virou o `ProvedorRepositoryPort` (já existe, com `existsById`; troque só o tipo e o nome do campo no construtor do `CurvaProvedorServiceTest`).
+- Novo record de domínio `CurvaPorOrigem(codigo, nome, prioridade)` (em `domain/cadastro/`) no lugar do `CurvaProvedorCurvaResponse`. O use case devolve `List<CurvaPorOrigem>`.
+- **À mão no controller:** no endpoint de listar por origem, `.map(c -> new CurvaProvedorCurvaResponse(c.codigo(), c.nome(), c.prioridade()))` (ou `fromDomain` no response, se preferir). Se a ordem dos campos do seu response for outra, ajuste. O tipo de `prioridade` é `Integer`, como está em `CurvaProvedor`.

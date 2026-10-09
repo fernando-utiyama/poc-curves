@@ -1,7 +1,5 @@
 package br.com.poc.application.service;
 
-import br.com.poc.adapter.in.api.rest.dto.CurvaProvedorCurvaResponse;
-import br.com.poc.adapter.out.persistence.repository.SpringDataProvedorRepository;
 import br.com.poc.application.exception.BusinessException;
 import br.com.poc.application.exception.CadastroErrorCode;
 import br.com.poc.application.exception.ConflictException;
@@ -10,6 +8,7 @@ import br.com.poc.application.port.in.usecase.CurvaProvedorUseCase;
 import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.application.port.out.EventosPort;
+import br.com.poc.application.port.out.ProvedorRepositoryPort;
 import br.com.poc.domain.aviso.Detalhe;
 import br.com.poc.domain.cadastro.*;
 import br.com.poc.domain.evento.EventoCadastroAlterado;
@@ -26,7 +25,7 @@ public class CurvaProvedorService implements CurvaProvedorUseCase {
 
     private final CurvaMercdRepositoryPort curvaRepositoryPort;
     private final CurvaPrvdrRepositoryPort curvaPrvdrRepositoryPort;
-    private final SpringDataProvedorRepository provedorRepository;
+    private final ProvedorRepositoryPort provedorRepositoryPort;
     private final EventosPort eventosPort;
 
     @Override
@@ -43,7 +42,7 @@ public class CurvaProvedorService implements CurvaProvedorUseCase {
         validarCamposCriacao(input);
 
         // o provedor tem que existir em tPrvdrDadoMercd
-        if (!provedorRepository.existsById(input.provedor())) {
+        if (!provedorRepositoryPort.existsById(input.provedor())) {
             throw new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(), "Provedor " + input.provedor() + " não encontrado");
         }
         if (curvaPrvdrRepositoryPort.existsByNomeCurvaAndProvedorAndProduto(curva.nome(), input.provedor(), input.produto())) {
@@ -109,19 +108,19 @@ public class CurvaProvedorService implements CurvaProvedorUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CurvaProvedorCurvaResponse> listarPorOrigem(String provedor, String produto, String tickerProvedor) {
+    public List<CurvaPorOrigem> listarPorOrigem(String provedor, String produto, String tickerProvedor) {
         Map<String, String> codigoPorNome = new HashMap<>();
         for (CurvaMercado c : curvaRepositoryPort.findAllValidas()) {
             codigoPorNome.put(c.nome(), c.codigo());
         }
 
         return curvaPrvdrRepositoryPort.buscarCurvasProvedor(provedor, produto, tickerProvedor).stream()
-            .map(l -> new CurvaProvedorCurvaResponse(
+            .map(l -> new CurvaPorOrigem(
                 codigoPorNome.getOrDefault(l.nomeCurva(), l.nomeCurva()),
                 l.nomeCurva(),
                 l.prioridade()
             ))
-            .sorted(Comparator.comparing(CurvaProvedorCurvaResponse::prioridade))
+            .sorted(Comparator.comparing(CurvaPorOrigem::prioridade))
             .toList();
     }
 
