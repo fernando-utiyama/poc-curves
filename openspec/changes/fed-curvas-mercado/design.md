@@ -12,14 +12,13 @@
 - Front falando só com a curves; a curves é a única que fala com o engine nessas ações.
 
 **Non-Goals:**
-- Configuração de cálculo (versões de `tConfgCurva`): a tela só mostra a vigente; criar e excluir versões fica para outra change.
 - Painel do dia, edição manual de vértices, planilhas de cadastro e de vértices (change `curves-operacao-curvas`).
 - Autenticação: nenhuma na v0 e na v1 (sem JWT no `fed`, na curves e no engine); o usuário, quando houver, vai no `X-Usuario`.
 
 ## Decisions
 
 ### D1. Ações do engine repassadas pela curves
-O front chama `/api/v1/curvas-mercado/{codigo}/{dataBase}/...`, e a curves repassa ao engine. **Por quê:** o `fed` tem um proxy só (`/api` → curves), a curves já valida a curva antes de chamar o engine. **Alternativas rejeitadas:** proxy direto do `fed` ao engine (segundo destino no proxy); pelo bff (o `fed` não fala com o bff hoje).
+O front chama `/api/v1/curvas-mercado/{nome}/{dataBase}/...`, e a curves resolve o nome para o `codigo` da curva e repassa ao engine (curva sem código: 422). **Por quê:** o `fed` tem um proxy só (`/api` → curves), a curves já valida a curva antes de chamar o engine. **Alternativas rejeitadas:** proxy direto do `fed` ao engine (segundo destino no proxy); pelo bff (o `fed` não fala com o bff hoje).
 
 ### D2. Repasse transparente no sucesso; erro no formato da curves
 No 2xx, status e corpo do engine voltam sem alteração. No 4xx, a curves mantém status, código, mensagem e `detalhes` do engine, mas no formato de erro dela, para o front ter um formato só (o engine usa Problem Details, e a curves usa o formato do CRUD de provedores). A curves só cria `ENGINE_INDISPONIVEL` (503) para tempo esgotado, rede ou 5xx. **Por quê:** os códigos e as mensagens do engine (`INSUMO_AUSENTE`, `CURVA_NAO_CONSTRUIDA`...) já estão em pt-BR e são o que o gestor precisa ver; traduzir duplicaria o catálogo.
@@ -34,8 +33,14 @@ Um `HttpContextToken<number>` (`TEMPO_LIMITE_MS`, padrão 3000) lido pelo `reque
 As chamadas de ação e de gravação usam `subscribe({ error })` e mostram o erro no próprio componente, para o `AppErrorHandler` não levar a `erro/{status}`. Só falhas fora disso (por exemplo, 500 ao abrir a tela) seguem o tratamento global.
 
 ### D6. Duas telas: cadastro e dia a dia
-- **Cadastro de curvas** (`/cadastro-curvas`, `/cadastro-curvas/nova`, `/cadastro-curvas/:codigo`): os componentes `curvas-lista`, `curva-add` e `curva-detalhe` reescritos. O detalhe tem dois blocos: dados da curva (leitura e edição) e provedores da curva (tabela do Liquid com Editar e Excluir por linha). Nenhuma ação sobre datas.
+- **Cadastro de curvas** (`/cadastro-curvas`, `/cadastro-curvas/nova`, `/cadastro-curvas/:nome`, `/cadastro-curvas/:nome/configuracoes`): os componentes `curvas-lista`, `curva-add` e `curva-detalhe` reescritos. O detalhe tem dois blocos: dados da curva (leitura e edição) e provedores da curva (tabela do Liquid com Editar e Excluir por linha). Nenhuma ação sobre datas.
 - **Curvas** (`/curvas`): componente novo `curvas-dia`, com a seleção da curva e da data no topo, a barra de ações (Construir, Recalcular, Origem secundária, Regravar interpolada) e as abas Vértices e Interpolar. **Por quê:** o cadastro muda pouco e é de quem administra; a curva do dia é consultada e recalculada a toda hora, por quem opera. Misturar os dois numa tela só alongava o detalhe e escondia as ações.
+
+### D8. Curva pelo nome; sem avisos de cadastro; erro só com a mensagem
+Todas as rotas e URLs de tela usam o **nome** (PK; `encodeURIComponent`). A curves não devolve avisos de cadastro (provedor, configuração, detalhe), e o front mostra só a mensagem do erro, sem interpretar `detalhes`. Os avisos do **engine** (resultado da construção e vértices) continuam sendo mostrados.
+
+### D9. Configuração de cálculo na tela
+Tela própria `/cadastro-curvas/{nome}/configuracoes` (lista, nova versão com "Validar", excluir por `?versao=`). Parâmetros em caixa de texto JSON; modelo e interpolador vêm de `/valores`. **Por quê:** sem ela, a configuração só se mantém pelo Swagger.
 
 ### D7. Pontos interpolados na v2
 A aba de pontos (um por dia corrido, lidos de `tDadoCurva`) depende de uma rota nova no engine e fica para a v2. Na v1.1, a tela tem Vértices e Interpolar.

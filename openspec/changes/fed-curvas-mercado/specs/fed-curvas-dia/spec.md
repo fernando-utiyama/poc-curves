@@ -5,17 +5,17 @@ No front `web/fed`, a tela "Curvas" do dia a dia: escolher uma curva e uma data-
 ## ADDED Requirements
 
 ### Requirement: Seleção da curva e da data-base
-A tela `/curvas`, no menu como "Curvas", SHALL ter a seleção da curva (pesquisa por trecho do nome ou código, pela `GET /api/v1/curvas-mercado`, só curvas `ATIVO` por padrão, com a opção de incluir as inativas) e o campo "Data-base" (`dd/mm/aaaa`, padrão: hoje em Brasília). Com `?codigo=` na URL, a curva SHALL vir selecionada. Escolhidas a curva e a data, a tela SHALL carregar os vértices (requisito "Vértices") e mostrar o nome, o código, a unidade e a situação da curva.
+A tela `/curvas`, no menu como "Curvas", SHALL ter a seleção da curva (pesquisa por trecho do nome ou código, pela `GET /api/v1/curvas-mercado`, só curvas `ATIVO` por padrão, com a opção de incluir as inativas; a curva é identificada pelo nome) e o campo "Data-base" (`dd/mm/aaaa`, padrão: hoje em Brasília). Com `?nome=` na URL, a curva SHALL vir selecionada. Escolhidas a curva e a data, a tela SHALL carregar os vértices (requisito "Vértices") e mostrar o nome, o código ("—" quando não tem), a unidade e a situação da curva.
 
 #### Scenario: Aberta pelo cadastro
-- **WHEN** o gestor abre `/curvas?codigo=PRE`
-- **THEN** a curva `PRE` vem selecionada, com a data de hoje, e a tela carrega os vértices dela
+- **WHEN** o gestor abre `/curvas?nome=DIxPRE`
+- **THEN** a curva `DIxPRE` vem selecionada, com a data de hoje, e a tela carrega os vértices dela
 
 ### Requirement: Vértices
-A aba "Vértices" SHALL mostrar o resultado de `GET /api/v1/curvas-mercado/{codigo}/{dataBase}/vertices` (spec `acoes-curva-mercado`), com os campos como o engine os devolve: a quantidade de vértices, o `hashPontos` e a tabela com data, valor, dias úteis, dias corridos e, só para `TAXA`, fator acumulado e fator diário; quando a resposta trouxer os valores recalculados, eles aparecem ao lado, com a diferença destacada. Os avisos (por exemplo, `CALENDARIO_DIVERGENTE`, `INTERPOLADA_DESATUALIZADA`) SHALL aparecer acima da tabela. Com 404 `CURVA_NAO_CONSTRUIDA`, a aba SHALL mostrar "Curva ainda não construída nesta data" e o botão "Construir".
+A aba "Vértices" SHALL mostrar o resultado de `GET /api/v1/curvas-mercado/{nome}/{dataBase}/vertices` (spec `acoes-curva-mercado`), com os campos como o engine os devolve: a quantidade de vértices, o `hashPontos` e a tabela com data, valor, dias úteis, dias corridos e, só para `TAXA`, fator acumulado e fator diário; quando a resposta trouxer os valores recalculados, eles aparecem ao lado, com a diferença destacada. Os avisos (por exemplo, `CALENDARIO_DIVERGENTE`, `INTERPOLADA_DESATUALIZADA`) SHALL aparecer acima da tabela. Com 404 `CURVA_NAO_CONSTRUIDA`, a aba SHALL mostrar "Curva ainda não construída nesta data" e o botão "Construir".
 
 #### Scenario: Curva construída
-- **WHEN** o gestor escolhe a `PRE` e `14/09/2026`
+- **WHEN** o gestor escolhe a `DIxPRE` e `14/09/2026`
 - **THEN** a aba mostra 278 vértices, o primeiro com valor `13,9000000` e 1 dia útil
 
 #### Scenario: Ainda não construída
@@ -23,10 +23,10 @@ A aba "Vértices" SHALL mostrar o resultado de `GET /api/v1/curvas-mercado/{codi
 - **THEN** a aba mostra "Curva ainda não construída nesta data" e o botão "Construir"
 
 ### Requirement: Interpolar prazos
-A aba "Interpolar" SHALL aceitar uma lista de prazos em dias úteis e de datas, chamar `GET /api/v1/curvas-mercado/{codigo}/{dataBase}/interpolacao` com todos, e mostrar, para cada prazo na ordem pedida (a resposta vem na mesma ordem), a data, os dias úteis, os dias corridos, o valor, a classificação em pt-BR (`PONTO` "Vértice", `INTERPOLADO` "Interpolado", `EXTRAPOLADO_INICIO` "Extrapolado no início", `EXTRAPOLADO_FIM` "Extrapolado no fim") e, só para `TAXA`, os fatores. Com 422 `PRAZO_FORA_DO_DOMINIO`, SHALL listar os prazos recusados.
+A aba "Interpolar" SHALL aceitar uma lista de prazos em dias úteis e de datas, chamar `GET /api/v1/curvas-mercado/{nome}/{dataBase}/interpolacao` com todos, e mostrar, para cada prazo na ordem pedida (a resposta vem na mesma ordem), a data, os dias úteis, os dias corridos, o valor, a classificação em pt-BR (`PONTO` "Vértice", `INTERPOLADO` "Interpolado", `EXTRAPOLADO_INICIO` "Extrapolado no início", `EXTRAPOLADO_FIM` "Extrapolado no fim") e, só para `TAXA`, os fatores. Com 422 `PRAZO_FORA_DO_DOMINIO`, SHALL listar os prazos recusados.
 
 #### Scenario: Interpolação por dias úteis
-- **WHEN** o gestor pede 21 e 252 dias úteis na `PRE` de `14/09/2026`
+- **WHEN** o gestor pede 21 e 252 dias úteis na `DIxPRE` de `14/09/2026`
 - **THEN** a tabela mostra os dois prazos com data, valor e classificação
 
 ### Requirement: Ações sobre a curva na data-base
@@ -34,16 +34,17 @@ A tela SHALL oferecer, para a curva e a data escolhidas, pelas rotas da spec `ac
 
 | Ação | Chamada |
 |---|---|
-| Construir | `POST /api/v1/curvas-mercado/{codigo}/{dataBase}/construcao` |
+| Construir | `POST /api/v1/curvas-mercado/{nome}/{dataBase}/construcao` |
 | Recalcular | a mesma, com `forcarRecalculo=true`, depois de confirmação num modal |
 | Recalcular por origem secundária | a mesma, com `forcarRecalculo=true`, `fonte` e `produto` de um provedor da curva que não é o de menor prioridade, escolhido numa lista; só aparece se a curva tiver mais de um provedor |
 | Regravar interpolada | `POST .../interpolada` |
+| Apagar curva construída | `DELETE .../vertices`, depois de confirmação num modal que cita a curva e a data |
 
-O resultado SHALL ser mostrado na tela: situação em pt-BR (campo `situacao`: `CONSTRUIDA` "Construída", `RECONSTRUIDA` "Recalculada", `EXISTENTE` "Já construída"), quantidade de vértices, avisos e duração; depois de uma ação bem-sucedida, as abas abertas SHALL ser recarregadas. Em erro, a tela SHALL mostrar a mensagem e o código devolvidos (por exemplo, `INSUMO_AUSENTE`, `CONSTRUCAO_EM_ANDAMENTO`, `ENGINE_INDISPONIVEL`), sem levar à página de erro global. Enquanto uma ação está em andamento, os botões de ação SHALL ficar desabilitados.
+O "Apagar curva construída" apaga os vértices e a interpolada da data (o dado bruto e a configuração não mudam); com 200, a aba mostra "Curva ainda não construída nesta data". Uma curva sem código recebe 422 nas ações; a tela mostra a mensagem como qualquer erro. O resultado SHALL ser mostrado na tela: situação em pt-BR (campo `situacao`: `CONSTRUIDA` "Construída", `RECONSTRUIDA` "Recalculada", `EXISTENTE` "Já construída"), quantidade de vértices, avisos e duração; depois de uma ação bem-sucedida, as abas abertas SHALL ser recarregadas. Em erro, a tela SHALL mostrar a mensagem e o código devolvidos (por exemplo, `INSUMO_AUSENTE`, `CONSTRUCAO_EM_ANDAMENTO`, `ENGINE_INDISPONIVEL`), sem levar à página de erro global. Enquanto uma ação está em andamento, os botões de ação SHALL ficar desabilitados.
 
 #### Scenario: Recalcular com confirmação
-- **WHEN** o gestor clica em "Recalcular" na `PRE` de `14/09/2026` e confirma
-- **THEN** o front chama `POST /api/v1/curvas-mercado/PRE/2026-09-14/construcao?forcarRecalculo=true`, mostra "Recalculada" e recarrega os vértices
+- **WHEN** o gestor clica em "Recalcular" na `DIxPRE` de `14/09/2026` e confirma
+- **THEN** o front chama `POST /api/v1/curvas-mercado/DIxPRE/2026-09-14/construcao?forcarRecalculo=true`, mostra "Recalculada" e recarrega os vértices
 
 #### Scenario: Sem insumo na data
 - **WHEN** a construção da `DPL` responde 422 `INSUMO_AUSENTE`
@@ -66,3 +67,7 @@ Todos os textos SHALL estar em pt-BR, com acentuação. Datas SHALL ser mostrada
 #### Scenario: Valor de vértice
 - **WHEN** a API devolve o valor `"13.9000000"`
 - **THEN** a tabela mostra `13,9000000`
+
+#### Scenario: Apagar a curva construída da data
+- **WHEN** o gestor clica em "Apagar curva construída" na `DIxPRE` de `14/09/2026` e confirma
+- **THEN** o front chama `DELETE /api/v1/curvas-mercado/DIxPRE/2026-09-14/vertices`, e a aba Vértices mostra "Curva ainda não construída nesta data" com o botão "Construir"

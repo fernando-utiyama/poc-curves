@@ -11,7 +11,7 @@ A spec manda no comportamento; este guia dá o contrato e o código. Tudo o que 
 
 ## 1. Contrato ponta a ponta
 
-Front → curves (`{urlAPI}/api/v1/curvas-mercado/{codigo}/{dataBase}/...`, proxy `/api`) → engine (`{curves.engine.url}/api/v1/curvas/{codigo}/{dataBase}/...`). No 2xx, a curves repassa **status e corpo sem alterar**; no 4xx, mantém status, código, mensagem e `detalhes` do engine no **formato de erro da curves**; tempo esgotado, rede ou 5xx viram `503 ENGINE_INDISPONIVEL`.
+Front → curves (`{urlAPI}/api/v1/curvas-mercado/{nome}/{dataBase}/...`, proxy `/api`) → engine (`{curves.engine.url}/api/v1/curvas/{codigo}/{dataBase}/...`; a curves troca o nome pelo código da curva, e uma curva sem código recebe 422). No 2xx, a curves repassa **status e corpo sem alterar**; no 4xx, mantém status, código, mensagem e `detalhes` do engine no **formato de erro da curves**; tempo esgotado, rede ou 5xx viram `503 ENGINE_INDISPONIVEL`.
 
 | Ação | Front → curves | curves → engine | Tempo front / curves |
 |---|---|---|---|
@@ -21,10 +21,11 @@ Front → curves (`{urlAPI}/api/v1/curvas-mercado/{codigo}/{dataBase}/...`, prox
 | Regravar interpolada | `POST .../interpolada` | `POST .../interpolada` | 70 s / 60 s |
 | Vértices | `GET .../vertices` | `GET /api/v1/curvas/{codigo}/{dataBase}` | 40 s / 30 s |
 | Interpolar | `GET .../interpolacao?du=21&du=252&data=2027-01-04` | idem (repetir os parâmetros como vieram) | 40 s / 30 s |
+| Apagar curva construída | `DELETE .../vertices` (não passa pelo engine) | — | 3 s (padrão) |
 
 Cabeçalhos curves → engine: `X-Correlation-Id` (o recebido), `X-Usuario` (o recebido, quando vier; sem autenticação na v0 e na v1), **nunca** `Authorization`.
 
-Respostas que o front lê. Os nomes são **os que o engine da v1 devolve** (relatório de inspeção do engine); confira no DTO do engine se algo não bater e use o nome real:
+Respostas que o front lê. Sem avisos de cadastro nas respostas da curves (v1.2): o front só mostra a mensagem do erro. Os nomes abaixo são **os que o engine da v1 devolve** (relatório de inspeção do engine); confira no DTO do engine se algo não bater e use o nome real:
 
 ```jsonc
 // construcao (200) — `situacao` vem da change engine-v1-1; `quantidadePontos` e `avisos` já vêm em todos os resultados
@@ -74,12 +75,12 @@ Mesmo molde do `ProvedoresService` (`inject(HttpClient)`, `inject(AppConfigServi
 
 ```ts
 export interface CurvaMercado {
-  codigo: string; nome: string; unidade: 'TAXA' | 'PRECO' | 'PONTOS';
+  nome: string; codigo: string | null; unidade: 'TAXA' | 'PRECO' | 'PONTOS';
   dayCounterCotacao: string | null; compounding: string | null; moeda: string; pais: string;
   classificacao: string | null; classeAtivo: string | null; situacao: 'ATIVO' | 'INATIVO';
   inicioVigencia: string; fimVigencia: string | null; dono: string | null;
 }
-export interface ItemListaCurvas extends Pick<CurvaMercado, 'codigo' | 'nome' | 'unidade' | 'situacao' | 'moeda' | 'inicioVigencia' | 'fimVigencia' | 'dono'> {
+export interface ItemListaCurvas extends Pick<CurvaMercado, 'nome' | 'codigo' | 'unidade' | 'situacao' | 'moeda' | 'inicioVigencia' | 'fimVigencia' | 'dono'> {
   provedores: string[];                                       // ordem de prioridade; [0] = principal
   ultimaExecucao: { dataBase: string; usuario: string | null } | null;
 }
@@ -88,26 +89,34 @@ export interface ProvedorDaCurva { idCurvaProvedor: number; provedor: string; pr
 export interface FiltroCurvas { nome?: string; codigo?: string; provedor?: string; dono?: string; unidade?: string; situacao?: string; pagina: number; tamanho: number; }
 
 const ctx = (ms: number) => ({ context: new HttpContext().set(TEMPO_LIMITE_MS, ms) });
-const base = (codigo: string, dataBase: string) => `${url}/${encodeURIComponent(codigo)}/${dataBase}`;
+const base = (nome: string, dataBase: string) => `${url}/${encodeURIComponent(nome)}/${dataBase}`;
+
+export interface VersaoConfiguracao { versao: number; modeloConstrucao: string; interpolador: string; parametros: Record<string, unknown>; inicioVigencia: string; fimVigencia: string | null; }
+export interface NovaVersao { modeloConstrucao: string; interpolador: string; parametros: Record<string, unknown>; inicioVigencia: string; }
 ```
 
 | Método | Chamada |
 |---|---|
 | `listar(f: FiltroCurvas)` → `PaginaCurvas` | `GET url` com `HttpParams` só dos filtros preenchidos |
-| `consultar(codigo)` | `GET url/{codigo}` (curva + `provedores` + `configuracaoVigente`) |
-| `criar(c)` / `alterar(codigo, c)` | `POST url` / `PUT url/{codigo}` |
-| `inativar(codigo)` / `reativar(codigo)` | `POST url/{codigo}/inativacao` / `.../reativacao` |
-| `baixarAuditoria(codigo)` | `GET url/{codigo}/auditoria` (JSON, baixado como `auditoria-{codigo}.json`) |
+| `consultar(nome)` | `GET url/{nome}` (curva + `provedores` + `configuracaoVigente`) |
+| `criar(c)` / `alterar(nome, c)` | `POST url` / `PUT url/{nome}` |
+| `excluir(nome)` | `DELETE url/{nome}` (409 `CURVA_COM_HISTORICO` com a mensagem) |
+| `inativar(nome)` / `reativar(nome)` | `POST url/{nome}/inativacao` / `.../reativacao` |
+| `baixarAuditoria(nome)` | `GET url/{nome}/auditoria` (JSON, baixado como `auditoria-{nome}.json`) |
 | `valores()` | `GET url/valores` |
-| `incluirProvedor`, `alterarProvedor`, `excluirProvedor` | `POST/PUT/DELETE url/{codigo}/provedores[/{idCurvaProvedor}]` |
-| `construir(codigo, dataBase, forcar = false, fonte?, produto?)` | `POST base/construcao`, `ctx(130000)` |
-| `regravarInterpolada(codigo, dataBase)` | `POST base/interpolada`, `ctx(70000)` |
-| `vertices(codigo, dataBase)` | `GET base/vertices`, `ctx(40000)` |
-| `interpolar(codigo, dataBase, dus: number[], datas: string[])` | `GET base/interpolacao` com um `du` e um `data` por item (`params.append`), `ctx(40000)` |
+| `incluirProvedor`, `alterarProvedor`, `excluirProvedor` | `POST/PUT/DELETE url/{nome}/provedores[/{idCurvaProvedor}]` |
+| `listarVersoes(nome)` / `versaoVigente(nome, data?)` | `GET url/{nome}/configuracoes` / `.../configuracoes/vigente?data=` |
+| `validarVersao(nome, v)` / `criarVersao(nome, v)` | `POST url/{nome}/configuracoes/validacao` / `POST url/{nome}/configuracoes` |
+| `excluirVersao(nome, versao)` | `DELETE url/{nome}/configuracoes?versao={n}` (409 `VERSAO_EM_USO`) |
+| `construir(nome, dataBase, forcar = false, fonte?, produto?)` | `POST base/construcao`, `ctx(130000)` |
+| `regravarInterpolada(nome, dataBase)` | `POST base/interpolada`, `ctx(70000)` |
+| `apagarConstruida(nome, dataBase)` | `DELETE base/vertices` |
+| `vertices(nome, dataBase)` | `GET base/vertices`, `ctx(40000)` |
+| `interpolar(nome, dataBase, dus: number[], datas: string[])` | `GET base/interpolacao` com um `du` e um `data` por item (`params.append`), `ctx(40000)` |
 
 ### 2.3 Telas
 
-- **Rotas** (`app.routes.ts`): `cadastro-curvas` → `CurvasListaComponent`; `cadastro-curvas/nova` → `CurvaAddComponent`; `cadastro-curvas/:codigo` → `CurvaDetalheComponent`; `curvas` → `CurvasDiaComponent` (novo, `components/curvas-dia/`). Sai `curvas/nova` e `curvas/:id`.
+- **Rotas** (`app.routes.ts`): `cadastro-curvas` → `CurvasListaComponent`; `cadastro-curvas/nova` → `CurvaAddComponent`; `cadastro-curvas/:nome` → `CurvaDetalheComponent`; `cadastro-curvas/:nome/configuracoes` → `ConfiguracaoCurvaComponent` (novo, `components/configuracao-curva/`); `curvas` → `CurvasDiaComponent` (novo, `components/curvas-dia/`). Sai `curvas/nova` e `curvas/:id`. Nomes têm espaço e acento: sempre `encodeURIComponent` nas URLs e `decodeURIComponent` no parâmetro da rota.
 - **Cabeçalho**: em `subMenuItems`, `{ label: 'Curvas', route: '/curvas', ... }` e `{ label: 'Cadastro de curvas', route: '/cadastro-curvas', ... }`; em `BREADCRUMB_LABELS`, `'cadastro-curvas': 'Cadastro de curvas'`.
 - **Erros na tela, nunca no handler global**: toda gravação, ação e consulta usa `subscribe({ next, error: (e) => this.erro.set(lerErro(e)) })`, com o helper novo `core/error/ler-erro.ts`, que entende o formato da curves e o do processor (upload pelo bff):
 
