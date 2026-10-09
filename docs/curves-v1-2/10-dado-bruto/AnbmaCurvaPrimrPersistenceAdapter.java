@@ -6,7 +6,7 @@ import br.com.poc.adapter.out.persistence.repository.CurvaPrimrAgregadoProjectio
 import br.com.poc.application.port.out.AnbmaCurvaPrimrRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.domain.cadastro.AnbmaCurvaPrimr;
-import br.com.poc.domain.cadastro.AnbmaCurvaPrimrResumo;
+import br.com.poc.domain.cadastro.CurvaPrimrResumo;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -73,20 +73,20 @@ public class AnbmaCurvaPrimrPersistenceAdapter implements AnbmaCurvaPrimrReposit
     }
 
     @Override
-    public List<AnbmaCurvaPrimrResumo> listarAgregado(LocalDate de, LocalDate ate, String codigo, String nome) {
+    public List<CurvaPrimrResumo> listarAgregado(LocalDate de, LocalDate ate, String codigo, String nome) {
         return paraResumos(repository.listarAgregado(de, ate, codigo, nome));
     }
 
     @Override
-    public List<AnbmaCurvaPrimrResumo> listarUltimaData(String codigo, String nome) {
+    public List<CurvaPrimrResumo> listarUltimaData(String codigo, String nome) {
         return paraResumos(repository.listarUltimaData(codigo, nome));
     }
 
-    private List<AnbmaCurvaPrimrResumo> paraResumos(List<CurvaPrimrAgregadoProjection> linhas) {
+    private List<CurvaPrimrResumo> paraResumos(List<CurvaPrimrAgregadoProjection> linhas) {
+        // sem filtro de produto, como estava
         return AgregadoPrimr.paraResumos(
             linhas,
-            AgregadoPrimr.tickersPorCurva(curvaPrvdrRepositoryPort, PROVEDOR, null),   // sem filtro de produto, como estava
-            AnbmaCurvaPrimrResumo::new);
+            AgregadoPrimr.tickersPorCurva(curvaPrvdrRepositoryPort, PROVEDOR, null));
     }
 
     private AnbmaCurvaPrimr toDomain(AnbmaCurvaPrimrEntity entity) {

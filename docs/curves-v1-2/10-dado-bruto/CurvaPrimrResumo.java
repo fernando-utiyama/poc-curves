@@ -5,8 +5,8 @@ import br.com.poc.domain.SituacaoCurva;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Uma linha da listagem do dado bruto da B3: a curva, a data-base e o que existe naquela data. */
-public record BtrsCurvaPrimrResumo(
+/** Uma linha da listagem do dado bruto (B3, ANBIMA ou Bloomberg): a curva, a data-base e o que existe naquela data. */
+public record CurvaPrimrResumo(
     String codigo,
     String nome,
     SituacaoCurva situacao,

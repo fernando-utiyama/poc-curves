@@ -1,6 +1,6 @@
 # Item 5: excluir curva de mercado, dentro do `CurvaMercadoService` (trechos para acrescentar)
 
-Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Não há service nem use case novos: a exclusão fica ao lado de criar, alterar, inativar e reativar. Requer `DadosConstruidosPort` e `LinhasPorTabela` (pasta `../compartilhado/`).
+Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Não há service nem use case novos: a exclusão fica ao lado de criar, alterar, inativar e reativar. Não precisa de porta nova: a recusa vem do banco.
 
 ## 1. `CurvaMercadoUseCase`
 
@@ -18,18 +18,19 @@ void excluir(String nome);
 @Override
 public void excluir(String nome) {
     repository.deleteById(nome);   // o id da entidade é cTickerIndcd (o nome)
+    repository.flush();            // a violação de chave estrangeira aparece aqui, não no commit
 }
 ```
 
 ## 3. `CurvaMercadoService`
 
 Copiar o `CurvaMercadoService.java` desta pasta por cima do seu (reescrito das suas fotos; não passou por compilação). O que muda:
-- **`excluir`** novo, e o campo `dadosConstruidosPort` depois de `eventosPort` (o 5º argumento do construtor do Lombok: testes que montam o service à mão ganham esse argumento);
-- **`listar`**: a ordenação ganha o nome como desempate (`tickerIdtfdUnic` e depois `tickerIndcd`), porque o código é opcional e a paginação ficava instável com várias curvas sem código;
-- **`alterar`**: `Objects.equals(novoCodigo, atual.codigo())` no lugar de `novoCodigo.equals(...)`, que dava `NullPointerException` em curva legada sem código;
-- o resto (criar, consultar, inativar, reativar, validações, auditoria) está como nas suas fotos; os trechos repetidos de provedores e configuração vigente viraram métodos privados (`provedoresDe`, `configuracaoVigenteDe`) e a busca por nome virou `obterCurva`.
+- **`excluir`** novo. Apaga as configurações, os provedores e a curva; se o banco recusar por chave estrangeira (ainda há vértice construído ou dado bruto), o `DataIntegrityViolationException` vira 409 `CURVA_COM_HISTORICO` com a mensagem "A curva ainda tem dados vinculados (vértices construídos ou dado bruto dos provedores). Apague as datas construídas e o dado bruto antes, ou use a inativação". Tudo volta atrás (a transação desfaz). O construtor continua com 4 argumentos;
+- **`listar`**: ordena por código e desempata pelo nome, porque o código é opcional e a paginação ficava instável;
+- **`alterar`**: `Objects.equals(novoCodigo, atual.codigo())` no lugar de `novoCodigo.equals(...)`, que dava `NullPointerException` em curva sem código;
+- o resto (criar, consultar, inativar, reativar, validações, auditoria) está como nas suas fotos; os trechos repetidos viraram `provedoresDe`, `configuracaoVigenteDe` e `obterCurva`.
 
-Os `...CanonicoState` continuam (sai no item 8); a conferência final é compilar, porque o `CurvaMercadoUseCase` precisa do `void excluir(String nome);`.
+Os `...CanonicoState` continuam (saem no item 8). O `CurvaMercadoUseCase` precisa do `void excluir(String nome);`.
 
 ## 4. `CadastroErrorCode` (antes de `ERRO_INTERNO`; mapear para 409 junto de `CODIGO_EM_USO`)
 

@@ -1,6 +1,6 @@
 # Listagem do bruto da B3: trechos para acrescentar ou trocar (não substituem o arquivo)
 
-Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Substituem arquivos inteiros: `BtrsCurvaPrimrResumo.java`, `BtrsCurvaPrimrResumoResponse.java` e `BtrsCurvaPrimrRepositoryPort.java` (nesta pasta).
+Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Substituem arquivos inteiros: `CurvaPrimrResumo.java`, `CurvaPrimrResumoResponse.java` e `BtrsCurvaPrimrRepositoryPort.java` (nesta pasta).
 
 ## 1. `BtrsCurvaPrimrRepository`
 
@@ -8,28 +8,7 @@ Copiar o `BtrsCurvaPrimrRepository.java` desta pasta por cima do seu (`adapter/o
 
 ## 2. `BtrsCurvaPrimrPersistenceAdapter`
 
-Copiar o `AgregadoPrimr.java` desta pasta para `adapter/out/persistence/` (helper comum às três fontes) e trocar o `listarAgregado` inteiro por estes três métodos (o `toDomain` e o resto ficam):
-
-```java
-@Override
-public List<BtrsCurvaPrimrResumo> listarAgregado(LocalDate de, LocalDate ate, String codigo, String nome) {
-    return paraResumos(repository.listarAgregado(de, ate, codigo, nome));
-}
-
-@Override
-public List<BtrsCurvaPrimrResumo> listarUltimaData(String codigo, String nome) {
-    return paraResumos(repository.listarUltimaData(codigo, nome));
-}
-
-private List<BtrsCurvaPrimrResumo> paraResumos(List<CurvaPrimrAgregadoProjection> linhas) {
-    return AgregadoPrimr.paraResumos(
-        linhas,
-        AgregadoPrimr.tickersPorCurva(curvaPrvdrRepositoryPort, "B3", "TS"),
-        BtrsCurvaPrimrResumo::new);
-}
-```
-
-O `BtrsCurvaPrimrResumo::new` serve de fábrica porque o record tem os campos na ordem `codigo, nome, situacao, dataBase, quantidadeVertices, tickersProvedor, curvaConstruida`. O teste `AgregadoPrimrTest.java` (nesta pasta) cobre o helper.
+Copiar o `BtrsCurvaPrimrPersistenceAdapter.java` desta pasta (arquivo inteiro) e o `AgregadoPrimr.java` (helper comum às três fontes, em `adapter/out/persistence/`). O resumo da listagem é um só para as três fontes: `CurvaPrimrResumo` (`domain/cadastro/`) e `CurvaPrimrResumoResponse` (`adapter/in/api/rest/dto/`); saem `CurvaPrimrResumo`, `CurvaPrimrResumo`, `CurvaPrimrResumo` e `CurvaPrimrResumoResponse`. Nos controllers e services, troque o tipo (`List<CurvaPrimrResumo>`, `CurvaPrimrResumoResponse.fromDomain`). O teste `AgregadoPrimrTest.java` cobre o helper.
 
 ## 3. `BtrsCurvaPrimrService`
 
@@ -38,7 +17,7 @@ Troque o `listarAgregado` inteiro (os 22 e as demais partes ficam):
 ```java
 @Override
 @Transactional(readOnly = true)
-public List<BtrsCurvaPrimrResumo> listarAgregado(LocalDate de, LocalDate ate, String codigo, String nome) {
+public List<CurvaPrimrResumo> listarAgregado(LocalDate de, LocalDate ate, String codigo, String nome) {
     String codigoFiltro = textoOuNulo(codigo);
     String nomeFiltro = textoOuNulo(nome);
 

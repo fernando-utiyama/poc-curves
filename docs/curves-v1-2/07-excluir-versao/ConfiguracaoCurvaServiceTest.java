@@ -6,12 +6,11 @@ import br.com.poc.application.exception.NotFoundException;
 import br.com.poc.application.port.out.ConfiguracaoCurvaRepositoryPort;
 import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
-import br.com.poc.application.port.out.DadosConstruidosPort;
+import br.com.poc.application.port.out.DadoVertcCurvaRepositoryPort;
 import br.com.poc.application.port.out.EventosPort;
 import br.com.poc.domain.CompoundingCotacao;
 import br.com.poc.domain.DayCounterCotacao;
 import br.com.poc.domain.SituacaoCurva;
-import br.com.poc.domain.aviso.CodigoAvisoCurva;
 import br.com.poc.domain.Unidade;
 import br.com.poc.domain.cadastro.BaseInterpolacao;
 import br.com.poc.domain.cadastro.BusinessDayConvention;
@@ -24,7 +23,6 @@ import br.com.poc.domain.cadastro.Extrapolacao;
 import br.com.poc.domain.cadastro.Frequency;
 import br.com.poc.domain.cadastro.ModoArredondamento;
 import br.com.poc.domain.cadastro.ParametrosCalculo;
-import br.com.poc.domain.cadastro.ResumoConstrucao;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,7 +57,7 @@ class ConfiguracaoCurvaServiceTest {
     private EventosPort eventosPort;
 
     @Mock
-    private DadosConstruidosPort dadosConstruidosPort;
+    private DadoVertcCurvaRepositoryPort dadoVertcCurvaRepositoryPort;
 
     private ConfiguracaoCurvaService service;
 
@@ -100,13 +98,13 @@ class ConfiguracaoCurvaServiceTest {
             curvaPrvdrRepositoryPort,
             configuracaoRepositoryPort,
             eventosPort,
-            dadosConstruidosPort
+            dadoVertcCurvaRepositoryPort
         );
     }
 
     /** Curva sem nenhuma data construída na vigência pedida. */
     private void semConstrucao() {
-        when(dadosConstruidosPort.resumo(eq("DIxPRE"), any(), any())).thenReturn(new ResumoConstrucao(0, null, null));
+        when(dadoVertcCurvaRepositoryPort.existeConstrucao(eq("DIxPRE"), any(), any())).thenReturn(false);
     }
 
     @Test
@@ -197,10 +195,8 @@ class ConfiguracaoCurvaServiceTest {
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v2, v1));
         semConstrucao();
 
-        ConfiguracaoCurvaResultado res = service.excluir("PRE", 2);
+        service.excluir("PRE", 2);
 
-        assertNotNull(res);
-        assertTrue(res.avisos().isEmpty());
         verify(configuracaoRepositoryPort).excluir(2L);
 
         // A v1 foi reaberta com fimVigencia = null
@@ -238,8 +234,7 @@ class ConfiguracaoCurvaServiceTest {
 
         when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v1));
-        when(dadosConstruidosPort.resumo(eq("DIxPRE"), any(), any()))
-            .thenReturn(new ResumoConstrucao(3, hoje.minusDays(50), hoje.minusDays(2)));
+        when(dadoVertcCurvaRepositoryPort.existeConstrucao(eq("DIxPRE"), any(), any())).thenReturn(true);
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.excluir("PRE", 1));
 
@@ -291,8 +286,8 @@ class ConfiguracaoCurvaServiceTest {
     }
 
     @Test
-    @DisplayName("Excluir a única versão avisa SEM_CONFIGURACAO")
-    void excluirUnicaVersaoAvisaSemConfiguracao() {
+    @DisplayName("Excluir a única versão só a remove, sem mexer em vizinha")
+    void excluirUnicaVersao() {
         LocalDate hoje = LocalDate.now();
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.plusDays(5), null);
 
@@ -300,12 +295,10 @@ class ConfiguracaoCurvaServiceTest {
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v1));
         semConstrucao();
 
-        ConfiguracaoCurvaResultado res = service.excluir("PRE", 1);
+        service.excluir("PRE", 1);
 
         verify(configuracaoRepositoryPort).excluir(1L);
         verify(configuracaoRepositoryPort, never()).salvar(any());
-        assertEquals(1, res.avisos().size());
-        assertEquals(CodigoAvisoCurva.SEM_CONFIGURACAO, res.avisos().getFirst().codigo());
     }
 
     @Test

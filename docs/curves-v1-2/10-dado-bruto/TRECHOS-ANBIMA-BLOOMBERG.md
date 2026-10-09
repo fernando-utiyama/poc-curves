@@ -14,8 +14,8 @@ Usar o `AgregadoPrimr.java` desta pasta (já descrito no `TRECHOS.md`).
 | Arquivo | Muda |
 |---|---|
 | `AnbmaCurvaPrimrRepositoryPort` / `BbergCurvaPrimrRepositoryPort` | acrescentar `List<...Resumo> listarUltimaData(String codigo, String nome);` |
-| `AnbmaCurvaPrimrResumo` / `BbergCurvaPrimrResumo` e os `...ResumoResponse` | `codigosNaFonte` → `tickersProvedor` |
-| adaptadores | `listarAgregado` e `listarUltimaData` como no `TRECHOS.md` da B3, com `AgregadoPrimr.tickersPorCurva(curvaPrvdrRepositoryPort, "ANBIMA", "MS")` ou `("BLOOMBERG", "BLC2")` e `AnbmaCurvaPrimrResumo::new` ou `BbergCurvaPrimrResumo::new` |
+| `CurvaPrimrResumo` / `CurvaPrimrResumo` e os `...ResumoResponse` | `codigosNaFonte` → `tickersProvedor` |
+| adaptadores | `listarAgregado` e `listarUltimaData` como no `TRECHOS.md` da B3, com `AgregadoPrimr.tickersPorCurva(curvaPrvdrRepositoryPort, "ANBIMA", "MS")` ou `("BLOOMBERG", "BLC2")` e `CurvaPrimrResumo::new` ou `CurvaPrimrResumo::new` |
 | services | `listarAgregado`: sem `de` e sem `ate`, chama `listarUltimaData`; o resto como no `TRECHOS.md` da B3 |
 
 ## 3. O que isto NÃO resolve

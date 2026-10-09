@@ -6,7 +6,7 @@ import br.com.poc.adapter.out.persistence.repository.CurvaPrimrAgregadoProjectio
 import br.com.poc.application.port.out.BbergCurvaPrimrRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.domain.cadastro.BbergCurvaPrimr;
-import br.com.poc.domain.cadastro.BbergCurvaPrimrResumo;
+import br.com.poc.domain.cadastro.CurvaPrimrResumo;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -81,21 +81,20 @@ public class BbergCurvaPrimrPersistenceAdapter implements BbergCurvaPrimrReposit
     }
 
     @Override
-    public List<BbergCurvaPrimrResumo> listarAgregado(LocalDate de, LocalDate ate, String codigo, String nome) {
+    public List<CurvaPrimrResumo> listarAgregado(LocalDate de, LocalDate ate, String codigo, String nome) {
         return paraResumos(repository.listarAgregado(de, ate, codigo, nome));
     }
 
     @Override
-    public List<BbergCurvaPrimrResumo> listarUltimaData(String codigo, String nome) {
+    public List<CurvaPrimrResumo> listarUltimaData(String codigo, String nome) {
         return paraResumos(repository.listarUltimaData(codigo, nome));
     }
 
-    private List<BbergCurvaPrimrResumo> paraResumos(List<CurvaPrimrAgregadoProjection> linhas) {
+    private List<CurvaPrimrResumo> paraResumos(List<CurvaPrimrAgregadoProjection> linhas) {
         // sem filtro de produto, como estava
         return AgregadoPrimr.paraResumos(
             linhas,
-            AgregadoPrimr.tickersPorCurva(curvaPrvdrRepositoryPort, PROVEDOR, null),
-            BbergCurvaPrimrResumo::new);
+            AgregadoPrimr.tickersPorCurva(curvaPrvdrRepositoryPort, PROVEDOR, null));
     }
 
     private BbergCurvaPrimr toVerticeDomain(BbergCurvaPrimrEntity e) {

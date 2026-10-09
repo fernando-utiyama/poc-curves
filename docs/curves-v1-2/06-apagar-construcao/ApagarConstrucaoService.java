@@ -3,9 +3,8 @@ package br.com.poc.application.service;
 import br.com.poc.application.exception.CadastroErrorCode;
 import br.com.poc.application.exception.NotFoundException;
 import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
-import br.com.poc.application.port.out.DadosConstruidosPort;
+import br.com.poc.application.port.out.DadoVertcCurvaRepositoryPort;
 import br.com.poc.application.port.out.EventosPort;
-import br.com.poc.domain.cadastro.ConstrucaoApagada;
 import br.com.poc.domain.cadastro.CurvaMercado;
 import br.com.poc.domain.evento.EventoCadastroAlterado;
 import lombok.RequiredArgsConstructor;
@@ -22,16 +21,15 @@ import java.util.UUID;
 public class ApagarConstrucaoService {
 
     private final CurvaMercdRepositoryPort curvaRepositoryPort;
-    private final DadosConstruidosPort dadosConstruidosPort;
+    private final DadoVertcCurvaRepositoryPort dadoVertcCurvaRepositoryPort;
     private final EventosPort eventosPort;
 
     @Transactional
-    public ConstrucaoApagada apagar(String nomeCurva, LocalDate dataBase) {
+    public void apagar(String nomeCurva, LocalDate dataBase) {
         CurvaMercado curva = curvaRepositoryPort.findByNome(nomeCurva)
             .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(), "Curva " + nomeCurva + " não encontrada"));
 
-        ConstrucaoApagada apagada = dadosConstruidosPort.apagar(curva.nome(), dataBase);
-        if (apagada.vertices() == 0 && apagada.pontos() == 0) {
+        if (!dadoVertcCurvaRepositoryPort.apagar(curva.nome(), dataBase)) {
             throw new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(),
                 "Curva " + nomeCurva + " não construída na data " + dataBase);
         }
@@ -44,9 +42,8 @@ public class ApagarConstrucaoService {
             "EXCLUSAO",
             OffsetDateTime.now(),
             null,
-            apagada,
+            dataBase,
             null
         ));
-        return apagada;
     }
 }

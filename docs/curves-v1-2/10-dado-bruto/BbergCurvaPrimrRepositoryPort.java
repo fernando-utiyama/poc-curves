@@ -1,7 +1,7 @@
 package br.com.poc.application.port.out;
 
 import br.com.poc.domain.cadastro.BbergCurvaPrimr;
-import br.com.poc.domain.cadastro.BbergCurvaPrimrResumo;
+import br.com.poc.domain.cadastro.CurvaPrimrResumo;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -25,8 +25,8 @@ public interface BbergCurvaPrimrRepositoryPort {
     boolean existsCurvaConstruida(String nomeCurva, LocalDate dataBase);
 
     /** Uma linha por curva e data-base dentro do período. */
-    List<BbergCurvaPrimrResumo> listarAgregado(LocalDate de, LocalDate ate, String codigo, String nome);
+    List<CurvaPrimrResumo> listarAgregado(LocalDate de, LocalDate ate, String codigo, String nome);
 
     /** Uma linha por curva, com a última data-base gravada no bruto dela. */
-    List<BbergCurvaPrimrResumo> listarUltimaData(String codigo, String nome);
+    List<CurvaPrimrResumo> listarUltimaData(String codigo, String nome);
 }

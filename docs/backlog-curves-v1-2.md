@@ -20,9 +20,9 @@ Itens levantados na revisão do Swagger, em 07 a 09/10/2026. A curva é identifi
 ## Curvas de mercado
 
 5. **Excluir curva de mercado** (`DELETE /api/v1/curvas-mercado/{nome}`), só no modo seguro:
-   - a `tCurvaMercd` tem chave estrangeira vinda de 11 tabelas. A curva só sai se **nenhuma** das que ela não apaga tiver linhas dela: `tDadoVertcCurva`, `tDadoCurva`, `tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr`, `tBbergCurvaPrimr`, `tCmeCurvaPrimr`, `tLchCurvaPrimr`, `tLsegCurvaPrimr`, `tMtrizCurva`. Se houver, responde **409** `CURVA_COM_HISTORICO` com as linhas por tabela (em vez de deixar o banco recusar com 500);
+   - quem recusa é o banco: a `tCurvaMercd` tem chave estrangeira vinda do construído, do dado bruto e de tabelas legadas. Se ainda houver linhas da curva nelas, a exclusão falha, a transação desfaz tudo e a resposta é **409** `CURVA_COM_HISTORICO` com a mensagem "A curva ainda tem dados vinculados (vértices construídos ou dado bruto dos provedores). Apague antes, ou use a inativação";
    - **dentro do `CurvaMercadoService`** (sem service nem use case novos), ao lado de criar, alterar, inativar e reativar;
-   - sem dependentes, apaga na mesma transação todas as configurações (`tConfgCurva`, inclusive a vigente e as passadas, que as rotas da v1 não deixam apagar) e os provedores (`tCurvaPrvdr`), e depois a curva;
+   - apaga na mesma transação todas as configurações (`tConfgCurva`, inclusive a vigente e as passadas, que as rotas da v1 não deixam apagar) e os provedores (`tCurvaPrvdr`), e depois a curva;
    - **não apaga dado de outra tabela**: construído sai pelo item 6 (por data) e dado bruto pelas rotas `primaria-*` (por data). O bruto é por curva, então apagá-lo é seguro, mas continua sendo escolha do usuário;
    - sem bloqueio de "componente de outra curva": curva derivada (provedor `TCEN`) ainda não existe na curves (confirmado em 09/10/2026); entra quando existir;
    - o front pede confirmação.
@@ -31,7 +31,7 @@ Itens levantados na revisão do Swagger, em 07 a 09/10/2026. A curva é identifi
    - apaga os vértices construídos da curva na data (`tDadoVertcCurva`) e, em cascata, a interpolada da mesma data (`tDadoCurva`), na mesma transação, para ninguém ler interpolada de vértices que não existem mais;
    - feito na própria curves (sem trava nesta versão); é o único caso em que a curves escreve em `tDadoCurva`, e só para apagar (mesma regra da spec `vertices-curva-manual` da parte 2, que esta rota antecipa);
    - não toca o dado bruto, a configuração nem o cadastro; depois, a data fica "não construída" e pode ser construída de novo pelo `POST .../construcao` ou pela carga;
-   - data sem vértices construídos → 404 `CURVA_NAO_CONSTRUIDA`; sucesso → 200 com `avisos` (vazio) e quantas linhas saíram de cada tabela;
+   - data sem vértices construídos → 404 `CURVA_NAO_CONSTRUIDA`; sucesso → 200 sem corpo;
    - log `VERTICES_EDITADOS` com operação `EXCLUSAO`;
    - o front pede confirmação.
    Junto com o item 5, permite apagar uma curva com histórico: apaga data por data e depois exclui a curva no modo seguro.
@@ -44,12 +44,20 @@ Itens levantados na revisão do Swagger, em 07 a 09/10/2026. A curva é identifi
    - **Continuidade das vigências** (a sequência continua sem buraco), na mesma transação:
      - versão do meio ou a última: a **anterior** estende o `fimVigencia` até o fim da excluída (nulo, se a excluída era a última);
      - a primeira: a **seguinte** passa a começar no `inicioVigencia` da excluída;
-     - a única: sai, e a resposta traz o aviso `SEM_CONFIGURACAO` (a curva não constrói até ter outra versão).
+     - a única: sai (a curva não constrói até ter outra versão).
      Só `dValidAte`/`dInicVgcia` da vizinha mudam; nenhuma outra coluna é regravada.
    - Versão futura (ainda não começou) continua podendo ser excluída sempre, como hoje.
    - Os números das versões não são renumerados: a sequência pode ficar com lacuna (1, 3).
    - O front pede confirmação mostrando a vigência que a vizinha vai assumir. Sem trava nesta versão.
    - Ajustar a spec `configuracao-calculo-curva` (regra "só a última versão, e só se ainda não começou" e a tabela de rotas).
+
+## Regra para todos os endpoints (front sem tratamento de erro por enquanto)
+
+O front não monta tela a partir do corpo do erro: ele mostra o texto como veio. Por isso:
+- **Sucesso:** `200` simples, sem corpo ou contadores desnecessários (o `DELETE .../{dataBase}/vertices` responde `200` vazio; o delete de curva, `204`).
+- **Erro:** a **mensagem** tem que explicar sozinha o que houve e o que fazer (ex.: "A curva ainda tem dados em tDadoVertcCurva, tBtrsCurvaPrimr. Apague antes ... ou use a inativação"); nada depende de `detalhes`, códigos ou `avisos` para o usuário entender.
+- Não criar record de resultado só para devolver número (por isso saíram `DadoCurvaApagado`, `DependenciaCurva`, `DadoVertcCurvaResumo` e `ApagarConstrucaoResponse`; o resumo do bruto é um só, `CurvaPrimrResumo`, para as três fontes; excluir versão responde 200 vazio).
+- Vale para os endpoints novos desta versão e para os que forem revisados: ao revisar um service, conferir que cada recusa tem texto completo no `motivo`.
 
 ## Identificador da curva = nome (vale para toda a v1.2)
 

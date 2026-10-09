@@ -6,7 +6,7 @@ import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.application.port.out.EventosPort;
 import br.com.poc.domain.SituacaoCurva;
-import br.com.poc.domain.cadastro.BtrsCurvaPrimrResumo;
+import br.com.poc.domain.cadastro.CurvaPrimrResumo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,7 +38,7 @@ class BtrsCurvaPrimrServiceListagemTest {
 
     private BtrsCurvaPrimrService service;
 
-    private final BtrsCurvaPrimrResumo resumo = new BtrsCurvaPrimrResumo(
+    private final CurvaPrimrResumo resumo = new CurvaPrimrResumo(
         null, "TBD-B3-DIXPRE", SituacaoCurva.ATIVO, LocalDate.of(2026, 9, 14), 278L, List.of("PRE"), false);
 
     @BeforeEach
@@ -51,7 +51,7 @@ class BtrsCurvaPrimrServiceListagemTest {
     void semPeriodoUsaUltimaData() {
         when(btrsRepositoryPort.listarUltimaData(null, null)).thenReturn(List.of(resumo));
 
-        List<BtrsCurvaPrimrResumo> res = service.listarAgregado(null, null, " ", "");
+        List<CurvaPrimrResumo> res = service.listarAgregado(null, null, " ", "");
 
         assertEquals(List.of(resumo), res);
         verify(btrsRepositoryPort, never()).listarAgregado(any(), any(), any(), any());
@@ -74,7 +74,7 @@ class BtrsCurvaPrimrServiceListagemTest {
         LocalDate ate = LocalDate.of(2026, 9, 30);
         when(btrsRepositoryPort.listarAgregado(de, ate, null, null)).thenReturn(List.of(resumo));
 
-        List<BtrsCurvaPrimrResumo> res = service.listarAgregado(de, ate, null, null);
+        List<CurvaPrimrResumo> res = service.listarAgregado(de, ate, null, null);
 
         assertEquals(List.of(resumo), res);
         verify(btrsRepositoryPort, never()).listarUltimaData(any(), any());

@@ -1,6 +1,5 @@
 package br.com.poc.adapter.in.api.rest.controller;
 
-import br.com.poc.adapter.in.api.rest.dto.ApagarConstrucaoResponse;
 import br.com.poc.application.port.out.EnginePort.RespostaEngine;
 import br.com.poc.application.service.ApagarConstrucaoService;
 import br.com.poc.application.service.CurvaMercadoAcoesService;
@@ -54,10 +53,11 @@ public class CurvaMercadoAcoesController {
     @Operation(summary = "Apagar curva construída da data",
         description = "Apaga os vértices construídos da data e, em cascata, a interpolada dela. Não toca o dado bruto, "
             + "a configuração nem o cadastro. A data volta a ficar não construída e pode ser construída de novo")
-    public ResponseEntity<ApagarConstrucaoResponse> apagarConstrucao(
+    public ResponseEntity<Void> apagarConstrucao(
             @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase) {
-        return ResponseEntity.ok(ApagarConstrucaoResponse.de(apagarConstrucaoService.apagar(nome, dataBase)));
+        apagarConstrucaoService.apagar(nome, dataBase);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/interpolacao")

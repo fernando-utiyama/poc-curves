@@ -8,7 +8,6 @@ import br.com.poc.application.port.in.usecase.CurvaMercadoUseCase;
 import br.com.poc.application.port.out.ConfiguracaoCurvaRepositoryPort;
 import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
-import br.com.poc.application.port.out.DadosConstruidosPort;
 import br.com.poc.application.port.out.EventosPort;
 import br.com.poc.domain.CompoundingCotacao;
 import br.com.poc.domain.DayCounterCotacao;
@@ -23,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,7 +45,6 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
     private final CurvaPrvdrRepositoryPort curvaPrvdrRepositoryPort;
     private final ConfiguracaoCurvaRepositoryPort configuracaoRepositoryPort;
     private final EventosPort eventosPort;
-    private final DadosConstruidosPort dadosConstruidosPort;
 
     @Override
     @Transactional(readOnly = true)
@@ -317,32 +316,30 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
     }
 
     /**
-     * Exclui a curva com os provedores e as configurações dela. Recusa se ainda há linhas dela em outra tabela
-     * (construído ou dado bruto): nesse caso, apague antes ou use a inativação.
+     * Exclui a curva com os provedores e as configurações dela. Quem recusa quando ainda há dados dela em outra tabela
+     * (construído, dado bruto) é o próprio banco, pelas chaves estrangeiras: tudo é desfeito e a mensagem diz o que fazer.
      */
     @Override
     @Transactional
     public void excluir(String nome) {
         CurvaMercado curva = obterCurva(nome);
 
-        List<LinhasPorTabela> dependentes = dadosConstruidosPort.dependentes(curva.nome());
-        if (!dependentes.isEmpty()) {
-            Object[] detalhes = dependentes.stream()
-                .map(d -> new Detalhe("nome", null, nome, d.linhas() + " linha(s) em " + d.tabela()
-                    + "; apague antes (construído pelo delete da data, dado bruto pelas rotas primaria-*) ou use a inativação"))
-                .toArray();
-            throw new BusinessException(CadastroErrorCode.CURVA_COM_HISTORICO, detalhes);
+        try {
+            if (configuracaoRepositoryPort != null) {
+                configuracaoRepositoryPort.findByNomeCurva(curva.nome())
+                    .forEach(c -> configuracaoRepositoryPort.excluir(c.id()));
+            }
+            if (curvaPrvdrRepositoryPort != null) {
+                curvaPrvdrRepositoryPort.findByNomeCurva(curva.nome())
+                    .forEach(p -> curvaPrvdrRepositoryPort.excluir(p.idCurvaProvedor(), curva.nome()));
+            }
+            repositoryPort.excluir(curva.nome());   // o adaptador faz flush: a violação aparece aqui
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(CadastroErrorCode.CURVA_COM_HISTORICO, new Object[]{
+                new Detalhe("nome", null, nome, "A curva ainda tem dados vinculados (vértices construídos ou dado bruto dos provedores). "
+                    + "Apague as datas construídas e o dado bruto antes, ou use a inativação")
+            });
         }
-
-        if (configuracaoRepositoryPort != null) {
-            configuracaoRepositoryPort.findByNomeCurva(curva.nome())
-                .forEach(c -> configuracaoRepositoryPort.excluir(c.id()));
-        }
-        if (curvaPrvdrRepositoryPort != null) {
-            curvaPrvdrRepositoryPort.findByNomeCurva(curva.nome())
-                .forEach(p -> curvaPrvdrRepositoryPort.excluir(p.idCurvaProvedor(), curva.nome()));
-        }
-        repositoryPort.excluir(curva.nome());
 
         publicarEvento(curva.codigo(), curva.nome(), "EXCLUSAO", curva, null);
     }

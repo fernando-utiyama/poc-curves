@@ -6,7 +6,7 @@ import br.com.poc.adapter.out.persistence.repository.CurvaPrimrAgregadoProjectio
 import br.com.poc.application.port.out.BtrsCurvaPrimrRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.domain.cadastro.BtrsCurvaPrimr;
-import br.com.poc.domain.cadastro.BtrsCurvaPrimrResumo;
+import br.com.poc.domain.cadastro.CurvaPrimrResumo;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -77,20 +77,19 @@ public class BtrsCurvaPrimrPersistenceAdapter implements BtrsCurvaPrimrRepositor
     }
 
     @Override
-    public List<BtrsCurvaPrimrResumo> listarAgregado(LocalDate de, LocalDate ate, String codigo, String nome) {
+    public List<CurvaPrimrResumo> listarAgregado(LocalDate de, LocalDate ate, String codigo, String nome) {
         return paraResumos(repository.listarAgregado(de, ate, codigo, nome));
     }
 
     @Override
-    public List<BtrsCurvaPrimrResumo> listarUltimaData(String codigo, String nome) {
+    public List<CurvaPrimrResumo> listarUltimaData(String codigo, String nome) {
         return paraResumos(repository.listarUltimaData(codigo, nome));
     }
 
-    private List<BtrsCurvaPrimrResumo> paraResumos(List<CurvaPrimrAgregadoProjection> linhas) {
+    private List<CurvaPrimrResumo> paraResumos(List<CurvaPrimrAgregadoProjection> linhas) {
         return AgregadoPrimr.paraResumos(
             linhas,
-            AgregadoPrimr.tickersPorCurva(curvaPrvdrRepositoryPort, PROVEDOR, PRODUTO),
-            BtrsCurvaPrimrResumo::new);
+            AgregadoPrimr.tickersPorCurva(curvaPrvdrRepositoryPort, PROVEDOR, PRODUTO));
     }
 
     private BtrsCurvaPrimr toDomain(BtrsCurvaPrimrEntity e) {

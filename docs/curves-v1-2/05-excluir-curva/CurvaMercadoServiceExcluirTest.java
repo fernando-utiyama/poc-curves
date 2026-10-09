@@ -6,7 +6,6 @@ import br.com.poc.application.exception.NotFoundException;
 import br.com.poc.application.port.out.ConfiguracaoCurvaRepositoryPort;
 import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
-import br.com.poc.application.port.out.DadosConstruidosPort;
 import br.com.poc.application.port.out.EventosPort;
 import br.com.poc.domain.CompoundingCotacao;
 import br.com.poc.domain.DayCounterCotacao;
@@ -22,7 +21,7 @@ import br.com.poc.domain.cadastro.Extrapolacao;
 import br.com.poc.domain.cadastro.Frequency;
 import br.com.poc.domain.cadastro.ModoArredondamento;
 import br.com.poc.domain.cadastro.ParametrosCalculo;
-import br.com.poc.domain.cadastro.LinhasPorTabela;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,9 +53,6 @@ class CurvaMercadoServiceExcluirTest {
     private ConfiguracaoCurvaRepositoryPort configuracaoRepositoryPort;
 
     @Mock
-    private DadosConstruidosPort dadosConstruidosPort;
-
-    @Mock
     private EventosPort eventosPort;
 
     private CurvaMercadoService service;
@@ -83,7 +79,7 @@ class CurvaMercadoServiceExcluirTest {
     @BeforeEach
     void setUp() {
         service = new CurvaMercadoService(
-            curvaRepositoryPort, curvaPrvdrRepositoryPort, configuracaoRepositoryPort, eventosPort, dadosConstruidosPort);
+            curvaRepositoryPort, curvaPrvdrRepositoryPort, configuracaoRepositoryPort, eventosPort);
     }
 
     @Test
@@ -103,18 +99,14 @@ class CurvaMercadoServiceExcluirTest {
     }
 
     @Test
-    @DisplayName("Curva com construído ou dado bruto gera CURVA_COM_HISTORICO e não apaga nada")
+    @DisplayName("Curva com construído ou dado bruto: o banco recusa e o service responde CURVA_COM_HISTORICO")
     void recusaCurvaComHistorico() {
         when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
-        when(dadosConstruidosPort.dependentes("DIxPRE"))
-            .thenReturn(List.of(new LinhasPorTabela("tDadoVertcCurva", 1390), new LinhasPorTabela("tBtrsCurvaPrimr", 278)));
+        doThrow(new DataIntegrityViolationException("FK_tCurvaMercd_tDadoVertcCurva")).when(curvaRepositoryPort).excluir("DIxPRE");
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.excluir("DIxPRE"));
 
         assertEquals(CadastroErrorCode.CURVA_COM_HISTORICO.getCode(), ex.getErrorCode());
-        verify(curvaRepositoryPort, never()).excluir(any());
-        verify(configuracaoRepositoryPort, never()).excluir(any());
-        verify(curvaPrvdrRepositoryPort, never()).excluir(any(), any());
         verify(eventosPort, never()).publicarCadastroAlterado(any());
     }
 
@@ -124,6 +116,6 @@ class CurvaMercadoServiceExcluirTest {
         when(curvaRepositoryPort.findByNome("XXX")).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> service.excluir("XXX"));
-        verifyNoInteractions(dadosConstruidosPort, configuracaoRepositoryPort, eventosPort);
+        verifyNoInteractions(configuracaoRepositoryPort, eventosPort);
     }
 }

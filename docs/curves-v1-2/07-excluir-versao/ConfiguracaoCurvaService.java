@@ -7,10 +7,9 @@ import br.com.poc.application.port.in.usecase.ConfiguracaoCurvaUseCase;
 import br.com.poc.application.port.out.ConfiguracaoCurvaRepositoryPort;
 import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
-import br.com.poc.application.port.out.DadosConstruidosPort;
+import br.com.poc.application.port.out.DadoVertcCurvaRepositoryPort;
 import br.com.poc.application.port.out.EventosPort;
 import br.com.poc.domain.aviso.AvisoCurva;
-import br.com.poc.domain.aviso.CodigoAvisoCurva;
 import br.com.poc.domain.aviso.Detalhe;
 import br.com.poc.domain.cadastro.*;
 import br.com.poc.domain.evento.EventoCadastroAlterado;
@@ -33,7 +32,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
     private final CurvaPrvdrRepositoryPort curvaPrvdrRepositoryPort;
     private final ConfiguracaoCurvaRepositoryPort configuracaoRepositoryPort;
     private final EventosPort eventosPort;
-    private final DadosConstruidosPort dadosConstruidosPort;
+    private final DadoVertcCurvaRepositoryPort dadoVertcCurvaRepositoryPort;
 
     @Override
     @Transactional(readOnly = true)
@@ -123,7 +122,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
      */
     @Override
     @Transactional
-    public ConfiguracaoCurvaResultado excluir(String nomeCurva, Integer versao) {
+    public void excluir(String nomeCurva, Integer versao) {
         CurvaMercado curva = obterCurva(nomeCurva);
 
         List<ConfiguracaoCurva> versoes = configuracaoRepositoryPort.findByNomeCurva(curva.nome()).stream()
@@ -131,13 +130,13 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
             .toList();
         ConfiguracaoCurva alvo = escolherVersao(nomeCurva, versoes, versao);
 
-        ResumoConstrucao construcao = dadosConstruidosPort.resumo(
-            curva.nome(), alvo.inicioVigencia(), alvo.fimVigencia() != null ? alvo.fimVigencia() : SEM_FIM);
-        if (construcao.datas() > 0) {
+        LocalDate fim = alvo.fimVigencia() != null ? alvo.fimVigencia() : SEM_FIM;
+        if (dadoVertcCurvaRepositoryPort.existeConstrucao(curva.nome(), alvo.inicioVigencia(), fim)) {
             throw new BusinessException(CadastroErrorCode.VERSAO_EM_USO, new Object[]{
                 new Detalhe("versao", null, String.valueOf(alvo.versao()),
-                    construcao.datas() + " data(s) construída(s) na vigência da versão, de " + construcao.primeira()
-                        + " a " + construcao.ultima() + "; apague-as antes de excluir a versão")
+                    "Há curva construída na vigência da versão " + alvo.versao() + " (de " + alvo.inicioVigencia()
+                        + (alvo.fimVigencia() != null ? " a " + alvo.fimVigencia() : " em diante")
+                        + "). Apague as datas construídas antes de excluir a versão")
             });
         }
 
@@ -152,12 +151,6 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
             () -> seguinte.ifPresent(s -> configuracaoRepositoryPort.salvar(s.comInicioVigencia(alvo.inicioVigencia()))));
 
         publicarEvento(curva.codigo(), curva.nome(), "EXCLUSAO", alvo, null);
-
-        List<AvisoCurva> avisos = versoes.size() == 1
-            ? List.of(new AvisoCurva(CodigoAvisoCurva.SEM_CONFIGURACAO,
-                "A curva ficou sem configuração e não constrói até ganhar uma nova versão", List.of()))
-            : List.of();
-        return new ConfiguracaoCurvaResultado(null, avisos);
     }
 
     private ConfiguracaoCurva escolherVersao(String nomeCurva, List<ConfiguracaoCurva> versoes, Integer versao) {

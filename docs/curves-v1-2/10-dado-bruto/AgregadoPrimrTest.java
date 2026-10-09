@@ -3,7 +3,7 @@ package br.com.poc.adapter.out.persistence;
 import br.com.poc.adapter.out.persistence.repository.CurvaPrimrAgregadoProjection;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.domain.SituacaoCurva;
-import br.com.poc.domain.cadastro.BtrsCurvaPrimrResumo;
+import br.com.poc.domain.cadastro.CurvaPrimrResumo;
 import br.com.poc.domain.cadastro.CurvaProvedor;
 import org.junit.jupiter.api.Test;
 
@@ -32,8 +32,7 @@ class AgregadoPrimrTest {
     void convertePreservandoCurvaSemCodigo() {
         var linhas = List.of(linha(null, "TBD-B3-DIXPRE", "ATIVO     ", 278L, 1));
 
-        List<BtrsCurvaPrimrResumo> res = AgregadoPrimr.paraResumos(
-            linhas, Map.of("TBD-B3-DIXPRE", List.of("PRE")), BtrsCurvaPrimrResumo::new);
+        List<CurvaPrimrResumo> res = AgregadoPrimr.paraResumos(linhas, Map.of("TBD-B3-DIXPRE", List.of("PRE")));
 
         assertThat(res).singleElement().satisfies(r -> {
             assertThat(r.codigo()).isNull();
@@ -48,7 +47,7 @@ class AgregadoPrimrTest {
     void situacaoDesconhecidaEQuantidadeNulaViramNulaEZero() {
         var linhas = List.of(linha("X", "CURVA", "OUTRA", null, 0));
 
-        List<BtrsCurvaPrimrResumo> res = AgregadoPrimr.paraResumos(linhas, Map.of(), BtrsCurvaPrimrResumo::new);
+        List<CurvaPrimrResumo> res = AgregadoPrimr.paraResumos(linhas, Map.of());
 
         assertThat(res).singleElement().satisfies(r -> {
             assertThat(r.situacao()).isNull();

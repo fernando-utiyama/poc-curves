@@ -69,11 +69,11 @@ public class ConfiguracaoCurvaController {
     @Operation(summary = "Excluir versão",
         description = "Exclui a versão informada em 'versao' (padrão: a vigente hoje). Recusa se há curva construída na vigência dela. "
             + "A versão vizinha cobre a vigência da excluída, sem deixar buraco")
-    public ResponseEntity<ConfiguracaoCurvaComAvisosResponse> excluir(
+    public ResponseEntity<Void> excluir(
             @PathVariable String nome,
             @RequestParam(required = false) Integer versao) {
 
-        ConfiguracaoCurvaResultado resultado = useCase.excluir(nome, versao);
-        return ResponseEntity.ok(new ConfiguracaoCurvaComAvisosResponse(null, resultado.avisos()));
+        useCase.excluir(nome, versao);
+        return ResponseEntity.ok().build();
     }
 }

@@ -19,8 +19,8 @@ Padrão único, o que a ANBIMA e a Bloomberg já seguiam:
 | `BtrsCurvaPrimrRepositoryPort.java` | `application/port/out/` | `int proximoId()`, `findBy...` e `excluir` com id `Integer`; `listarUltimaData` |
 | `BtrsCurvaPrimrPersistenceAdapter.java` | `adapter/out/persistence/` | **inteiro** (visto nas fotos): nomes novos do repositório e da entidade, `listarUltimaData`, resumo pelo helper `AgregadoPrimr` |
 | `AnbmaCurvaPrimrPersistenceAdapter.java` | `adapter/out/persistence/` | **inteiro**, no mesmo molde |
-| `BbergCurvaPrimrPersistenceAdapter.java`, `BbergCurvaPrimrRepositoryPort.java`, `BbergCurvaPrimrResumo.java` | `adapter/out/persistence/`, `application/port/out/`, `domain/cadastro/` | inteiros, no mesmo molde (o `salvar` mantém os setters, agora com `setDataUltNegoc`); `BbergCurvaPrimrResumoResponse` ganha `tickersProvedor` no lugar de `codigosNaFonte` |
-| `AnbmaCurvaPrimrRepositoryPort.java`, `AnbmaCurvaPrimrResumo.java` | `application/port/out/`, `domain/cadastro/` | inteiros, deduzidos do adaptador; o resumo tem `tickersProvedor` no lugar de `codigosNaFonte` (o `AnbmaCurvaPrimrResumoResponse` precisa da mesma troca) |
+| `BbergCurvaPrimrPersistenceAdapter.java`, `BbergCurvaPrimrRepositoryPort.java`, `CurvaPrimrResumo.java` | `adapter/out/persistence/`, `application/port/out/`, `domain/cadastro/` | inteiros, no mesmo molde (o `salvar` mantém os setters, agora com `setDataUltNegoc`); `CurvaPrimrResumoResponse` ganha `tickersProvedor` no lugar de `codigosNaFonte` |
+| `AnbmaCurvaPrimrRepositoryPort.java`, `CurvaPrimrResumo.java` | `application/port/out/`, `domain/cadastro/` | inteiros, deduzidos do adaptador; o resumo tem `tickersProvedor` no lugar de `codigosNaFonte` (o `CurvaPrimrResumoResponse` precisa da mesma troca) |
 | `AgregadoPrimr.java` | `adapter/out/persistence/` | usa a projection nova |
 
 ## À mão
