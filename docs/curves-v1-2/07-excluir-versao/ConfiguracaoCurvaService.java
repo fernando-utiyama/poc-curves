@@ -131,7 +131,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
         ConfiguracaoCurva alvo = escolherVersao(nomeCurva, versoes, versao);
 
         LocalDate fim = alvo.fimVigencia() != null ? alvo.fimVigencia() : SEM_FIM;
-        if (dadoVertcCurvaRepositoryPort.existeConstrucao(curva.nome(), alvo.inicioVigencia(), fim)) {
+        if (dadoVertcCurvaRepositoryPort.existeVerticePorNomeCurvaEPeriodo(curva.nome(), alvo.inicioVigencia(), fim)) {
             throw new BusinessException(CadastroErrorCode.VERSAO_EM_USO, new Object[]{
                 new Detalhe("versao", null, String.valueOf(alvo.versao()),
                     "Há curva construída na vigência da versão " + alvo.versao() + " (de " + alvo.inicioVigencia()

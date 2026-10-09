@@ -30,31 +30,31 @@ public class CurvaMercadoAcoesController {
             @RequestParam(required = false) Boolean forcarRecalculo,
             @RequestParam(required = false) String fonte,
             @RequestParam(required = false) String produto) {
-        return repassar(service.construir(nome, dataBase, forcarRecalculo, fonte, produto, cid()));
+        return respostaDoEngine(service.construir(nome, dataBase, forcarRecalculo, fonte, produto, cid()));
     }
 
     @PostMapping("/interpolada")
     public ResponseEntity<String> regravar(
             @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase) {
-        return repassar(service.regravarInterpolada(nome, dataBase, cid()));
+        return respostaDoEngine(service.regravarInterpolada(nome, dataBase, cid()));
     }
 
     @GetMapping("/vertices")
     public ResponseEntity<String> vertices(
             @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase) {
-        return repassar(service.consultarVertices(nome, dataBase, cid()));
+        return respostaDoEngine(service.consultarVertices(nome, dataBase, cid()));
     }
 
     @DeleteMapping("/vertices")
     @Operation(summary = "Apagar curva construída da data",
         description = "Apaga os vértices construídos da data e, em cascata, a interpolada dela. Não toca o dado bruto, "
             + "a configuração nem o cadastro. A data volta a ficar não construída e pode ser construída de novo")
-    public ResponseEntity<Void> apagarConstrucao(
+    public ResponseEntity<Void> excluirVertices(
             @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase) {
-        service.apagarConstrucao(nome, dataBase);
+        service.excluirVertices(nome, dataBase);
         return ResponseEntity.ok().build();
     }
 
@@ -63,10 +63,10 @@ public class CurvaMercadoAcoesController {
             @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase,
             HttpServletRequest request) {
-        return repassar(service.interpolar(nome, dataBase, request.getQueryString(), cid()));
+        return respostaDoEngine(service.interpolar(nome, dataBase, request.getQueryString(), cid()));
     }
 
-    private ResponseEntity<String> repassar(RespostaEngine r) {
+    private ResponseEntity<String> respostaDoEngine(RespostaEngine r) {
         return ResponseEntity.status(r.status()).contentType(MediaType.APPLICATION_JSON).body(r.corpoJson());
     }
 

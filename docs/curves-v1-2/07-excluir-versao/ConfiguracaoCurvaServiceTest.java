@@ -104,7 +104,7 @@ class ConfiguracaoCurvaServiceTest {
 
     /** Curva sem nenhuma data construída na vigência pedida. */
     private void semConstrucao() {
-        when(dadoVertcCurvaRepositoryPort.existeConstrucao(eq("DIxPRE"), any(), any())).thenReturn(false);
+        when(dadoVertcCurvaRepositoryPort.existeVerticePorNomeCurvaEPeriodo(eq("DIxPRE"), any(), any())).thenReturn(false);
     }
 
     @Test
@@ -234,7 +234,7 @@ class ConfiguracaoCurvaServiceTest {
 
         when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v1));
-        when(dadoVertcCurvaRepositoryPort.existeConstrucao(eq("DIxPRE"), any(), any())).thenReturn(true);
+        when(dadoVertcCurvaRepositoryPort.existeVerticePorNomeCurvaEPeriodo(eq("DIxPRE"), any(), any())).thenReturn(true);
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.excluir("DIxPRE", 1));
 

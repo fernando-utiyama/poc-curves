@@ -15,7 +15,7 @@ public class DadoVertcCurvaPersistenceAdapter implements DadoVertcCurvaRepositor
     private EntityManager entityManager;
 
     @Override
-    public boolean existeConstrucao(String nomeCurva, LocalDate de, LocalDate ate) {
+    public boolean existeVerticePorNomeCurvaEPeriodo(String nomeCurva, LocalDate de, LocalDate ate) {
         Number existe = (Number) entityManager.createNativeQuery(
                 "SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.tDadoVertcCurva "
                     + "WHERE cTickerIndcd = :nome AND dBaseReft BETWEEN :de AND :ate) THEN 1 ELSE 0 END")
@@ -28,12 +28,12 @@ public class DadoVertcCurvaPersistenceAdapter implements DadoVertcCurvaRepositor
 
     /** Precisa de transação ativa (o serviço é @Transactional). A interpolada sai primeiro, para ninguém ler interpolada de vértices que já saíram. */
     @Override
-    public boolean apagar(String nomeCurva, LocalDate dataBase) {
-        int linhas = apagarDe("dbo.tDadoCurva", nomeCurva, dataBase) + apagarDe("dbo.tDadoVertcCurva", nomeCurva, dataBase);
+    public boolean excluirPorNomeCurvaEDataBase(String nomeCurva, LocalDate dataBase) {
+        int linhas = excluirDe("dbo.tDadoCurva", nomeCurva, dataBase) + excluirDe("dbo.tDadoVertcCurva", nomeCurva, dataBase);
         return linhas > 0;
     }
 
-    private int apagarDe(String tabela, String nomeCurva, LocalDate dataBase) {
+    private int excluirDe(String tabela, String nomeCurva, LocalDate dataBase) {
         return entityManager.createNativeQuery(
                 "DELETE FROM " + tabela + " WHERE cTickerIndcd = :nome AND dBaseReft = :data")
             .setParameter("nome", nomeCurva)

@@ -60,10 +60,10 @@ public class CurvaMercadoAcoesService {
 
     /** Apaga os vértices construídos e a interpolada da data, numa transação. A data volta a ficar não construída. */
     @Transactional
-    public void apagarConstrucao(String nome, LocalDate dataBase) {
+    public void excluirVertices(String nome, LocalDate dataBase) {
         CurvaMercado curva = obterCurva(nome);
 
-        if (!dadoVertcCurvaRepositoryPort.apagar(curva.nome(), dataBase)) {
+        if (!dadoVertcCurvaRepositoryPort.excluirPorNomeCurvaEDataBase(curva.nome(), dataBase)) {
             throw new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(),
                 "Curva " + nome + " não construída na data " + dataBase);
         }

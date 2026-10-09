@@ -6,8 +6,8 @@ import java.time.LocalDate;
 public interface DadoVertcCurvaRepositoryPort {
 
     /** Há vértices construídos da curva em alguma data entre {@code de} e {@code ate} (inclusive)? */
-    boolean existeConstrucao(String nomeCurva, LocalDate de, LocalDate ate);
+    boolean existeVerticePorNomeCurvaEPeriodo(String nomeCurva, LocalDate de, LocalDate ate);
 
     /** Apaga a interpolada (tDadoCurva) e os vértices (tDadoVertcCurva) da curva na data. {@code false} se não havia nada. */
-    boolean apagar(String nomeCurva, LocalDate dataBase);
+    boolean excluirPorNomeCurvaEDataBase(String nomeCurva, LocalDate dataBase);
 }

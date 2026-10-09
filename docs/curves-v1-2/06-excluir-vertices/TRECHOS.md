@@ -4,8 +4,8 @@ Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Requer a porta `DadoVer
 
 | Arquivo | O que muda |
 |---|---|
-| `CurvaMercadoAcoesService.java` | **substitui** o seu: ganha `apagarConstrucao(nome, dataBase)` e dois campos (`dadoVertcCurvaRepositoryPort`, `eventosPort`); as ações do engine recebem o nome e repassam `curva.codigo()` (curva sem código → 422) |
-| `CurvaMercadoAcoesController.java` | **substitui** o seu: `{nome}` nas rotas e o `DELETE /vertices` chamando `service.apagarConstrucao` (200 sem corpo) |
+| `CurvaMercadoAcoesService.java` | **substitui** o seu: ganha `excluirVertices(nome, dataBase)` e dois campos (`dadoVertcCurvaRepositoryPort`, `eventosPort`); as ações do engine recebem o nome e repassam `curva.codigo()` (curva sem código → 422) |
+| `CurvaMercadoAcoesController.java` | **substitui** o seu: `{nome}` nas rotas e o `DELETE /vertices` chamando `service.excluirVertices` (200 sem corpo) |
 
 ## Testes: acrescentar no seu `CurvaMercadoAcoesServiceTest`
 
@@ -32,9 +32,9 @@ void apagaConstrucaoDaData() {
     );
     LocalDate data = LocalDate.of(2026, 9, 14);
     when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curva));
-    when(dadoVertcCurvaRepositoryPort.apagar("DIxPRE", data)).thenReturn(true);
+    when(dadoVertcCurvaRepositoryPort.excluirPorNomeCurvaEDataBase("DIxPRE", data)).thenReturn(true);
 
-    service.apagarConstrucao("DIxPRE", data);
+    service.excluirVertices("DIxPRE", data);
 
     verify(dadoVertcCurvaRepositoryPort).apagar("DIxPRE", data);
     verify(eventosPort).publicarCadastroAlterado(any());
@@ -52,9 +52,9 @@ void apagarDataSemConstrucao() {
     );
     LocalDate data = LocalDate.of(2026, 9, 14);
     when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curva));
-    when(dadoVertcCurvaRepositoryPort.apagar("DIxPRE", data)).thenReturn(false);
+    when(dadoVertcCurvaRepositoryPort.excluirPorNomeCurvaEDataBase("DIxPRE", data)).thenReturn(false);
 
-    assertThrows(NotFoundException.class, () -> service.apagarConstrucao("DIxPRE", data));
+    assertThrows(NotFoundException.class, () -> service.excluirVertices("DIxPRE", data));
     verify(eventosPort, never()).publicarCadastroAlterado(any());
 }
 
@@ -63,7 +63,7 @@ void apagarDataSemConstrucao() {
 void apagarCurvaInexistente() {
     when(curvaRepositoryPort.findByNome("XXX")).thenReturn(Optional.empty());
 
-    assertThrows(NotFoundException.class, () -> service.apagarConstrucao("XXX", LocalDate.of(2026, 9, 14)));
+    assertThrows(NotFoundException.class, () -> service.excluirVertices("XXX", LocalDate.of(2026, 9, 14)));
     verifyNoInteractions(dadoVertcCurvaRepositoryPort, eventosPort);
 }
 ```
