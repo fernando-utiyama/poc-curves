@@ -38,7 +38,7 @@ A troca de `codigo` para `nome` (a PK) no `CurvaMercadoUseCase`, no service, no 
 
 ## Dado bruto (itens 3, 4 e 9 do backlog), `10-dado-bruto/`
 
-Começar por `EQUALIZAR.md`: deixa os três repositórios, a entidade da B3 e a projection com a mesma forma (B3, ANBIMA e Bloomberg).
+Começar por `10-dado-bruto/LEIA-ME.md`: deixa os três repositórios, a entidade da B3 e a projection com a mesma forma (B3, ANBIMA e Bloomberg).
 
 Substituem arquivos: `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository.java` e `BbergCurvaPrimrRepository.java` (`adapter/out/persistence/repository/`), `CurvaPrimrResumo.java` (`domain/cadastro/`), `CurvaPrimrResumoResponse.java` (`adapter/in/api/rest/dto/`) e `BtrsCurvaPrimrRepositoryPort.java` (`application/port/out/`). `TRECHOS.md` traz o que trocar à mão no repositório JPA, no adaptador e no service; `BtrsCurvaPrimrServiceListagemTest.java` é teste novo.
 
