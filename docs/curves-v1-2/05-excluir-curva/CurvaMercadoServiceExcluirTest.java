@@ -42,7 +42,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ExcluirCurvaMercadoServiceTest {
+class CurvaMercadoServiceExcluirTest {
 
     @Mock
     private CurvaMercdRepositoryPort curvaRepositoryPort;
@@ -59,7 +59,7 @@ class ExcluirCurvaMercadoServiceTest {
     @Mock
     private EventosPort eventosPort;
 
-    private ExcluirCurvaMercadoService service;
+    private CurvaMercadoService service;
 
     private final CurvaMercado curvaPadrao = new CurvaMercado(
         "PRE", "DIxPRE", Unidade.TAXA, DayCounterCotacao.Business252,
@@ -82,18 +82,18 @@ class ExcluirCurvaMercadoServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ExcluirCurvaMercadoService(
-            curvaRepositoryPort, curvaPrvdrRepositoryPort, configuracaoRepositoryPort, dadosConstruidosPort, eventosPort);
+        service = new CurvaMercadoService(
+            curvaRepositoryPort, curvaPrvdrRepositoryPort, configuracaoRepositoryPort, eventosPort, dadosConstruidosPort);
     }
 
     @Test
     @DisplayName("Curva nunca construída sai com provedores e configurações")
     void excluiCurvaSemHistorico() {
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(versao(1L, 1), versao(2L, 2)));
         when(curvaPrvdrRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(provedorB3));
 
-        service.excluir("PRE");
+        service.excluir("DIxPRE");
 
         verify(configuracaoRepositoryPort).excluir(1L);
         verify(configuracaoRepositoryPort).excluir(2L);
@@ -105,11 +105,11 @@ class ExcluirCurvaMercadoServiceTest {
     @Test
     @DisplayName("Curva com construído ou dado bruto gera CURVA_COM_HISTORICO e não apaga nada")
     void recusaCurvaComHistorico() {
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(dadosConstruidosPort.dependentes("DIxPRE"))
             .thenReturn(List.of(new LinhasPorTabela("tDadoVertcCurva", 1390), new LinhasPorTabela("tBtrsCurvaPrimr", 278)));
 
-        BusinessException ex = assertThrows(BusinessException.class, () -> service.excluir("PRE"));
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.excluir("DIxPRE"));
 
         assertEquals(CadastroErrorCode.CURVA_COM_HISTORICO.getCode(), ex.getErrorCode());
         verify(curvaRepositoryPort, never()).excluir(any());

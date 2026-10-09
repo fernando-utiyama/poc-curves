@@ -9,15 +9,15 @@ import java.util.Optional;
 
 public interface BtrsCurvaPrimrRepositoryPort {
 
-    long proximoId();
+    Integer proximoId();
 
     List<BtrsCurvaPrimr> findByNomeCurvaAndDataBase(String nomeCurva, LocalDate dataBase);
 
-    Optional<BtrsCurvaPrimr> findByIdAndNomeCurvaAndDataBase(Long id, String nomeCurva, LocalDate dataBase);
+    Optional<BtrsCurvaPrimr> findByIdAndNomeCurvaAndDataBase(Integer id, String nomeCurva, LocalDate dataBase);
 
     BtrsCurvaPrimr salvar(BtrsCurvaPrimr ponto);
 
-    void excluir(Long id, String nomeCurva, LocalDate dataBase);
+    void excluir(Integer id, String nomeCurva, LocalDate dataBase);
 
     int excluirPorNomeCurvaEDataBase(String nomeCurva, LocalDate dataBase);
 

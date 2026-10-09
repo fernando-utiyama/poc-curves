@@ -4,40 +4,11 @@ Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Substituem arquivos int
 
 ## 1. `BtrsCurvaPrimrRepository`
 
-**Na query do `listarAgregado`, apague a linha** (o GET respeita só as regras do banco):
-
-```sql
-AND m.cTickerIdtfdUnic IS NOT NULL
-```
-
-**Acrescente o método novo**, depois do `listarAgregado` (reaproveita a `AgregadoProjection`):
-
-```java
-@Query(value = """
-    SELECT m.cTickerIdtfdUnic AS codigo,
-           m.cTickerIndcd AS nome,
-           m.cSitReg AS situacao,
-           b.dBaseReft AS dataRef,
-           COUNT(*) AS quantidade,
-           CASE WHEN EXISTS (SELECT 1 FROM dbo.tDadoVertcCurva v WHERE v.cTickerIndcd = m.cTickerIndcd AND v.dBaseReft = b.dBaseReft) THEN 1 ELSE 0 END AS construida
-    FROM dbo.tBtrsCurvaPrimr b
-    JOIN dbo.tCurvaMercd m ON m.cTickerIndcd = b.cTickerIndcd
-    WHERE b.dBaseReft = (SELECT MAX(u.dBaseReft) FROM dbo.tBtrsCurvaPrimr u WHERE u.cTickerIndcd = b.cTickerIndcd)
-      AND (:codigo IS NULL OR m.cTickerIdtfdUnic = :codigo)
-      AND (:nome IS NULL OR UPPER(m.cTickerIndcd) LIKE UPPER(CONCAT('%', :nome, '%')))
-    GROUP BY m.cTickerIdtfdUnic, m.cTickerIndcd, m.cSitReg, b.dBaseReft
-    ORDER BY m.cTickerIndcd ASC
-    """,
-    nativeQuery = true)
-List<AgregadoProjection> listarUltimaData(
-    @Param("codigo") String codigo,
-    @Param("nome") String nome
-);
-```
+Copiar o `BtrsCurvaPrimrRepository.java` desta pasta por cima do seu (`adapter/out/persistence/repository/`). Muda: sem `AND m.cTickerIdtfdUnic IS NOT NULL`, `ORDER BY` com desempate pelo nome (`m.cTickerIndcd`) e a query nova `listarUltimaData`. O resto (derivados, `proximoId`, `existsCurvaConstruida`, `AgregadoProjection`) é o que você já tem.
 
 ## 2. `BtrsCurvaPrimrPersistenceAdapter`
 
-Troque o `listarAgregado` inteiro por estes quatro métodos (o `toDomain` e o resto ficam):
+Copiar o `AgregadoPrimr.java` desta pasta para `adapter/out/persistence/` (helper comum às três fontes) e trocar o `listarAgregado` inteiro por estes três métodos (o `toDomain` e o resto ficam):
 
 ```java
 @Override
@@ -50,39 +21,15 @@ public List<BtrsCurvaPrimrResumo> listarUltimaData(String codigo, String nome) {
     return paraResumos(repository.listarUltimaData(codigo, nome));
 }
 
-private List<BtrsCurvaPrimrResumo> paraResumos(List<BtrsCurvaPrimrRepository.AgregadoProjection> linhas) {
-    Map<String, List<String>> tickersPorCurva = new HashMap<>();
-    if (curvaPrvdrRepositoryPort != null) {
-        for (CurvaProvedor cp : curvaPrvdrRepositoryPort.buscarCurvasProvedor("B3", "TS", null)) {
-            tickersPorCurva.computeIfAbsent(cp.nomeCurva(), k -> new ArrayList<>()).add(cp.codigoNaFonte());
-        }
-    }
-    return linhas.stream()
-        .map(p -> new BtrsCurvaPrimrResumo(
-            p.getCodigo(),
-            p.getNome(),
-            situacaoOuNula(p.getSituacao()),
-            p.getDataRef(),
-            p.getQuantidade() != null ? p.getQuantidade() : 0L,
-            tickersPorCurva.getOrDefault(p.getNome(), List.of()),
-            Integer.valueOf(1).equals(p.getConstruida())))
-        .toList();
-}
-
-/** Situação fora do enum vira nula, sem esconder qualquer outro erro. */
-private static SituacaoCurva situacaoOuNula(String texto) {
-    if (texto == null) {
-        return null;
-    }
-    try {
-        return SituacaoCurva.valueOf(texto.trim());
-    } catch (IllegalArgumentException e) {
-        return null;
-    }
+private List<BtrsCurvaPrimrResumo> paraResumos(List<CurvaPrimrAgregadoProjection> linhas) {
+    return AgregadoPrimr.paraResumos(
+        linhas,
+        AgregadoPrimr.tickersPorCurva(curvaPrvdrRepositoryPort, "B3", "TS"),
+        BtrsCurvaPrimrResumo::new);
 }
 ```
 
-Imports que podem faltar: `java.util.*` (já tem), `br.com.poc.domain.cadastro.CurvaProvedor` (já tem) e `br.com.poc.domain.SituacaoCurva` (já tem).
+O `BtrsCurvaPrimrResumo::new` serve de fábrica porque o record tem os campos na ordem `codigo, nome, situacao, dataBase, quantidadePontos, tickersProvedor, curvaConstruida`. O teste `AgregadoPrimrTest.java` (nesta pasta) cobre o helper.
 
 ## 3. `BtrsCurvaPrimrService`
 

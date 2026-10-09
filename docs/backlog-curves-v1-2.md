@@ -21,6 +21,7 @@ Itens levantados na revisão do Swagger, em 07 a 09/10/2026. A curva é identifi
 
 5. **Excluir curva de mercado** (`DELETE /api/v1/curvas-mercado/{nome}`), só no modo seguro:
    - a `tCurvaMercd` tem chave estrangeira vinda de 11 tabelas. A curva só sai se **nenhuma** das que ela não apaga tiver linhas dela: `tDadoVertcCurva`, `tDadoCurva`, `tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr`, `tBbergCurvaPrimr`, `tCmeCurvaPrimr`, `tLchCurvaPrimr`, `tLsegCurvaPrimr`, `tMtrizCurva`. Se houver, responde **409** `CURVA_COM_HISTORICO` com as linhas por tabela (em vez de deixar o banco recusar com 500);
+   - **dentro do `CurvaMercadoService`** (sem service nem use case novos), ao lado de criar, alterar, inativar e reativar;
    - sem dependentes, apaga na mesma transação todas as configurações (`tConfgCurva`, inclusive a vigente e as passadas, que as rotas da v1 não deixam apagar) e os provedores (`tCurvaPrvdr`), e depois a curva;
    - **não apaga dado de outra tabela**: construído sai pelo item 6 (por data) e dado bruto pelas rotas `primaria-*` (por data). O bruto é por curva, então apagá-lo é seguro, mas continua sendo escolha do usuário;
    - sem bloqueio de "componente de outra curva": curva derivada (provedor `TCEN`) ainda não existe na curves (confirmado em 09/10/2026); entra quando existir;
@@ -57,7 +58,7 @@ A curva é aberta pelo **nome** (`cTickerIndcd`, PK de `tCurvaMercd`). O código
 **Back (curves):**
 - `CurvaMercadoController`, `ConfiguracaoCurvaController`, `CurvaMercadoAcoesController`: `/{nome}` (arquivos de `docs/curves-v1-2/` já estão assim).
 - Controllers do bruto (`BtrsCurvaPrimrController`, `AnbmaCurvaPrimrController`, `BbergCurvaPrimrController`): renomear o path `{codigo}` para `{nome}` em `/{codigo}/primaria-*/...`. O service já busca a curva com `findByNome`; só o nome da variável e o Swagger mudam.
-- `CurvaMercadoAcoesService`: recebe o nome, busca a curva e repassa `curva.codigo()` ao engine; curva sem código → 422.
+- `CurvaMercadoAcoesService`: recebe o nome, busca a curva e repassa `curva.codigo()` ao engine; curva sem código → 422 (arquivo pronto em `docs/curves-v1-2/09-identificador-nome/`).
 
 **Front (chamadas que passam a usar `item.nome`, com `encodeURIComponent`):**
 
@@ -73,10 +74,10 @@ A curva é aberta pelo **nome** (`cTickerIndcd`, PK de `tCurvaMercd`). O código
 
 ## Auditoria e qualidade
 
-8. **Auditoria tipada** (`GET /curvas-mercado/{nome}/auditoria?formato=`): a planilha (`xlsx`) continua, porque já existe.
-   - o JSON passa a ser um record tipado (o Swagger mostra os campos, não `{}`); a planilha vira outro método com `produces` de XLSX, para cada método ter um tipo só;
-   - `formato` vira enum (`JSON`, `XLSX`): valor fora da lista (`pdf`, `Json`...) responde 400 `PARAMETRO_INVALIDO`, não 500.
-   - Precisa da foto do método do controller e do service da auditoria.
+8. **Auditoria tipada** (`GET /curvas-mercado/{nome}/auditoria`): a planilha continua.
+   - O controller deixa de devolver `ResponseEntity<?>`: o JSON é `ResponseEntity<CurvaAuditoria>` e a planilha é outro método, `ResponseEntity<byte[]>`, escolhido por `params = "formato=xlsx"`. O Swagger passa a mostrar os campos da auditoria no JSON.
+   - `formato` fora de `json` e `xlsx` (`pdf`, por exemplo) já responde 400 `PARAMETRO_INVALIDO` hoje, e continua assim.
+   - **Sem "canônico":** o `ConfiguracaoCanonicoState`, o `CurvaProvedorCanonicoState` e o `toCanonicoState()` (usados na auditoria e no `detalhar`) saem do projeto. Com os parâmetros tipados (`ParametrosCalculo`), o record do domínio já serializa em ordem fixa, então o estado "canônico" não acrescenta nada. `CurvaAuditoria` e `CurvaMercadoDetalhada` passam a levar `CurvaProvedor` e `ConfiguracaoCurva` direto (nome descritivo, nunca "canônico"). Falta ver `CurvaAuditoria`, `CurvaMercadoDetalhada`, `CurvaProvedorCanonicoState`, `ConfiguracaoCanonicoState`, `CurvaAuditoriaExcelGenerator` e os DTOs de resposta que os usam. `CurvaMercadoController.java` (item 5, pasta `05-excluir-curva`) já traz a parte do controller.
 
 9. **Duplicação nos 3 adaptadores do bruto** (Sonar: 88 linhas, em `Anbma`, `Bberg` e `Btrs` `CurvaPrimrPersistenceAdapter`), **se der**: extrair só o que é igual nos três (mapa de tickers do `tCurvaPrvdr` e conversão da linha agregada), sem classe base genérica. Fazer junto com o item 3, que mexe nos três.
 

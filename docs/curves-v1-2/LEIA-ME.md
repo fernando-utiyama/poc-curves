@@ -15,7 +15,7 @@ Todos os arquivos desta pasta já identificam a curva pelo **nome** (`findByNome
    - `ConfiguracaoCurvaService.java` → `application/service/` (substitui)
    - `ConfiguracaoCurvaController.java` → `adapter/in/api/rest/controller/` (substitui)
    - `ConfiguracaoCurvaServiceTest.java` → teste do serviço (substitui)
-3. Item 5, `05-excluir-curva/`: os três arquivos `.java` (use case e service em `application/`, teste) e os trechos de `TRECHOS.md` (porta e adaptador da curva, códigos de erro, método no controller).
+3. Item 5, `05-excluir-curva/`: **dentro do `CurvaMercadoService`** (sem service novo): os trechos de `TRECHOS.md` (use case, porta e adaptador da curva, método e campo no service, código de erro, método no controller) o `CurvaMercadoController.java` completo (com `{nome}`, o delete e a auditoria tipada) e o teste novo `CurvaMercadoServiceExcluirTest.java`.
 4. Item 6, `06-apagar-construcao/`:
    - `ApagarConstrucaoResponse.java` → `adapter/in/api/rest/dto/`
    - `ApagarConstrucaoService.java` → `application/service/`
@@ -38,14 +38,16 @@ Todos os arquivos desta pasta já identificam a curva pelo **nome** (`findByNome
 
 ## Feito pelo usuário (não é v1.2): identificador da curva pelo nome
 
-A troca de `codigo` para `nome` (a PK) no `CurvaMercadoUseCase`, no service, no controller e no repositório já foi feita no repositório real. `08-corrigir-busca-codigo/` e `09-identificador-nome/` ficam só como referência. Resta conferir o `CurvaMercadoAcoesService`: recebe o nome, busca a curva com `findByNome` e repassa `curva.codigo()` ao engine (422 se a curva não tiver código).
+A troca de `codigo` para `nome` (a PK) no `CurvaMercadoUseCase`, no service, no controller e no repositório já foi feita no repositório real. `08-corrigir-busca-codigo/` e `09-identificador-nome/` ficam só como referência. `09-identificador-nome/CurvaMercadoAcoesService.java` (`application/service/`, substitui): recebe o nome, busca a curva com `findByNome` e repassa `curva.codigo()` ao engine; curva sem código → 422 `DADOS_INVALIDOS`. Testes que montam o service à mão e stubs de `existsByCodigo` passam a usar `findByNome`.
 
-## Dado bruto da B3 (itens 3 e 4 do backlog), `10-dado-bruto/`
+## Dado bruto (itens 3, 4 e 9 do backlog), `10-dado-bruto/`
 
-Substituem arquivos: `BtrsCurvaPrimrResumo.java` (`domain/cadastro/`), `BtrsCurvaPrimrResumoResponse.java` (`adapter/in/api/rest/dto/`) e `BtrsCurvaPrimrRepositoryPort.java` (`application/port/out/`). `TRECHOS.md` traz o que trocar à mão no repositório JPA, no adaptador e no service; `BtrsCurvaPrimrServiceListagemTest.java` é teste novo.
+Começar por `EQUALIZAR.md`: deixa os três repositórios, a entidade da B3 e a projection com a mesma forma (B3, ANBIMA e Bloomberg).
+
+Substituem arquivos: `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository.java` e `BbergCurvaPrimrRepository.java` (`adapter/out/persistence/repository/`), `BtrsCurvaPrimrResumo.java` (`domain/cadastro/`), `BtrsCurvaPrimrResumoResponse.java` (`adapter/in/api/rest/dto/`) e `BtrsCurvaPrimrRepositoryPort.java` (`application/port/out/`). `TRECHOS.md` traz o que trocar à mão no repositório JPA, no adaptador e no service; `BtrsCurvaPrimrServiceListagemTest.java` é teste novo.
 
 - Sem `de` e `ate`: uma linha por curva, com a última data gravada. Com período: como antes.
 - `codigosNaFonte` vira `tickersProvedor`; a query deixa de esconder curvas sem código.
 - Sem calendário: os dias úteis sem dado ficaram para a v2 (`docs/backlog-v2.md`).
 - Item 1 (`produces` JSON): nos 3 controllers (`BbergCurvaPrimrController`, `AnbmaCurvaPrimrController` e `BtrsCurvaPrimrController`), `@RequestMapping(value = "/api/v1/curvas-mercado", produces = MediaType.APPLICATION_JSON_VALUE)` e importar `org.springframework.http.MediaType`.
-- ANBIMA e Bloomberg: a mesma mudança, trocando a tabela (`tAnbmaCurvaPrimr`, `tBbergCurvaPrimr`) e o provedor/produto da consulta de tickers (`ANBIMA`/`MS`, `BLOOMBERG`/`BLC2`).
+- ANBIMA e Bloomberg: `TRECHOS-ANBIMA-BLOOMBERG.md`, escrito por analogia com a B3 (os adaptadores delas não foram vistos). O `AgregadoPrimr.java` tira da listagem a duplicação entre as três fontes (item 9 do backlog).

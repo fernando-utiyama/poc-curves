@@ -1,49 +1,84 @@
-# Item 5: trechos para acrescentar (não substituem arquivo)
+# Item 5: excluir curva de mercado, dentro do `CurvaMercadoService` (trechos para acrescentar)
 
-## 1. `CurvaMercdRepositoryPort` (`application/port/out`)
+Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Não há service nem use case novos: a exclusão fica ao lado de criar, alterar, inativar e reativar. Requer `DadosConstruidosPort` e `LinhasPorTabela` (pasta `../compartilhado/`).
+
+## 1. `CurvaMercadoUseCase`
 
 ```java
 void excluir(String nome);
 ```
 
-## 2. `CurvaMercdPersistenceAdapter` (`adapter/out/persistence`)
+## 2. `CurvaMercdRepositoryPort` e `CurvaMercdPersistenceAdapter`
 
 ```java
+// porta
+void excluir(String nome);
+
+// adaptador
 @Override
 public void excluir(String nome) {
-    repository.deleteById(nome);   // o id da entidade é cTickerIndcd (o adaptador já usa existsById com ele)
+    repository.deleteById(nome);   // o id da entidade é cTickerIndcd (o nome)
 }
 ```
 
-## 3. `CadastroErrorCode` (acrescentar antes de `ERRO_INTERNO`; mapear para 409 junto de `CODIGO_EM_USO`)
+## 3. `CurvaMercadoService`
+
+Campo novo, **depois de `eventosPort`** (o construtor do Lombok segue a ordem dos campos; testes que montam o service à mão ganham o 5º argumento):
+
+```java
+private final DadosConstruidosPort dadosConstruidosPort;
+```
+
+Import: `br.com.poc.application.port.out.DadosConstruidosPort` (`LinhasPorTabela` já vem de `domain.cadastro.*`).
+
+Método novo, depois do `reativar`:
+
+```java
+@Override
+@Transactional
+public void excluir(String nome) {
+    CurvaMercado curva = repositoryPort.findByNome(nome)
+        .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(), "Curva " + nome + " não encontrada"));
+
+    List<LinhasPorTabela> dependentes = dadosConstruidosPort.dependentes(curva.nome());
+    if (!dependentes.isEmpty()) {
+        Object[] detalhes = dependentes.stream()
+            .map(d -> new Detalhe("nome", null, nome, d.linhas() + " linha(s) em " + d.tabela()
+                + "; apague antes (construído pelo delete da data, dado bruto pelas rotas primaria-*) ou use a inativação"))
+            .toArray();
+        throw new BusinessException(CadastroErrorCode.CURVA_COM_HISTORICO, detalhes);
+    }
+
+    configuracaoRepositoryPort.findByNomeCurva(curva.nome())
+        .forEach(c -> configuracaoRepositoryPort.excluir(c.id()));
+    curvaPrvdrRepositoryPort.findByNomeCurva(curva.nome())
+        .forEach(p -> curvaPrvdrRepositoryPort.excluir(p.idCurvaProvedor(), curva.nome()));
+    repositoryPort.excluir(curva.nome());
+
+    publicarEvento(curva.codigo(), curva.nome(), "EXCLUSAO", curva, null);
+}
+```
+
+Conferir: a assinatura de `curvaPrvdrRepositoryPort.excluir(...)` (supus `excluir(idCurvaProvedor, nomeCurva)`) e o nome do getter do id do `CurvaProvedor`.
+
+## 4. `CadastroErrorCode` (antes de `ERRO_INTERNO`; mapear para 409 junto de `CODIGO_EM_USO`)
 
 ```java
 CURVA_COM_HISTORICO("Curva com histórico"),
 ```
 
-## 4. `CurvaMercadoController` (`adapter/in/api/rest/controller`)
+## 5. `CurvaMercadoController`
 
-Campo novo, ao lado de `useCase`:
+Copiar o `CurvaMercadoController.java` desta pasta por cima do seu (`adapter/in/api/rest/controller/`). Muda:
+- `DELETE /{nome}` novo (item 5);
+- `inativar`, `reativar` e `auditoria`: `{codigo}` vira `{nome}` e `@PathVariable String nome`;
+- `auditoria` (item 8): sem `ResponseEntity<?>`. O JSON devolve `CurvaAuditoria` e a planilha é o método `auditoriaXlsx` (`params = "formato=xlsx"`); `formato` que não seja `json` nem `xlsx` continua dando 400.
+- O resto (listar, consultar, criar, alterar) está como estava.
 
-```java
-private final ExcluirCurvaMercadoUseCase excluirUseCase;
-```
+## 6. Teste
 
-Método novo, depois do `reativar`:
+`CurvaMercadoServiceExcluirTest.java` (nesta pasta), teste novo; os 3 casos: exclui sem histórico, recusa com construído ou bruto, curva inexistente.
 
-```java
-@DeleteMapping("/{nome}")
-@Operation(summary = "Excluir curva de mercado",
-    description = "Exclui a curva com provedores e configurações. Recusa curva com construído ou dado bruto "
-        + "(use a inativação). Não apaga o dado bruto dos provedores")
-public ResponseEntity<Void> excluir(@PathVariable String nome) {
-    excluirUseCase.excluir(nome);
-    return ResponseEntity.noContent().build();
-}
-```
+## 7. Curva derivada
 
-Imports: `br.com.poc.application.port.in.usecase.ExcluirCurvaMercadoUseCase` (os de `DeleteMapping`/`PathVariable` já vêm do `org.springframework.web.bind.annotation.*`).
-
-## 5. Curva derivada
-
-Não existe na curves (confirmado em 09/10/2026), então não há bloqueio "é componente de outra". Quando a derivada existir (provedor `TCEN` em `tCurvaPrvdr`), acrescentar o 409 `CURVA_COMPONENTE`.
+Não existe na curves (confirmado em 09/10/2026), então a exclusão não checa "é componente de outra". O `inativar` já avisa `CURVA_COM_FILHAS` por meio do provedor `TCEN`; quando a derivada existir, o `excluir` pode usar a mesma consulta e responder 409 `CURVA_COMPONENTE`.
