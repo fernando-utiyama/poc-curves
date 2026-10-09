@@ -40,13 +40,13 @@ A troca de `codigo` para `nome` (a PK) no `CurvaMercadoUseCase`, no service, no 
 
 Começar por `10-dado-bruto/LEIA-ME.md`: deixa os três repositórios, a entidade da B3 e a projection com a mesma forma (B3, ANBIMA e Bloomberg).
 
-Substituem arquivos: `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository.java` e `BbergCurvaPrimrRepository.java` (`adapter/out/persistence/repository/`), `CurvaPrimrResumo.java` (`domain/cadastro/`), `CurvaPrimrResumoResponse.java` (`adapter/in/api/rest/dto/`) e `BtrsCurvaPrimrRepositoryPort.java` (`application/port/out/`). `TRECHOS.md` traz o que trocar à mão no repositório JPA, no adaptador e no service; `BtrsCurvaPrimrServiceListagemTest.java` é teste novo.
+Substituem arquivos: `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository.java` e `BbergCurvaPrimrRepository.java` (`adapter/out/persistence/repository/`), `CurvaPrimrResumo.java` (`domain/cadastro/`), `CurvaPrimrResumoResponse.java` (`adapter/in/api/rest/dto/`) e `BtrsCurvaPrimrRepositoryPort.java` (`application/port/out/`). o `LEIA-ME.md` da pasta traz o que trocar à mão no repositório JPA, no adaptador e no service; `BtrsCurvaPrimrServiceListagemTest.java` é teste novo.
 
 - Sem `de` e `ate`: uma linha por curva, com a última data gravada. Com período: como antes.
 - `codigosNaFonte` vira `tickersProvedor`; a query deixa de esconder curvas sem código.
 - Sem calendário: os dias úteis sem dado ficaram para a v2 (`docs/backlog-v2.md`).
 - Item 1 (`produces` JSON): nos 3 controllers (`BbergCurvaPrimrController`, `AnbmaCurvaPrimrController` e `BtrsCurvaPrimrController`), `@RequestMapping(value = "/api/v1/curvas-mercado", produces = MediaType.APPLICATION_JSON_VALUE)` e importar `org.springframework.http.MediaType`.
-- ANBIMA e Bloomberg: `TRECHOS-ANBIMA-BLOOMBERG.md`, escrito por analogia com a B3 (os adaptadores delas não foram vistos). O `AgregadoPrimr.java` tira da listagem a duplicação entre as três fontes (item 9 do backlog).
+- ANBIMA e Bloomberg: veja o `LEIA-ME.md` da pasta `10-dado-bruto/` (guia único das três fontes). O `AgregadoPrimr.java` tira da listagem a duplicação entre as três fontes (item 9 do backlog).
 
 ## Renomeado: `codigoNaFonte` → `tickerProvedor` (provedor da curva)
 
