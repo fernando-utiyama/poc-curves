@@ -49,7 +49,7 @@ Copiar o `CurvaMercadoController.java` desta pasta por cima do seu (`adapter/in/
 
 ## 6. Testes: acrescentar no seu `CurvaMercadoServiceTest`
 
-Os mocks (`curvaRepositoryPort`, `curvaPrvdrRepositoryPort`, `configuracaoRepositoryPort`, `eventosPort`), o `service` e a curva de exemplo já existem no seu teste: use os nomes que estão lá. Se a curva de exemplo tiver outro nome que não `DIxPRE`, troque nos três testes.
+Os mocks (`repositoryPort` da curva, `curvaPrvdrRepositoryPort`, `configuracaoRepositoryPort`, `eventosPort`), o `service` e a curva de exemplo já existem no seu teste: use os nomes que estão lá (aqui: `repositoryPort` e a curva `existente`). Atenção: as versões são excluídas pelo `configuracaoRepositoryPort` (id `Long`) e a curva pelo `repositoryPort` (nome). Se a curva de exemplo tiver outro nome que não `DIxPRE`, troque nos três testes.
 
 Imports que podem faltar: `org.springframework.dao.DataIntegrityViolationException`, `static org.mockito.Mockito.doThrow`, `static org.mockito.Mockito.never`, `static org.mockito.Mockito.verifyNoInteractions`.
 
@@ -74,7 +74,7 @@ Os três testes:
 @Test
 @DisplayName("Excluir: curva nunca construída sai com provedores e configurações")
 void excluiCurvaSemHistorico() {
-    when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
+    when(repositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(existente));
     when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(versao(1L, 1), versao(2L, 2)));
     when(curvaPrvdrRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(provedorB3));
 
@@ -83,15 +83,15 @@ void excluiCurvaSemHistorico() {
     verify(configuracaoRepositoryPort).excluir(1L);
     verify(configuracaoRepositoryPort).excluir(2L);
     verify(curvaPrvdrRepositoryPort).excluir(10L, "DIxPRE");
-    verify(curvaRepositoryPort).excluir("DIxPRE");
+    verify(repositoryPort).excluir("DIxPRE");
     verify(eventosPort).publicarCadastroAlterado(any());
 }
 
 @Test
 @DisplayName("Excluir: o banco recusa (ainda há construído ou dado bruto) e o service responde CURVA_COM_HISTORICO")
 void excluirRecusaCurvaComHistorico() {
-    when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
-    doThrow(new DataIntegrityViolationException("FK_tCurvaMercd_tDadoVertcCurva")).when(curvaRepositoryPort).excluir("DIxPRE");
+    when(repositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(existente));
+    doThrow(new DataIntegrityViolationException("FK_tCurvaMercd_tDadoVertcCurva")).when(repositoryPort).excluir("DIxPRE");
 
     BusinessException ex = assertThrows(BusinessException.class, () -> service.excluir("DIxPRE"));
 
@@ -102,7 +102,7 @@ void excluirRecusaCurvaComHistorico() {
 @Test
 @DisplayName("Excluir: curva inexistente gera NAO_ENCONTRADO")
 void excluirCurvaInexistente() {
-    when(curvaRepositoryPort.findByNome("XXX")).thenReturn(Optional.empty());
+    when(repositoryPort.findByNome("XXX")).thenReturn(Optional.empty());
 
     assertThrows(NotFoundException.class, () -> service.excluir("XXX"));
     verifyNoInteractions(configuracaoRepositoryPort, eventosPort);
