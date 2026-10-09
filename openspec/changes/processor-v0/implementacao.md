@@ -365,12 +365,12 @@ Um log JSON por carga, no fim do roteiro (sucesso ou erro), com `logstash-logbac
 
 - Texto `StandardCharsets.ISO_8859_1`, separado por `@`, vírgula decimal.
 - Cabeçalho: a primeira linha que começa com `Titulo@`. Colunas localizadas pelo nome: `Titulo`, `Data Referencia`, `Codigo SELIC`, `Data Vencimento`, `Tx. Indicativas`.
-- Entram só os títulos com `Titulo` = `NTN-B` e `Codigo SELIC` terminando em `99`.
-- Datas `AAAAMMDD` (`DateTimeFormatter.BASIC_ISO_DATE`). `dataBase(...)` = `Data Referencia` das NTN-B (todas iguais, senão 422).
+- Lê todos os títulos. Descarta os de `Codigo SELIC` na lista `processor.anbima.selic-excluidos` (configuração, hoje `760198`), com log. Não há filtro fixo de `Titulo`: cada grupo de `Titulo` vira um código na fonte, e o `tCurvaPrvdr` decide o que é gravado (seção 7).
+- Datas `AAAAMMDD` (`DateTimeFormatter.BASIC_ISO_DATE`). `dataBase(...)` = `Data Referencia` dos títulos (todas iguais, senão 422).
 - Taxa: `,` → `.` e `new BigDecimal(texto)`; vazia ou `--` = `null`.
 - Prazo: `prazoDiasCorridos = (int) ChronoUnit.DAYS.between(dataBase, vencimento)`, sem ajuste de dia útil e sem calendário (o engine ajusta e conta os dias úteis).
-- Código na fonte: `NTN-B` (`verticesPorCodigo` = `{ "NTN-B": [ ... ] }`).
-- 422 `ARQUIVO_INVALIDO`: sem cabeçalho, sem alguma das colunas, sem nenhuma NTN-B inteira, vencimento ilegível.
+- Código na fonte: o valor de `Titulo` (`verticesPorCodigo` = `{ "NTN-B": [ ... ], "LTN": [ ... ], ... }`). Na seção 7, a consulta ao `tCurvaPrvdr` é uma por grupo: `SELECT cTickerIndcd FROM tCurvaPrvdr WHERE iPrvdrDados = ? AND cPrvdrMercd = ? AND cTickerPrvdr = ?`; grupo sem curva ligada é ignorado, com log.
+- 422 `ARQUIVO_INVALIDO`: sem cabeçalho, sem alguma das colunas, sem nenhum título depois dos excluídos, vencimento ilegível.
 
 ### 10.3 Vetores reais (`recursos/ms260928.txt` desta change)
 
@@ -381,7 +381,7 @@ Copie `openspec/changes/processor-v0/recursos/ms260928.txt` para `src/test/resou
 | `hashArquivo` | `ba9fe9dda8d522b7a298531a12c287314ed1302cf0afe8ce2ae8a6eb7c3ffb85` |
 | `idCarga` | `ANBIMA-MS-20260928-ba9fe9dda8d5` |
 | `dataBase` | `2026-09-28` |
-| títulos | 50 no arquivo; entram 14 NTN-B (todas com SELIC `760199`); ignoradas 17 LFT, 12 LTN, 1 NTN-C, 6 NTN-F |
+| títulos | 50 no arquivo, nenhum excluído (não há `760198`); com só a NTN-B cadastrada em `tCurvaPrvdr`, gravam 14 NTN-B (SELIC `760199`) e ficam no log, sem curva ligada, 17 LFT, 12 LTN, 1 NTN-C, 6 NTN-F |
 | 1ª NTN-B | vencimento `2027-05-15` (sábado), prazo **229** dias corridos, taxa `5.5415` |
 | `2032-08-15` | prazo **2148**, taxa `7.6863` |
 | `2040-08-15` | prazo **5070**, taxa `7.4` (BigDecimal `7.4`, não `7.4000`) |
@@ -455,7 +455,7 @@ Sem dependência nova de teste: JUnit 5, Mockito e Spring Test do `spring-boot-s
 | `CargaArquivoServiceTest` | unitário, portas falsas em memória | `@ParameterizedTest` do roteiro: download ok; 503 sem arquivar; data divergente (503); 422 com original arquivado sob a data pedida; upload 422 sem arquivar; upload com data futura; reprocessamento sem original (404); Blob fora (503, nada gravado); carga sem código mapeado (200, sem aviso); ordem das etapas (Blob antes de interpretar, gravar antes de avisar) |
 | `AvisoEngineServiceTest` | unitário, engine falso (`HttpServer`) | 500 → 409 → 200 (3 chamadas, mesmo `idCarga`); 400 → `CARGA_FALHOU` sem repetir; engine fora até a janela → `AVISO_ATRASADO` e `CARGA_FALHOU`; com `aviso-espera-inicial` = 1 ms, `aviso-alerta` = 50 ms e `aviso-janela` = 200 ms (nada de esperar minutos) |
 | `AnbimaCargaTest` | montado à mão: `CargaArquivoService` real com o `AnbimaDownloadSiteProvedor` real apontando para uma ANBIMA falsa (`HttpServer`), `AvisoEngineAdapter` real apontando para um engine falso, Blob e banco falsos em memória | ponta a ponta com o `ms260928.txt`: download de `2026-09-28` → 200 com o `idCarga` e `{"NTN-B": 14}`, original no Blob falso, 14 vértices com os prazos e taxas da seção 10.3, engine avisado; download repetido = mesmo `idCarga`; upload do mesmo arquivo = mesmo `idCarga`; reprocessamento não chama a ANBIMA; ANBIMA 404 → 503; ANBIMA 500 → 502 |
-| `LeiauteAnbimaMsTest` | unitário | o arquivo real (seção 10.3 inteira) e variações geradas no próprio teste a partir dele: sem cabeçalho, sem a coluna `Tx. Indicativas`, sem NTN-B, vencimento ilegível (422); taxa `--` e vazia (null); NTN-B com SELIC sem `99` (ignorada); duas `Data Referencia` diferentes (422) |
+| `LeiauteAnbimaMsTest` | unitário | o arquivo real (seção 10.3 inteira) e variações geradas no próprio teste a partir dele: sem cabeçalho, sem a coluna `Tx. Indicativas`, só títulos excluídos, vencimento ilegível (422); taxa `--` e vazia (null); NTN-B Principal `760198` (excluída pela lista); LTN lida como grupo `LTN`; duas `Data Referencia` diferentes (422) |
 
 Depois da pausa, cada provedor acrescenta um `*CargaTest` no molde do `AnbimaCargaTest` e um `Leiaute*Test`. Um teste de rota que já cobre um cenário não precisa de outro teste unitário para o mesmo cenário.
 

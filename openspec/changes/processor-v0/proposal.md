@@ -8,7 +8,7 @@ Esta é a **versão 0**: o próprio `services/processor` busca os três arquivos
 
 - **Processor ganha uma rota de download e uma de reprocessamento, com a fonte no caminho** (`/api/v1/cargas/{fonte}/download` e `.../reprocessamento`, `{fonte}` = `b3`, `anbima` ou `bloomberg`), com as respostas que o orquestrador já espera das functions (200 com `dataBase` e `idCarga`; 503 quando o arquivo do dia ainda não saiu):
   - B3, por download do site: `TS{AAMMDD}.ex_` da B3 → `TaxaSwap.txt` → `tBtrsCurvaPrimr`;
-  - ANBIMA, por download do site: `ms{AAMMDD}.txt` (mercado secundário, só NTN-B inteira) → `tAnbmaCurvaPrimr`, com o prazo em dias corridos até o vencimento (sem calendário no processor);
+  - ANBIMA, por download do site: `ms{AAMMDD}.txt` (mercado secundário; grava os títulos com curva ligada em `tCurvaPrvdr`, descartando os desmembrados da lista de excluídos, hoje a NTN-B Principal `760198`) → `tAnbmaCurvaPrimr`, com o prazo em dias corridos até o vencimento (sem calendário no processor);
   - Bloomberg, pela API do Data License: pedido de histórico (`HistoryRequest`) com os tickers da SOFR → `tBbergCurvaPrimr`.
 - **Upload pelo front**, pelo bff até o processor: o operador envia o arquivo da fonte (`TaxaSwap.txt` ou `.ex_`, `ms{AAMMDD}.txt`, ou o arquivo de resposta do Data License), e ele segue o mesmo caminho do download (`origem` = `UPLOAD`, com o usuário). Serve para quando a fonte está fora do ar ou o download falhou.
 - **Original no Blob para auditoria**, imutável, por carga: `{fonte}/{AAAAMMDD}/cargas/{idCarga}/{arquivo}`. O reprocessamento relê esse original sem baixar de novo.

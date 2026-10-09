@@ -14,7 +14,7 @@ O bff SHALL expor `POST /api/v1/cargas/upload`, sem autenticação na v0 e na v1
 - **THEN** a resposta é 400 `PARAMETRO_INVALIDO`, e o processor não é chamado
 
 ### Requirement: Tela de carga manual de arquivo
-O front SHALL ter o bloco "Enviar arquivo da fonte" na tela "Dados de mercado" (change `fed-dados-mercado`), com: a escolha da fonte ("B3 – Taxas de swap", "ANBIMA – Mercado secundário (NTN-B)", "Bloomberg – SOFR"), a escolha do arquivo e o botão "Enviar". Todos os textos SHALL estar em pt-BR. Enquanto envia, o botão fica desabilitado. Com sucesso, a tela SHALL mostrar a data-base (`dd/mm/aaaa`), o identificador da carga, a origem, o usuário e os vértices gravados por código. Com erro, SHALL mostrar a mensagem do processor e o código do erro, sem detalhes técnicos. A tela SHALL avisar, antes do envio, que um arquivo da mesma data substitui os dados brutos já gravados daquela fonte.
+O front SHALL ter o bloco "Enviar arquivo da fonte" na tela "Dados de mercado" (change `fed-dados-mercado`), com: a escolha da fonte ("B3 – Taxas de swap", "ANBIMA – Mercado secundário", "Bloomberg – SOFR"), a escolha do arquivo e o botão "Enviar". Todos os textos SHALL estar em pt-BR. Enquanto envia, o botão fica desabilitado. Com sucesso, a tela SHALL mostrar a data-base (`dd/mm/aaaa`), o identificador da carga, a origem, o usuário e os vértices gravados por código. Com erro, SHALL mostrar a mensagem do processor e o código do erro, sem detalhes técnicos. A tela SHALL avisar, antes do envio, que um arquivo da mesma data substitui os dados brutos já gravados daquela fonte.
 
 #### Scenario: Envio com sucesso
 - **WHEN** o operador envia o `TaxaSwap.txt` de `2026-09-14` com a fonte B3

@@ -68,16 +68,20 @@ O processor SHALL baixar `TS{AAMMDD}.ex_` do endereço configurado da B3 (`https
 - **THEN** as demais curvas são gravadas, a `DPL` não entra em `verticesPorCodigo`, e o log da carga cita o código e o motivo
 
 ### Requirement: Obtenção do arquivo ANBIMA por download do site
-O processor SHALL baixar `ms{AAMMDD}.txt` do endereço configurado (`https://www.anbima.com.br/informacoes/merc-sec/arqs/ms{AAMMDD}.txt`), que é texto Latin-1, campos separados por `@` e vírgula decimal. O processor SHALL localizar a linha de cabeçalho (a que começa com `Titulo@`) e ler as colunas pelo nome. Só entram os títulos com `Titulo` = `NTN-B` e `Codigo SELIC` terminado em `99` (título inteiro); as demais são ignoradas. Para cada título:
+O processor SHALL baixar `ms{AAMMDD}.txt` do endereço configurado (`https://www.anbima.com.br/informacoes/merc-sec/arqs/ms{AAMMDD}.txt`), que é texto Latin-1, campos separados por `@` e vírgula decimal. O processor SHALL localizar a linha de cabeçalho (a que começa com `Titulo@`) e ler as colunas pelo nome. O processor SHALL ler todos os títulos do arquivo, sem filtro fixo de `Titulo`: quem decide o que é gravado é o cadastro em `tCurvaPrvdr` (requisito "Gravação nas tabelas brutas"). Títulos cujo `Codigo SELIC` estiver na lista de excluídos da configuração (`processor.anbima.selic-excluidos`, hoje só `760198`, a NTN-B Principal, desmembrada) SHALL ser descartados antes, com registro no log: a tabela não guarda o código SELIC, e o desmembrado gravado com o mesmo vencimento do título inteiro não teria como ser separado. Para cada título:
 - no download, `Data Referencia` (`AAAAMMDD`) MUST ser igual à data pedida, ou a resposta é 503 `ARQUIVO_INDISPONIVEL`;
 - `Tx. Indicativas` é a taxa em percentual ao ano, convertida para `BigDecimal` direto do texto; vazia ou `--` grava nula (o engine descarta o título com `SEM_TAXA`);
 - o prazo é a quantidade de dias corridos entre a data-base e a `Data Vencimento`, sem ajuste de dia útil. O processor MUST NOT usar calendário: o engine reconstrói o vencimento (`data-base + prazo`), ajusta para dia útil e conta os dias úteis (spec `ntnb-anbima-curve-model`).
 
-Arquivo sem a linha de cabeçalho, sem as colunas usadas, sem nenhuma NTN-B inteira, ou com `Data Vencimento` ilegível MUST ser rejeitado inteiro (422 `ARQUIVO_INVALIDO`).
+Arquivo sem a linha de cabeçalho, sem as colunas usadas, sem nenhum título depois dos excluídos, ou com `Data Vencimento` ilegível MUST ser rejeitado inteiro (422 `ARQUIVO_INVALIDO`).
 
 #### Scenario: Só o título inteiro
-- **WHEN** o arquivo traz as NTN-B `760199` e uma NTN-B Principal `760198`
-- **THEN** só os títulos `760199` são gravados
+- **WHEN** o arquivo traz as NTN-B `760199` e uma NTN-B Principal `760198`, e a lista de excluídos é `760198`
+- **THEN** só os títulos `760199` são gravados, e a `760198` aparece no log como excluída
+
+#### Scenario: Título sem curva cadastrada
+- **WHEN** o arquivo traz LTN e só a NTN-B tem curva ligada em `tCurvaPrvdr` (`ANBIMA`/`MS`/`NTN-B`)
+- **THEN** só as NTN-B são gravadas, e o grupo `LTN` aparece no log como código sem curva ligada
 
 #### Scenario: Prazo em dias corridos
 - **WHEN** a data-base é `2026-09-28` e o título vence em `2027-05-15` (sábado)
@@ -127,7 +131,7 @@ As rotas de reprocessamento MUST NOT chamar a fonte. Elas SHALL ler o original m
 - **THEN** o processor relê o original do Blob, grava também a curva nova com o mesmo `idCarga`, e o engine constrói só as curvas que ainda não têm pontos
 
 ### Requirement: Gravação nas tabelas brutas
-Para cada código da carga, o processor SHALL buscar em `tCurvaPrvdr` as curvas de mercado com `iPrvdrDados` = fonte, `cPrvdrMercd` = produto e `cTickerPrvdr` = código: `B3`/`TS`/código da curva; `ANBIMA`/`MS`/`NTN-B`; `BLOOMBERG`/`BLC2`/membro (primeiro termo do ticker, ex.: `S0490Z`). Código sem curva ligada é ignorado e aparece no log. Numa **única transação** por carga, o processor SHALL travar o registro de cada curva mapeada em `tCurvaMercd` (`UPDLOCK, ROWLOCK`, em ordem crescente do nome, tempo limite de 60 segundos), apagar os vértices da curva e data na tabela da fonte, inserir os novos com `cIdtfdUnic` = `MAX + 1` lido com `UPDLOCK, HOLDLOCK` e conferir as contagens antes do commit. As colunas SHALL ser:
+Para cada código da carga, o processor SHALL buscar em `tCurvaPrvdr` as curvas de mercado com `iPrvdrDados` = fonte, `cPrvdrMercd` = produto e `cTickerPrvdr` = código: `B3`/`TS`/código da curva; `ANBIMA`/`MS`/valor da coluna `Titulo` (`NTN-B`, `LTN`, `NTN-F`...), uma consulta por grupo de `Titulo`; `BLOOMBERG`/`BLC2`/membro (primeiro termo do ticker, ex.: `S0490Z`). Código sem curva ligada é ignorado e aparece no log. Numa **única transação** por carga, o processor SHALL travar o registro de cada curva mapeada em `tCurvaMercd` (`UPDLOCK, ROWLOCK`, em ordem crescente do nome, tempo limite de 60 segundos), apagar os vértices da curva e data na tabela da fonte, inserir os novos com `cIdtfdUnic` = `MAX + 1` lido com `UPDLOCK, HOLDLOCK` e conferir as contagens antes do commit. As colunas SHALL ser:
 
 | Tabela | Colunas gravadas | Demais |
 |---|---|---|
