@@ -166,13 +166,12 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
                 "Versão " + versao + " não encontrada para a curva " + nomeCurva));
     }
 
-    private ValidadorParametros.ValidacaoResultado validarEntrada(CurvaMercado curva, CriarConfiguracaoCurvaInput input) {
+    private void validarEntrada(CurvaMercado curva, CriarConfiguracaoCurvaInput input) {
         List<Detalhe> erros = new ArrayList<>();
-        ValidadorParametros.ValidacaoResultado res = validarSemLancar(curva, input, erros);
+        validarSemLancar(curva, input, erros);
         if (!erros.isEmpty()) {
             throw new BusinessException(CadastroErrorCode.DADOS_INVALIDOS, erros.toArray());
         }
-        return res;
     }
 
     private ValidadorParametros.ValidacaoResultado validarSemLancar(CurvaMercado curva, CriarConfiguracaoCurvaInput input, List<Detalhe> erros) {
