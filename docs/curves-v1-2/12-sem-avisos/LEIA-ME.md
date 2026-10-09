@@ -2,7 +2,7 @@
 
 Só o que muda agora. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. O front por enquanto só mostra o texto do erro: sucesso é `200` simples, e o erro vem com mensagem explicada. Os avisos não eram necessários para o fluxo.
 
-## Arquivos (6, todos inteiros, copiar por cima)
+## Arquivos (7, todos inteiros, copiar por cima)
 
 | Arquivo | Onde |
 |---|---|
@@ -11,6 +11,7 @@ Só o que muda agora. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. O
 | `CurvaMercadoService.java` | `application/service/` |
 | `ConfiguracaoCurvaService.java` | `application/service/` |
 | `ConfiguracaoCurvaController.java` | `adapter/in/api/rest/controller/` |
+| `ConfiguracaoCurvaUseCase.java` | `application/port/in/usecase/` |
 | `ConfiguracaoCurvaServiceTest.java` | `src/test/java/.../application/service/` |
 
 ## O que muda
@@ -28,7 +29,7 @@ Só o que muda agora. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. O
 ## À mão
 
 0. **Antes de tudo**, na `DadoVertcCurvaRepositoryPort`: Shift+F6 em `existeConstrucao` → `existeVerticePorNomeCurvaEPeriodo` (o adaptador e os stubs do teste acompanham). Os arquivos desta pasta já usam o nome novo; sem isso, o `ConfiguracaoCurvaService` e o teste ficam em vermelho.
-1. **`ConfiguracaoCurvaUseCase`**: `void validar(String nomeCurva, CriarConfiguracaoCurvaInput input);`, `ConfiguracaoCurva criar(String nomeCurva, CriarConfiguracaoCurvaInput input);` e `void excluir(String nomeCurva, Integer versao);`.
+1. **`ConfiguracaoCurvaUseCase`**: já vem inteiro nesta pasta (`validar` vira `void`, `criar` devolve `ConfiguracaoCurva`, `excluir` recebe `Integer versao`).
 2. **Apagar**: `ConfiguracaoCurvaResultado` e `ConfiguracaoCurvaComAvisosResponse`.
 3. **Testes** que montam `new CurvaMercadoDetalhada(a, b, c, d)` (4 argumentos): Ctrl+F6 (Change Signature) no construtor do record, ou Alt+Enter em cada um.
 4. **Front**: o detalhe da curva não devolve mais `avisos`, e `criar` configuração não devolve `{ configuracao, avisos }`, só a configuração. Confira se algum lugar lê esses campos.
