@@ -13,7 +13,6 @@ import br.com.poc.domain.CompoundingCotacao;
 import br.com.poc.domain.DayCounterCotacao;
 import br.com.poc.domain.SituacaoCurva;
 import br.com.poc.domain.Unidade;
-import br.com.poc.domain.aviso.AvisoCurva;
 import br.com.poc.domain.aviso.Detalhe;
 import br.com.poc.domain.cadastro.*;
 import br.com.poc.domain.evento.EventoCadastroAlterado;
