@@ -82,12 +82,12 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
     public CurvaAuditoria consultarAuditoria(String nome) {
         CurvaMercado curva = obterCurva(nome);
 
-        List<CurvaProvedorCanonicoState> curvaProvedores = provedoresDe(curva.nome());
-        List<ConfiguracaoCanonicoState> configuracoes = configuracaoRepositoryPort != null
-            ? configuracaoRepositoryPort.findByNomeCurva(curva.nome()).stream().map(ConfiguracaoCurva::toCanonicoState).toList()
+        List<CurvaProvedor> provedores = provedoresDe(curva.nome());
+        List<ConfiguracaoCurva> configuracoes = configuracaoRepositoryPort != null
+            ? configuracaoRepositoryPort.findByNomeCurva(curva.nome())
             : List.of();
 
-        return new CurvaAuditoria(curva, curvaProvedores, configuracoes);
+        return new CurvaAuditoria(curva, provedores, configuracoes);
     }
 
     public CurvaMercadoDetalhada detalhar(CurvaMercado curva) {
@@ -154,7 +154,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
     @Transactional
     public CurvaMercadoDetalhada alterar(String nome, CurvaMercadoInput input) {
         CurvaMercado atual = obterCurva(nome);
-        List<CurvaProvedorCanonicoState> curvaProvedores = provedoresDe(atual.nome());
+        List<CurvaProvedor> curvaProvedores = provedoresDe(atual.nome());
 
         List<Detalhe> detalhes = new ArrayList<>();
         validarCampos(input, false, atual, detalhes);
@@ -231,7 +231,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
     @Transactional
     public CurvaMercadoDetalhada inativar(String nome) {
         CurvaMercado atual = obterCurva(nome);
-        List<CurvaProvedorCanonicoState> curvaProvedores = provedoresDe(atual.nome());
+        List<CurvaProvedor> curvaProvedores = provedoresDe(atual.nome());
 
         CurvaMercado inativada = new CurvaMercado(
             atual.codigo(),
@@ -328,15 +328,13 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
             .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(), "Curva " + nome + " não encontrada"));
     }
 
-    private List<CurvaProvedorCanonicoState> provedoresDe(String nomeCurva) {
-        return curvaPrvdrRepositoryPort != null
-            ? curvaPrvdrRepositoryPort.findByNomeCurva(nomeCurva).stream().map(CurvaProvedor::toCanonicoState).toList()
-            : List.of();
+    private List<CurvaProvedor> provedoresDe(String nomeCurva) {
+        return curvaPrvdrRepositoryPort != null ? curvaPrvdrRepositoryPort.findByNomeCurva(nomeCurva) : List.of();
     }
 
-    private ConfiguracaoCanonicoState configuracaoVigenteDe(String nomeCurva) {
+    private ConfiguracaoCurva configuracaoVigenteDe(String nomeCurva) {
         return configuracaoRepositoryPort != null
-            ? configuracaoRepositoryPort.findVigente(nomeCurva, LocalDate.now()).map(ConfiguracaoCurva::toCanonicoState).orElse(null)
+            ? configuracaoRepositoryPort.findVigente(nomeCurva, LocalDate.now()).orElse(null)
             : null;
     }
 

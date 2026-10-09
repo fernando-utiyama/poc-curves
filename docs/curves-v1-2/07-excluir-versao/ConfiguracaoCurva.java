@@ -21,15 +21,4 @@ public record ConfiguracaoCurva(
     public ConfiguracaoCurva comInicioVigencia(LocalDate inicio) {
         return new ConfiguracaoCurva(id, nomeCurva, versao, modeloConstrucao, interpolador, parametros, inicio, fimVigencia);
     }
-
-    public ConfiguracaoCanonicoState toCanonicoState() {
-        return new ConfiguracaoCanonicoState(
-            fimVigencia,
-            inicioVigencia,
-            interpolador,
-            modeloConstrucao,
-            parametros,
-            versao
-        );
-    }
 }

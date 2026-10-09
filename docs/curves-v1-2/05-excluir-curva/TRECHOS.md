@@ -31,7 +31,7 @@ Copiar o `CurvaMercadoService.java` desta pasta por cima do seu (reescrito das s
 - **`inativar`**: sem o aviso `CURVA_COM_FILHAS` (consulta ao provedor `TCEN`), porque curva derivada não entra nesta versão;
 - o resto (criar, consultar, reativar, validações, auditoria) está como nas suas fotos; os trechos repetidos viraram `provedoresDe`, `configuracaoVigenteDe` e `obterCurva`.
 
-Os `...CanonicoState` continuam (saem no item 8). O `CurvaMercadoUseCase` precisa do `void excluir(String nome);`.
+O `CurvaMercadoUseCase` precisa do `void excluir(String nome);`. A auditoria e o detalhe passam a levar `CurvaProvedor` e `ConfiguracaoCurva` direto (pasta `../11-sem-canonico/`).
 
 ## 4. `CadastroErrorCode` (antes de `ERRO_INTERNO`; mapear para 409 junto de `CODIGO_EM_USO`)
 

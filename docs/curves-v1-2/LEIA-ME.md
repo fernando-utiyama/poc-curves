@@ -55,3 +55,12 @@ Substituem arquivos: `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository
 ## Removido por falta de uso (feito pelo usuário)
 
 - `CurvaPrvdrRepositoryPort.findByProvedor(String provedor)` e a implementação no adaptador: só o `inativar` do `CurvaMercadoService` o usava (aviso `CURVA_COM_FILHAS` do provedor `TCEN`), que saiu porque curva derivada não entra nesta versão. Quando a derivada existir, o método volta junto com o aviso.
+
+## Sem "canônico" (item 8), `11-sem-canonico/`
+
+Os dois records passam a carregar o próprio domínio, e o `...CanonicoState` deixa de existir:
+- `CurvaAuditoria.java` e `CurvaMercadoDetalhada.java` (`domain/cadastro/`) **substituem** os seus: `List<CurvaProvedor> provedores` e `ConfiguracaoCurva`/`List<ConfiguracaoCurva>` no lugar dos `...CanonicoState`; sai o `curvaProvedores()`, alias de `provedores()`.
+- `07-excluir-versao/ConfiguracaoCurva.java` já vem sem `toCanonicoState()`; no `CurvaProvedor`, apagar o `toCanonicoState()`.
+- `CurvaAuditoriaExcelGenerator`: só 4 trocas, em `CurvaAuditoriaExcelGenerator-trecho.md`.
+- Depois, apagar `ConfiguracaoCanonicoState` e `CurvaProvedorCanonicoState`.
+- **Atenção ao JSON do front:** os DTOs de resposta (`CurvaMercadoDetalhadaResponse`, `CurvaProvedorResponse`, `ConfiguracaoCurvaResponse`) montam o JSON a partir desses tipos. Trocar o tipo de origem pode acrescentar campos (`id`, `nomeCurva`) ou mudar nomes: confira o JSON no Swagger depois.
