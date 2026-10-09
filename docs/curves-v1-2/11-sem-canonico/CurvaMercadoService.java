@@ -91,7 +91,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
     }
 
     public CurvaMercadoDetalhada detalhar(CurvaMercado curva) {
-        return new CurvaMercadoDetalhada(curva, provedoresDe(curva.nome()), configuracaoVigenteDe(curva.nome()), List.of());
+        return new CurvaMercadoDetalhada(curva, provedoresDe(curva.nome()), configuracaoVigenteDe(curva.nome()));
     }
 
     @Override
@@ -147,7 +147,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
 
         publicarEvento(salva.codigo(), salva.nome(), "CRIACAO", null, salva);
 
-        return new CurvaMercadoDetalhada(salva, List.of(), null, List.of());
+        return new CurvaMercadoDetalhada(salva, List.of(), null);
     }
 
     @Override
@@ -224,7 +224,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
 
         publicarEvento(salva.codigo(), salva.nome(), "ALTERACAO", atual, salva);
 
-        return new CurvaMercadoDetalhada(salva, curvaProvedores, configuracaoVigenteDe(salva.nome()), List.of());
+        return new CurvaMercadoDetalhada(salva, curvaProvedores, configuracaoVigenteDe(salva.nome()));
     }
 
     @Override
@@ -258,7 +258,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
 
         publicarEvento(salva.codigo(), salva.nome(), "INATIVACAO", atual, salva);
 
-        return new CurvaMercadoDetalhada(salva, curvaProvedores, configuracaoVigenteDe(salva.nome()), List.of());
+        return new CurvaMercadoDetalhada(salva, curvaProvedores, configuracaoVigenteDe(salva.nome()));
     }
 
     @Override
@@ -291,7 +291,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
 
         publicarEvento(salva.codigo(), salva.nome(), "REATIVACAO", atual, salva);
 
-        return new CurvaMercadoDetalhada(salva, List.of(), null, List.of());
+        return new CurvaMercadoDetalhada(salva, List.of(), null);
     }
 
     /**
