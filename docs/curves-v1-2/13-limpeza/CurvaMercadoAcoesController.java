@@ -24,9 +24,7 @@ public class CurvaMercadoAcoesController {
     private final CurvaMercadoAcoesService service;
 
     @Operation(summary = "Construir curva da data",
-        description = "Pede ao engine para construir a curva na data, a partir do dado bruto e da configuração vigente, e grava vértices e interpolada. "
-            + "forcarRecalculo=true refaz uma data que já foi construída. fonte e produto vão juntos e escolhem uma origem secundária do dado bruto; "
-            + "sem eles, vale a origem principal. Parâmetro inválido responde 400 sem chamar o engine")
+        description = "Constrói os vértices e a interpolada. forcarRecalculo=true refaz data já construída")
     @PostMapping("/construcao")
     public ResponseEntity<String> construir(
             @PathVariable String nome,
@@ -38,8 +36,7 @@ public class CurvaMercadoAcoesController {
     }
 
     @Operation(summary = "Regravar interpolada da data",
-        description = "Pede ao engine para recalcular a interpolada (um ponto por dia corrido) a partir dos vértices já construídos da data. "
-            + "Não reconstrói os vértices nem lê o dado bruto")
+        description = "Recalcula a interpolada a partir dos vértices já construídos")
     @PostMapping("/interpolada")
     public ResponseEntity<String> regravar(
             @PathVariable String nome,
