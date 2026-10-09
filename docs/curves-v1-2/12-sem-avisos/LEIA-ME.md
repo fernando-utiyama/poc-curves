@@ -27,6 +27,7 @@ Só o que muda agora. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. O
 
 ## À mão
 
+0. **Antes de tudo**, na `DadoVertcCurvaRepositoryPort`: Shift+F6 em `existeConstrucao` → `existeVerticePorNomeCurvaEPeriodo` (o adaptador e os stubs do teste acompanham). Os arquivos desta pasta já usam o nome novo; sem isso, o `ConfiguracaoCurvaService` e o teste ficam em vermelho.
 1. **`ConfiguracaoCurvaUseCase`**: `void validar(String nomeCurva, CriarConfiguracaoCurvaInput input);`, `ConfiguracaoCurva criar(String nomeCurva, CriarConfiguracaoCurvaInput input);` e `void excluir(String nomeCurva, Integer versao);`.
 2. **Apagar**: `ConfiguracaoCurvaResultado` e `ConfiguracaoCurvaComAvisosResponse`.
 3. **Testes** que montam `new CurvaMercadoDetalhada(a, b, c, d)` (4 argumentos): Ctrl+F6 (Change Signature) no construtor do record, ou Alt+Enter em cada um.
