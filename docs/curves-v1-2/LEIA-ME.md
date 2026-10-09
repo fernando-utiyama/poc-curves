@@ -16,7 +16,7 @@ Todos os arquivos desta pasta já identificam a curva pelo **nome** (`findByNome
    - `ConfiguracaoCurvaService.java` → `application/service/` (substitui)
    - `ConfiguracaoCurvaController.java` → `adapter/in/api/rest/controller/` (substitui)
    - `ConfiguracaoCurvaServiceTest.java` → teste do serviço (substitui)
-3. Item 5, `05-excluir-curva/`: **dentro do `CurvaMercadoService`** (sem service novo): os trechos de `TRECHOS.md` (use case, porta e adaptador da curva, método e campo no service, código de erro, método no controller) o `CurvaMercadoController.java` completo (com `{nome}`, o delete e a auditoria tipada) e o teste novo `CurvaMercadoServiceExcluirTest.java`.
+3. Item 5, `05-excluir-curva/`: **dentro do `CurvaMercadoService`** (sem service novo): os trechos de `TRECHOS.md` (use case, porta e adaptador da curva, método e campo no service, código de erro, método no controller) o `CurvaMercadoController.java` completo (com `{nome}`, o delete e a auditoria tipada) e os 3 testes para colar no seu `CurvaMercadoServiceTest` (seção 6 do `TRECHOS.md`).
 4. Item 6, `06-apagar-construcao/`:
    - `ApagarConstrucaoService.java` → `application/service/`
    - `CurvaMercadoAcoesController.java` → `adapter/in/api/rest/controller/` (substitui; ganha só o `DELETE /vertices` e o campo `apagarConstrucaoService`)

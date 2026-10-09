@@ -47,9 +47,69 @@ Copiar o `CurvaMercadoController.java` desta pasta por cima do seu (`adapter/in/
 - `auditoria` (item 8): sem `ResponseEntity<?>`. O JSON devolve `CurvaAuditoria` e a planilha é o método `auditoriaXlsx` (`params = "formato=xlsx"`); `formato` que não seja `json` nem `xlsx` continua dando 400.
 - O resto (listar, consultar, criar, alterar) está como estava.
 
-## 6. Teste
+## 6. Testes: acrescentar no seu `CurvaMercadoServiceTest`
 
-`CurvaMercadoServiceExcluirTest.java` (nesta pasta), teste novo; os 3 casos: exclui sem histórico, recusa com construído ou bruto, curva inexistente.
+Os mocks (`curvaRepositoryPort`, `curvaPrvdrRepositoryPort`, `configuracaoRepositoryPort`, `eventosPort`), o `service` e a curva de exemplo já existem no seu teste: use os nomes que estão lá. Se a curva de exemplo tiver outro nome que não `DIxPRE`, troque nos três testes.
+
+Imports que podem faltar: `org.springframework.dao.DataIntegrityViolationException`, `static org.mockito.Mockito.doThrow`, `static org.mockito.Mockito.never`, `static org.mockito.Mockito.verifyNoInteractions`.
+
+Auxiliares (se o teste ainda não tiver algo parecido):
+
+```java
+private final CurvaProvedor provedorB3 = new CurvaProvedor(10L, "DIxPRE", "B3", "TS", "PRE", 1);
+
+private ConfiguracaoCurva versao(long id, int versao) {
+    ParametrosCalculo params = new ParametrosCalculo(
+        BaseInterpolacao.Discount, DayCounter.Business252, Frequency.Annual,
+        "Brazil", "Settlement", BusinessDayConvention.Following,
+        Extrapolacao.Disabled, Extrapolacao.Disabled, "10Y", 4, ModoArredondamento.HALF_UP,
+        null, null, null, Map.of());
+    return new ConfiguracaoCurva(id, "DIxPRE", versao, "TAXA_SWAP_B3", "Linear", params, LocalDate.of(2026, 1, 1), null);
+}
+```
+
+Os três testes:
+
+```java
+@Test
+@DisplayName("Excluir: curva nunca construída sai com provedores e configurações")
+void excluiCurvaSemHistorico() {
+    when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
+    when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(versao(1L, 1), versao(2L, 2)));
+    when(curvaPrvdrRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(provedorB3));
+
+    service.excluir("DIxPRE");
+
+    verify(configuracaoRepositoryPort).excluir(1L);
+    verify(configuracaoRepositoryPort).excluir(2L);
+    verify(curvaPrvdrRepositoryPort).excluir(10L, "DIxPRE");
+    verify(curvaRepositoryPort).excluir("DIxPRE");
+    verify(eventosPort).publicarCadastroAlterado(any());
+}
+
+@Test
+@DisplayName("Excluir: o banco recusa (ainda há construído ou dado bruto) e o service responde CURVA_COM_HISTORICO")
+void excluirRecusaCurvaComHistorico() {
+    when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
+    doThrow(new DataIntegrityViolationException("FK_tCurvaMercd_tDadoVertcCurva")).when(curvaRepositoryPort).excluir("DIxPRE");
+
+    BusinessException ex = assertThrows(BusinessException.class, () -> service.excluir("DIxPRE"));
+
+    assertEquals(CadastroErrorCode.CURVA_COM_HISTORICO.getCode(), ex.getErrorCode());
+    verify(eventosPort, never()).publicarCadastroAlterado(any());
+}
+
+@Test
+@DisplayName("Excluir: curva inexistente gera NAO_ENCONTRADO")
+void excluirCurvaInexistente() {
+    when(curvaRepositoryPort.findByNome("XXX")).thenReturn(Optional.empty());
+
+    assertThrows(NotFoundException.class, () -> service.excluir("XXX"));
+    verifyNoInteractions(configuracaoRepositoryPort, eventosPort);
+}
+```
+
+Com Mockito estrito: o primeiro teste não faz stub de `findByNomeCurva` com outro valor, então não sobra stub sem uso.
 
 ## 7. Curva derivada
 
