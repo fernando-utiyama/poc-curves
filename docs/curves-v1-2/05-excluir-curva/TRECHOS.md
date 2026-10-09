@@ -28,7 +28,8 @@ Copiar o `CurvaMercadoService.java` desta pasta por cima do seu (reescrito das s
 - **`excluir`** novo. Apaga as configurações, os provedores e a curva; se o banco recusar por chave estrangeira (ainda há vértice construído ou dado bruto), o `DataIntegrityViolationException` vira 409 `CURVA_COM_HISTORICO` com a mensagem "A curva ainda tem dados vinculados (vértices construídos ou dado bruto dos provedores). Apague as datas construídas e o dado bruto antes, ou use a inativação". Tudo volta atrás (a transação desfaz). O construtor continua com 4 argumentos;
 - **`listar`**: ordena por código e desempata pelo nome, porque o código é opcional e a paginação ficava instável;
 - **`alterar`**: `Objects.equals(novoCodigo, atual.codigo())` no lugar de `novoCodigo.equals(...)`, que dava `NullPointerException` em curva sem código;
-- o resto (criar, consultar, inativar, reativar, validações, auditoria) está como nas suas fotos; os trechos repetidos viraram `provedoresDe`, `configuracaoVigenteDe` e `obterCurva`.
+- **`inativar`**: sem o aviso `CURVA_COM_FILHAS` (consulta ao provedor `TCEN`), porque curva derivada não entra nesta versão;
+- o resto (criar, consultar, reativar, validações, auditoria) está como nas suas fotos; os trechos repetidos viraram `provedoresDe`, `configuracaoVigenteDe` e `obterCurva`.
 
 Os `...CanonicoState` continuam (saem no item 8). O `CurvaMercadoUseCase` precisa do `void excluir(String nome);`.
 
@@ -52,4 +53,4 @@ Copiar o `CurvaMercadoController.java` desta pasta por cima do seu (`adapter/in/
 
 ## 7. Curva derivada
 
-Não existe na curves (confirmado em 09/10/2026), então a exclusão não checa "é componente de outra". O `inativar` já avisa `CURVA_COM_FILHAS` por meio do provedor `TCEN`; quando a derivada existir, o `excluir` pode usar a mesma consulta e responder 409 `CURVA_COMPONENTE`.
+Não existe na curves (confirmado em 09/10/2026), então a exclusão não checa "é componente de outra". Quando a derivada existir (provedor `TCEN`), entram o aviso no `inativar` e o 409 `CURVA_COMPONENTE` no `excluir`.

@@ -14,7 +14,6 @@ import br.com.poc.domain.DayCounterCotacao;
 import br.com.poc.domain.SituacaoCurva;
 import br.com.poc.domain.Unidade;
 import br.com.poc.domain.aviso.AvisoCurva;
-import br.com.poc.domain.aviso.CodigoAvisoCurva;
 import br.com.poc.domain.aviso.Detalhe;
 import br.com.poc.domain.cadastro.*;
 import br.com.poc.domain.evento.EventoCadastroAlterado;
@@ -39,7 +38,6 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
 
     private static final Pattern CODIGO_PATTERN = Pattern.compile("^[A-Z0-9_]{1,50}$");
     private static final Set<String> PAISES_VALIDOS = Set.of(Locale.getISOCountries());
-    private static final String PROVEDOR_DERIVADA = "TCEN";
 
     private final CurvaMercdRepositoryPort repositoryPort;
     private final CurvaPrvdrRepositoryPort curvaPrvdrRepositoryPort;
@@ -261,25 +259,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
 
         publicarEvento(salva.codigo(), salva.nome(), "INATIVACAO", atual, salva);
 
-        List<AvisoCurva> avisos = new ArrayList<>();
-        if (curvaPrvdrRepositoryPort != null) {
-            List<CurvaProvedor> tcenProvedores = curvaPrvdrRepositoryPort.findByProvedor(PROVEDOR_DERIVADA);
-            List<Detalhe> filhasAtivas = new ArrayList<>();
-            for (CurvaProvedor lig : tcenProvedores) {
-                if (atual.nome().equals(lig.tickerProvedor())) {
-                    repositoryPort.findByNome(lig.nomeCurva()).ifPresent(parent -> {
-                        if (parent.situacao() == SituacaoCurva.ATIVO) {
-                            filhasAtivas.add(new Detalhe("nome", null, parent.nome(), "Curva derivada ativa"));
-                        }
-                    });
-                }
-            }
-            if (!filhasAtivas.isEmpty()) {
-                avisos.add(new AvisoCurva(CodigoAvisoCurva.CURVA_COM_FILHAS, "Curva é componente de curva derivada ativa", filhasAtivas));
-            }
-        }
-
-        return new CurvaMercadoDetalhada(salva, curvaProvedores, configuracaoVigenteDe(salva.nome()), avisos);
+        return new CurvaMercadoDetalhada(salva, curvaProvedores, configuracaoVigenteDe(salva.nome()), List.of());
     }
 
     @Override
