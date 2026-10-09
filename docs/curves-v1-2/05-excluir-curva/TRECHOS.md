@@ -23,43 +23,13 @@ public void excluir(String nome) {
 
 ## 3. `CurvaMercadoService`
 
-Campo novo, **depois de `eventosPort`** (o construtor do Lombok segue a ordem dos campos; testes que montam o service à mão ganham o 5º argumento):
+Copiar o `CurvaMercadoService.java` desta pasta por cima do seu (reescrito das suas fotos; não passou por compilação). O que muda:
+- **`excluir`** novo, e o campo `dadosConstruidosPort` depois de `eventosPort` (o 5º argumento do construtor do Lombok: testes que montam o service à mão ganham esse argumento);
+- **`listar`**: a ordenação ganha o nome como desempate (`tickerIdtfdUnic` e depois `tickerIndcd`), porque o código é opcional e a paginação ficava instável com várias curvas sem código;
+- **`alterar`**: `Objects.equals(novoCodigo, atual.codigo())` no lugar de `novoCodigo.equals(...)`, que dava `NullPointerException` em curva legada sem código;
+- o resto (criar, consultar, inativar, reativar, validações, auditoria) está como nas suas fotos; os trechos repetidos de provedores e configuração vigente viraram métodos privados (`provedoresDe`, `configuracaoVigenteDe`) e a busca por nome virou `obterCurva`.
 
-```java
-private final DadosConstruidosPort dadosConstruidosPort;
-```
-
-Import: `br.com.poc.application.port.out.DadosConstruidosPort` (`LinhasPorTabela` já vem de `domain.cadastro.*`).
-
-Método novo, depois do `reativar`:
-
-```java
-@Override
-@Transactional
-public void excluir(String nome) {
-    CurvaMercado curva = repositoryPort.findByNome(nome)
-        .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(), "Curva " + nome + " não encontrada"));
-
-    List<LinhasPorTabela> dependentes = dadosConstruidosPort.dependentes(curva.nome());
-    if (!dependentes.isEmpty()) {
-        Object[] detalhes = dependentes.stream()
-            .map(d -> new Detalhe("nome", null, nome, d.linhas() + " linha(s) em " + d.tabela()
-                + "; apague antes (construído pelo delete da data, dado bruto pelas rotas primaria-*) ou use a inativação"))
-            .toArray();
-        throw new BusinessException(CadastroErrorCode.CURVA_COM_HISTORICO, detalhes);
-    }
-
-    configuracaoRepositoryPort.findByNomeCurva(curva.nome())
-        .forEach(c -> configuracaoRepositoryPort.excluir(c.id()));
-    curvaPrvdrRepositoryPort.findByNomeCurva(curva.nome())
-        .forEach(p -> curvaPrvdrRepositoryPort.excluir(p.idCurvaProvedor(), curva.nome()));
-    repositoryPort.excluir(curva.nome());
-
-    publicarEvento(curva.codigo(), curva.nome(), "EXCLUSAO", curva, null);
-}
-```
-
-Conferir: a assinatura de `curvaPrvdrRepositoryPort.excluir(...)` (supus `excluir(idCurvaProvedor, nomeCurva)`) e o nome do getter do id do `CurvaProvedor`.
+Os `...CanonicoState` continuam (sai no item 8); a conferência final é compilar, porque o `CurvaMercadoUseCase` precisa do `void excluir(String nome);`.
 
 ## 4. `CadastroErrorCode` (antes de `ERRO_INTERNO`; mapear para 409 junto de `CODIGO_EM_USO`)
 

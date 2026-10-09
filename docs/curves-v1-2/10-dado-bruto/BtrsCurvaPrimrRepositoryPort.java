@@ -9,7 +9,7 @@ import java.util.Optional;
 
 public interface BtrsCurvaPrimrRepositoryPort {
 
-    Integer proximoId();
+    int proximoId();
 
     List<BtrsCurvaPrimr> findByNomeCurvaAndDataBase(String nomeCurva, LocalDate dataBase);
 
