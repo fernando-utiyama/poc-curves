@@ -1,6 +1,6 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de comportamento nem de rota: só tira código sobrando e repartido em métodos. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Os 4 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/12-sem-avisos/`).
+Sem mudança de comportamento nem de rota: só tira código sobrando e repartido em métodos. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Os 6 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/12-sem-avisos/`).
 
 | Arquivo | Onde |
 |---|---|
@@ -8,6 +8,8 @@ Sem mudança de comportamento nem de rota: só tira código sobrando e repartido
 | `ConfiguracaoCurvaService.java` | `application/service/` |
 | `CurvaMercadoUseCase.java` | `application/port/in/usecase/` |
 | `CurvaMercado.java` | `domain/cadastro/` |
+| `CurvaProvedorService.java` | `application/service/` |
+| `CurvaProvedorUseCase.java` | `application/port/in/usecase/` (deduzido do service: confira os imports dos inputs) |
 
 ## O que mudou
 
@@ -89,3 +91,19 @@ private static boolean temTexto(String texto) {
 ```
 
 Imports: `org.springframework.data.jpa.domain.Specification`, `jakarta.persistence.criteria.Subquery` e `java.util.Locale`; saem `Predicate`, `Root`, `CriteriaQuery`, `CriteriaBuilder` e `ArrayList`, se ficarem sem uso. Mudança única de comportamento: `toLowerCase(Locale.ROOT)` (sem isso, num servidor com locale turco, "I" vira "ı" e o filtro erra).
+
+## `CurvaProvedorService` (provedor da curva)
+
+**O que sai (343 → ~170 linhas)**
+- Todo o bloco `TCEN` (`validarCurvaProvedorTcen`, `verificarCicloTcen`, `detectarCiclo`): curva derivada não existe nesta versão, e o provedor `TCEN` não está cadastrado, então o `existsById` já respondia 404 antes dessas regras. Volta junto com a derivada.
+- Os avisos (`gerarAvisos`, `isOrigemCompativelComModelo` com os nomes de modelo escritos no código): mesmo critério da configuração. `criar` e `alterar` devolvem só o `CurvaProvedor`, e `excluir` é `void`.
+- O segundo construtor, o `@Autowired(required = false)` e o `ConfiguracaoCurvaRepositoryPort`, que só existiam para os avisos (agora `@RequiredArgsConstructor` com 4 portas).
+- O `findByIdAndNomeCurva` repetido no `alterar` e no `excluir` virou `obterProvedorDaCurva`; as três validações de campos usam `recusarSeHouverErros`.
+
+**À mão**
+1. **Apagar `CurvaProvedorResultado`**. No `CurvaProvedorController`: `criar` devolve `201` com `CurvaProvedorResponse.fromDomain(...)`, `alterar` devolve `200` com o response, e `excluir` devolve `200` vazio.
+2. **Ficou sem uso**: `ConfiguracaoCurvaRepositoryPort.findModeloConstrucaoVigente` (porta, adaptador e repositório JPA) e os códigos `CURVA_SEM_ORIGEM` e `ORIGEM_INCOMPATIVEL_COM_MODELO` do `CodigoAvisoCurva`. Confirme com Alt+F7 antes de apagar.
+3. **Testes**: `CurvaProvedorServiceTest` monta o service com 4 mocks; saem os testes de TCEN e de avisos, e os que liam `resultado.curvaProvedor()` passam a ler o retorno direto. `CurvaProvedorControllerWebTest` também perde os avisos.
+4. **Front**: as respostas de provedor da curva não trazem mais `avisos`.
+
+**Não mexi, mas vale uma nota (hexagonal)**: o service importa `SpringDataProvedorRepository` (de `adapter.out`) e `CurvaProvedorCurvaResponse` (de `adapter.in`). A aplicação não deveria depender dos dois lados. O certo é uma porta `ProvedorRepositoryPort.existsByNome` e um record de domínio no lugar do response; fica para outra rodada porque mexe em mais arquivos.
