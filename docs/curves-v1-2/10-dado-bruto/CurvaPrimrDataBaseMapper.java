@@ -1,9 +1,9 @@
 package br.com.poc.adapter.out.persistence;
 
-import br.com.poc.adapter.out.persistence.repository.CurvaPrimrDataGravadaProjection;
+import br.com.poc.adapter.out.persistence.repository.CurvaPrimrDataBaseProjection;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.domain.SituacaoCurva;
-import br.com.poc.domain.cadastro.CurvaPrimrDataGravada;
+import br.com.poc.domain.cadastro.CurvaPrimrDataBase;
 import br.com.poc.domain.cadastro.CurvaProvedor;
 
 import java.util.ArrayList;
@@ -15,9 +15,9 @@ import java.util.Map;
  * O que a listagem do dado bruto tem de igual nas três fontes (B3, ANBIMA e Bloomberg): os tickers do provedor
  * por curva e a conversão da linha agregada no resumo. Cada adaptador só informa o provedor e o produto.
  */
-public final class CurvaPrimrDataGravadaMapper {
+public final class CurvaPrimrDataBaseMapper {
 
-    private CurvaPrimrDataGravadaMapper() {}
+    private CurvaPrimrDataBaseMapper() {}
 
     /** Nome da curva → tickers do provedor ligados a ela em tCurvaPrvdr (ex.: PRE na B3, NTN-B na ANBIMA). */
     public static Map<String, List<String>> tickersPorCurva(CurvaPrvdrRepositoryPort port, String provedor, String produto) {
@@ -30,10 +30,10 @@ public final class CurvaPrimrDataGravadaMapper {
         return tickers;
     }
 
-    public static List<CurvaPrimrDataGravada> paraDatasGravadas(List<CurvaPrimrDataGravadaProjection> linhas,
+    public static List<CurvaPrimrDataBase> paraDatasBase(List<CurvaPrimrDataBaseProjection> linhas,
                                                       Map<String, List<String>> tickersPorCurva) {
         return linhas.stream()
-            .map(p -> new CurvaPrimrDataGravada(
+            .map(p -> new CurvaPrimrDataBase(
                 p.getCodigo(),
                 p.getNome(),
                 situacaoOuNula(p.getSituacao()),

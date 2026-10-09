@@ -40,17 +40,17 @@ A troca de `codigo` para `nome` (a PK) no `CurvaMercadoUseCase`, no service, no 
 
 Começar por `10-dado-bruto/LEIA-ME.md`: deixa os três repositórios, a entidade da B3 e a projection com a mesma forma (B3, ANBIMA e Bloomberg).
 
-Substituem arquivos: `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository.java` e `BbergCurvaPrimrRepository.java` (`adapter/out/persistence/repository/`), `CurvaPrimrDataGravada.java` (`domain/cadastro/`), `CurvaPrimrDataGravadaResponse.java` (`adapter/in/api/rest/dto/`) e `BtrsCurvaPrimrRepositoryPort.java` (`application/port/out/`). o `LEIA-ME.md` da pasta traz o que trocar à mão no repositório JPA, no adaptador e no service; `BtrsCurvaPrimrServiceListagemTest.java` é teste novo.
+Substituem arquivos: `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository.java` e `BbergCurvaPrimrRepository.java` (`adapter/out/persistence/repository/`), `CurvaPrimrDataBase.java` (`domain/cadastro/`), `CurvaPrimrDataBaseResponse.java` (`adapter/in/api/rest/dto/`) e `BtrsCurvaPrimrRepositoryPort.java` (`application/port/out/`). o `LEIA-ME.md` da pasta traz o que trocar à mão no repositório JPA, no adaptador e no service; `BtrsCurvaPrimrServiceListagemTest.java` é teste novo.
 
 - Sem `de` e `ate`: uma linha por curva, com a última data gravada. Com período: como antes.
 - `codigosNaFonte` vira `tickersProvedor`; a query deixa de esconder curvas sem código.
 - Sem calendário: os dias úteis sem dado ficaram para a v2 (`docs/backlog-v2.md`).
 - Item 1 (`produces` JSON): nos 3 controllers (`BbergCurvaPrimrController`, `AnbmaCurvaPrimrController` e `BtrsCurvaPrimrController`), `@RequestMapping(value = "/api/v1/curvas-mercado", produces = MediaType.APPLICATION_JSON_VALUE)` e importar `org.springframework.http.MediaType`.
-- ANBIMA e Bloomberg: veja o `LEIA-ME.md` da pasta `10-dado-bruto/` (guia único das três fontes). O `CurvaPrimrDataGravadaMapper.java` tira da listagem a duplicação entre as três fontes (item 9 do backlog).
+- ANBIMA e Bloomberg: veja o `LEIA-ME.md` da pasta `10-dado-bruto/` (guia único das três fontes). O `CurvaPrimrDataBaseMapper.java` tira da listagem a duplicação entre as três fontes (item 9 do backlog).
 
 ## Renomeado: `codigoNaFonte` → `tickerProvedor` (provedor da curva)
 
-É o `cTickerPrvdr` da `tCurvaPrvdr`. No repositório da curves, trocar com Shift+F6 (renomear), para a IDE acompanhar os usos: o campo do record `CriarCurvaProvedorRequest` e do `CriarCurvaProvedorInput`, o record de domínio `CurvaProvedor` (`codigoNaFonte()` → `tickerProvedor()`), o parâmetro do `buscarCurvasProvedor(provedor, produto, tickerProvedor)`, o campo da `CurvaPrvdrEntity` (a coluna fica no `@Column`), as respostas e o filtro `?tickerProvedor=` das rotas `GET /curvas-mercado/provedores` e `/dados-mercado/{provedor}`. O `CurvaPrimrDataGravadaMapper` e o `CurvaMercadoService` desta pasta já usam o nome novo. O `CurvaProvedor` do **engine** é outro record e não muda.
+É o `cTickerPrvdr` da `tCurvaPrvdr`. No repositório da curves, trocar com Shift+F6 (renomear), para a IDE acompanhar os usos: o campo do record `CriarCurvaProvedorRequest` e do `CriarCurvaProvedorInput`, o record de domínio `CurvaProvedor` (`codigoNaFonte()` → `tickerProvedor()`), o parâmetro do `buscarCurvasProvedor(provedor, produto, tickerProvedor)`, o campo da `CurvaPrvdrEntity` (a coluna fica no `@Column`), as respostas e o filtro `?tickerProvedor=` das rotas `GET /curvas-mercado/provedores` e `/dados-mercado/{provedor}`. O `CurvaPrimrDataBaseMapper` e o `CurvaMercadoService` desta pasta já usam o nome novo. O `CurvaProvedor` do **engine** é outro record e não muda.
 
 ## Removido por falta de uso (feito pelo usuário)
 

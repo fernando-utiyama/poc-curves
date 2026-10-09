@@ -44,7 +44,7 @@ public interface BtrsCurvaPrimrRepository extends JpaRepository<BtrsCurvaPrimrEn
         ORDER BY p.dBaseReft DESC, m.cTickerIndcd ASC
         """,
         nativeQuery = true)
-    List<CurvaPrimrDataGravadaProjection> listarDatasGravadas(
+    List<CurvaPrimrDataBaseProjection> listarDatasBase(
         @Param("de") LocalDate de,
         @Param("ate") LocalDate ate,
         @Param("codigo") String codigo,
@@ -68,7 +68,7 @@ public interface BtrsCurvaPrimrRepository extends JpaRepository<BtrsCurvaPrimrEn
         ORDER BY m.cTickerIndcd ASC
         """,
         nativeQuery = true)
-    List<CurvaPrimrDataGravadaProjection> listarUltimaDataGravada(
+    List<CurvaPrimrDataBaseProjection> listarUltimaDataBase(
         @Param("codigo") String codigo,
         @Param("nome") String nome
     );

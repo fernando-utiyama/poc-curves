@@ -2,11 +2,11 @@ package br.com.poc.adapter.out.persistence;
 
 import br.com.poc.adapter.out.persistence.entity.BbergCurvaPrimrEntity;
 import br.com.poc.adapter.out.persistence.repository.BbergCurvaPrimrRepository;
-import br.com.poc.adapter.out.persistence.repository.CurvaPrimrDataGravadaProjection;
+import br.com.poc.adapter.out.persistence.repository.CurvaPrimrDataBaseProjection;
 import br.com.poc.application.port.out.BbergCurvaPrimrRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.domain.cadastro.BbergCurvaPrimr;
-import br.com.poc.domain.cadastro.CurvaPrimrDataGravada;
+import br.com.poc.domain.cadastro.CurvaPrimrDataBase;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -81,20 +81,20 @@ public class BbergCurvaPrimrPersistenceAdapter implements BbergCurvaPrimrReposit
     }
 
     @Override
-    public List<CurvaPrimrDataGravada> listarDatasGravadas(LocalDate de, LocalDate ate, String codigo, String nome) {
-        return paraDatasGravadas(repository.listarDatasGravadas(de, ate, codigo, nome));
+    public List<CurvaPrimrDataBase> listarDatasBase(LocalDate de, LocalDate ate, String codigo, String nome) {
+        return paraDatasBase(repository.listarDatasBase(de, ate, codigo, nome));
     }
 
     @Override
-    public List<CurvaPrimrDataGravada> listarUltimaDataGravada(String codigo, String nome) {
-        return paraDatasGravadas(repository.listarUltimaDataGravada(codigo, nome));
+    public List<CurvaPrimrDataBase> listarUltimaDataBase(String codigo, String nome) {
+        return paraDatasBase(repository.listarUltimaDataBase(codigo, nome));
     }
 
-    private List<CurvaPrimrDataGravada> paraDatasGravadas(List<CurvaPrimrDataGravadaProjection> linhas) {
+    private List<CurvaPrimrDataBase> paraDatasBase(List<CurvaPrimrDataBaseProjection> linhas) {
         // sem filtro de produto, como estava
-        return CurvaPrimrDataGravadaMapper.paraDatasGravadas(
+        return CurvaPrimrDataBaseMapper.paraDatasBase(
             linhas,
-            CurvaPrimrDataGravadaMapper.tickersPorCurva(curvaPrvdrRepositoryPort, PROVEDOR, null));
+            CurvaPrimrDataBaseMapper.tickersPorCurva(curvaPrvdrRepositoryPort, PROVEDOR, null));
     }
 
     private BbergCurvaPrimr toVerticeDomain(BbergCurvaPrimrEntity e) {

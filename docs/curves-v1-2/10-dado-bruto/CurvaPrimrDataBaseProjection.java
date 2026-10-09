@@ -3,7 +3,7 @@ package br.com.poc.adapter.out.persistence.repository;
 import java.time.LocalDate;
 
 /** Uma linha da listagem do dado bruto (curva, data-base e o que existe nela). Usada pelos três repositórios do bruto. */
-public interface CurvaPrimrDataGravadaProjection {
+public interface CurvaPrimrDataBaseProjection {
 
     String getCodigo();
 
