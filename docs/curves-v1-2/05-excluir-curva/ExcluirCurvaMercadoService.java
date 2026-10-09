@@ -27,7 +27,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ExcluirCurvaMercadoService implements ExcluirCurvaMercadoUseCase {
 
-    /** Provedor que marca a curva derivada: o código da curva componente fica em codigoNaFonte. */
+    /** Provedor que marca a curva derivada: o nome da curva componente fica em codigoNaFonte. */
     private static final String PROVEDOR_DERIVADA = "TCEN";
 
     private final CurvaMercdRepositoryPort curvaRepositoryPort;
@@ -38,23 +38,23 @@ public class ExcluirCurvaMercadoService implements ExcluirCurvaMercadoUseCase {
 
     @Override
     @Transactional
-    public void excluir(String codigo) {
-        CurvaMercado curva = curvaRepositoryPort.findByCodigo(codigo)
-            .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(), "Curva " + codigo + " não encontrada"));
+    public void excluir(String nome) {
+        CurvaMercado curva = curvaRepositoryPort.findByNome(nome)
+            .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(), "Curva " + nome + " não encontrada"));
 
         List<LinhasPorTabela> dependentes = dadosConstruidosPort.dependentes(curva.nome());
         if (!dependentes.isEmpty()) {
             Object[] detalhes = dependentes.stream()
-                .map(d -> new Detalhe("codigo", null, codigo, d.linhas() + " linha(s) em " + d.tabela()
+                .map(d -> new Detalhe("nome", null, nome, d.linhas() + " linha(s) em " + d.tabela()
                     + "; apague antes (construído pelo delete da data, dado bruto pelas rotas primaria-*) ou use a inativação"))
                 .toArray();
             throw new BusinessException(CadastroErrorCode.CURVA_COM_HISTORICO, detalhes);
         }
 
-        List<CurvaProvedor> derivadas = curvaPrvdrRepositoryPort.buscarCurvasProvedor(PROVEDOR_DERIVADA, null, codigo);
+        List<CurvaProvedor> derivadas = curvaPrvdrRepositoryPort.buscarCurvasProvedor(PROVEDOR_DERIVADA, null, nome);
         if (!derivadas.isEmpty()) {
             Object[] detalhes = derivadas.stream()
-                .map(d -> new Detalhe("codigo", null, codigo, "Componente da curva " + d.nomeCurva()))
+                .map(d -> new Detalhe("nome", null, nome, "Componente da curva " + d.nomeCurva()))
                 .toArray();
             throw new BusinessException(CadastroErrorCode.CURVA_COMPONENTE, detalhes);
         }

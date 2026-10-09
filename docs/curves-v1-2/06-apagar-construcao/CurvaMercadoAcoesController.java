@@ -18,7 +18,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/curvas-mercado/{codigo}/{dataBase}")
+@RequestMapping("/api/v1/curvas-mercado/{nome}/{dataBase}")
 @RequiredArgsConstructor
 @Tag(name = "Ações da curva", description = "Repasse ao engine para a tela Curvas")
 public class CurvaMercadoAcoesController {
@@ -28,26 +28,26 @@ public class CurvaMercadoAcoesController {
 
     @PostMapping("/construcao")
     public ResponseEntity<String> construir(
-            @PathVariable String codigo,
+            @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase,
             @RequestParam(required = false) Boolean forcarRecalculo,
             @RequestParam(required = false) String fonte,
             @RequestParam(required = false) String produto) {
-        return repassar(service.construir(codigo, dataBase, forcarRecalculo, fonte, produto, cid()));
+        return repassar(service.construir(nome, dataBase, forcarRecalculo, fonte, produto, cid()));
     }
 
     @PostMapping("/interpolada")
     public ResponseEntity<String> regravar(
-            @PathVariable String codigo,
+            @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase) {
-        return repassar(service.regravarInterpolada(codigo, dataBase, cid()));
+        return repassar(service.regravarInterpolada(nome, dataBase, cid()));
     }
 
     @GetMapping("/vertices")
     public ResponseEntity<String> vertices(
-            @PathVariable String codigo,
+            @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase) {
-        return repassar(service.consultarVertices(codigo, dataBase, cid()));
+        return repassar(service.consultarVertices(nome, dataBase, cid()));
     }
 
     @DeleteMapping("/vertices")
@@ -55,17 +55,17 @@ public class CurvaMercadoAcoesController {
         description = "Apaga os vértices construídos da data e, em cascata, a interpolada dela. Não toca o dado bruto, "
             + "a configuração nem o cadastro. A data volta a ficar não construída e pode ser construída de novo")
     public ResponseEntity<ApagarConstrucaoResponse> apagarConstrucao(
-            @PathVariable String codigo,
+            @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase) {
-        return ResponseEntity.ok(ApagarConstrucaoResponse.de(apagarConstrucaoService.apagar(codigo, dataBase)));
+        return ResponseEntity.ok(ApagarConstrucaoResponse.de(apagarConstrucaoService.apagar(nome, dataBase)));
     }
 
     @GetMapping("/interpolacao")
     public ResponseEntity<String> interpolar(
-            @PathVariable String codigo,
+            @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase,
             HttpServletRequest request) {
-        return repassar(service.interpolar(codigo, dataBase, request.getQueryString(), cid()));
+        return repassar(service.interpolar(nome, dataBase, request.getQueryString(), cid()));
     }
 
     private ResponseEntity<String> repassar(RespostaEngine r) {

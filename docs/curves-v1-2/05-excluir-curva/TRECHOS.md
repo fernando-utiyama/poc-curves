@@ -33,12 +33,12 @@ private final ExcluirCurvaMercadoUseCase excluirUseCase;
 Método novo, depois do `reativar`:
 
 ```java
-@DeleteMapping("/{codigo}")
+@DeleteMapping("/{nome}")
 @Operation(summary = "Excluir curva de mercado",
     description = "Exclui a curva com provedores e configurações. Recusa curva já construída (use a inativação) "
         + "e curva que é componente de outra. Não apaga o dado bruto dos provedores")
-public ResponseEntity<Void> excluir(@PathVariable String codigo) {
-    excluirUseCase.excluir(codigo);
+public ResponseEntity<Void> excluir(@PathVariable String nome) {
+    excluirUseCase.excluir(nome);
     return ResponseEntity.noContent().build();
 }
 ```

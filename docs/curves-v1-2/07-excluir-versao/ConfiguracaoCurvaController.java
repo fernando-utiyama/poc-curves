@@ -18,7 +18,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/curvas-mercado/{codigo}/configuracoes")
+@RequestMapping("/api/v1/curvas-mercado/{nome}/configuracoes")
 @RequiredArgsConstructor
 @Tag(name = "Configuração de Cálculo", description = "Versões de configuração de cálculo da curva de mercado (tConfgCurva)")
 public class ConfiguracaoCurvaController {
@@ -27,8 +27,8 @@ public class ConfiguracaoCurvaController {
 
     @GetMapping
     @Operation(summary = "Listar versões", description = "Lista as versões de configuração da curva da mais nova para a mais antiga")
-    public ResponseEntity<List<ConfiguracaoCurvaResponse>> listar(@PathVariable String codigo) {
-        return ResponseEntity.ok(useCase.listarPorCurva(codigo).stream()
+    public ResponseEntity<List<ConfiguracaoCurvaResponse>> listar(@PathVariable String nome) {
+        return ResponseEntity.ok(useCase.listarPorCurva(nome).stream()
             .map(ConfiguracaoCurvaResponse::fromDomain)
             .toList());
     }
@@ -36,28 +36,28 @@ public class ConfiguracaoCurvaController {
     @GetMapping("/vigente")
     @Operation(summary = "Consultar versão vigente", description = "Consulta a versão de configuração vigente na data especificada (padrão: hoje)")
     public ResponseEntity<ConfiguracaoCurvaResponse> consultarVigente(
-            @PathVariable String codigo,
+            @PathVariable String nome,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
 
-        return ResponseEntity.ok(ConfiguracaoCurvaResponse.fromDomain(useCase.consultarVigente(codigo, data)));
+        return ResponseEntity.ok(ConfiguracaoCurvaResponse.fromDomain(useCase.consultarVigente(nome, data)));
     }
 
     @PostMapping("/validacao")
     @Operation(summary = "Validar versão", description = "Valida os parâmetros de uma versão sem persistir alterações, retornando avisos de cálculo")
     public ResponseEntity<List<AvisoCurva>> validar(
-            @PathVariable String codigo,
+            @PathVariable String nome,
             @RequestBody CriarConfiguracaoCurvaRequest request) {
 
-        return ResponseEntity.ok(useCase.validar(codigo, request.toDomain()));
+        return ResponseEntity.ok(useCase.validar(nome, request.toDomain()));
     }
 
     @PostMapping
     @Operation(summary = "Criar nova versão", description = "Cria uma nova versão de configuração, fechando a anterior se houver")
     public ResponseEntity<ConfiguracaoCurvaComAvisosResponse> criar(
-            @PathVariable String codigo,
+            @PathVariable String nome,
             @RequestBody CriarConfiguracaoCurvaRequest request) {
 
-        ConfiguracaoCurvaResultado resultado = useCase.criar(codigo, request.toDomain());
+        ConfiguracaoCurvaResultado resultado = useCase.criar(nome, request.toDomain());
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(new ConfiguracaoCurvaComAvisosResponse(
                 ConfiguracaoCurvaResponse.fromDomain(resultado.configuracao()),
@@ -70,10 +70,10 @@ public class ConfiguracaoCurvaController {
         description = "Exclui a versão informada em 'versao' (padrão: a vigente hoje). Recusa se há curva construída na vigência dela. "
             + "A versão vizinha cobre a vigência da excluída, sem deixar buraco")
     public ResponseEntity<ConfiguracaoCurvaComAvisosResponse> excluir(
-            @PathVariable String codigo,
+            @PathVariable String nome,
             @RequestParam(required = false) Integer versao) {
 
-        ConfiguracaoCurvaResultado resultado = useCase.excluir(codigo, versao);
+        ConfiguracaoCurvaResultado resultado = useCase.excluir(nome, versao);
         return ResponseEntity.ok(new ConfiguracaoCurvaComAvisosResponse(null, resultado.avisos()));
     }
 }

@@ -89,7 +89,7 @@ class ExcluirCurvaMercadoServiceTest {
     @Test
     @DisplayName("Curva nunca construída sai com provedores e configurações")
     void excluiCurvaSemHistorico() {
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(curvaPrvdrRepositoryPort.buscarCurvasProvedor("TCEN", null, "PRE")).thenReturn(List.of());
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(versao(1L, 1), versao(2L, 2)));
         when(curvaPrvdrRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(provedorB3));
@@ -106,7 +106,7 @@ class ExcluirCurvaMercadoServiceTest {
     @Test
     @DisplayName("Curva com construído ou dado bruto gera CURVA_COM_HISTORICO e não apaga nada")
     void recusaCurvaComHistorico() {
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(dadosConstruidosPort.dependentes("DIxPRE"))
             .thenReturn(List.of(new LinhasPorTabela("tDadoVertcCurva", 1390), new LinhasPorTabela("tBtrsCurvaPrimr", 278)));
 
@@ -124,7 +124,7 @@ class ExcluirCurvaMercadoServiceTest {
     void recusaCurvaComponente() {
         CurvaProvedor derivada = new CurvaProvedor(20L, "DERIVADA", "TCEN", "CURVA", "PRE", 1);
 
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(curvaPrvdrRepositoryPort.buscarCurvasProvedor("TCEN", null, "PRE")).thenReturn(List.of(derivada));
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.excluir("PRE"));
@@ -137,7 +137,7 @@ class ExcluirCurvaMercadoServiceTest {
     @Test
     @DisplayName("Curva inexistente gera NAO_ENCONTRADO")
     void curvaInexistente() {
-        when(curvaRepositoryPort.findByCodigo("XXX")).thenReturn(Optional.empty());
+        when(curvaRepositoryPort.findByNome("XXX")).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> service.excluir("XXX"));
         verifyNoInteractions(dadosConstruidosPort, configuracaoRepositoryPort, eventosPort);

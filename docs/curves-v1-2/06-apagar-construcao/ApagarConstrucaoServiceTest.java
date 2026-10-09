@@ -58,7 +58,7 @@ class ApagarConstrucaoServiceTest {
     @Test
     @DisplayName("Apaga vértices e interpolada da data e publica o evento")
     void apagaConstrucaoDaData() {
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(dadosConstruidosPort.apagar("DIxPRE", DATA)).thenReturn(new ConstrucaoApagada(278, 3650));
 
         ConstrucaoApagada res = service.apagar("PRE", DATA);
@@ -71,7 +71,7 @@ class ApagarConstrucaoServiceTest {
     @Test
     @DisplayName("Data sem nada construído gera NAO_ENCONTRADO e não publica evento")
     void dataSemConstrucao() {
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(dadosConstruidosPort.apagar("DIxPRE", DATA)).thenReturn(new ConstrucaoApagada(0, 0));
 
         assertThrows(NotFoundException.class, () -> service.apagar("PRE", DATA));
@@ -81,7 +81,7 @@ class ApagarConstrucaoServiceTest {
     @Test
     @DisplayName("Curva inexistente gera NAO_ENCONTRADO sem tocar nos dados")
     void curvaInexistente() {
-        when(curvaRepositoryPort.findByCodigo("XXX")).thenReturn(Optional.empty());
+        when(curvaRepositoryPort.findByNome("XXX")).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> service.apagar("XXX", DATA));
         verifyNoInteractions(dadosConstruidosPort, eventosPort);

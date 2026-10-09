@@ -112,7 +112,7 @@ class ConfiguracaoCurvaServiceTest {
     @Test
     @DisplayName("Criar primeira versão de configuração com início no passado")
     void criarPrimeiraVersaoComSucesso() {
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(curvaPrvdrRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of());
         when(configuracaoRepositoryPort.findUltimaVersao("DIxPRE")).thenReturn(Optional.empty());
         when(configuracaoRepositoryPort.salvar(any(ConfiguracaoCurva.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -141,7 +141,7 @@ class ConfiguracaoCurvaServiceTest {
         LocalDate hoje = LocalDate.now();
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.minusDays(30), null);
 
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(curvaPrvdrRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of());
         when(configuracaoRepositoryPort.findUltimaVersao("DIxPRE")).thenReturn(Optional.of(v1));
         when(configuracaoRepositoryPort.salvar(any(ConfiguracaoCurva.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -171,7 +171,7 @@ class ConfiguracaoCurvaServiceTest {
     void criarVersaoNoPassadoGeraErro() {
         ConfiguracaoCurva v1 = versao(1L, 1, LocalDate.now().minusDays(10), null);
 
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(curvaPrvdrRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of());
         when(configuracaoRepositoryPort.findUltimaVersao("DIxPRE")).thenReturn(Optional.of(v1));
 
@@ -193,7 +193,7 @@ class ConfiguracaoCurvaServiceTest {
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.minusDays(10), hoje.plusDays(4));
         ConfiguracaoCurva v2 = versao(2L, 2, hoje.plusDays(5), null);
 
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v2, v1));
         semConstrucao();
 
@@ -217,7 +217,7 @@ class ConfiguracaoCurvaServiceTest {
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.minusDays(60), hoje.minusDays(11));
         ConfiguracaoCurva v2 = versao(2L, 2, hoje.minusDays(10), null);
 
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v2, v1));
         semConstrucao();
 
@@ -236,7 +236,7 @@ class ConfiguracaoCurvaServiceTest {
         LocalDate hoje = LocalDate.now();
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.minusDays(60), null);
 
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v1));
         when(dadosConstruidosPort.resumo(eq("DIxPRE"), any(), any()))
             .thenReturn(new ResumoConstrucao(3, hoje.minusDays(50), hoje.minusDays(2)));
@@ -256,7 +256,7 @@ class ConfiguracaoCurvaServiceTest {
         ConfiguracaoCurva v2 = versao(2L, 2, hoje.minusDays(30), hoje.minusDays(11));
         ConfiguracaoCurva v3 = versao(3L, 3, hoje.minusDays(10), null);
 
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v3, v2, v1));
         semConstrucao();
 
@@ -276,7 +276,7 @@ class ConfiguracaoCurvaServiceTest {
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.minusDays(60), hoje.minusDays(31));
         ConfiguracaoCurva v2 = versao(2L, 2, hoje.minusDays(30), null);
 
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v2, v1));
         semConstrucao();
 
@@ -296,7 +296,7 @@ class ConfiguracaoCurvaServiceTest {
         LocalDate hoje = LocalDate.now();
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.plusDays(5), null);
 
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v1));
         semConstrucao();
 
@@ -313,7 +313,7 @@ class ConfiguracaoCurvaServiceTest {
     void excluirVersaoInexistente() {
         ConfiguracaoCurva v1 = versao(1L, 1, LocalDate.now().minusDays(10), null);
 
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v1));
 
         assertThrows(NotFoundException.class, () -> service.excluir("PRE", 7));
@@ -325,7 +325,7 @@ class ConfiguracaoCurvaServiceTest {
     void excluirSemVersaoSemVigente() {
         ConfiguracaoCurva futura = versao(1L, 1, LocalDate.now().plusDays(5), null);
 
-        when(curvaRepositoryPort.findByCodigo("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(futura));
 
         assertThrows(NotFoundException.class, () -> service.excluir("PRE", null));

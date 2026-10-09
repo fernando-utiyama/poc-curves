@@ -37,33 +37,33 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ConfiguracaoCurva> listarPorCurva(String codigoCurva) {
-        CurvaMercado curva = obterCurva(codigoCurva);
+    public List<ConfiguracaoCurva> listarPorCurva(String nomeCurva) {
+        CurvaMercado curva = obterCurva(nomeCurva);
         return configuracaoRepositoryPort.findByNomeCurva(curva.nome());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public ConfiguracaoCurva consultarVigente(String codigoCurva, LocalDate data) {
-        CurvaMercado curva = obterCurva(codigoCurva);
+    public ConfiguracaoCurva consultarVigente(String nomeCurva, LocalDate data) {
+        CurvaMercado curva = obterCurva(nomeCurva);
         LocalDate dataConsulta = data != null ? data : LocalDate.now();
         return configuracaoRepositoryPort.findVigente(curva.nome(), dataConsulta)
             .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(),
-                "Nenhuma configuração vigente para a curva " + codigoCurva + " na data " + dataConsulta));
+                "Nenhuma configuração vigente para a curva " + nomeCurva + " na data " + dataConsulta));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AvisoCurva> validar(String codigoCurva, CriarConfiguracaoCurvaInput input) {
-        CurvaMercado curva = obterCurva(codigoCurva);
+    public List<AvisoCurva> validar(String nomeCurva, CriarConfiguracaoCurvaInput input) {
+        CurvaMercado curva = obterCurva(nomeCurva);
         ValidadorParametros.ValidacaoResultado res = validarEntrada(curva, input);
         return res.avisos();
     }
 
     @Override
     @Transactional
-    public ConfiguracaoCurvaResultado criar(String codigoCurva, CriarConfiguracaoCurvaInput input) {
-        CurvaMercado curva = obterCurva(codigoCurva);
+    public ConfiguracaoCurvaResultado criar(String nomeCurva, CriarConfiguracaoCurvaInput input) {
+        CurvaMercado curva = obterCurva(nomeCurva);
 
         List<Detalhe> erros = new ArrayList<>();
         ValidadorParametros.ValidacaoResultado res = validarSemLancar(curva, input, erros);
@@ -123,13 +123,13 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
      */
     @Override
     @Transactional
-    public ConfiguracaoCurvaResultado excluir(String codigoCurva, Integer versao) {
-        CurvaMercado curva = obterCurva(codigoCurva);
+    public ConfiguracaoCurvaResultado excluir(String nomeCurva, Integer versao) {
+        CurvaMercado curva = obterCurva(nomeCurva);
 
         List<ConfiguracaoCurva> versoes = configuracaoRepositoryPort.findByNomeCurva(curva.nome()).stream()
             .sorted(Comparator.comparing(ConfiguracaoCurva::versao))
             .toList();
-        ConfiguracaoCurva alvo = escolherVersao(codigoCurva, versoes, versao);
+        ConfiguracaoCurva alvo = escolherVersao(nomeCurva, versoes, versao);
 
         ResumoConstrucao construcao = dadosConstruidosPort.resumo(
             curva.nome(), alvo.inicioVigencia(), alvo.fimVigencia() != null ? alvo.fimVigencia() : SEM_FIM);
@@ -160,20 +160,20 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
         return new ConfiguracaoCurvaResultado(null, avisos);
     }
 
-    private ConfiguracaoCurva escolherVersao(String codigoCurva, List<ConfiguracaoCurva> versoes, Integer versao) {
+    private ConfiguracaoCurva escolherVersao(String nomeCurva, List<ConfiguracaoCurva> versoes, Integer versao) {
         if (versao == null) {
             LocalDate hoje = LocalDate.now();
             return versoes.stream()
                 .filter(v -> !v.inicioVigencia().isAfter(hoje) && (v.fimVigencia() == null || !v.fimVigencia().isBefore(hoje)))
                 .findFirst()
                 .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(),
-                    "Nenhuma configuração vigente para a curva " + codigoCurva));
+                    "Nenhuma configuração vigente para a curva " + nomeCurva));
         }
         return versoes.stream()
             .filter(v -> v.versao().equals(versao))
             .findFirst()
             .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(),
-                "Versão " + versao + " não encontrada para a curva " + codigoCurva));
+                "Versão " + versao + " não encontrada para a curva " + nomeCurva));
     }
 
     private ValidadorParametros.ValidacaoResultado validarEntrada(CurvaMercado curva, CriarConfiguracaoCurvaInput input) {
@@ -199,9 +199,9 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
         return res;
     }
 
-    private CurvaMercado obterCurva(String codigoCurva) {
-        return curvaRepositoryPort.findByCodigo(codigoCurva)
-            .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(), "Curva " + codigoCurva + " não encontrada"));
+    private CurvaMercado obterCurva(String nomeCurva) {
+        return curvaRepositoryPort.findByNome(nomeCurva)
+            .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(), "Curva " + nomeCurva + " não encontrada"));
     }
 
     private List<CurvaProvedor> obterProvedores(String nomeCurva) {

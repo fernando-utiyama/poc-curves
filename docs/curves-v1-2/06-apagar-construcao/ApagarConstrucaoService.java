@@ -26,14 +26,14 @@ public class ApagarConstrucaoService {
     private final EventosPort eventosPort;
 
     @Transactional
-    public ConstrucaoApagada apagar(String codigoCurva, LocalDate dataBase) {
-        CurvaMercado curva = curvaRepositoryPort.findByCodigo(codigoCurva)
-            .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(), "Curva " + codigoCurva + " não encontrada"));
+    public ConstrucaoApagada apagar(String nomeCurva, LocalDate dataBase) {
+        CurvaMercado curva = curvaRepositoryPort.findByNome(nomeCurva)
+            .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(), "Curva " + nomeCurva + " não encontrada"));
 
         ConstrucaoApagada apagada = dadosConstruidosPort.apagar(curva.nome(), dataBase);
         if (apagada.vertices() == 0 && apagada.pontos() == 0) {
             throw new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(),
-                "Curva " + codigoCurva + " não construída na data " + dataBase);
+                "Curva " + nomeCurva + " não construída na data " + dataBase);
         }
 
         eventosPort.publicarCadastroAlterado(new EventoCadastroAlterado(

@@ -6,5 +6,5 @@ public interface ExcluirCurvaMercadoUseCase {
      * Exclui a curva com os provedores e as configurações dela. Recusa se ainda há linhas dela em outra tabela
      * (construído ou dado bruto: apague antes, ou use a inativação) ou se é componente de outra curva.
      */
-    void excluir(String codigo);
+    void excluir(String nome);
 }
