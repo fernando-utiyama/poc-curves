@@ -33,7 +33,7 @@ O serviço SHALL expor (prefixo `/api/v1`), com `{provedor}` = `B3`, `ANBIMA` ou
 | Rota | Uso |
 |---|---|
 | `GET /dados-mercado/{provedor}/tickers` | códigos na fonte ligados a curvas em `tCurvaPrvdr` para o provedor, cada um com o produto e as curvas ligadas (código e nome), em ordem de código |
-| `GET /dados-mercado/{provedor}?codigoNaFonte=&dataBase=AAAA-MM-DD` | para cada curva ligada ao código: código e nome da curva, `curvaConstruida`, os vértices da data e os avisos |
+| `GET /dados-mercado/{provedor}?tickerProvedor=&dataBase=AAAA-MM-DD` | para cada curva ligada ao código: código e nome da curva, `curvaConstruida`, os vértices da data e os avisos |
 | `POST /dados-mercado/{provedor}/{codigo}/{dataBase}/vertices` | incluir um vértice (também numa data sem nenhum) |
 | `PUT /dados-mercado/{provedor}/{codigo}/{dataBase}/vertices/{id}` | alterar um vértice, com todos os campos |
 | `DELETE /dados-mercado/{provedor}/{codigo}/{dataBase}/vertices/{id}` | excluir um vértice |
@@ -46,7 +46,7 @@ Os vértices SHALL vir ordenados por `diasCorridos` (B3), `prazoDiasCorridos` (A
 - **THEN** a resposta traz os códigos `DCL`, `DPL`, `INP`, `PRE` e `PTX`, cada um com o produto `TS` e as curvas ligadas
 
 #### Scenario: Código ligado a duas curvas
-- **WHEN** o código `PRE` da B3 está ligado às curvas `PRE` e `DI_MERCADO`, e o cliente consulta `GET /api/v1/dados-mercado/B3?codigoNaFonte=PRE&dataBase=2026-09-14`
+- **WHEN** o código `PRE` da B3 está ligado às curvas `PRE` e `DI_MERCADO`, e o cliente consulta `GET /api/v1/dados-mercado/B3?tickerProvedor=PRE&dataBase=2026-09-14`
 - **THEN** a resposta traz as duas curvas, cada uma com os seus 278 vértices
 
 ### Requirement: Gravação do vértice

@@ -1,0 +1,11 @@
+{
+  "codigo": "PTX",
+  "nome": "PTAX - USD",
+  "unidade": "PRECO",
+  "moeda": "BRL",
+  "pais": "BR",
+  "classificacao": "Câmbio",
+  "classeAtivo": "Taxa de câmbio",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}

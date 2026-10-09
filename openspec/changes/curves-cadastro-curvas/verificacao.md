@@ -37,7 +37,7 @@ Liste **todas** as rotas que o código expõe hoje (método, caminho, classe:lin
 | `POST /curvas-mercado/{codigo}/inativacao` e `/reativacao` | | | |
 | `GET /curvas-mercado/{codigo}/auditoria` | | | |
 | `GET/POST /curvas-mercado/{codigo}/provedores`, `PUT/DELETE .../{idCurvaProvedor}` | | | |
-| `GET /curvas-mercado/provedores?provedor=&produto=&codigoNaFonte=` | | | |
+| `GET /curvas-mercado/provedores?provedor=&produto=&tickerProvedor=` | | | |
 | Configurações (listar, vigente, validação, criar, excluir) | | | |
 | `GET /curvas-mercado/valores` | | | |
 | CRUD dos brutos da B3 (rotas atuais) | | | |

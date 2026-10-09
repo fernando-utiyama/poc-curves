@@ -29,7 +29,7 @@ private List<BtrsCurvaPrimrResumo> paraResumos(List<CurvaPrimrAgregadoProjection
 }
 ```
 
-O `BtrsCurvaPrimrResumo::new` serve de fábrica porque o record tem os campos na ordem `codigo, nome, situacao, dataBase, quantidadePontos, tickersProvedor, curvaConstruida`. O teste `AgregadoPrimrTest.java` (nesta pasta) cobre o helper.
+O `BtrsCurvaPrimrResumo::new` serve de fábrica porque o record tem os campos na ordem `codigo, nome, situacao, dataBase, quantidadeVertices, tickersProvedor, curvaConstruida`. O teste `AgregadoPrimrTest.java` (nesta pasta) cobre o helper.
 
 ## 3. `BtrsCurvaPrimrService`
 

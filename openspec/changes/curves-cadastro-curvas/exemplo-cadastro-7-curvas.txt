@@ -90,7 +90,7 @@ POST /api/v1/curvas-mercado
 }
 
 POST /api/v1/curvas-mercado/PRE/provedores
-{ "provedor": "B3", "produto": "TS", "codigoNaFonte": "PRE", "prioridade": 1 }
+{ "provedor": "B3", "produto": "TS", "tickerProvedor": "PRE", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/PRE/configuracoes
 {
@@ -126,7 +126,7 @@ POST /api/v1/curvas-mercado
 }
 
 POST /api/v1/curvas-mercado/DCL/provedores
-{ "provedor": "B3", "produto": "TS", "codigoNaFonte": "DCL", "prioridade": 1 }
+{ "provedor": "B3", "produto": "TS", "tickerProvedor": "DCL", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/DCL/configuracoes
 {
@@ -161,7 +161,7 @@ POST /api/v1/curvas-mercado
 }
 
 POST /api/v1/curvas-mercado/DPL/provedores
-{ "provedor": "B3", "produto": "TS", "codigoNaFonte": "DPL", "prioridade": 1 }
+{ "provedor": "B3", "produto": "TS", "tickerProvedor": "DPL", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/DPL/configuracoes
 {
@@ -195,7 +195,7 @@ POST /api/v1/curvas-mercado
 }
 
 POST /api/v1/curvas-mercado/INP/provedores
-{ "provedor": "B3", "produto": "TS", "codigoNaFonte": "INP", "prioridade": 1 }
+{ "provedor": "B3", "produto": "TS", "tickerProvedor": "INP", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/INP/configuracoes
 {
@@ -228,7 +228,7 @@ POST /api/v1/curvas-mercado
 }
 
 POST /api/v1/curvas-mercado/PTX/provedores
-{ "provedor": "B3", "produto": "TS", "codigoNaFonte": "PTX", "prioridade": 1 }
+{ "provedor": "B3", "produto": "TS", "tickerProvedor": "PTX", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/PTX/configuracoes
 {
@@ -263,7 +263,7 @@ POST /api/v1/curvas-mercado
 }
 
 POST /api/v1/curvas-mercado/NTNB/provedores
-{ "provedor": "ANBIMA", "produto": "MS", "codigoNaFonte": "NTN-B", "prioridade": 1 }
+{ "provedor": "ANBIMA", "produto": "MS", "tickerProvedor": "NTN-B", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/NTNB/configuracoes
 {
@@ -299,7 +299,7 @@ POST /api/v1/curvas-mercado
 }
 
 POST /api/v1/curvas-mercado/SOFR/provedores
-{ "provedor": "BLOOMBERG", "produto": "BLC2", "codigoNaFonte": "S0490Z", "prioridade": 1 }
+{ "provedor": "BLOOMBERG", "produto": "BLC2", "tickerProvedor": "S0490Z", "prioridade": 1 }
 
 POST /api/v1/curvas-mercado/SOFR/configuracoes
 {
@@ -337,7 +337,7 @@ SOFR                   SOFR    TAXA     Actual360          Simple       USD    U
 
 Aba Provedores:
 
-Curva                  Provedor   Produto  CodigoNaFonte  Prioridade
+Curva                  Provedor   Produto  TickerProvedor  Prioridade
 DIxPRE                 B3         TS       PRE            1
 Cupom limpo de dólar   B3         TS       DCL            1
 Cupom Limpo DI X IPCA  B3         TS       DPL            1
@@ -457,8 +457,8 @@ POST /api/v1/curvas-mercado
   "moeda": "BRL", "pais": "BR", "inicioVigencia": "2026-01-01" }
 
 POST /api/v1/curvas-mercado/IPCA_IMPLICITA/provedores
-{ "provedor": "TCEN", "produto": "NUMERADOR",   "codigoNaFonte": "DIxPRE", "prioridade": 1 }
-{ "provedor": "TCEN", "produto": "DENOMINADOR", "codigoNaFonte": "NTN-B",  "prioridade": 2 }
+{ "provedor": "TCEN", "produto": "NUMERADOR",   "tickerProvedor": "DIxPRE", "prioridade": 1 }
+{ "provedor": "TCEN", "produto": "DENOMINADOR", "tickerProvedor": "NTN-B",  "prioridade": 2 }
 
 A configuração aponta para o modelo derivado (ex.: um script Groovy
 INFLACAO_IMPLICITA). O engine a constrói em cadeia, na carga que completar as

@@ -22,7 +22,7 @@ public final class AgregadoPrimr {
     @FunctionalInterface
     public interface FabricaResumo<R> {
         R criar(String codigo, String nome, SituacaoCurva situacao, LocalDate dataBase,
-                long quantidadePontos, List<String> tickersProvedor, boolean curvaConstruida);
+                long quantidadeVertices, List<String> tickersProvedor, boolean curvaConstruida);
     }
 
     private AgregadoPrimr() {}
@@ -32,7 +32,7 @@ public final class AgregadoPrimr {
         Map<String, List<String>> tickers = new HashMap<>();
         if (port != null) {
             for (CurvaProvedor cp : port.buscarCurvasProvedor(provedor, produto, null)) {
-                tickers.computeIfAbsent(cp.nomeCurva(), k -> new ArrayList<>()).add(cp.codigoNaFonte());
+                tickers.computeIfAbsent(cp.nomeCurva(), k -> new ArrayList<>()).add(cp.tickerProvedor());
             }
         }
         return tickers;

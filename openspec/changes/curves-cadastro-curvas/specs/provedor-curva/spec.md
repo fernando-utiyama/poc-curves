@@ -13,13 +13,13 @@ Cada provedor da curva SHALL gravar uma linha em `tCurvaPrvdr`:
 | curva | `cTickerIndcd` | o nome da curva da rota |
 | `provedor` | `iPrvdrDados` | obrigatório; MUST existir em `tPrvdrDadoMercd` (mantida pelo CRUD de provedores, fora desta change). O engine e o processor reconhecem as fontes pelos identificadores `B3`, `ANBIMA` e `BLOOMBERG` |
 | `produto` | `cPrvdrMercd` | obrigatório; 1 a 50 caracteres (ex.: `TS`, `MS`, `BLC2`): o identificador da publicação na fonte |
-| `codigoNaFonte` | `cTickerPrvdr` | obrigatório; 1 a 1.024 caracteres, sem espaços nas pontas (ex.: `PRE`, `S0490Z`) |
+| `tickerProvedor` | `cTickerPrvdr` | obrigatório; 1 a 1.024 caracteres, sem espaços nas pontas (ex.: `PRE`, `S0490Z`) |
 | `prioridade` | `cPriorCsumo` | obrigatório; inteiro maior ou igual a 1 |
 
 Regras:
 - (curva, `provedor`, `produto`) MUST ser único: 409 `PROVEDOR_DUPLICADO`;
 - `prioridade` MUST ser única dentro da curva: 409 `PRIORIDADE_EM_USO`;
-- o mesmo (`provedor`, `produto`, `codigoNaFonte`) MAY estar ligado a mais de uma curva: todas recebem os dados brutos daquele código.
+- o mesmo (`provedor`, `produto`, `tickerProvedor`) MAY estar ligado a mais de uma curva: todas recebem os dados brutos daquele código.
 
 Como `cIdtfdUnic` não tem identity nem sequência e o schema não pode mudar, o serviço SHALL gerá-lo como `MAX(cIdtfdUnic) + 1` (ou 1 se a tabela estiver vazia), lido com `UPDLOCK, HOLDLOCK` dentro da mesma transação da inserção, de modo que inserções simultâneas não gerem o mesmo valor. A consulta do `MAX + 1` SHALL esperar até 60 segundos pela trava; esgotado o tempo, a resposta é 500 `ERRO_INTERNO`, sem gravar.
 
@@ -36,11 +36,11 @@ Como `cIdtfdUnic` não tem identity nem sequência e o schema não pode mudar, o
 - **THEN** cada uma recebe um `idCurvaProvedor` diferente
 
 ### Requirement: Curvas componentes como provedor
-O provedor interno `TCEN` (que precisa existir em `tPrvdrDadoMercd`) SHALL ligar uma curva derivada às suas curvas componentes (spec `curve-build-pipeline` do change `engine-modelos-curva`): `codigoNaFonte` = nome de uma curva de mercado existente, e `produto` = papel da curva componente no cálculo (ex.: `NUMERADOR`, `DENOMINADOR`). Além das regras gerais, o provedor da curva com `TCEN` MUST ser rejeitado com 422 `DADOS_INVALIDOS` quando a curva componente não existir, for a própria curva, ou criar um ciclo (a curva componente, direta ou indiretamente, já tem esta curva como componente), citando o caminho do ciclo. Inativar uma curva que é componente de curva ativa SHALL trazer o aviso `CURVA_COM_FILHAS`, com as filhas, sem bloquear.
+O provedor interno `TCEN` (que precisa existir em `tPrvdrDadoMercd`) SHALL ligar uma curva derivada às suas curvas componentes (spec `curve-build-pipeline` do change `engine-modelos-curva`): `tickerProvedor` = nome de uma curva de mercado existente, e `produto` = papel da curva componente no cálculo (ex.: `NUMERADOR`, `DENOMINADOR`). Além das regras gerais, o provedor da curva com `TCEN` MUST ser rejeitado com 422 `DADOS_INVALIDOS` quando a curva componente não existir, for a própria curva, ou criar um ciclo (a curva componente, direta ou indiretamente, já tem esta curva como componente), citando o caminho do ciclo. Inativar uma curva que é componente de curva ativa SHALL trazer o aviso `CURVA_COM_FILHAS`, com as filhas, sem bloquear.
 
 #### Scenario: Inflação implícita ligada às curvas componentes
 - **WHEN** o cliente liga a curva `IPCA_IMPLICITA` a (`TCEN`, `NUMERADOR`, `DIxPRE`, prioridade 1) e (`TCEN`, `DENOMINADOR`, `NTN-B`, prioridade 2)
-- **THEN** os dois provedores são gravados, e `GET /api/v1/curvas-mercado/provedores?provedor=TCEN&codigoNaFonte=NTN-B` lista a `IPCA_IMPLICITA`
+- **THEN** os dois provedores são gravados, e `GET /api/v1/curvas-mercado/provedores?provedor=TCEN&tickerProvedor=NTN-B` lista a `IPCA_IMPLICITA`
 
 #### Scenario: Ciclo recusado
 - **WHEN** a curva `A` tem `B` como componente, e o cliente liga `B` a (`TCEN`, `NUMERADOR`, `A`)
@@ -53,9 +53,9 @@ O serviço SHALL expor (prefixo `/api/v1`):
 |---|---|
 | `GET /curvas-mercado/{codigo}/provedores` | listar os provedores da curva, por prioridade |
 | `POST /curvas-mercado/{codigo}/provedores` | incluir |
-| `PUT /curvas-mercado/{codigo}/provedores/{idCurvaProvedor}` | alterar `produto`, `codigoNaFonte` ou `prioridade` |
+| `PUT /curvas-mercado/{codigo}/provedores/{idCurvaProvedor}` | alterar `produto`, `tickerProvedor` ou `prioridade` |
 | `DELETE /curvas-mercado/{codigo}/provedores/{idCurvaProvedor}` | excluir |
-| `GET /curvas-mercado/provedores?provedor=&produto=&codigoNaFonte=` | quais curvas recebem um código da fonte |
+| `GET /curvas-mercado/provedores?provedor=&produto=&tickerProvedor=` | quais curvas recebem um código da fonte |
 
 Excluir um provedor da curva não apaga dados brutos já gravados. Trocar o `iPrvdrDados` de um provedor da curva não é permitido: exclui-se e inclui-se outro. O `PUT` que enviar um `provedor` diferente do gravado MUST ser recusado com 422 `DADOS_INVALIDOS` no campo `provedor`, antes de qualquer gravação.
 
@@ -64,7 +64,7 @@ Excluir um provedor da curva não apaga dados brutos já gravados. Trocar o `iPr
 - **THEN** a resposta é 422 com `DADOS_INVALIDOS` no campo `provedor`, informando que o provedor não muda, e nada é gravado
 
 #### Scenario: Quais curvas recebem o PRE da B3
-- **WHEN** o cliente chama `GET /api/v1/curvas-mercado/provedores?provedor=B3&produto=TS&codigoNaFonte=PRE`
+- **WHEN** o cliente chama `GET /api/v1/curvas-mercado/provedores?provedor=B3&produto=TS&tickerProvedor=PRE`
 - **THEN** a resposta lista as curvas ligadas a esse código, como `PRE` e `DI_MERCADO`, com a prioridade de cada provedor da curva
 
 ### Requirement: Avisos de coerência com o engine

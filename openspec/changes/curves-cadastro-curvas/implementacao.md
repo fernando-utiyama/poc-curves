@@ -246,11 +246,11 @@ SELECT ISNULL(MAX(cIdtfdUnic), 0) + 1 FROM tCurvaPrvdr WITH (UPDLOCK, HOLDLOCK);
 ```
 A consulta leva o mesmo `@QueryHints` de 60 s (`jakarta.persistence.query.timeout`); esgotado, 500 `ERRO_INTERNO`, sem gravar.
 
-Regras: provedor inexistente → 404 `NAO_ENCONTRADO`; (curva, provedor, produto) repetido → 409 `PROVEDOR_DUPLICADO`; prioridade repetida na curva → 409 `PRIORIDADE_EM_USO`; trocar provedor não existe (excluir e incluir). `TCEN`: `codigoNaFonte` = nome de curva existente, diferente da própria, sem ciclo (DFS pelos provedores da curva `TCEN` a partir da curva componente; achando a curva atual → 422 com o caminho `B → A → B`).
+Regras: provedor inexistente → 404 `NAO_ENCONTRADO`; (curva, provedor, produto) repetido → 409 `PROVEDOR_DUPLICADO`; prioridade repetida na curva → 409 `PRIORIDADE_EM_USO`; trocar provedor não existe (excluir e incluir). `TCEN`: `tickerProvedor` = nome de curva existente, diferente da própria, sem ciclo (DFS pelos provedores da curva `TCEN` a partir da curva componente; achando a curva atual → 422 com o caminho `B → A → B`).
 
 Avisos depois da alteração: `CURVA_SEM_ORIGEM` (nenhum provedor); `ORIGEM_INCOMPATIVEL_COM_MODELO` (a de menor prioridade não bate com o modelo nativo da configuração vigente: `PRONTA_TS_B3` = `B3`/`TS`, `NTNB_BOOTSTRAP_ANBIMA` = `ANBIMA`/`MS`, `SOFR_ZERO_BLOOMBERG` = `BLOOMBERG`/`BLC2`); `MODELO_POR_ORIGEM_SEM_PROVEDOR` (chave de `MODELOS_POR_ORIGEM` da vigente ou futura sem provedor).
 
-`GET /curvas-mercado/provedores?provedor=&produto=&codigoNaFonte=`: curvas ligadas, com código, nome e prioridade.
+`GET /curvas-mercado/provedores?provedor=&produto=&tickerProvedor=`: curvas ligadas, com código, nome e prioridade.
 
 ---
 
@@ -327,7 +327,7 @@ Abas e colunas exatamente como na spec `cadastro-curvas-planilha` (`Curvas`, `Pr
 1. Ler as abas (até 5 MB, 1.000 curvas). Data em texto `dd/mm/aaaa` ou `aaaa-mm-dd`; número em texto com vírgula **ou** ponto, sem milhar; os dois juntos → erro na célula.
 2. Para cada curva da aba `Curvas`, montar o **estado desejado** (curva, provedores da curva, versões) e comparar com o banco:
    - curva nova → `INCLUSAO`; existente com campo diferente → `ALTERACAO` (inclusive código);
-   - provedores da curva por (`Provedor`, `Produto`): novo → inclusão; mudou `CodigoNaFonte`/`Prioridade` → alteração; ausente da aba → exclusão;
+   - provedores da curva por (`Provedor`, `Produto`): novo → inclusão; mudou `TickerProvedor`/`Prioridade` → alteração; ausente da aba → exclusão;
    - versões: `Versao` preenchida tem de ser igual à existente em tudo (senão erro "versões existentes não se alteram"); `Versao` vazia → versão nova (regras da seção 4.2, em ordem de `InicioVigencia`); última versão futura ausente → exclusão;
    - linha de `Provedores`/`Configuracoes` de curva fora da aba `Curvas` → erro.
 3. Todas as regras das seções 2, 3 e 4 valem linha a linha.
@@ -424,7 +424,7 @@ Base da curves: `{urlAPI}/api/v1/dados-mercado` (proxy `/api`). Upload: `{urlAPI
 | Ação | Chamada | Tempo front |
 |---|---|---|
 | Tickers | `GET /dados-mercado/{provedor}/tickers` | 3 s |
-| Consultar | `GET /dados-mercado/{provedor}?codigoNaFonte=PRE&dataBase=2026-09-14` | 3 s |
+| Consultar | `GET /dados-mercado/{provedor}?tickerProvedor=PRE&dataBase=2026-09-14` | 3 s |
 | Incluir / alterar / excluir vértice | `POST /dados-mercado/{provedor}/{codigo}/{dataBase}/vertices`, `PUT .../vertices/{id}`, `DELETE .../vertices/{id}` | 3 s |
 | Excluir todos da data | `DELETE /dados-mercado/{provedor}/{codigo}/{dataBase}` | 3 s |
 | Baixar planilha | `GET .../planilha` (`blob`) | 3 s |
@@ -441,9 +441,9 @@ Base da curves: `{urlAPI}/api/v1/dados-mercado` (proxy `/api`). Upload: `{urlAPI
 
 ```jsonc
 // GET /dados-mercado/B3/tickers
-[ { "codigoNaFonte": "PRE", "produto": "TS", "curvas": [ { "codigo": "PRE", "nome": "DIxPRE" } ] } ]
-// GET /dados-mercado/B3?codigoNaFonte=PRE&dataBase=2026-09-14
-{ "provedor": "B3", "codigoNaFonte": "PRE", "dataBase": "2026-09-14",
+[ { "tickerProvedor": "PRE", "produto": "TS", "curvas": [ { "codigo": "PRE", "nome": "DIxPRE" } ] } ]
+// GET /dados-mercado/B3?tickerProvedor=PRE&dataBase=2026-09-14
+{ "provedor": "B3", "tickerProvedor": "PRE", "dataBase": "2026-09-14",
   "curvas": [ { "codigo": "PRE", "nome": "DIxPRE", "curvaConstruida": true,
                 "avisos": [ { "codigo": "CURVA_JA_CONSTRUIDA", "mensagem": "...", "detalhes": [] } ],
                 "vertices": [ { "id": 101, "dataVertice": "2026-09-15", "diasCorridos": 1, "diasUteis": 1,
@@ -700,7 +700,7 @@ private ResponseEntity<String> repassar(RespostaEngine r) {
 **Documento canônico e hash.** SHA-256 hexa minúsculo do JSON canônico: chaves em ordem alfabética em todos os níveis, sem espaços, nulos presentes como `null`, strings UTF-8 sem escape de não ASCII. Estrutura (a `PRE` do exemplo das 7 curvas: curva criada, provedor da curva `idCurvaProvedor` 1, versão 1):
 
 ```json
-{"configuracoes":[{"fimVigencia":null,"inicioVigencia":"2026-01-01","interpolador":"FlatForward","modeloConstrucao":"PRONTA_TS_B3","parametros":{"BASE_INTERPOLACAO":"Discount","BUSINESS_DAY_CONVENTION":"Following","CALENDARIO":"Brazil","CASAS_DECIMAIS":7,"DAY_COUNTER_TEMPO":"Business252","EXTRAPOLACAO_FIM":"FlatForward","EXTRAPOLACAO_INICIO":"Disabled","FREQUENCY":"Annual","HORIZONTE":"10Y","MERCADO_CALENDARIO":"Settlement","MODO_ARREDONDAMENTO":"HALF_UP"},"versao":1}],"curva":{"classeAtivo":null,"classificacao":null,"codigo":"PRE","compounding":"Compounded","dayCounterCotacao":"Business252","fimVigencia":null,"inicioVigencia":"2026-01-01","moeda":"BRL","nome":"DIxPRE","pais":"BR","situacao":"ATIVO","unidade":"TAXA"},"provedores":[{"codigoNaFonte":"PRE","idCurvaProvedor":1,"prioridade":1,"produto":"TS","provedor":"B3"}]}
+{"configuracoes":[{"fimVigencia":null,"inicioVigencia":"2026-01-01","interpolador":"FlatForward","modeloConstrucao":"PRONTA_TS_B3","parametros":{"BASE_INTERPOLACAO":"Discount","BUSINESS_DAY_CONVENTION":"Following","CALENDARIO":"Brazil","CASAS_DECIMAIS":7,"DAY_COUNTER_TEMPO":"Business252","EXTRAPOLACAO_FIM":"FlatForward","EXTRAPOLACAO_INICIO":"Disabled","FREQUENCY":"Annual","HORIZONTE":"10Y","MERCADO_CALENDARIO":"Settlement","MODO_ARREDONDAMENTO":"HALF_UP"},"versao":1}],"curva":{"classeAtivo":null,"classificacao":null,"codigo":"PRE","compounding":"Compounded","dayCounterCotacao":"Business252","fimVigencia":null,"inicioVigencia":"2026-01-01","moeda":"BRL","nome":"DIxPRE","pais":"BR","situacao":"ATIVO","unidade":"TAXA"},"provedores":[{"tickerProvedor":"PRE","idCurvaProvedor":1,"prioridade":1,"produto":"TS","provedor":"B3"}]}
 ```
 
 Vetor de teste: esse texto dá `0a45962d58276782018cb313962646ae889877c9c01279cab32aa3909c654936`. Provedores da curva ordenados por `idCurvaProvedor`, configurações por `versao`. Ficavam **fora** do cálculo `dBaseReft`, `cUsuarCalc`, `cUsuarAtulz`, `dCriacReg` e `dUltAtulz`: assim uma construção do engine (que grava `dBaseReft`) não invalidava a edição de ninguém. Não se usava o `dUltAtulz` porque o `datetime` do SQL Server tem precisão de cerca de 3 ms. As colunas `CHAR` eram aparadas antes do cálculo, e o hash era o mesmo antes e depois de reler uma curva. Com Jackson: `JsonMapper.builder().enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS).enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)`, montando o documento com `Map`/`record` só com esses campos.

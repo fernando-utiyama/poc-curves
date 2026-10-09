@@ -38,7 +38,7 @@ class AgregadoPrimrTest {
         assertThat(res).singleElement().satisfies(r -> {
             assertThat(r.codigo()).isNull();
             assertThat(r.situacao()).isEqualTo(SituacaoCurva.ATIVO);
-            assertThat(r.quantidadePontos()).isEqualTo(278L);
+            assertThat(r.quantidadeVertices()).isEqualTo(278L);
             assertThat(r.tickersProvedor()).containsExactly("PRE");
             assertThat(r.curvaConstruida()).isTrue();
         });
@@ -52,7 +52,7 @@ class AgregadoPrimrTest {
 
         assertThat(res).singleElement().satisfies(r -> {
             assertThat(r.situacao()).isNull();
-            assertThat(r.quantidadePontos()).isZero();
+            assertThat(r.quantidadeVertices()).isZero();
             assertThat(r.tickersProvedor()).isEmpty();
             assertThat(r.curvaConstruida()).isFalse();
         });

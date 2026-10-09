@@ -1,0 +1,11 @@
+{
+  "codigo": "INP",
+  "nome": "IBOVESPA",
+  "unidade": "PONTOS",
+  "moeda": "BRL",
+  "pais": "BR",
+  "classificacao": "Índice",
+  "classeAtivo": "Índice de ações",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}

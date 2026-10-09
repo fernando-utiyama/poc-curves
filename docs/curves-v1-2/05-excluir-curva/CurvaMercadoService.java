@@ -267,7 +267,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
             List<CurvaProvedor> tcenProvedores = curvaPrvdrRepositoryPort.findByProvedor(PROVEDOR_DERIVADA);
             List<Detalhe> filhasAtivas = new ArrayList<>();
             for (CurvaProvedor lig : tcenProvedores) {
-                if (atual.nome().equals(lig.codigoNaFonte())) {
+                if (atual.nome().equals(lig.tickerProvedor())) {
                     repositoryPort.findByNome(lig.nomeCurva()).ifPresent(parent -> {
                         if (parent.situacao() == SituacaoCurva.ATIVO) {
                             filhasAtivas.add(new Detalhe("nome", null, parent.nome(), "Curva derivada ativa"));

@@ -84,7 +84,7 @@ export interface ItemListaCurvas extends Pick<CurvaMercado, 'codigo' | 'nome' | 
   ultimaExecucao: { dataBase: string; usuario: string | null } | null;
 }
 export interface PaginaCurvas { /* nomes do CurvasMercadoPaginadaResponse real: a lista de itens, totalElementos, totalPaginas */ itens: ItemListaCurvas[]; totalElementos: number; totalPaginas: number; }
-export interface ProvedorDaCurva { idCurvaProvedor: number; provedor: string; produto: string; codigoNaFonte: string; prioridade: number; }
+export interface ProvedorDaCurva { idCurvaProvedor: number; provedor: string; produto: string; tickerProvedor: string; prioridade: number; }
 export interface FiltroCurvas { nome?: string; codigo?: string; provedor?: string; dono?: string; unidade?: string; situacao?: string; pagina: number; tamanho: number; }
 
 const ctx = (ms: number) => ({ context: new HttpContext().set(TEMPO_LIMITE_MS, ms) });

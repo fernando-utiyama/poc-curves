@@ -36,3 +36,7 @@ Padrão único, o que a ANBIMA e a Bloomberg já seguiam:
 5. **Testes** que montam `BtrsCurvaPrimrEntity` ou usam id `Long` (`1L`) da B3: trocar para `1`.
 
 Depois: `mvn -q compile` lista o que ainda usa os nomes antigos.
+
+## Nomes trocados nesta rodada
+
+- `codigosNaFonte` → `tickersProvedor` e **`quantidadePontos` → `quantidadeVertices`** na listagem do bruto (o que se conta ali são os vértices do provedor; "ponto" é o interpolado). Vale para os três resumos, os DTOs e o `AgregadoPrimr`. O front lê `quantidadeVertices` no JSON. A `quantidadePontos` da **construção** e do painel é do engine e não muda.

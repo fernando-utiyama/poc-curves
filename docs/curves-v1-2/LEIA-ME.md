@@ -51,3 +51,7 @@ Substituem arquivos: `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository
 - Sem calendário: os dias úteis sem dado ficaram para a v2 (`docs/backlog-v2.md`).
 - Item 1 (`produces` JSON): nos 3 controllers (`BbergCurvaPrimrController`, `AnbmaCurvaPrimrController` e `BtrsCurvaPrimrController`), `@RequestMapping(value = "/api/v1/curvas-mercado", produces = MediaType.APPLICATION_JSON_VALUE)` e importar `org.springframework.http.MediaType`.
 - ANBIMA e Bloomberg: `TRECHOS-ANBIMA-BLOOMBERG.md`, escrito por analogia com a B3 (os adaptadores delas não foram vistos). O `AgregadoPrimr.java` tira da listagem a duplicação entre as três fontes (item 9 do backlog).
+
+## Renomeado: `codigoNaFonte` → `tickerProvedor` (provedor da curva)
+
+É o `cTickerPrvdr` da `tCurvaPrvdr`. No repositório da curves, trocar com Shift+F6 (renomear), para a IDE acompanhar os usos: o campo do record `CriarCurvaProvedorRequest` e do `CriarCurvaProvedorInput`, o record de domínio `CurvaProvedor` (`codigoNaFonte()` → `tickerProvedor()`), o parâmetro do `buscarCurvasProvedor(provedor, produto, tickerProvedor)`, o campo da `CurvaPrvdrEntity` (a coluna fica no `@Column`), as respostas e o filtro `?tickerProvedor=` das rotas `GET /curvas-mercado/provedores` e `/dados-mercado/{provedor}`. O `AgregadoPrimr` e o `CurvaMercadoService` desta pasta já usam o nome novo. O `CurvaProvedor` do **engine** é outro record e não muda.

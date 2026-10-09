@@ -1,0 +1,13 @@
+{
+  "codigo": "NTNB",
+  "nome": "NTN-B",
+  "unidade": "TAXA",
+  "dayCounterCotacao": "Business252",
+  "compounding": "Compounded",
+  "moeda": "BRL",
+  "pais": "BR",
+  "classificacao": "Juros reais",
+  "classeAtivo": "Título público",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}

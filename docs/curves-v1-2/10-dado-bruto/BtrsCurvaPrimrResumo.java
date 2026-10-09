@@ -11,7 +11,7 @@ public record BtrsCurvaPrimrResumo(
     String nome,
     SituacaoCurva situacao,
     LocalDate dataBase,
-    long quantidadePontos,
+    long quantidadeVertices,
     List<String> tickersProvedor,
     boolean curvaConstruida
 ) {}

@@ -1,0 +1,13 @@
+{
+  "codigo": "DCL",
+  "nome": "Cupom limpo de dólar",
+  "unidade": "TAXA",
+  "dayCounterCotacao": "Actual360",
+  "compounding": "Simple",
+  "moeda": "USD",
+  "pais": "BR",
+  "classificacao": "Juros",
+  "classeAtivo": "Cupom cambial",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}

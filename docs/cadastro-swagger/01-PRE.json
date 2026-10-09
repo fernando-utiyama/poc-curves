@@ -1,0 +1,13 @@
+{
+  "codigo": "PRE",
+  "nome": "DIxPRE",
+  "unidade": "TAXA",
+  "dayCounterCotacao": "Business252",
+  "compounding": "Compounded",
+  "moeda": "BRL",
+  "pais": "BR",
+  "classificacao": "Juros",
+  "classeAtivo": "Swap DI x Pré",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}

@@ -94,7 +94,7 @@ Fora dessa ordem, a resposta é 409 dizendo o que ainda falta apagar.
 
 ## Decidido (não fazer)
 
-- **`GET /curvas-mercado/provedores`**: fica como está. O front (`fed-cadastro-curvas`) filtra por provedor na própria listagem (`GET /curvas-mercado?provedor=`) e não usa essa rota; ela tem filtros a mais (`produto`, `codigoNaFonte`) e não atrapalha.
+- **`GET /curvas-mercado/provedores`**: fica como está. O front (`fed-cadastro-curvas`) filtra por provedor na própria listagem (`GET /curvas-mercado?provedor=`) e não usa essa rota; ela tem filtros a mais (`produto`, `tickerProvedor`) e não atrapalha.
 
 - **Aviso ao alterar curva com histórico** (`PUT /curvas-mercado/{nome}`): o gestor sabe que as datas já construídas usaram a regra anterior.
 

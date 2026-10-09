@@ -1,0 +1,13 @@
+{
+  "codigo": "SOFR",
+  "nome": "SOFR",
+  "unidade": "TAXA",
+  "dayCounterCotacao": "Actual360",
+  "compounding": "Simple",
+  "moeda": "USD",
+  "pais": "US",
+  "classificacao": "Juros",
+  "classeAtivo": "Taxa de referência",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}

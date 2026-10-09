@@ -12,7 +12,7 @@ public record BtrsCurvaPrimrResumoResponse(
     String nome,
     SituacaoCurva situacao,
     @JsonFormat(pattern = "yyyy-MM-dd") LocalDate dataBase,
-    long quantidadePontos,
+    long quantidadeVertices,
     List<String> tickersProvedor,
     boolean curvaConstruida
 ) {
@@ -23,7 +23,7 @@ public record BtrsCurvaPrimrResumoResponse(
             d.nome(),
             d.situacao(),
             d.dataBase(),
-            d.quantidadePontos(),
+            d.quantidadeVertices(),
             d.tickersProvedor(),
             d.curvaConstruida()
         );
