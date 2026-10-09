@@ -38,7 +38,7 @@ Todos os arquivos desta pasta já identificam a curva pelo **nome** (`findByNome
 
 ## Feito pelo usuário (não é v1.2): identificador da curva pelo nome
 
-A troca de `codigo` para `nome` (a PK) no `CurvaMercadoUseCase`, no service, no controller e no repositório já foi feita no repositório real. `08-corrigir-busca-codigo/` e `09-identificador-nome/` ficam só como referência. `09-identificador-nome/CurvaMercadoAcoesService.java` (`application/service/`, substitui): recebe o nome, busca a curva com `findByNome` e repassa `curva.codigo()` ao engine; curva sem código → 422 `DADOS_INVALIDOS`. Testes que montam o service à mão e stubs de `existsByCodigo` passam a usar `findByNome`.
+A troca de `codigo` para `nome` (a PK) no `CurvaMercadoUseCase`, no service, no controller e no repositório já foi feita no repositório real. `09-identificador-nome/` fica só como referência. `09-identificador-nome/CurvaMercadoAcoesService.java` (`application/service/`, substitui): recebe o nome, busca a curva com `findByNome` e repassa `curva.codigo()` ao engine; curva sem código → 422 `DADOS_INVALIDOS`. Testes que montam o service à mão e stubs de `existsByCodigo` passam a usar `findByNome`.
 
 ## Dado bruto (itens 3, 4 e 9 do backlog), `10-dado-bruto/`
 
