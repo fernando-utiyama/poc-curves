@@ -45,7 +45,7 @@ public class CurvaMercadoAcoesController {
     }
 
     @Operation(summary = "Consultar vértices da data",
-        description = "Devolve os vértices construídos da curva na data, como o engine os guardou. Se a data não foi construída, a resposta é a do engine")
+        description = "Vértices construídos da curva na data")
     @GetMapping("/vertices")
     public ResponseEntity<String> vertices(
             @PathVariable String nome,
@@ -55,8 +55,7 @@ public class CurvaMercadoAcoesController {
 
     @DeleteMapping("/vertices")
     @Operation(summary = "Apagar curva construída da data",
-        description = "Apaga os vértices construídos da data e, em cascata, a interpolada dela. Não toca o dado bruto, "
-            + "a configuração nem o cadastro. A data volta a ficar não construída e pode ser construída de novo")
+        description = "Apaga os vértices e a interpolada da data. Dado bruto e configuração não mudam")
     public ResponseEntity<Void> excluirVertices(
             @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase) {
@@ -65,8 +64,7 @@ public class CurvaMercadoAcoesController {
     }
 
     @Operation(summary = "Interpolar prazos da data",
-        description = "Calcula no engine a taxa nos prazos pedidos, sobre os vértices construídos da data. Informe du (dias úteis) e/ou data na query string; "
-            + "sem nenhum dos dois, 400. Só consulta: não grava nada")
+        description = "Taxa nos prazos pedidos (du e/ou data). Só consulta")
     @GetMapping("/interpolacao")
     public ResponseEntity<String> interpolar(
             @PathVariable String nome,
