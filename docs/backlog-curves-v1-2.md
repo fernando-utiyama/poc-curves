@@ -66,7 +66,7 @@ A curva é aberta pelo **nome** (`cTickerIndcd`, PK de `tCurvaMercd`). O código
 **Back (curves):**
 - `CurvaMercadoController`, `ConfiguracaoCurvaController`, `CurvaMercadoAcoesController`: `/{nome}` (arquivos de `docs/curves-v1-2/` já estão assim).
 - Controllers do bruto (`BtrsCurvaPrimrController`, `AnbmaCurvaPrimrController`, `BbergCurvaPrimrController`): renomear o path `{codigo}` para `{nome}` em `/{codigo}/primaria-*/...`. O service já busca a curva com `findByNome`; só o nome da variável e o Swagger mudam.
-- `CurvaMercadoAcoesService`: recebe o nome, busca a curva e repassa `curva.codigo()` ao engine; curva sem código → 422 (arquivo pronto em `docs/curves-v1-2/09-identificador-nome/`).
+- `CurvaMercadoAcoesService`: recebe o nome, busca a curva e repassa `curva.codigo()` ao engine; curva sem código → 422 (arquivo pronto em `docs/curves-v1-2/aplicado/06-excluir-vertices/`).
 
 **Front (chamadas que passam a usar `item.nome`, com `encodeURIComponent`):**
 
