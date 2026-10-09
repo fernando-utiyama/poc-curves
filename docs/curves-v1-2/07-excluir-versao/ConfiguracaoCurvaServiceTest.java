@@ -110,7 +110,7 @@ class ConfiguracaoCurvaServiceTest {
     @Test
     @DisplayName("Criar primeira versão de configuração com início no passado")
     void criarPrimeiraVersaoComSucesso() {
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(curvaPrvdrRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of());
         when(configuracaoRepositoryPort.findUltimaVersao("DIxPRE")).thenReturn(Optional.empty());
         when(configuracaoRepositoryPort.salvar(any(ConfiguracaoCurva.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -122,7 +122,7 @@ class ConfiguracaoCurvaServiceTest {
             LocalDate.of(2026, 1, 1)
         );
 
-        ConfiguracaoCurvaResultado res = service.criar("PRE", input);
+        ConfiguracaoCurvaResultado res = service.criar("DIxPRE", input);
 
         assertNotNull(res);
         assertNotNull(res.configuracao());
@@ -139,7 +139,7 @@ class ConfiguracaoCurvaServiceTest {
         LocalDate hoje = LocalDate.now();
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.minusDays(30), null);
 
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(curvaPrvdrRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of());
         when(configuracaoRepositoryPort.findUltimaVersao("DIxPRE")).thenReturn(Optional.of(v1));
         when(configuracaoRepositoryPort.salvar(any(ConfiguracaoCurva.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -152,7 +152,7 @@ class ConfiguracaoCurvaServiceTest {
             amanha
         );
 
-        ConfiguracaoCurvaResultado res = service.criar("PRE", input);
+        ConfiguracaoCurvaResultado res = service.criar("DIxPRE", input);
 
         assertEquals(2, res.configuracao().versao());
 
@@ -169,7 +169,7 @@ class ConfiguracaoCurvaServiceTest {
     void criarVersaoNoPassadoGeraErro() {
         ConfiguracaoCurva v1 = versao(1L, 1, LocalDate.now().minusDays(10), null);
 
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(curvaPrvdrRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of());
         when(configuracaoRepositoryPort.findUltimaVersao("DIxPRE")).thenReturn(Optional.of(v1));
 
@@ -180,7 +180,7 @@ class ConfiguracaoCurvaServiceTest {
             LocalDate.now().minusDays(5)
         );
 
-        BusinessException ex = assertThrows(BusinessException.class, () -> service.criar("PRE", input));
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.criar("DIxPRE", input));
         assertEquals(CadastroErrorCode.DADOS_INVALIDOS.getCode(), ex.getErrorCode());
     }
 
@@ -191,11 +191,11 @@ class ConfiguracaoCurvaServiceTest {
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.minusDays(10), hoje.plusDays(4));
         ConfiguracaoCurva v2 = versao(2L, 2, hoje.plusDays(5), null);
 
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v2, v1));
         semConstrucao();
 
-        service.excluir("PRE", 2);
+        service.excluir("DIxPRE", 2);
 
         verify(configuracaoRepositoryPort).excluir(2L);
 
@@ -213,11 +213,11 @@ class ConfiguracaoCurvaServiceTest {
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.minusDays(60), hoje.minusDays(11));
         ConfiguracaoCurva v2 = versao(2L, 2, hoje.minusDays(10), null);
 
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v2, v1));
         semConstrucao();
 
-        service.excluir("PRE", null);
+        service.excluir("DIxPRE", null);
 
         verify(configuracaoRepositoryPort).excluir(2L);
         ArgumentCaptor<ConfiguracaoCurva> captor = ArgumentCaptor.forClass(ConfiguracaoCurva.class);
@@ -232,11 +232,11 @@ class ConfiguracaoCurvaServiceTest {
         LocalDate hoje = LocalDate.now();
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.minusDays(60), null);
 
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v1));
         when(dadoVertcCurvaRepositoryPort.existeConstrucao(eq("DIxPRE"), any(), any())).thenReturn(true);
 
-        BusinessException ex = assertThrows(BusinessException.class, () -> service.excluir("PRE", 1));
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.excluir("DIxPRE", 1));
 
         assertEquals(CadastroErrorCode.VERSAO_EM_USO.getCode(), ex.getErrorCode());
         verify(configuracaoRepositoryPort, never()).excluir(any());
@@ -251,11 +251,11 @@ class ConfiguracaoCurvaServiceTest {
         ConfiguracaoCurva v2 = versao(2L, 2, hoje.minusDays(30), hoje.minusDays(11));
         ConfiguracaoCurva v3 = versao(3L, 3, hoje.minusDays(10), null);
 
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v3, v2, v1));
         semConstrucao();
 
-        service.excluir("PRE", 2);
+        service.excluir("DIxPRE", 2);
 
         verify(configuracaoRepositoryPort).excluir(2L);
         ArgumentCaptor<ConfiguracaoCurva> captor = ArgumentCaptor.forClass(ConfiguracaoCurva.class);
@@ -271,11 +271,11 @@ class ConfiguracaoCurvaServiceTest {
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.minusDays(60), hoje.minusDays(31));
         ConfiguracaoCurva v2 = versao(2L, 2, hoje.minusDays(30), null);
 
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v2, v1));
         semConstrucao();
 
-        service.excluir("PRE", 1);
+        service.excluir("DIxPRE", 1);
 
         verify(configuracaoRepositoryPort).excluir(1L);
         ArgumentCaptor<ConfiguracaoCurva> captor = ArgumentCaptor.forClass(ConfiguracaoCurva.class);
@@ -291,11 +291,11 @@ class ConfiguracaoCurvaServiceTest {
         LocalDate hoje = LocalDate.now();
         ConfiguracaoCurva v1 = versao(1L, 1, hoje.plusDays(5), null);
 
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v1));
         semConstrucao();
 
-        service.excluir("PRE", 1);
+        service.excluir("DIxPRE", 1);
 
         verify(configuracaoRepositoryPort).excluir(1L);
         verify(configuracaoRepositoryPort, never()).salvar(any());
@@ -306,10 +306,10 @@ class ConfiguracaoCurvaServiceTest {
     void excluirVersaoInexistente() {
         ConfiguracaoCurva v1 = versao(1L, 1, LocalDate.now().minusDays(10), null);
 
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(v1));
 
-        assertThrows(NotFoundException.class, () -> service.excluir("PRE", 7));
+        assertThrows(NotFoundException.class, () -> service.excluir("DIxPRE", 7));
         verify(configuracaoRepositoryPort, never()).excluir(any());
     }
 
@@ -318,10 +318,10 @@ class ConfiguracaoCurvaServiceTest {
     void excluirSemVersaoSemVigente() {
         ConfiguracaoCurva futura = versao(1L, 1, LocalDate.now().plusDays(5), null);
 
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(futura));
 
-        assertThrows(NotFoundException.class, () -> service.excluir("PRE", null));
+        assertThrows(NotFoundException.class, () -> service.excluir("DIxPRE", null));
         verify(configuracaoRepositoryPort, never()).excluir(any());
     }
 }

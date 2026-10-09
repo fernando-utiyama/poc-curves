@@ -56,10 +56,10 @@ class ApagarConstrucaoServiceTest {
     @Test
     @DisplayName("Apaga vértices e interpolada da data e publica o evento")
     void apagaConstrucaoDaData() {
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(dadoVertcCurvaRepositoryPort.apagar("DIxPRE", DATA)).thenReturn(true);
 
-        service.apagar("PRE", DATA);
+        service.apagar("DIxPRE", DATA);
 
         verify(dadoVertcCurvaRepositoryPort).apagar("DIxPRE", DATA);
         verify(eventosPort).publicarCadastroAlterado(any());
@@ -68,10 +68,10 @@ class ApagarConstrucaoServiceTest {
     @Test
     @DisplayName("Data sem nada construído gera NAO_ENCONTRADO e não publica evento")
     void dataSemConstrucao() {
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curvaPadrao));
         when(dadoVertcCurvaRepositoryPort.apagar("DIxPRE", DATA)).thenReturn(false);
 
-        assertThrows(NotFoundException.class, () -> service.apagar("PRE", DATA));
+        assertThrows(NotFoundException.class, () -> service.apagar("DIxPRE", DATA));
         verify(eventosPort, never()).publicarCadastroAlterado(any());
     }
 
