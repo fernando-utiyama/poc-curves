@@ -49,33 +49,33 @@ Copiar o `CurvaMercadoController.java` desta pasta por cima do seu (`adapter/in/
 
 ## 6. Testes: acrescentar no seu `CurvaMercadoServiceTest`
 
-Os mocks (`repositoryPort` da curva, `curvaPrvdrRepositoryPort`, `configuracaoRepositoryPort`, `eventosPort`), o `service` e a curva de exemplo já existem no seu teste: use os nomes que estão lá (aqui: `repositoryPort` e a curva `existente`). Atenção: as versões são excluídas pelo `configuracaoRepositoryPort` (id `Long`) e a curva pelo `repositoryPort` (nome). Se a curva de exemplo tiver outro nome que não `DIxPRE`, troque nos três testes.
+Sem métodos auxiliares: cada teste monta o que usa. Nomes do seu teste: `repositoryPort` (curva), `configuracaoRepositoryPort`, `curvaPrvdrRepositoryPort`, `eventosPort` e `service`. As versões são excluídas pelo `configuracaoRepositoryPort` (id `Long`) e a curva pelo `repositoryPort` (nome).
 
-Imports que podem faltar: `org.springframework.dao.DataIntegrityViolationException`, `static org.mockito.Mockito.doThrow`, `static org.mockito.Mockito.never`, `static org.mockito.Mockito.verifyNoInteractions`.
-
-Auxiliares (se o teste ainda não tiver algo parecido):
-
-```java
-private final CurvaProvedor provedorB3 = new CurvaProvedor(10L, "DIxPRE", "B3", "TS", "PRE", 1);
-
-private ConfiguracaoCurva versao(long id, int versao) {
-    ParametrosCalculo params = new ParametrosCalculo(
-        BaseInterpolacao.Discount, DayCounter.Business252, Frequency.Annual,
-        "Brazil", "Settlement", BusinessDayConvention.Following,
-        Extrapolacao.Disabled, Extrapolacao.Disabled, "10Y", 4, ModoArredondamento.HALF_UP,
-        null, null, null, Map.of());
-    return new ConfiguracaoCurva(id, "DIxPRE", versao, "TAXA_SWAP_B3", "Linear", params, LocalDate.of(2026, 1, 1), null);
-}
-```
-
-Os três testes:
+Imports que podem faltar: `org.springframework.dao.DataIntegrityViolationException`, `static org.mockito.Mockito.doThrow`, `never`, `verifyNoInteractions`, e de `domain.cadastro` os tipos de `ParametrosCalculo` (Alt+Enter).
 
 ```java
 @Test
 @DisplayName("Excluir: curva nunca construída sai com provedores e configurações")
 void excluiCurvaSemHistorico() {
+    LocalDateTime dUltAtulz = LocalDateTime.of(2026, 3, 30, 14, 30);
+    CurvaMercado existente = new CurvaMercado(
+        "PRE", "DIxPRE", Unidade.TAXA, DayCounterCotacao.Business252,
+        CompoundingCotacao.Compounded, "BRL", "BR", null, null,
+        SituacaoCurva.ATIVO, LocalDate.of(2026, 1, 1), null,
+        LocalDateTime.of(2026, 1, 1, 10, 0), dUltAtulz,
+        LocalDate.of(2026, 3, 29), "ENGINE_SVC", null
+    );
+    ParametrosCalculo params = new ParametrosCalculo(
+        BaseInterpolacao.Discount, DayCounter.Business252, Frequency.Annual,
+        "Brazil", "Settlement", BusinessDayConvention.Following,
+        Extrapolacao.Disabled, Extrapolacao.Disabled, "10Y", 4, ModoArredondamento.HALF_UP,
+        null, null, null, Map.of());
+    ConfiguracaoCurva versao1 = new ConfiguracaoCurva(1L, "DIxPRE", 1, "TAXA_SWAP_B3", "Linear", params, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 2, 28));
+    ConfiguracaoCurva versao2 = new ConfiguracaoCurva(2L, "DIxPRE", 2, "TAXA_SWAP_B3", "Linear", params, LocalDate.of(2026, 3, 1), null);
+    CurvaProvedor provedorB3 = new CurvaProvedor(10L, "DIxPRE", "B3", "TS", "PRE", 1);
+
     when(repositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(existente));
-    when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(versao(1L, 1), versao(2L, 2)));
+    when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(versao1, versao2));
     when(curvaPrvdrRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(provedorB3));
 
     service.excluir("DIxPRE");
@@ -90,6 +90,13 @@ void excluiCurvaSemHistorico() {
 @Test
 @DisplayName("Excluir: o banco recusa (ainda há construído ou dado bruto) e o service responde CURVA_COM_HISTORICO")
 void excluirRecusaCurvaComHistorico() {
+    CurvaMercado existente = new CurvaMercado(
+        "PRE", "DIxPRE", Unidade.TAXA, DayCounterCotacao.Business252,
+        CompoundingCotacao.Compounded, "BRL", "BR", null, null,
+        SituacaoCurva.ATIVO, LocalDate.of(2026, 1, 1), null,
+        LocalDateTime.of(2026, 1, 1, 10, 0), LocalDateTime.of(2026, 3, 30, 14, 30),
+        LocalDate.of(2026, 3, 29), "ENGINE_SVC", null
+    );
     when(repositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(existente));
     doThrow(new DataIntegrityViolationException("FK_tCurvaMercd_tDadoVertcCurva")).when(repositoryPort).excluir("DIxPRE");
 
@@ -109,7 +116,7 @@ void excluirCurvaInexistente() {
 }
 ```
 
-Com Mockito estrito: o primeiro teste não faz stub de `findByNomeCurva` com outro valor, então não sobra stub sem uso.
+A ordem do `CurvaProvedor` usada é id, nome da curva, provedor, produto, ticker, prioridade; se o seu record tiver outra ordem, ajuste.
 
 ## 7. Curva derivada
 
