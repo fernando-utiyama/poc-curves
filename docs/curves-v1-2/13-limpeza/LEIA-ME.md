@@ -1,6 +1,6 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de comportamento nem de rota: só tira código sobrando e repartido em métodos. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Os 7 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/12-sem-avisos/`).
+Sem mudança de comportamento nem de rota: só tira código sobrando e repartido em métodos. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Os 8 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/12-sem-avisos/`).
 
 | Arquivo | Onde |
 |---|---|
@@ -9,6 +9,7 @@ Sem mudança de comportamento nem de rota: só tira código sobrando e repartido
 | `CurvaMercadoUseCase.java` | `application/port/in/usecase/` |
 | `CurvaMercado.java` | `domain/cadastro/` |
 | `CurvaProvedorService.java` | `application/service/` |
+| `CurvaMercadoAcoesController.java` | `adapter/in/api/rest/controller/` (só ganha `@Operation` nas 4 rotas que estavam sem descrição no Swagger; nada mais mudou) |
 | `CurvaPorOrigem.java` | `domain/cadastro/` |
 | `CurvaProvedorUseCase.java` | `application/port/in/usecase/` (deduzido do service: confira os imports dos inputs) |
 
