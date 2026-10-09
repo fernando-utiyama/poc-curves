@@ -19,7 +19,6 @@ public void excluir(String nome) {
 
 ```java
 CURVA_COM_HISTORICO("Curva com histórico"),
-CURVA_COMPONENTE("Curva é componente de outra curva"),
 ```
 
 ## 4. `CurvaMercadoController` (`adapter/in/api/rest/controller`)
@@ -35,8 +34,8 @@ Método novo, depois do `reativar`:
 ```java
 @DeleteMapping("/{nome}")
 @Operation(summary = "Excluir curva de mercado",
-    description = "Exclui a curva com provedores e configurações. Recusa curva já construída (use a inativação) "
-        + "e curva que é componente de outra. Não apaga o dado bruto dos provedores")
+    description = "Exclui a curva com provedores e configurações. Recusa curva com construído ou dado bruto "
+        + "(use a inativação). Não apaga o dado bruto dos provedores")
 public ResponseEntity<Void> excluir(@PathVariable String nome) {
     excluirUseCase.excluir(nome);
     return ResponseEntity.noContent().build();
@@ -45,8 +44,6 @@ public ResponseEntity<Void> excluir(@PathVariable String nome) {
 
 Imports: `br.com.poc.application.port.in.usecase.ExcluirCurvaMercadoUseCase` (os de `DeleteMapping`/`PathVariable` já vêm do `org.springframework.web.bind.annotation.*`).
 
-## 5. Conferir amanhã (08/10/2026)
+## 5. Curva derivada
 
-Curva derivada provavelmente **ainda não existe** na curves. A regra "é componente de outra" (`buscarCurvasProvedor("TCEN", null, codigo)` no `ExcluirCurvaMercadoService`) supõe que a derivada guarda, em `tCurvaPrvdr`, o provedor `TCEN` com o código da curva componente em `cCodigoNaFonte`. Conferir se isso existe:
-- se **não existir**: a consulta devolve sempre vazio e nunca bloqueia, o que é inofensivo. Pode ficar como está, ou tirar o bloqueio, o `CURVA_COMPONENTE` e o teste `recusaCurvaComponente` até a derivada existir;
-- se **existir** de outro jeito: me mande como é gravada que eu ajusto a consulta.
+Não existe na curves (confirmado em 09/10/2026), então não há bloqueio "é componente de outra". Quando a derivada existir (provedor `TCEN` em `tCurvaPrvdr`), acrescentar o 409 `CURVA_COMPONENTE`.

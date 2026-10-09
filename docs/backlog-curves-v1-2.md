@@ -23,7 +23,7 @@ Itens levantados na revisão do Swagger, em 07 a 09/10/2026. A curva é identifi
    - a `tCurvaMercd` tem chave estrangeira vinda de 11 tabelas. A curva só sai se **nenhuma** das que ela não apaga tiver linhas dela: `tDadoVertcCurva`, `tDadoCurva`, `tBtrsCurvaPrimr`, `tAnbmaCurvaPrimr`, `tBbergCurvaPrimr`, `tCmeCurvaPrimr`, `tLchCurvaPrimr`, `tLsegCurvaPrimr`, `tMtrizCurva`. Se houver, responde **409** `CURVA_COM_HISTORICO` com as linhas por tabela (em vez de deixar o banco recusar com 500);
    - sem dependentes, apaga na mesma transação todas as configurações (`tConfgCurva`, inclusive a vigente e as passadas, que as rotas da v1 não deixam apagar) e os provedores (`tCurvaPrvdr`), e depois a curva;
    - **não apaga dado de outra tabela**: construído sai pelo item 6 (por data) e dado bruto pelas rotas `primaria-*` (por data). O bruto é por curva, então apagá-lo é seguro, mas continua sendo escolha do usuário;
-   - **409 se a curva é componente de outra curva**, listando as que dependem dela. **Conferir em 08/10/2026 se curva derivada já existe na curves**; se não, o bloqueio fica inofensivo (nunca dispara) e pode ser retirado;
+   - sem bloqueio de "componente de outra curva": curva derivada (provedor `TCEN`) ainda não existe na curves (confirmado em 09/10/2026); entra quando existir;
    - o front pede confirmação.
 
 6. **Apagar a curva construída de uma data** (`DELETE /api/v1/curvas-mercado/{nome}/{dataBase}/vertices`), na seção "Ações da curva", ao lado do `GET` da mesma rota:

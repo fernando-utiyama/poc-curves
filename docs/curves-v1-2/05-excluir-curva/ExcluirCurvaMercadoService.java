@@ -27,9 +27,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ExcluirCurvaMercadoService implements ExcluirCurvaMercadoUseCase {
 
-    /** Provedor que marca a curva derivada: o nome da curva componente fica em codigoNaFonte. */
-    private static final String PROVEDOR_DERIVADA = "TCEN";
-
     private final CurvaMercdRepositoryPort curvaRepositoryPort;
     private final CurvaPrvdrRepositoryPort curvaPrvdrRepositoryPort;
     private final ConfiguracaoCurvaRepositoryPort configuracaoRepositoryPort;
@@ -49,14 +46,6 @@ public class ExcluirCurvaMercadoService implements ExcluirCurvaMercadoUseCase {
                     + "; apague antes (construído pelo delete da data, dado bruto pelas rotas primaria-*) ou use a inativação"))
                 .toArray();
             throw new BusinessException(CadastroErrorCode.CURVA_COM_HISTORICO, detalhes);
-        }
-
-        List<CurvaProvedor> derivadas = curvaPrvdrRepositoryPort.buscarCurvasProvedor(PROVEDOR_DERIVADA, null, nome);
-        if (!derivadas.isEmpty()) {
-            Object[] detalhes = derivadas.stream()
-                .map(d -> new Detalhe("nome", null, nome, "Componente da curva " + d.nomeCurva()))
-                .toArray();
-            throw new BusinessException(CadastroErrorCode.CURVA_COMPONENTE, detalhes);
         }
 
         List<ConfiguracaoCurva> configuracoes = configuracaoRepositoryPort.findByNomeCurva(curva.nome());

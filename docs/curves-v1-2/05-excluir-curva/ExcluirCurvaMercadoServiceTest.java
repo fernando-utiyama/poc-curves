@@ -90,7 +90,6 @@ class ExcluirCurvaMercadoServiceTest {
     @DisplayName("Curva nunca construída sai com provedores e configurações")
     void excluiCurvaSemHistorico() {
         when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
-        when(curvaPrvdrRepositoryPort.buscarCurvasProvedor("TCEN", null, "PRE")).thenReturn(List.of());
         when(configuracaoRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(versao(1L, 1), versao(2L, 2)));
         when(curvaPrvdrRepositoryPort.findByNomeCurva("DIxPRE")).thenReturn(List.of(provedorB3));
 
@@ -117,21 +116,6 @@ class ExcluirCurvaMercadoServiceTest {
         verify(configuracaoRepositoryPort, never()).excluir(any());
         verify(curvaPrvdrRepositoryPort, never()).excluir(any(), any());
         verify(eventosPort, never()).publicarCadastroAlterado(any());
-    }
-
-    @Test
-    @DisplayName("Curva componente de outra gera CURVA_COMPONENTE e não apaga nada")
-    void recusaCurvaComponente() {
-        CurvaProvedor derivada = new CurvaProvedor(20L, "DERIVADA", "TCEN", "CURVA", "PRE", 1);
-
-        when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPadrao));
-        when(curvaPrvdrRepositoryPort.buscarCurvasProvedor("TCEN", null, "PRE")).thenReturn(List.of(derivada));
-
-        BusinessException ex = assertThrows(BusinessException.class, () -> service.excluir("PRE"));
-
-        assertEquals(CadastroErrorCode.CURVA_COMPONENTE.getCode(), ex.getErrorCode());
-        verify(curvaRepositoryPort, never()).excluir(any());
-        verify(configuracaoRepositoryPort, never()).excluir(any());
     }
 
     @Test
