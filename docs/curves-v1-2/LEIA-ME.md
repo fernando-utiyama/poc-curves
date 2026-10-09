@@ -59,6 +59,7 @@ Substituem arquivos: `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository
 ## Sem "canônico" (item 8), `11-sem-canonico/`
 
 Os dois records passam a carregar o próprio domínio, e o `...CanonicoState` deixa de existir:
+- `CurvaMercadoService.java` (`application/service/`) **substitui** o seu: uma cópia do que está em `05-excluir-curva/` (a mesma, com o `excluir`), sem `toCanonicoState` e sem o aviso `TCEN`. Copie junto com os dois records abaixo, senão não compila.
 - `CurvaAuditoria.java` e `CurvaMercadoDetalhada.java` (`domain/cadastro/`) **substituem** os seus: `List<CurvaProvedor> provedores` e `ConfiguracaoCurva`/`List<ConfiguracaoCurva>` no lugar dos `...CanonicoState`; sai o `curvaProvedores()`, alias de `provedores()`.
 - `07-excluir-versao/ConfiguracaoCurva.java` já vem sem `toCanonicoState()`; no `CurvaProvedor`, apagar o `toCanonicoState()`.
 - `CurvaAuditoriaExcelGenerator.java` (`adapter/in/api/rest/excel/`): **arquivo inteiro**, substitui o seu. Muda os dois imports, os dois laços (`auditoria.provedores()` e `auditoria.configuracoes()`) e a coluna `parametros`, que passa a sair como o JSON de `cModDado` (via `JsonMapper` do Jackson 3), em vez do `toString()` do record.
