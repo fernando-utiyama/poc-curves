@@ -1,12 +1,13 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de comportamento nem de rota: só tira código sobrando e repartido em métodos. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Os 3 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/12-sem-avisos/`).
+Sem mudança de comportamento nem de rota: só tira código sobrando e repartido em métodos. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Os 4 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/12-sem-avisos/`).
 
 | Arquivo | Onde |
 |---|---|
 | `CurvaMercadoService.java` | `application/service/` |
 | `ConfiguracaoCurvaService.java` | `application/service/` |
 | `CurvaMercadoUseCase.java` | `application/port/in/usecase/` |
+| `CurvaMercado.java` | `domain/cadastro/` |
 
 ## O que mudou
 
@@ -14,12 +15,15 @@ Sem mudança de comportamento nem de rota: só tira código sobrando e repartido
 - **Sem `if (porta != null)`:** as três portas entram pelo construtor e nunca são nulas (`buscarProvedoresPorNomes`, `consultarAuditoria`, `excluir`, `provedoresDe`, `configuracaoVigenteDe` e o bloco do `alterar`).
 - **Valores aceitos vêm dos enums:** `Arrays.toString(Unidade.values())` (e `DayCounterCotacao`, `CompoundingCotacao`) no lugar das listas escritas à mão nas mensagens.
 - **`detalhar` agora é privado** e saiu o overload `listar` de 6 argumentos.
+- **`inativar` e `reativar` em 3 linhas:** usam o novo `CurvaMercado.comSituacao(situacao, atualizadoEm)` em vez de copiar os 18 argumentos do construtor. **Pequena mudança de comportamento:** o `reativar` passa a devolver o detalhe completo (provedores e configuração vigente), como o `inativar` já fazia; antes devolvia o detalhe vazio.
 - **`alterar` mais curto:** a conferência "alterar a curva não invalida uma versão vigente ou futura" virou o método privado `validarCoerenciaComConfiguracoes`.
 
 **`ConfiguracaoCurvaService`**
 - Sem o `obterProvedores` (chama a porta direto, sem checar nulo).
 - `criar` mais curto: as regras do início da nova versão viraram `validarInicioDaVersao` (mesmas mensagens).
 - `validarCamposBasicos` sem repetição: `validarTexto(campo, valor, máximo, erros)` serve a `modeloConstrucao` e `interpolador`.
+
+**`CurvaMercado`** (record): ganha `comSituacao`; o resto é o que você já tem (construtor de 17 argumentos sem dono e `normalizarNome` iguais).
 
 **`CurvaMercadoUseCase`**: sai o `default listar(...)` de 6 argumentos.
 

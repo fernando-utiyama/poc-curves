@@ -196,67 +196,22 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
     @Transactional
     public CurvaMercadoDetalhada inativar(String nome) {
         CurvaMercado atual = obterCurva(nome);
-        List<CurvaProvedor> curvaProvedores = provedoresDe(atual.nome());
-
-        CurvaMercado inativada = new CurvaMercado(
-            atual.codigo(),
-            atual.nome(),
-            atual.unidade(),
-            atual.dayCounterCotacao(),
-            atual.compounding(),
-            atual.moeda(),
-            atual.pais(),
-            atual.classificacao(),
-            atual.classeAtivo(),
-            atual.dono(),
-            SituacaoCurva.INATIVO,
-            atual.inicioVigencia(),
-            atual.fimVigencia(),
-            atual.dataCriacao(),
-            LocalDateTime.now(),
-            atual.dataBaseReft(),
-            atual.usuarioCalculo(),
-            atual.usuarioAtualizacao()
-        );
-
-        CurvaMercado salva = repositoryPort.salvar(inativada);
+        CurvaMercado salva = repositoryPort.salvar(atual.comSituacao(SituacaoCurva.INATIVO, LocalDateTime.now()));
 
         publicarEvento(salva.codigo(), salva.nome(), "INATIVACAO", atual, salva);
 
-        return new CurvaMercadoDetalhada(salva, curvaProvedores, configuracaoVigenteDe(salva.nome()));
+        return detalhar(salva);
     }
 
     @Override
     @Transactional
     public CurvaMercadoDetalhada reativar(String nome) {
         CurvaMercado atual = obterCurva(nome);
-
-        CurvaMercado reativada = new CurvaMercado(
-            atual.codigo(),
-            atual.nome(),
-            atual.unidade(),
-            atual.dayCounterCotacao(),
-            atual.compounding(),
-            atual.moeda(),
-            atual.pais(),
-            atual.classificacao(),
-            atual.classeAtivo(),
-            atual.dono(),
-            SituacaoCurva.ATIVO,
-            atual.inicioVigencia(),
-            atual.fimVigencia(),
-            atual.dataCriacao(),
-            LocalDateTime.now(),
-            atual.dataBaseReft(),
-            atual.usuarioCalculo(),
-            atual.usuarioAtualizacao()
-        );
-
-        CurvaMercado salva = repositoryPort.salvar(reativada);
+        CurvaMercado salva = repositoryPort.salvar(atual.comSituacao(SituacaoCurva.ATIVO, LocalDateTime.now()));
 
         publicarEvento(salva.codigo(), salva.nome(), "REATIVACAO", atual, salva);
 
-        return new CurvaMercadoDetalhada(salva, List.of(), null);
+        return detalhar(salva);
     }
 
     /**
