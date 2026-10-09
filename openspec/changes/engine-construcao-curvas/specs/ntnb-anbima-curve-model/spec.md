@@ -61,7 +61,7 @@ Os títulos SHALL ser resolvidos em ordem crescente de `V`. Resolver o título `
 - **`RESOLVIDO`**: se a data do evento for igual à de um título resolvido `k`, `DF_i = (1 + z_k)^(−DU_i/252)`;
 - **`INTERPOLADO`**: nos demais casos, o `DF` interpolado pela base de interpolação, pelo interpolador e pelo eixo cadastrados, entre os dois pontos vizinhos no conjunto formado pelos títulos já resolvidos e pelo ponto do próprio título `(P_n, z)`.
 
-Durante o bootstrap, as taxas `z_k` SHALL ser usadas sem arredondamento. A raiz SHALL ser encontrada por bisseção no intervalo `[−0,99; 1,00]`. Se `f` não trocar de sinal nos extremos, a construção falha com `MODELO_FALHOU`, informando o título. Senão, a bisseção repete até a largura do intervalo ser menor que `10^−14` ou até 200 iterações, e `z_n` é o ponto médio do intervalo final. Cada título gera um ponto: data = `P_n`, valor = `z_n × 100`, dias úteis publicados = `vVertcCurva`. `DU_n` do vencimento, no bootstrap, é o `vVertcCurva`.
+Durante o bootstrap, as taxas `z_k` SHALL ser usadas sem arredondamento. A raiz SHALL ser encontrada por bisseção no intervalo `[−0,99; 1,00]`. Se `f` não trocar de sinal nos extremos, a construção falha com `MODELO_FALHOU`, informando o título. Senão, a bisseção repete até a largura do intervalo ser menor que `10^−14` ou até 200 iterações, e `z_n` é o ponto médio do intervalo final. Cada título gera um ponto: data = `P_n`, valor = `z_n × 100`, dias úteis publicados nulos (a ANBIMA não publica dias úteis). `DU_n` do vencimento, no bootstrap, é o `DU` de `B` a `P_n` pelo calendário cadastrado, como nos demais eventos; `vVertcCurva` (dias corridos) serve só para reconstruir `V`.
 
 #### Scenario: Primeiro título
 - **WHEN** o título de menor vencimento é resolvido
