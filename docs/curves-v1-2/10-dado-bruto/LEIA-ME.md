@@ -47,6 +47,19 @@ O que a listagem devolve: por curva, **as datas que têm dado bruto gravado**, c
 4. **Bloomberg**: `reserveNextIdentifier()` virou `proximoId()` (avise o outro dev que mexeu no repositório).
 5. **Testes antigos**: os que montam entidades ou usam o id da B3 como `1L` passam a `1`; stubs de `AgregadoProjection` passam a `CurvaPrimrDataBaseProjection`.
 
+## Falta fazer (revisão: esta pasta só tem persistência)
+
+Esta pasta cobre entidade, repositório, porta, adaptador e o resumo por data. **Não há ainda** service, use case nem controller das 3 fontes, e o Swagger mostra que o controller ainda está no padrão antigo. O que falta:
+
+1. **Rotas `{codigo}` → `{nome}`** nos 3 controllers: `/curvas-mercado/{nome}/primaria-b3|anbima|bloomberg/{dataBase}[...]` (5 endpoints por fonte). O `@PathVariable String codigo` vira `String nome`, e o service busca a curva por `findByNome` (404 se não existir) e usa `curva.nome()` nas portas, que já recebem o nome.
+2. **Service das 3 fontes**: trocar a busca da curva por código pela busca por nome (incluir, alterar, apagar vértice, consultar data, apagar todos da data) e o `listarDatasBase` do snippet acima.
+3. **Use case das 3 fontes**: parâmetro `nomeCurva` no lugar de `codigoCurva` e `listarDatasBase` com `List<CurvaPrimrDataBase>`.
+4. **Apagar todos da data** (`DELETE /{dataBase}`): recusar com `existeVerticeConstruido` (409, mensagem explicada) e só então `excluirPorNomeCurvaEDataBase`. Dado bruto nunca dispara recálculo.
+5. **Sem avisos nas linhas** (`BtrsCurvaPrimrLinhaComAvisosResponse` e parecidos): mesma regra da configuração e do detalhe da curva; resposta simples de sucesso e erro explicado.
+6. **Testes** dos services e dos controllers web das 3 fontes (os testes desta pasta cobrem só o mapper e a listagem da B3).
+
+Para escrever 1 a 5 inteiros (e não só descrever), preciso do código atual dos 3 services, dos 3 use cases e dos 3 controllers (foto ou texto); a B3 e a Bloomberg já vi em parte, a ANBIMA não.
+
 ## `listarDatasBase` do service (B3)
 
 ```java
