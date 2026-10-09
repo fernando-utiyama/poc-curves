@@ -6,7 +6,7 @@ import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.application.port.out.EventosPort;
 import br.com.poc.domain.SituacaoCurva;
-import br.com.poc.domain.cadastro.CurvaPrimrResumo;
+import br.com.poc.domain.cadastro.CurvaPrimrDataGravada;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,7 +38,7 @@ class BtrsCurvaPrimrServiceListagemTest {
 
     private BtrsCurvaPrimrService service;
 
-    private final CurvaPrimrResumo resumo = new CurvaPrimrResumo(
+    private final CurvaPrimrDataGravada resumo = new CurvaPrimrDataGravada(
         null, "TBD-B3-DIXPRE", SituacaoCurva.ATIVO, LocalDate.of(2026, 9, 14), 278L, List.of("PRE"), false);
 
     @BeforeEach
@@ -49,22 +49,22 @@ class BtrsCurvaPrimrServiceListagemTest {
     @Test
     @DisplayName("Sem período, devolve a última data de cada curva, inclusive a sem código")
     void semPeriodoUsaUltimaData() {
-        when(btrsRepositoryPort.listarUltimaData(null, null)).thenReturn(List.of(resumo));
+        when(btrsRepositoryPort.listarUltimaDataGravada(null, null)).thenReturn(List.of(resumo));
 
-        List<CurvaPrimrResumo> res = service.listarAgregado(null, null, " ", "");
+        List<CurvaPrimrDataGravada> res = service.listarDatasGravadas(null, null, " ", "");
 
         assertEquals(List.of(resumo), res);
-        verify(btrsRepositoryPort, never()).listarAgregado(any(), any(), any(), any());
+        verify(btrsRepositoryPort, never()).listarDatasGravadas(any(), any(), any(), any());
     }
 
     @Test
     @DisplayName("Filtros de código e nome chegam sem espaços nas pontas")
     void filtrosAparados() {
-        when(btrsRepositoryPort.listarUltimaData("PRE", "DIxPRE")).thenReturn(List.of(resumo));
+        when(btrsRepositoryPort.listarUltimaDataGravada("PRE", "DIxPRE")).thenReturn(List.of(resumo));
 
-        service.listarAgregado(null, null, " PRE ", " DIxPRE ");
+        service.listarDatasGravadas(null, null, " PRE ", " DIxPRE ");
 
-        verify(btrsRepositoryPort).listarUltimaData("PRE", "DIxPRE");
+        verify(btrsRepositoryPort).listarUltimaDataGravada("PRE", "DIxPRE");
     }
 
     @Test
@@ -72,30 +72,30 @@ class BtrsCurvaPrimrServiceListagemTest {
     void comPeriodoUsaAgregado() {
         LocalDate de = LocalDate.of(2026, 9, 1);
         LocalDate ate = LocalDate.of(2026, 9, 30);
-        when(btrsRepositoryPort.listarAgregado(de, ate, null, null)).thenReturn(List.of(resumo));
+        when(btrsRepositoryPort.listarDatasGravadas(de, ate, null, null)).thenReturn(List.of(resumo));
 
-        List<CurvaPrimrResumo> res = service.listarAgregado(de, ate, null, null);
+        List<CurvaPrimrDataGravada> res = service.listarDatasGravadas(de, ate, null, null);
 
         assertEquals(List.of(resumo), res);
-        verify(btrsRepositoryPort, never()).listarUltimaData(any(), any());
+        verify(btrsRepositoryPort, never()).listarUltimaDataGravada(any(), any());
     }
 
     @Test
     @DisplayName("Só com 'ate', começa 30 dias antes")
     void soAteComecaTrintaDiasAntes() {
         LocalDate ate = LocalDate.of(2026, 9, 30);
-        when(btrsRepositoryPort.listarAgregado(ate.minusDays(30), ate, null, null)).thenReturn(List.of());
+        when(btrsRepositoryPort.listarDatasGravadas(ate.minusDays(30), ate, null, null)).thenReturn(List.of());
 
-        service.listarAgregado(null, ate, null, null);
+        service.listarDatasGravadas(null, ate, null, null);
 
-        verify(btrsRepositoryPort).listarAgregado(ate.minusDays(30), ate, null, null);
+        verify(btrsRepositoryPort).listarDatasGravadas(ate.minusDays(30), ate, null, null);
     }
 
     @Test
     @DisplayName("Início depois do fim é recusado")
     void inicioDepoisDoFim() {
         assertThrows(InvalidInputException.class,
-            () -> service.listarAgregado(LocalDate.of(2026, 9, 30), LocalDate.of(2026, 9, 1), null, null));
+            () -> service.listarDatasGravadas(LocalDate.of(2026, 9, 30), LocalDate.of(2026, 9, 1), null, null));
         verifyNoInteractions(btrsRepositoryPort);
     }
 
@@ -103,7 +103,7 @@ class BtrsCurvaPrimrServiceListagemTest {
     @DisplayName("Período maior que 366 dias é recusado")
     void periodoMuitoLongo() {
         assertThrows(InvalidInputException.class,
-            () -> service.listarAgregado(LocalDate.of(2025, 1, 1), LocalDate.of(2026, 9, 30), null, null));
+            () -> service.listarDatasGravadas(LocalDate.of(2025, 1, 1), LocalDate.of(2026, 9, 30), null, null));
         verifyNoInteractions(btrsRepositoryPort);
     }
 }

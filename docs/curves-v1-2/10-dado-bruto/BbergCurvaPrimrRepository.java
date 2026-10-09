@@ -25,7 +25,7 @@ public interface BbergCurvaPrimrRepository extends JpaRepository<BbergCurvaPrimr
 
     @Query(value = "SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.tDadoVertcCurva v "
         + "WHERE v.cTickerIndcd = :nomeCurva AND v.dBaseReft = :dataBase) THEN 1 ELSE 0 END", nativeQuery = true)
-    Integer existsCurvaConstruida(@Param("nomeCurva") String nomeCurva, @Param("dataBase") LocalDate dataBase);
+    Integer existeVerticeConstruido(@Param("nomeCurva") String nomeCurva, @Param("dataBase") LocalDate dataBase);
 
     /** Uma linha por curva e data-base no período. Mostra também as curvas sem código (o GET respeita só o banco). */
     @Query(value = """
@@ -44,7 +44,7 @@ public interface BbergCurvaPrimrRepository extends JpaRepository<BbergCurvaPrimr
         ORDER BY p.dBaseReft DESC, m.cTickerIndcd ASC
         """,
         nativeQuery = true)
-    List<CurvaPrimrAgregadoProjection> listarAgregado(
+    List<CurvaPrimrDataGravadaProjection> listarDatasGravadas(
         @Param("de") LocalDate de,
         @Param("ate") LocalDate ate,
         @Param("codigo") String codigo,
@@ -68,7 +68,7 @@ public interface BbergCurvaPrimrRepository extends JpaRepository<BbergCurvaPrimr
         ORDER BY m.cTickerIndcd ASC
         """,
         nativeQuery = true)
-    List<CurvaPrimrAgregadoProjection> listarUltimaData(
+    List<CurvaPrimrDataGravadaProjection> listarUltimaDataGravada(
         @Param("codigo") String codigo,
         @Param("nome") String nome
     );

@@ -56,7 +56,7 @@ Itens levantados na revisão do Swagger, em 07 a 09/10/2026. A curva é identifi
 O front não monta tela a partir do corpo do erro: ele mostra o texto como veio. Por isso:
 - **Sucesso:** `200` simples, sem corpo ou contadores desnecessários (o `DELETE .../{dataBase}/vertices` responde `200` vazio; o delete de curva, `204`).
 - **Erro:** a **mensagem** tem que explicar sozinha o que houve e o que fazer (ex.: "A curva ainda tem dados em tDadoVertcCurva, tBtrsCurvaPrimr. Apague antes ... ou use a inativação"); nada depende de `detalhes`, códigos ou `avisos` para o usuário entender.
-- Não criar record de resultado só para devolver número (por isso saíram `DadoCurvaApagado`, `DependenciaCurva`, `DadoVertcCurvaResumo` e `ApagarConstrucaoResponse`; o resumo do bruto é um só, `CurvaPrimrResumo`, para as três fontes; excluir versão responde 200 vazio).
+- Não criar record de resultado só para devolver número (por isso saíram `DadoCurvaApagado`, `DependenciaCurva`, `DadoVertcCurvaResumo` e `ApagarConstrucaoResponse`; o resumo do bruto é um só, `CurvaPrimrDataGravada`, para as três fontes; excluir versão responde 200 vazio).
 - Vale para os endpoints novos desta versão e para os que forem revisados: ao revisar um service, conferir que cada recusa tem texto completo no `motivo`.
 
 ## Identificador da curva = nome (vale para toda a v1.2)

@@ -2,11 +2,11 @@ package br.com.poc.adapter.out.persistence;
 
 import br.com.poc.adapter.out.persistence.entity.AnbmaCurvaPrimrEntity;
 import br.com.poc.adapter.out.persistence.repository.AnbmaCurvaPrimrRepository;
-import br.com.poc.adapter.out.persistence.repository.CurvaPrimrAgregadoProjection;
+import br.com.poc.adapter.out.persistence.repository.CurvaPrimrDataGravadaProjection;
 import br.com.poc.application.port.out.AnbmaCurvaPrimrRepositoryPort;
 import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.domain.cadastro.AnbmaCurvaPrimr;
-import br.com.poc.domain.cadastro.CurvaPrimrResumo;
+import br.com.poc.domain.cadastro.CurvaPrimrDataGravada;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -68,25 +68,25 @@ public class AnbmaCurvaPrimrPersistenceAdapter implements AnbmaCurvaPrimrReposit
     }
 
     @Override
-    public boolean existsCurvaConstruida(String nomeCurva, LocalDate dataBase) {
-        return Integer.valueOf(1).equals(repository.existsCurvaConstruida(nomeCurva, dataBase));
+    public boolean existeVerticeConstruido(String nomeCurva, LocalDate dataBase) {
+        return Integer.valueOf(1).equals(repository.existeVerticeConstruido(nomeCurva, dataBase));
     }
 
     @Override
-    public List<CurvaPrimrResumo> listarAgregado(LocalDate de, LocalDate ate, String codigo, String nome) {
-        return paraResumos(repository.listarAgregado(de, ate, codigo, nome));
+    public List<CurvaPrimrDataGravada> listarDatasGravadas(LocalDate de, LocalDate ate, String codigo, String nome) {
+        return paraDatasGravadas(repository.listarDatasGravadas(de, ate, codigo, nome));
     }
 
     @Override
-    public List<CurvaPrimrResumo> listarUltimaData(String codigo, String nome) {
-        return paraResumos(repository.listarUltimaData(codigo, nome));
+    public List<CurvaPrimrDataGravada> listarUltimaDataGravada(String codigo, String nome) {
+        return paraDatasGravadas(repository.listarUltimaDataGravada(codigo, nome));
     }
 
-    private List<CurvaPrimrResumo> paraResumos(List<CurvaPrimrAgregadoProjection> linhas) {
+    private List<CurvaPrimrDataGravada> paraDatasGravadas(List<CurvaPrimrDataGravadaProjection> linhas) {
         // sem filtro de produto, como estava
-        return AgregadoPrimr.paraResumos(
+        return CurvaPrimrDataGravadaMapper.paraDatasGravadas(
             linhas,
-            AgregadoPrimr.tickersPorCurva(curvaPrvdrRepositoryPort, PROVEDOR, null));
+            CurvaPrimrDataGravadaMapper.tickersPorCurva(curvaPrvdrRepositoryPort, PROVEDOR, null));
     }
 
     private AnbmaCurvaPrimr toDomain(AnbmaCurvaPrimrEntity entity) {
