@@ -2,7 +2,7 @@
 
 Pacotes estão como `br.com.poc`: troque por `br.com.bradesco`. **Sem trava por nome** (`travarPorNome` não é usado em nenhum arquivo daqui; entra depois, junto com a trava das versões).
 
-Todos os arquivos desta pasta já identificam a curva pelo **nome** (`findByNome`, rotas `/{nome}`).
+Todos os arquivos desta pasta já identificam a curva pelo **nome** (`findByNome`, rotas `/{nome}`). O que mais muda por causa disso (controllers do bruto, ações do engine e chamadas do front) está em `docs/backlog-curves-v1-2.md`, seção "Identificador da curva = nome".
 
 ## Ordem
 

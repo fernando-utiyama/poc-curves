@@ -50,6 +50,27 @@ Itens levantados na revisão do Swagger, em 07 a 09/10/2026. A curva é identifi
    - O front pede confirmação mostrando a vigência que a vizinha vai assumir. Sem trava nesta versão.
    - Ajustar a spec `configuracao-calculo-curva` (regra "só a última versão, e só se ainda não começou" e a tabela de rotas).
 
+## Identificador da curva = nome (vale para toda a v1.2)
+
+A curva é aberta pelo **nome** (`cTickerIndcd`, PK de `tCurvaMercd`). O código (`cTickerIdtfdUnic`) é opcional no banco e fica só como filtro da listagem (`?codigo=`). As specs do front não foram alteradas: quem implementar a v1.2 troca o identificador nas chamadas abaixo.
+
+**Back (curves):**
+- `CurvaMercadoController`, `ConfiguracaoCurvaController`, `CurvaMercadoAcoesController`: `/{nome}` (arquivos de `docs/curves-v1-2/` já estão assim).
+- Controllers do bruto (`BtrsCurvaPrimrController`, `AnbmaCurvaPrimrController`, `BbergCurvaPrimrController`): renomear o path `{codigo}` para `{nome}` em `/{codigo}/primaria-*/...`. O service já busca a curva com `findByNome`; só o nome da variável e o Swagger mudam.
+- `CurvaMercadoAcoesService`: recebe o nome, busca a curva e repassa `curva.codigo()` ao engine; curva sem código → 422.
+
+**Front (chamadas que passam a usar `item.nome`, com `encodeURIComponent`):**
+
+| Tela | Hoje | Passa a |
+|---|---|---|
+| Cadastro de curvas | `/cadastro-curvas/{codigo}` | `/cadastro-curvas/{nome}` |
+| Cadastro de curvas | `GET /api/v1/curvas-mercado/{codigo}` e `/{codigo}/auditoria` | `/{nome}` e `/{nome}/auditoria` |
+| Cadastro de curvas | arquivo `auditoria-{codigo}.json` | `auditoria-{nome}.json` |
+| Cadastro e Dados de mercado | link `/curvas?codigo={codigo}` | `/curvas?nome={nome}` |
+| Curvas | `/{codigo}/{dataBase}/vertices`, `/interpolacao`, `/construcao` | `/{nome}/{dataBase}/...` |
+| Dados de mercado | `/curvas-mercado/{codigo}/primaria-{provedor}/{dataBase}` | `/{nome}/primaria-{provedor}/{dataBase}` |
+| Novas da v1.2 | — | `DELETE /{nome}`, `DELETE /{nome}/{dataBase}/vertices`, `DELETE /{nome}/configuracoes?versao=N` |
+
 ## Auditoria e qualidade
 
 8. **Auditoria tipada** (`GET /curvas-mercado/{nome}/auditoria?formato=`): a planilha (`xlsx`) continua, porque já existe.
