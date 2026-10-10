@@ -2,7 +2,7 @@ package br.com.poc.domain.cadastro;
 
 import java.math.BigDecimal;
 
-/** Campos de um vértice da B3 digitados pelo gestor. */
+/** Campos editáveis de um vértice da B3. */
 public record BtrsCurvaPrimrInput(
     Integer diasCorridos,
     Integer diasUteis,

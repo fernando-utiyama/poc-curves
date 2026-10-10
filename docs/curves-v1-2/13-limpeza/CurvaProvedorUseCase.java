@@ -7,7 +7,7 @@ import br.com.poc.domain.cadastro.CurvaProvedor;
 
 import java.util.List;
 
-/** Provedores (fontes de dado) ligados a uma curva de mercado. A curva é identificada pelo nome (PK). */
+/** Provedores da curva de mercado. */
 public interface CurvaProvedorUseCase {
 
     List<CurvaProvedor> listarPorCurva(String nomeCurva);

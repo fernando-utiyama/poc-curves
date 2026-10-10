@@ -11,15 +11,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * O que a listagem do dado bruto tem de igual nas três fontes (B3, ANBIMA e Bloomberg): os tickers do provedor
- * por curva e a conversão da linha agregada no resumo. Cada adaptador só informa o provedor e o produto.
- */
+/** Partes comuns da listagem do dado bruto. */
 public final class CurvaPrimrDataBaseMapper {
 
     private CurvaPrimrDataBaseMapper() {}
 
-    /** Nome da curva → tickers do provedor ligados a ela em tCurvaPrvdr (ex.: PRE na B3, NTN-B na ANBIMA). */
+    /** Nome da curva → tickers do provedor. */
     public static Map<String, List<String>> tickersPorCurva(CurvaPrvdrRepositoryPort port, String provedor, String produto) {
         Map<String, List<String>> tickers = new HashMap<>();
         if (port != null) {
@@ -44,7 +41,7 @@ public final class CurvaPrimrDataBaseMapper {
             .toList();
     }
 
-    /** Situação fora do enum vira nula, sem esconder qualquer outro erro. */
+    /** Situação fora do enum vira nula. */
     static SituacaoCurva situacaoOuNula(String texto) {
         if (texto == null) {
             return null;

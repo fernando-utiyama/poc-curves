@@ -8,7 +8,7 @@ import br.com.poc.domain.cadastro.VerticesPrimrDaData;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Dado bruto da Bloomberg. A curva é identificada pelo nome (PK). */
+/** Dado bruto da Bloomberg. */
 public interface BbergCurvaPrimrUseCase {
 
     List<CurvaPrimrDataBase> listarDatasBase(LocalDate de, LocalDate ate, String codigo, String nome);

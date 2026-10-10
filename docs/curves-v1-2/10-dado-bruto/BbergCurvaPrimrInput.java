@@ -3,7 +3,7 @@ package br.com.poc.domain.cadastro;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Campos de um vértice da Bloomberg digitados pelo gestor. */
+/** Campos editáveis de um vértice da Bloomberg. */
 public record BbergCurvaPrimrInput(
     String tickerBloomberg,
     BigDecimal precoUltimo,

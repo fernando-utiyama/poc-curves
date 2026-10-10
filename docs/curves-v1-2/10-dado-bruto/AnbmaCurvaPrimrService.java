@@ -26,10 +26,7 @@ import java.util.List;
 
 import static br.com.poc.application.service.RegrasCurvaPrimr.*;
 
-/**
- * Dado bruto da ANBIMA. Gravar o bruto nunca reconstrói a curva: se a data já foi construída,
- * a correção só vale quando o gestor recalcular na tela Curvas.
- */
+/** Dado bruto da ANBIMA. */
 @Service
 @RequiredArgsConstructor
 public class AnbmaCurvaPrimrService implements AnbmaCurvaPrimrUseCase {
@@ -46,7 +43,6 @@ public class AnbmaCurvaPrimrService implements AnbmaCurvaPrimrUseCase {
         String codigoFiltro = textoOuNulo(codigo);
         String nomeFiltro = textoOuNulo(nome);
 
-        // sem período: uma linha por curva, com a última data gravada
         if (de == null && ate == null) {
             return anbmaRepositoryPort.listarUltimaDataBase(codigoFiltro, nomeFiltro);
         }
@@ -106,7 +102,6 @@ public class AnbmaCurvaPrimrService implements AnbmaCurvaPrimrUseCase {
     @Transactional
     public void excluirData(String nomeCurva, LocalDate dataBase) {
         CurvaMercado curva = obterCurva(nomeCurva);
-        // apaga só o bruto; a curva construída da data (se houver) não muda
         List<AnbmaCurvaPrimr> antes = anbmaRepositoryPort.findByNomeCurvaAndDataBase(curva.nome(), dataBase);
 
         anbmaRepositoryPort.excluirPorNomeCurvaEDataBase(curva.nome(), dataBase);
@@ -125,7 +120,6 @@ public class AnbmaCurvaPrimrService implements AnbmaCurvaPrimrUseCase {
                 "Vértice " + id + " não encontrado na curva " + curva.nome() + " em " + dataBase));
     }
 
-    /** O vértice da ANBIMA (vVertcCurva) é o prazo em dias corridos; o engine converte para dias úteis. */
     private static AnbmaCurvaPrimr novoVertice(Integer id, CurvaMercado curva, LocalDate dataBase, AnbmaCurvaPrimrInput input) {
         return new AnbmaCurvaPrimr(id, curva.nome(), dataBase, input.taxa(), BigDecimal.valueOf(input.prazoDiasCorridos()));
     }

@@ -9,10 +9,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * Dado bruto da B3. Campos com o nome da coluna sem o prefixo (c/d/v), como na ANBIMA e na Bloomberg;
- * colunas `d...` ganham "data" na frente. A ordem dos campos é a do construtor que o adaptador usa.
- */
+/** Vértice bruto da B3 (tBtrsCurvaPrimr). */
 @Entity
 @Table(name = "tBtrsCurvaPrimr", schema = "dbo")
 @Getter

@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-/** Dado bruto da B3 (tBtrsCurvaPrimr). Mesma forma nos três repositórios do bruto; muda só a tabela e a ordem dos vértices. */
+/** Dado bruto da B3 (tBtrsCurvaPrimr). */
 public interface BtrsCurvaPrimrRepository extends JpaRepository<BtrsCurvaPrimrEntity, Integer> {
 
     @Query(value = "SELECT ISNULL(MAX(cIdtfdUnic), 0) + 1 FROM dbo.tBtrsCurvaPrimr WITH (UPDLOCK, HOLDLOCK)", nativeQuery = true)
@@ -27,7 +27,7 @@ public interface BtrsCurvaPrimrRepository extends JpaRepository<BtrsCurvaPrimrEn
         + "WHERE v.cTickerIndcd = :nomeCurva AND v.dBaseReft = :dataBase) THEN 1 ELSE 0 END", nativeQuery = true)
     Integer existeVerticeConstruido(@Param("nomeCurva") String nomeCurva, @Param("dataBase") LocalDate dataBase);
 
-    /** Uma linha por curva e data-base no período. Mostra também as curvas sem código (o GET respeita só o banco). */
+    /** Uma linha por curva e data-base no período. */
     @Query(value = """
         SELECT m.cTickerIdtfdUnic AS codigo,
                m.cTickerIndcd AS nome,
@@ -51,7 +51,7 @@ public interface BtrsCurvaPrimrRepository extends JpaRepository<BtrsCurvaPrimrEn
         @Param("nome") String nome
     );
 
-    /** Uma linha por curva, com a última data-base gravada no bruto dela. */
+    /** Última data-base de cada curva. */
     @Query(value = """
         SELECT m.cTickerIdtfdUnic AS codigo,
                m.cTickerIndcd AS nome,

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDate;
 
-/** Taxa em texto, como foi gravada (dado bruto, sem arredondar); vencimento = data-base + prazo. */
 public record AnbmaCurvaPrimrVerticeResponse(
     Integer id,
     Integer prazoDiasCorridos,

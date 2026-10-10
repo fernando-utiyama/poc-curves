@@ -8,7 +8,7 @@ import br.com.poc.domain.cadastro.VerticesPrimrDaData;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Dado bruto da B3. A curva é identificada pelo nome (PK). */
+/** Dado bruto da B3. */
 public interface BtrsCurvaPrimrUseCase {
 
     List<CurvaPrimrDataBase> listarDatasBase(LocalDate de, LocalDate ate, String codigo, String nome);

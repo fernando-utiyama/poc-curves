@@ -7,7 +7,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-/** Mesma forma da porta da B3 e da Bloomberg. */
 public interface AnbmaCurvaPrimrRepositoryPort {
 
     int proximoId();
@@ -24,9 +23,9 @@ public interface AnbmaCurvaPrimrRepositoryPort {
 
     boolean existeVerticeConstruido(String nomeCurva, LocalDate dataBase);
 
-    /** Uma linha por curva e data-base dentro do período. */
+    /** Uma linha por curva e data-base no período. */
     List<CurvaPrimrDataBase> listarDatasBase(LocalDate de, LocalDate ate, String codigo, String nome);
 
-    /** Uma linha por curva, com a última data-base gravada no bruto dela. */
+    /** Última data-base de cada curva. */
     List<CurvaPrimrDataBase> listarUltimaDataBase(String codigo, String nome);
 }

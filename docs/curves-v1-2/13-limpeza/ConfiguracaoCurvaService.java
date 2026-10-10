@@ -53,7 +53,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
     @Override
     @Transactional(readOnly = true)
     public void validar(String nomeCurva, CriarConfiguracaoCurvaInput input) {
-        validarEntrada(obterCurva(nomeCurva), input);   // recusa com a mensagem do erro; sem erro, 200 vazio
+        validarEntrada(obterCurva(nomeCurva), input);
     }
 
     @Override
@@ -154,7 +154,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
         }
     }
 
-    /** Início da nova versão: depois da última, não no passado; sem versão anterior, não antes do início da curva. */
+    /** Valida o início de vigência da nova versão. */
     private void validarInicioDaVersao(CurvaMercado curva, Optional<ConfiguracaoCurva> ultimaOpt, LocalDate inicio, List<Detalhe> erros) {
         if (inicio == null) {
             return;   // a ausência já foi apontada em validarCamposBasicos

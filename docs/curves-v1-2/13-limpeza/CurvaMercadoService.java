@@ -49,7 +49,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
                                      String provedor, String dono, int pagina, int tamanho) {
         int paginaAjustada = Math.max(pagina, 0);
         int tamanhoAjustado = tamanho <= 0 ? 50 : Math.min(tamanho, 500);
-        // o código é opcional no banco: o nome (PK) desempata, para a paginação ficar estável
+        // desempate pelo nome (PK)
         Pageable pageable = PageRequest.of(paginaAjustada, tamanhoAjustado,
             Sort.by("tickerIdtfdUnic").ascending().and(Sort.by("tickerIndcd").ascending()));
         return repositoryPort.listar(nome, codigo, unidade, situacao, provedor, dono, pageable);
@@ -98,7 +98,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
             throw new ConflictException(CadastroErrorCode.CODIGO_EM_USO);
         }
 
-        // Unicidade de nome normalizado contra todos os registros de tCurvaMercd (inclusive os sem código)
+        // nome normalizado único
         String nomeNormalizado = CurvaMercado.normalizarNome(input.nome());
         boolean nomeEmUso = repositoryPort.findAllNomes().stream()
             .anyMatch(n -> n != null && CurvaMercado.normalizarNome(n).equals(nomeNormalizado));
@@ -228,7 +228,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
                 .forEach(c -> configuracaoRepositoryPort.excluir(c.id()));
             curvaPrvdrRepositoryPort.findByNomeCurva(curva.nome())
                 .forEach(p -> curvaPrvdrRepositoryPort.excluir(p.idCurvaProvedor(), curva.nome()));
-            repositoryPort.excluir(curva.nome());   // o adaptador faz flush: a violação aparece aqui
+            repositoryPort.excluir(curva.nome());
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(CadastroErrorCode.CURVA_COM_HISTORICO, new Object[]{
                 new Detalhe("nome", null, nome, "A curva ainda tem dados vinculados (vértices construídos ou dado bruto dos provedores). "
@@ -239,7 +239,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
         publicarEvento(curva.codigo(), curva.nome(), "EXCLUSAO", curva, null);
     }
 
-    /** Alterar unidade ou compounding não pode invalidar uma versão de configuração vigente ou futura. */
+    /** Confere a curva alterada contra as versões vigentes e futuras. */
     private void validarCoerenciaComConfiguracoes(CurvaMercado curva, Unidade unidade, CompoundingCotacao compounding) {
         LocalDate hoje = LocalDate.now();
         List<CurvaProvedor> provedores = provedoresDe(curva.nome());

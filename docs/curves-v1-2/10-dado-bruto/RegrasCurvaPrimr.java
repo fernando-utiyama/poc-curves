@@ -11,7 +11,7 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-/** Regras iguais nas três fontes de dado bruto (B3, ANBIMA e Bloomberg). */
+/** Regras comuns do dado bruto. */
 final class RegrasCurvaPrimr {
 
     static final ZoneId BRASILIA = ZoneId.of("America/Sao_Paulo");
@@ -19,7 +19,7 @@ final class RegrasCurvaPrimr {
     private RegrasCurvaPrimr() {
     }
 
-    /** Período da listagem: sem 'de', 30 dias antes do 'ate'; sem 'ate', hoje. No máximo 366 dias. */
+    /** Período da listagem (padrão: 30 dias até hoje; máximo 366). */
     record Periodo(LocalDate de, LocalDate ate) {
 
         static Periodo de(LocalDate de, LocalDate ate) {
@@ -47,7 +47,7 @@ final class RegrasCurvaPrimr {
         }
     }
 
-    /** Confere os limites da coluna decimal; o valor é gravado como veio, sem arredondar (é o dado bruto). */
+    /** Confere os limites da coluna decimal. */
     static void decimal(String campo, BigDecimal valor, int maxInteiros, int maxEscala, List<Detalhe> erros) {
         if (valor == null) {
             return;

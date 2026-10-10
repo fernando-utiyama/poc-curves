@@ -9,7 +9,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Dado bruto da Bloomberg. Mesmo padrão da B3 e da ANBIMA: campo = coluna sem o prefixo, sem relação com a curva. */
+/** Vértice bruto da Bloomberg (tBbergCurvaPrimr). */
 @Entity
 @Table(name = "tBbergCurvaPrimr", schema = "dbo")
 @Getter

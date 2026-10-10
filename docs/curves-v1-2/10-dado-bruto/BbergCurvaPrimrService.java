@@ -25,10 +25,7 @@ import java.util.List;
 
 import static br.com.poc.application.service.RegrasCurvaPrimr.*;
 
-/**
- * Dado bruto da Bloomberg. Gravar o bruto nunca reconstrói a curva: se a data já foi construída,
- * a correção só vale quando o gestor recalcular na tela Curvas.
- */
+/** Dado bruto da Bloomberg. */
 @Service
 @RequiredArgsConstructor
 public class BbergCurvaPrimrService implements BbergCurvaPrimrUseCase {
@@ -45,7 +42,6 @@ public class BbergCurvaPrimrService implements BbergCurvaPrimrUseCase {
         String codigoFiltro = textoOuNulo(codigo);
         String nomeFiltro = textoOuNulo(nome);
 
-        // sem período: uma linha por curva, com a última data gravada
         if (de == null && ate == null) {
             return bbergRepositoryPort.listarUltimaDataBase(codigoFiltro, nomeFiltro);
         }
@@ -105,7 +101,6 @@ public class BbergCurvaPrimrService implements BbergCurvaPrimrUseCase {
     @Transactional
     public void excluirData(String nomeCurva, LocalDate dataBase) {
         CurvaMercado curva = obterCurva(nomeCurva);
-        // apaga só o bruto; a curva construída da data (se houver) não muda
         List<BbergCurvaPrimr> antes = bbergRepositoryPort.findByNomeCurvaAndDataBase(curva.nome(), dataBase);
 
         bbergRepositoryPort.excluirPorNomeCurvaEDataBase(curva.nome(), dataBase);
