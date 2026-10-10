@@ -10,7 +10,7 @@ A tela `/dados-mercado`, no menu do cabeçalho como "Dados de mercado", SHALL te
 - **Período:** data inicial e final (`dd/mm/aaaa`), padrão os últimos 30 dias até hoje em Brasília;
 - **Curva:** trecho do código ou do nome (opcional).
 
-"Consultar" SHALL chamar a listagem geral do provedor na curves (`GET /api/v1/curvas-mercado/primaria-b3`, `/primaria-anbima` ou `/primaria-bloomberg`, com `de`, `ate`, `codigo`, `nome`, `pagina` e `tamanho`) e mostrar uma linha por curva e data-base com bruto: código, nome, data-base, quantidade de vértices, códigos na fonte e se a curva já está construída, paginada de 50 em 50. Trocar de provedor SHALL limpar a listagem e os vértices abertos.
+"Consultar" SHALL chamar a listagem geral do provedor na curves (`GET /api/v1/curvas-mercado/primaria-b3`, `/primaria-anbima` ou `/primaria-bloomberg`, com `de`, `ate`, `codigo` e `nome`; sem período, a API devolve a última data de cada curva) e mostrar uma linha por curva e data-base com bruto: código, nome, data-base, quantidade de vértices, tickers do provedor e se a curva já está construída. A API devolve a lista inteira; a tela pagina de 50 em 50. Trocar de provedor SHALL limpar a listagem e os vértices abertos.
 
 #### Scenario: Bruto da B3 no período
 - **WHEN** o gestor escolhe `B3`, o período de `01/09/2026` a `30/09/2026` e clica em "Consultar"

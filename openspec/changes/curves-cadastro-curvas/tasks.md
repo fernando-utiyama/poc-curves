@@ -18,7 +18,7 @@ Primeira parte do curves. Guia: [`implementacao.md`](implementacao.md). Cada tar
 
 - [ ] 0.1 [básico] (guia §16.2) `EnginePort`, `RespostaEngine` e `EngineHttpClient` exatamente como o código do guia (`curves.engine.url` sem padrão, 120/60/30 s, `X-Usuario` quando vier, `X-Correlation-Id`, sem `Authorization`), `EngineIndisponivelException` e o código `ENGINE_INDISPONIVEL` (503) no enum de erros e em `messages.properties`, no molde das exceções que já existem; verificar com `mvn -q compile`
 - [ ] 0.2 [básico] (guia §16.3) `CurvaMercadoAcoesAPI` + `CurvaMercadoAcoesController` com as cinco rotas da spec `acoes-curva-mercado`, chamando um `CurvaMercadoAcoesService` cujos métodos só repassam ao `EnginePort` (as validações e a conversão de erro ficam para a tarefa 6.1); verificar com `mvn -q compile`
-- [ ] 0.3 [básico] (guia §11.5) `DadosMercadoAPI` + `DadosMercadoController` com as rotas da spec `vertices-brutos-provedor` (sem planilha), os DTOs de entrada e saída do guia §11.1, e a interface `VerticeBrutoProvedor` com `VerticeBruto` (guia §11.2); os métodos do `VerticeBrutoService` lançam `UnsupportedOperationException("tarefa 5.1")` até o bloco forte; verificar com `mvn -q compile`
+- [x] 0.3 [básico] Substituída na v1.2 (guia §11): sem rotas `/dados-mercado`; o bruto fica nos CRUDs por provedor
 - [ ] 0.4 [básico] (guia §2.2) Na listagem `GET /curvas-mercado`: os parâmetros `provedor` e `dono`, o record da resposta `{ itens, pagina, tamanho, total }` e os campos novos do item (`provedores`, `dono`, `ultimaExecucao`) e o campo `dono` (`cPprioDado`) na entrada e na saída da curva; a consulta que preenche os campos novos fica para a tarefa 2.2; verificar com `mvn -q compile`
 - [ ] 0.5 **PAUSA (troca para o modelo forte):** pronto quando `mvn compile` passa e o Swagger mostra as rotas novas; escrever o resumo (arquivos criados e alterados, `TODO(revisao)`) e parar.
 
@@ -43,7 +43,7 @@ Primeira parte do curves. Guia: [`implementacao.md`](implementacao.md). Cada tar
 
 ## 5. Vértices brutos dos provedores (tela Dados de mercado)
 
-- [ ] 5.1 [forte] **Rotas `/dados-mercado` sobre os CRUDs existentes** (completa a casca da 0.3) (spec `vertices-brutos-provedor`; guia §11). Pronto quando: os CRUDs dos três provedores que já existem são reaproveitados (sem segunda gravação); tickers por provedor; consulta por código na fonte e data com uma entrada por curva ligada; incluir, alterar, excluir e excluir a data com a trava e os avisos (`CURVA_SEM_PROVEDOR`, `CURVA_JA_CONSTRUIDA` e os do provedor); `CURVA_PRIMARIA_EDITADA` no log; os cenários da spec passam.
+- [ ] 5.1 [forte] **Dado bruto dos três provedores** (spec `vertices-brutos-provedor`; guia §11 → `docs/curves-v1-2/10-dado-bruto/`). Pronto quando: rotas por nome nas três fontes, sem avisos; listagem com a última data por curva sem período; 409 `DATA_CONSTRUIDA` ao apagar a data construída; `CURVA_PRIMARIA_EDITADA` publicado; os cenários da spec passam.
 
 ## 6. Repasse ao engine (tela Curvas)
 

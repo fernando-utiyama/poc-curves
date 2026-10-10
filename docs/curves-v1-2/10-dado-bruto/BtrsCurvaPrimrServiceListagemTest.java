@@ -3,7 +3,6 @@ package br.com.poc.application.service;
 import br.com.poc.application.exception.InvalidInputException;
 import br.com.poc.application.port.out.BtrsCurvaPrimrRepositoryPort;
 import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
-import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.application.port.out.EventosPort;
 import br.com.poc.domain.SituacaoCurva;
 import br.com.poc.domain.cadastro.CurvaPrimrDataBase;
@@ -31,9 +30,6 @@ class BtrsCurvaPrimrServiceListagemTest {
     private CurvaMercdRepositoryPort curvaRepositoryPort;
 
     @Mock
-    private CurvaPrvdrRepositoryPort curvaPrvdrRepositoryPort;
-
-    @Mock
     private EventosPort eventosPort;
 
     private BtrsCurvaPrimrService service;
@@ -43,7 +39,7 @@ class BtrsCurvaPrimrServiceListagemTest {
 
     @BeforeEach
     void setUp() {
-        service = new BtrsCurvaPrimrService(btrsRepositoryPort, curvaRepositoryPort, curvaPrvdrRepositoryPort, eventosPort);
+        service = new BtrsCurvaPrimrService(btrsRepositoryPort, curvaRepositoryPort, eventosPort);
     }
 
     @Test

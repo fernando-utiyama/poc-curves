@@ -17,26 +17,26 @@ Base: `{urlAPI}/api/v1/curvas-mercado` (proxy `/api`). `{p}` = `b3`, `anbima` ou
 
 | Ação | Chamada | Tempo front |
 |---|---|---|
-| Listagem geral | `GET /primaria-{p}?de=&ate=&codigo=&nome=&pagina=&tamanho=` | 3 s |
+| Listagem geral | `GET /primaria-{p}?de=&ate=&codigo=&nome=` (lista simples; o front pagina) | 3 s |
 | Vértices da curva na data | `GET /{nome}/primaria-{p}/{dataBase}` | 3 s |
 | Incluir / alterar / excluir vértice | `POST /{nome}/primaria-{p}/{dataBase}/vertices`, `PUT .../vertices/{id}`, `DELETE .../vertices/{id}` | 3 s |
 | Excluir todos da data | `DELETE /{nome}/primaria-{p}/{dataBase}` | 3 s |
 | Enviar arquivo da fonte | `POST /api/v1/cargas/upload` (`FormData`: `fonte` = `B3`/`ANBIMA`/`BLOOMBERG`, `arquivo`) | 130 s |
 
-Referência: a B3 (os nomes exatos, inclusive o da lista de vértices e o envelope da página, são os dos DTOs do repositório; confira antes de codificar):
+Referência: a B3 (guia `docs/curves-v1-2/10-dado-bruto/` do poc). ANBIMA: `prazoDiasCorridos`, `taxa`, `vencimento`; Bloomberg: `tickerBloomberg`, `precoUltimo`, `precoLiquidacao`, `precoMedio`, `diaVencimento`, `dataLiquidacaoFinanceira`, `formaLiquidacao`, `dataVencimentoContrato`, `dataUltimoNegocio`. Decimais sempre em texto.
 
 ```jsonc
-// GET /primaria-b3 → página do Spring com itens:
-{ "codigo": "PRE", "nome": "DIxPRE", "situacao": "ATIVO", "dataBase": "2026-09-14",
-  "quantidadeLinhas": 278, "codigosNaFonte": ["PRE"], "curvaConstruida": true }
-// GET /PRE/primaria-b3/2026-09-14
-{ "curvaConstruida": true, "avisos": [ { "codigo": "CURVA_JA_CONSTRUIDA", "mensagem": "...", "detalhes": [] } ],
-  "linhas": [ { "id": 101, "diasCorridos": 1, "diasUteis": 1, "dataPonto": "2026-09-15",
-                "valor": "13.900000000000", "fatorAcumulado": null, "fatorDia": null } ] }
+// GET /primaria-b3 → lista:
+[ { "codigo": "PRE", "nome": "DIxPRE", "situacao": "ATIVO", "dataBase": "2026-09-14",
+    "quantidadeVertices": 278, "tickersProvedor": ["PRE"], "curvaConstruida": true } ]
+// GET /DIxPRE/primaria-b3/2026-09-14
+{ "curvaConstruida": true,
+  "vertices": [ { "id": 101, "diasCorridos": 1, "diasUteis": 1, "dataVertice": "2026-09-15",
+                  "valor": "13.900000000000", "fatorAcumulado": null, "fatorDia": null } ] }
 // POST/PUT corpo
 { "diasCorridos": 112, "diasUteis": 75, "valor": 13.589, "fatorAcumulado": null, "fatorDia": null }
-// POST/PUT resposta: { "linha": { ...vértice gravado... }, "avisos": [...] }
-// DELETE resposta: { "avisos": [...] }
+// POST 201 / PUT 200: o vértice gravado. DELETE (vértice ou data): 200 vazio.
+// DELETE da data já construída: 409 DATA_CONSTRUIDA com a mensagem explicada.
 // upload (200): { "idCarga": "B3-TS-20260914-46a249c60bec", "dataBase": "2026-09-14", "origem": "UPLOAD",
 //                 "verticesPorCodigo": { "PRE": 278 }, "usuario": null, "correlationId": "..." }
 ```
@@ -63,7 +63,7 @@ Molde do `ProvedoresService`. `type Provedor = 'b3' | 'anbima' | 'bloomberg'`. M
 ### 2.3 Tela (`components/dados-mercado/`)
 
 - Topo: provedor, período (`dd/mm/aaaa`, padrão últimos 30 dias), curva (texto), "Consultar". Trocar de provedor limpa tudo.
-- Listagem geral numa tabela do Liquid (como `provedores-lista`): código, nome, data-base, quantidade, códigos na fonte, "Construída"/"Não construída"; paginação de 50. Clique na linha abre os vértices abaixo.
+- Listagem geral numa tabela do Liquid (como `provedores-lista`): código, nome, data-base, quantidade, tickers do provedor, "Construída"/"Não construída"; paginação de 50 na tela (a API devolve a lista inteira). Clique na linha abre os vértices abaixo.
 - Vértices: tabela com as colunas do provedor; Editar e Excluir por linha; acima, "Incluir vértice" e "Excluir todos da data"; com `curvaConstruida`, o lembrete e o link "Recalcular a curva" → `/curvas?nome={nome}`.
 - Bloco "Enviar arquivo da fonte": provedor + arquivo + aviso de substituição + "Enviar"; no sucesso, data-base, `idCarga` e `verticesPorCodigo`, e filtros no provedor com o período até a data devolvida.
 - Erros sempre na tela: `error: (e) => this.erro.set(lerErro(e))`; no modal, só a mensagem.

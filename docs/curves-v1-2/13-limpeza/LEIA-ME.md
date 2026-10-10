@@ -112,3 +112,11 @@ Imports: `org.springframework.data.jpa.domain.Specification`, `jakarta.persisten
 - O service não importa mais `adapter.out` nem `adapter.in`: o `SpringDataProvedorRepository` virou o `ProvedorRepositoryPort` (já existe, com `existsById`; troque só o tipo e o nome do campo no construtor do `CurvaProvedorServiceTest`).
 - Novo record de domínio `CurvaPorOrigem(codigo, nome, prioridade)` (em `domain/cadastro/`) no lugar do `CurvaProvedorCurvaResponse`. O use case devolve `List<CurvaPorOrigem>`.
 - **À mão no controller:** no endpoint de listar por origem, `.map(c -> new CurvaProvedorCurvaResponse(c.codigo(), c.nome(), c.prioridade()))` (ou `fromDomain` no response, se preferir). Se a ordem dos campos do seu response for outra, ajuste. O tipo de `prioridade` é `Integer`, como está em `CurvaProvedor`.
+
+## `CurvaProvedorController` (à mão, 2 minutos)
+
+O Swagger ainda mostra `/api/v1/curvas-mercado/{codigo}/provedores...`. O service já recebe o nome, então é só renomear:
+- nas 4 rotas, `{codigo}` → `{nome}` e `@PathVariable String codigo` → `@PathVariable String nome` (Shift+F6 no parâmetro);
+- no `@Tag`, a descrição vira "Gestão de provedores da curva de mercado (tCurvaPrvdr)" (sai "e curvas componentes");
+- `criar` devolve `201` com `CurvaProvedorResponse.fromDomain(...)`, `alterar` `200` com o response, `excluir` `200` vazio (item 1 do "À mão" acima);
+- `listarPorOrigem` converte `CurvaPorOrigem` em `CurvaProvedorCurvaResponse` (seção "Hexagonal").
