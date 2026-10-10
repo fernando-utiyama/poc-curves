@@ -43,7 +43,7 @@ Primeira parte do curves. Guia: [`implementacao.md`](implementacao.md). Cada tar
 
 ## 5. Vértices brutos dos provedores (tela Dados de mercado)
 
-- [ ] 5.1 [forte] **Dado bruto dos três provedores** (spec `vertices-brutos-provedor`; guia §11 → `docs/curves-v1-2/10-dado-bruto/`). Pronto quando: rotas por nome nas três fontes, sem avisos; listagem com a última data por curva sem período; 409 `DATA_CONSTRUIDA` ao apagar a data construída; `CURVA_PRIMARIA_EDITADA` publicado; os cenários da spec passam.
+- [ ] 5.1 [forte] **Dado bruto dos três provedores** (spec `vertices-brutos-provedor`; guia §11 → `docs/curves-v1-2/10-dado-bruto/`). Pronto quando: rotas por nome nas três fontes, sem avisos; listagem com a última data por curva sem período; apagar a data apaga só o bruto, também numa data construída; `CURVA_PRIMARIA_EDITADA` publicado; os cenários da spec passam.
 
 ## 6. Repasse ao engine (tela Curvas)
 

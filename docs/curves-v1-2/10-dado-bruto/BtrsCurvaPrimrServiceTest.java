@@ -136,26 +136,14 @@ class BtrsCurvaPrimrServiceTest {
     }
 
     @Test
-    @DisplayName("Excluir data: data já construída responde 409 DATA_CONSTRUIDA e nada é apagado")
-    void excluirDataConstruida() {
+    @DisplayName("Excluir data: apaga todos os vértices brutos dela, sem olhar a curva construída")
+    void excluirData() {
         when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curva));
-        when(btrsRepositoryPort.existeVerticeConstruido("DIxPRE", dataBase)).thenReturn(true);
-
-        BusinessException ex = assertThrows(BusinessException.class, () -> service.excluirData("DIxPRE", dataBase));
-
-        assertEquals(CadastroErrorCode.DATA_CONSTRUIDA.getCode(), ex.getErrorCode());
-        verify(btrsRepositoryPort, never()).excluirPorNomeCurvaEDataBase(any(), any());
-    }
-
-    @Test
-    @DisplayName("Excluir data: data não construída apaga todos os vértices dela")
-    void excluirDataNaoConstruida() {
-        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curva));
-        when(btrsRepositoryPort.existeVerticeConstruido("DIxPRE", dataBase)).thenReturn(false);
         when(btrsRepositoryPort.findByNomeCurvaAndDataBase("DIxPRE", dataBase)).thenReturn(List.of(vertice));
 
         service.excluirData("DIxPRE", dataBase);
 
         verify(btrsRepositoryPort).excluirPorNomeCurvaEDataBase("DIxPRE", dataBase);
+        verify(btrsRepositoryPort, never()).existeVerticeConstruido(any(), any());
     }
 }

@@ -50,7 +50,7 @@ A gravação SHALL ser recusada com 422 `DADOS_INVALIDOS`, sem gravar nada e com
 - um decimal não cabe na coluna (`DECIMAL(28,12)` nos valores, taxas e preços, `DECIMAL(28,16)` nos fatores);
 - `tickerBloomberg` passa de 50 caracteres, ou `formaLiquidacao` de 20.
 
-Excluir todos os vértices de uma data já construída (há vértices em `tDadoVertcCurva` da curva na data) MUST ser recusado com 409 `DATA_CONSTRUIDA`, com a mensagem pedindo para apagar antes a curva construída da data. Incluir, alterar e excluir um vértice numa data construída são aceitos.
+Incluir, alterar e excluir um vértice, e excluir todos os vértices da data, SHALL ser aceitos também numa data já construída: só o bruto muda, e a curva construída (`tDadoVertcCurva`, `tDadoCurva`) fica como está até o gestor recalcular ou apagar a construída.
 
 #### Scenario: Valor que não cabe na coluna
 - **WHEN** o gestor envia na B3 `valor` `13.1234567890123`
@@ -62,7 +62,7 @@ Excluir todos os vértices de uma data já construída (há vértices em `tDadoV
 
 #### Scenario: Apagar o bruto de uma data construída
 - **WHEN** o gestor apaga todos os vértices da `DIxPRE` de `2026-09-14`, já construída
-- **THEN** a resposta é 409 `DATA_CONSTRUIDA`, e nada é apagado
+- **THEN** a resposta é 200, o bruto da data é apagado, e `tDadoVertcCurva` e `tDadoCurva` não mudam
 
 ### Requirement: Log da edição do bruto
 Toda gravação pelas rotas do bruto (vértice ou exclusão da data) SHALL publicar o evento `CURVA_PRIMARIA_EDITADA` com provedor, código e nome da curva, data-base, operação (`INCLUSAO`, `ALTERACAO`, `EXCLUSAO`, `EXCLUSAO_DATA`), vértice antes e depois (os vértices da data, na exclusão da data), quantidades antes e depois, instante (Brasília) e `correlationId`, sem auditoria nem Blob.

@@ -105,9 +105,7 @@ public class BtrsCurvaPrimrService implements BtrsCurvaPrimrUseCase {
     @Transactional
     public void excluirData(String nomeCurva, LocalDate dataBase) {
         CurvaMercado curva = obterCurva(nomeCurva);
-        if (btrsRepositoryPort.existeVerticeConstruido(curva.nome(), dataBase)) {
-            throw dataConstruida(curva.nome(), dataBase);
-        }
+        // apaga só o bruto; a curva construída da data (se houver) não muda
         List<BtrsCurvaPrimr> antes = btrsRepositoryPort.findByNomeCurvaAndDataBase(curva.nome(), dataBase);
 
         btrsRepositoryPort.excluirPorNomeCurvaEDataBase(curva.nome(), dataBase);

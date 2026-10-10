@@ -106,9 +106,7 @@ public class AnbmaCurvaPrimrService implements AnbmaCurvaPrimrUseCase {
     @Transactional
     public void excluirData(String nomeCurva, LocalDate dataBase) {
         CurvaMercado curva = obterCurva(nomeCurva);
-        if (anbmaRepositoryPort.existeVerticeConstruido(curva.nome(), dataBase)) {
-            throw dataConstruida(curva.nome(), dataBase);
-        }
+        // apaga só o bruto; a curva construída da data (se houver) não muda
         List<AnbmaCurvaPrimr> antes = anbmaRepositoryPort.findByNomeCurvaAndDataBase(curva.nome(), dataBase);
 
         anbmaRepositoryPort.excluirPorNomeCurvaEDataBase(curva.nome(), dataBase);

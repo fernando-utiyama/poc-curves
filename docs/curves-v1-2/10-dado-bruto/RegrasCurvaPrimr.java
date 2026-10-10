@@ -65,13 +65,4 @@ final class RegrasCurvaPrimr {
             throw new BusinessException(CadastroErrorCode.DADOS_INVALIDOS, erros.toArray());
         }
     }
-
-    /** Apagar o bruto de uma data já construída deixaria a curva construída sem a origem dela. */
-    static BusinessException dataConstruida(String nomeCurva, LocalDate dataBase) {
-        return new BusinessException(CadastroErrorCode.DATA_CONSTRUIDA, new Object[]{
-            new Detalhe("dataBase", null, dataBase.toString(),
-                "A curva " + nomeCurva + " já está construída em " + dataBase
-                    + ". Apague antes a curva construída dessa data (tela Curvas) e depois o dado bruto")
-        });
-    }
 }

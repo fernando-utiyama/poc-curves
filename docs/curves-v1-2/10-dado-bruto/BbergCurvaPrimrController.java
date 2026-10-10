@@ -81,7 +81,7 @@ public class BbergCurvaPrimrController {
     }
 
     @DeleteMapping("/{nome}/primaria-bloomberg/{dataBase}")
-    @Operation(summary = "Apagar todos os vértices da data", description = "Recusado se a data já foi construída (apague antes a curva construída)")
+    @Operation(summary = "Apagar todos os vértices da data", description = "Apaga só o bruto; a curva construída da data não muda")
     public ResponseEntity<Void> excluirData(
             @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase) {

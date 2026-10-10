@@ -105,9 +105,7 @@ public class BbergCurvaPrimrService implements BbergCurvaPrimrUseCase {
     @Transactional
     public void excluirData(String nomeCurva, LocalDate dataBase) {
         CurvaMercado curva = obterCurva(nomeCurva);
-        if (bbergRepositoryPort.existeVerticeConstruido(curva.nome(), dataBase)) {
-            throw dataConstruida(curva.nome(), dataBase);
-        }
+        // apaga só o bruto; a curva construída da data (se houver) não muda
         List<BbergCurvaPrimr> antes = bbergRepositoryPort.findByNomeCurvaAndDataBase(curva.nome(), dataBase);
 
         bbergRepositoryPort.excluirPorNomeCurvaEDataBase(curva.nome(), dataBase);

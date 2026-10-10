@@ -23,7 +23,7 @@ Agora a pasta tem as **três camadas** de cada fonte (persistência, service/use
 | `BtrsCurvaPrimrPersistenceAdapter.java`, `AnbmaCurvaPrimrPersistenceAdapter.java`, `BbergCurvaPrimrPersistenceAdapter.java`, `CurvaPrimrDataBaseMapper.java` | `adapter/out/persistence/` |
 | `BtrsCurvaPrimrRepositoryPort.java`, `AnbmaCurvaPrimrRepositoryPort.java`, `BbergCurvaPrimrRepositoryPort.java` | `application/port/out/` |
 | `BtrsCurvaPrimrUseCase.java`, `AnbmaCurvaPrimrUseCase.java`, `BbergCurvaPrimrUseCase.java` | `application/port/in/usecase/` |
-| `BtrsCurvaPrimrService.java`, `AnbmaCurvaPrimrService.java`, `BbergCurvaPrimrService.java`, `RegrasCurvaPrimr.java` (regras comuns: período, obrigatórios, decimais, data construída) | `application/service/` |
+| `BtrsCurvaPrimrService.java`, `AnbmaCurvaPrimrService.java`, `BbergCurvaPrimrService.java`, `RegrasCurvaPrimr.java` (regras comuns: período, obrigatórios, decimais) | `application/service/` |
 | `BtrsCurvaPrimr.java` (id `Integer`, `dataVertice()`), `BtrsCurvaPrimrInput.java`, `AnbmaCurvaPrimrInput.java`, `BbergCurvaPrimrInput.java`, `CurvaPrimrDataBase.java`, `VerticesPrimrDaData.java` | `domain/cadastro/` |
 | `BtrsCurvaPrimrController.java`, `AnbmaCurvaPrimrController.java`, `BbergCurvaPrimrController.java` | `adapter/in/api/rest/controller/` |
 | `CurvaPrimrDataBaseResponse.java`, `VerticesPrimrDaDataResponse.java`, `Btrs/Anbma/BbergCurvaPrimrVerticeRequest.java`, `Btrs/Anbma/BbergCurvaPrimrVerticeResponse.java` | `adapter/in/api/rest/dto/` |
@@ -51,9 +51,8 @@ O que a listagem devolve: por curva, **as datas que têm dado bruto gravado**, c
 
 ## À mão
 
-1. **`CadastroErrorCode`**: incluir `DATA_CONSTRUIDA("Data já construída")` e mapear para **409** no handler, igual ao `VERSAO_EM_USO`.
-2. **Bloomberg**: `reserveNextIdentifier()` virou `proximoId()` (avise o outro dev que mexeu no repositório).
-3. **Testes antigos** dos services e controllers do bruto: os de avisos saem; os que usavam o id da B3 como `1L` passam a `1`; o construtor dos services tem 3 argumentos (`repositoryPort` da fonte, `curvaRepositoryPort`, `eventosPort`).
+1. **Bloomberg**: `reserveNextIdentifier()` virou `proximoId()` (avise o outro dev que mexeu no repositório).
+2. **Testes antigos** dos services e controllers do bruto: os de avisos saem; os que usavam o id da B3 como `1L` passam a `1`; o construtor dos services tem 3 argumentos (`repositoryPort` da fonte, `curvaRepositoryPort`, `eventosPort`).
 
 ## O que mudou no comportamento (para o front)
 
@@ -61,7 +60,7 @@ O que a listagem devolve: por curva, **as datas que têm dado bruto gravado**, c
 - **Listagem** (`GET /primaria-*`): lista simples, sem página (o front pagina na tela). Sem `de` e `ate`, a última data de cada curva; período inválido responde 400 com a mensagem explicada.
 - **Consulta da data**: `{ curvaConstruida, vertices: [...] }`, sem avisos.
 - **Incluir** 201 com o vértice; **alterar** 200 com o vértice; **apagar vértice** e **apagar data** 200 vazio. Erro: 422 `DADOS_INVALIDOS` com a mensagem de cada campo.
-- **Apagar data já construída**: 409 `DATA_CONSTRUIDA` ("Apague antes a curva construída dessa data..."). Incluir, alterar e apagar um vértice numa data construída são aceitos: o bruto nunca reconstrói a curva; o gestor recalcula na tela Curvas.
+- **Apagar a data** apaga só o bruto, mesmo que a data já tenha sido construída: a curva construída não muda. O mesmo vale para incluir, alterar e apagar um vértice; o bruto nunca reconstrói nem apaga a curva. O front avisa o gestor pelo `curvaConstruida` da consulta.
 - **Decimais em texto**, como gravados (sem arredondar), nas três fontes.
 - **Campos**: B3 `diasCorridos`, `diasUteis`, `valor` (obrigatórios), `fatorAcumulado`, `fatorDia`, e `dataVertice` (só leitura). ANBIMA `prazoDiasCorridos` (obrigatório, ≥ 1), `taxa`, e `vencimento` (só leitura). Bloomberg `tickerBloomberg` e `precoUltimo` (obrigatórios), `precoLiquidacao`, `precoMedio`, `diaVencimento`, `dataLiquidacaoFinanceira`, `formaLiquidacao`, `dataVencimentoContrato`, `dataUltimoNegocio`.
 - **Sem trava da curva** (`findByCodigoComLock` saiu): duas gravações ao mesmo tempo na mesma data não se bloqueiam; a última vence.

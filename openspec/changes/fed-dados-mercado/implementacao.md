@@ -36,7 +36,7 @@ Referência: a B3 (guia `docs/curves-v1-2/10-dado-bruto/` do poc). ANBIMA: `praz
 // POST/PUT corpo
 { "diasCorridos": 112, "diasUteis": 75, "valor": 13.589, "fatorAcumulado": null, "fatorDia": null }
 // POST 201 / PUT 200: o vértice gravado. DELETE (vértice ou data): 200 vazio.
-// DELETE da data já construída: 409 DATA_CONSTRUIDA com a mensagem explicada.
+// DELETE da data também numa data construída: apaga só o bruto (a construída não muda).
 // upload (200): { "idCarga": "B3-TS-20260914-46a249c60bec", "dataBase": "2026-09-14", "origem": "UPLOAD",
 //                 "verticesPorCodigo": { "PRE": 278 }, "usuario": null, "correlationId": "..." }
 ```
