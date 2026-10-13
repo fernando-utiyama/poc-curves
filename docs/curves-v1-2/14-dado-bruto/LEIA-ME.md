@@ -184,3 +184,11 @@ O `BtrsCurvaPrimrServiceListagemTest` **não existe mais** nesta pasta: os 6 tes
 - Onde a tabela "Arquivos" e o Passo 4 do "Por último (7)" citam o `...ListagemTest`, ignore: se você já o tinha colado, apague-o.
 - A `15-dado-bruto-alter` tem o mesmo teste, com o id `Long`.
 
+## Por último (10): `AnbmaCurvaPrimrVerticeRequest` com o contrato da spec
+
+O seu Request da ANBIMA ainda tem o contrato antigo (`@NotNull BigDecimal vertice` e `@NotNull BigDecimal taxa`), e o `AnbmaCurvaPrimrInput` da `14` recebe `(Integer prazoDiasCorridos, BigDecimal taxa)`. Por isso o `toDomain()` não compila (`Required type: Integer, provided: BigDecimal`). Copie o `AnbmaCurvaPrimrVerticeRequest.java` desta pasta por cima do seu (mantive os seus `@Schema` e o `@NotNull`):
+- `vertice` (BigDecimal) vira `prazoDiasCorridos` (**Integer**, obrigatório);
+- `taxa` deixa de ser `@NotNull` (é opcional na spec: o processor grava `null` quando a ANBIMA não traz taxa).
+
+**Front:** no corpo do incluir e do alterar da ANBIMA, o campo `vertice` passa a se chamar `prazoDiasCorridos`. A spec do front já usa esse nome. O seu `AnbmaCurvaPrimrVerticeResponse` precisa devolver `prazoDiasCorridos`, `vencimento` e `taxa` (tabela do "Por último (3)").
+

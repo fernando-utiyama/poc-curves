@@ -31,13 +31,14 @@ Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os arquivos s
 
 - Entidade: `cTpoInstt` (`tpoInstt`) e `dVctoContr` (`dataVctoContr`), opcionais.
 - Domínio `AnbmaCurvaPrimr` (este arquivo **substitui o seu**, reconstruído da sua foto): `id`, `nomeCurva`, `dataBase`, `taxa`, `vertice`, mais `tipoInstrumento` e `vencimento`.
-- `AnbmaCurvaPrimrInput`: `tipoInstrumento` e `vencimento` opcionais, gravados como vierem (sem regra de consistência com `prazoDiasCorridos`; só o limite de 50 caracteres do tipo, que é do banco). No **seu** `AnbmaCurvaPrimrVerticeRequest`, acrescente os dois campos (com `@Schema`) e passe-os no `toDomain()`: `new AnbmaCurvaPrimrInput(prazoDiasCorridos, taxa, tipoInstrumento, vencimento)`.
+- `AnbmaCurvaPrimrInput`: `tipoInstrumento` e `vencimento` opcionais, gravados como vierem (sem regra de consistência com `prazoDiasCorridos`; só o limite de 50 caracteres do tipo, que é do banco). O `AnbmaCurvaPrimrVerticeRequest.java` desta pasta (parte do da `14`, com o `prazoDiasCorridos`) já traz os dois campos, com `@Schema`, e o `toDomain()` com 4 argumentos: copie por cima do seu.
 - No **seu** `AnbmaCurvaPrimrVerticeResponse`: o `vencimento` passa a ser `v.vencimento()` (e, se for nulo, `dataBase + prazo` como antes), e ganha `tipoInstrumento` (`v.tipoInstrumento()`).
 - Adaptador e service: passam os dois campos novos.
 
 | Arquivos | Onde |
 |---|---|
 | `AnbmaCurvaPrimr.java`, `AnbmaCurvaPrimrInput.java` | `domain/cadastro/` |
+| `AnbmaCurvaPrimrVerticeRequest.java` | `adapter/in/api/rest/dto/` |
 
 (a entidade, o adaptador e o service da ANBIMA já vêm na tabela da seção 1, com as duas mudanças juntas.)
 
