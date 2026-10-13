@@ -170,3 +170,65 @@ Copiar por cima do seu, junto com o `CurvaProvedorCurvaResponse`. Muda:
 Depois apague `CurvaProvedorResultado` e `CurvaProvedorComAvisosResponse` (Alt+F7: devem ficar sem uso) (o `AvisoCurva` sai no fim da `14-dado-bruto`).
 
 **`ConfiguracaoCurvaRepositoryPort`:** o `findModeloConstrucaoVigente` (que só servia aos avisos de origem do provedor) sai da porta, e a implementação sai do adaptador e do repositório JPA. Na sua foto ele aparece com 1 uso: veja qual é (deve ser o `CurvaProvedorServiceTest` antigo ou o service antes da limpeza) e apague junto. O `findByNomeCurvaEVersao` aparece com 0 usos; não mexi, mas pode sair também.
+
+## Testes e adaptador a ajustar
+
+- **`CurvaMercdPersistenceAdapter`:** apague o `findAllValidas()` (a porta não o tem mais, e o `@Override` não compila) e, com 0 usos, o `findByTickerIdtfdUnicIdNotNull` do repositório JPA.
+- **`ConfiguracaoCurvaRepositoryPort`:** apague o `findModeloConstrucaoVigente` na porta, no adaptador e no repositório JPA (fica com 0 usos depois do `CurvaProvedorServiceTest`).
+- **`CurvaProvedorServiceTest`:** sem o import, o `@Mock` e o mock da `ConfiguracaoCurvaRepositoryPort` (4 portas no service); sem os testes de TCEN e de avisos; em `listarPorOrigem`, sem mockar `findAllValidas`.
+- **`ConfiguracaoCurvaServiceTest`:** construtor com 4 portas; o teste de `validar` mocka `findUltimaVersao`.
+- **`CurvaMercadoServiceTest`:** `listar` devolve `List`; o `excluir` por histórico segue com `DataIntegrityViolationException`.
+- **`CurvaMercadoAcoesServiceTest`:** o tipo de `resposta` passa a `var`.
+
+**`CurvaMercadoControllerWebTest`** (primeiro teste):
+
+```java
+@Test
+void deveListarCurvas() throws Exception {
+    CurvaMercado curva = new CurvaMercado( ...igual ao que já tem... );
+
+    when(useCase.listar(any(), any(), any(), any(), any(), any()))
+        .thenReturn(List.of(curva));
+
+    mockMvc.perform(get("/api/v1/curvas-mercado")
+            .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].codigo").value("PRE"))
+        .andExpect(jsonPath("$[0].nome").value("DIxPRE"))
+        .andExpect(jsonPath("$[0].situacao").value("ATIVO"));
+}
+```
+
+**`CurvaProvedorControllerWebTest`** (excluir e por origem; criar e alterar seguem o mesmo padrão: sem `avisos`, o `when` devolve `CurvaProvedor`):
+
+```java
+@Test
+@DisplayName("DELETE /api/v1/curvas-mercado/{nome}/provedores/{id} exclui o provedor")
+void deveExcluirComSucesso() throws Exception {
+    mockMvc.perform(delete("/api/v1/curvas-mercado/PRE/provedores/1"))
+        .andExpect(status().isOk());
+
+    verify(useCase).excluir("PRE", 1L);
+}
+
+@Test
+@DisplayName("GET /api/v1/curvas-mercado/provedores lista curvas por origem")
+void deveListarCurvasPorOrigem() throws Exception {
+    CurvaProvedor p1 = new CurvaProvedor(1L, "DIxPRE", "B3", "TS", "PRE", 1);
+    CurvaProvedor p2 = new CurvaProvedor(2L, "DI_MERCADO", "B3", "TS", "PRE", 2);
+    when(useCase.listarPorOrigem("B3", "TS", "PRE")).thenReturn(List.of(p1, p2));
+
+    mockMvc.perform(get("/api/v1/curvas-mercado/provedores")
+            .param("provedor", "B3")
+            .param("produto", "TS")
+            .param("tickerProvedor", "PRE"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].nome").value("DIxPRE"))
+        .andExpect(jsonPath("$[0].prioridade").value(1))
+        .andExpect(jsonPath("$[1].nome").value("DI_MERCADO"))
+        .andExpect(jsonPath("$[1].prioridade").value(2));
+}
+```
+
+Imports a apagar depois: `PageImpl`, `eq`, `AvisoCurva`, `CodigoAvisoCurva` (este fica até a `14`), `CurvaProvedorResultado` e `CurvaProvedorCurvaResponse`, nos testes em que não forem mais usados. `CurvaProvedor` (ordem: id, nome da curva, provedor, produto, ticker, prioridade) e `org.mockito.Mockito.verify` entram.
+
