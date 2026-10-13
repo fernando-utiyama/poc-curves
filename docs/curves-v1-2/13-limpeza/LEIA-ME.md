@@ -1,6 +1,6 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 12 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
+Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 13 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
 
 | Arquivo | Onde |
 |---|---|
@@ -14,6 +14,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 | `ValidadorParametros.java` | `domain/cadastro/` (sem avisos) |
 | `ValidadorParametrosTest.java` | teste do validador (substitui) |
 | `CurvaMercdRepositoryPort.java` | `application/port/out/` (porta inteira, sem paginação e sem `findAllValidas`) |
+| `CurvaMercadoController.java` | `adapter/in/api/rest/controller/` (reconstruído das suas fotos: `listar` sem paginação; o resto como está) |
 | `CurvaMercadoAcoesUseCase.java` | `application/port/in/usecase/` (novo) |
 | `CurvaMercadoAcoesService.java` | `application/service/` (implementa o use case; parte do que está em `aplicado/06-excluir-vertices/`) |
 
@@ -42,7 +43,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 ## Conferir
 
 1. **Testes que montam o service com portas `null`**: sem os `if`, o `NullPointerException` aparece. Com `@Mock`/`@InjectMocks` não há problema.
-2. **Quem chamava `listar`** com `pagina` e `tamanho` (Alt+F7 antes de colar): o `CurvaMercadoController` passa a chamar `useCase.listar(nome, codigo, unidade, situacao, provedor, dono)`, sem os parâmetros `pagina` e `tamanho`, e devolve a lista; o `CurvaMercadoResponse` já existe por item. **O front** que lê o formato de página (conteúdo e totais) precisa ler a lista direto.
+2. **Quem chamava `listar`** com `pagina` e `tamanho` (Alt+F7 antes de colar): o `CurvaMercadoController` desta pasta já chama `useCase.listar(...)` com 6 filtros e devolve o array. Apague `CurvasMercadoPaginadaResponse` (e o `Page` do controller) se ficar sem uso. **O front** que lê o formato de página (conteúdo e totais) precisa ler a lista direto.
 3. **Teste de `alterar`** que confere a mensagem de valores aceitos: ela continua `Valores aceitos: [...]` com os mesmos nomes, na ordem do enum.
 4. **Outros chamadores de `ValidadorParametros.validar`** (Alt+F7): a assinatura mudou (sem `modeloConstrucao` e sem a lista de provedores). Aqui só o `ConfiguracaoCurvaService` chama; se aparecer outro no seu repo, o compilador acusa.
 5. **Sobras dos avisos de cálculo** (Alt+F7): `AvisoCurva`, `CodigoAvisoCurva` e as constantes `NATIVE_CONSTRUCTION_MODELS`, `NATIVE_INTERPOLATORS`, `NATIVE_CALENDARS` do validador (mantidas porque são públicas e não vi todos os usos). Sem outro uso, apague.
