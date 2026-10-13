@@ -7,14 +7,11 @@ import br.com.poc.domain.aviso.Detalhe;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /** Regras comuns do dado bruto. */
 final class RegrasCurvaPrimr {
-
-    static final ZoneId BRASILIA = ZoneId.of("America/Sao_Paulo");
 
     private RegrasCurvaPrimr() {
     }
@@ -23,7 +20,7 @@ final class RegrasCurvaPrimr {
     record Periodo(LocalDate de, LocalDate ate) {
 
         static Periodo de(LocalDate de, LocalDate ate) {
-            LocalDate fim = ate != null ? ate : LocalDate.now(BRASILIA);
+            LocalDate fim = ate != null ? ate : LocalDate.now();
             LocalDate inicio = de != null ? de : fim.minusDays(30);
             if (inicio.isAfter(fim)) {
                 throw new InvalidInputException(CadastroErrorCode.PARAMETRO_INVALIDO,

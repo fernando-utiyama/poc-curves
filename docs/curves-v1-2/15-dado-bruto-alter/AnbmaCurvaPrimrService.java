@@ -142,6 +142,6 @@ public class AnbmaCurvaPrimrService implements AnbmaCurvaPrimrUseCase {
                                 Object antes, Object depois, int quantidadeAntes, int quantidadeDepois) {
         eventosPort.publicarCurvaPrimariaEditada(new EventoCurvaPrimariaEditada(
             MDC.get("correlationId"), FONTE, curva.codigo(), curva.nome(), dataBase, operacao,
-            antes, depois, quantidadeAntes, quantidadeDepois, OffsetDateTime.now(BRASILIA)));
+            antes, depois, quantidadeAntes, quantidadeDepois, OffsetDateTime.now()));
     }
 }

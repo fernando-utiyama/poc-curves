@@ -82,3 +82,12 @@ Com as primárias copiadas, apague, com Alt+F7 confirmando 0 usos:
 
 No seu repo, o `InvalidInputException` recebe o `ErrorCode` (o enum), e não a `String` do código. Nas duas exceções do `Periodo` (período invertido e período acima de 366 dias), troque `CadastroErrorCode.PARAMETRO_INVALIDO.getCode()` por `CadastroErrorCode.PARAMETRO_INVALIDO`. O `NotFoundException` dos services continua com `.getCode()`, como está.
 
+## Por último (2): sem o `BRASILIA` (a zona já está no `Application`)
+
+O `Application` fixa o fuso do JVM (`TimeZone.setDefault` para `America/Sao_Paulo` no `main`) e recusa subir em outro fuso (`IllegalStateException` no `run`). Por isso a constante `BRASILIA` do `RegrasCurvaPrimr` sobra: `LocalDate.now()` e `OffsetDateTime.now()` já devolvem o horário de Brasília, como no resto da aplicação.
+
+- `RegrasCurvaPrimr`: sai a constante e o `import java.time.ZoneId`; o padrão do `Periodo` usa `LocalDate.now()`.
+- Os 3 services (`Btrs`, `Anbma`, `Bberg`): o `publicarEvento` usa `OffsetDateTime.now()`.
+
+Copie os 4 arquivos desta pasta por cima, ou troque à mão. A `15-dado-bruto-alter` já está sem o `BRASILIA`.
+
