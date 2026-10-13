@@ -81,61 +81,45 @@ Nenhum chamador preenchia os avisos (só o de curva derivada, que saiu). O `Curv
 
 **Porta:** copiar o `CurvaMercdRepositoryPort.java` desta pasta por cima do seu. Os dois `listar` com `Pageable` (o abstrato e o `default` de 4 filtros) viram um só, `List<CurvaMercado> listar(nome, codigo, unidade, situacao, provedor, dono)`, e saem os imports de `Page` e `Pageable`. Sai também o `findAllValidas()`: só o `listarPorOrigem` o usava, e agora ele não consulta as curvas (apague a implementação no adaptador; confirme com Alt+F7 que está com zero usos). Reconstruída da sua foto: os outros métodos estão como lá.
 
-**`listar` do adaptador:** troque o `listar` inteiro por este (cada filtro vira uma `Specification` pequena que devolve `null` quando o parâmetro não vem, e o `allOf` ignora os nulos):
+**`listar` do adaptador:** troque o `listar` inteiro por este (uma `Specification` só, sem métodos auxiliares; cada filtro só entra se vier preenchido, então não há `null` dentro do `allOf`):
 
 ```java
 @Override
 public List<CurvaMercado> listar(String nome, String codigo, String unidade, String situacao,
                                  String provedor, String dono) {
-    Specification<CurvaMercdEntity> filtro = Specification.allOf(
-        igual("tickerIdtfdUnic", codigo),
-        igual("tpoVlr", unidade),
-        igual("sitReg", situacao),
-        contem("tickerIndcd", nome),
-        contem("pprioDado", dono),
-        comProvedor(provedor));
+    Specification<CurvaMercdEntity> filtro = (root, query, cb) -> {
+        List<Predicate> filtros = new ArrayList<>();
+        if (StringUtils.hasText(codigo)) {
+            filtros.add(cb.equal(root.get("tickerIdtfdUnic"), codigo));
+        }
+        if (StringUtils.hasText(unidade)) {
+            filtros.add(cb.equal(root.get("tpoVlr"), unidade));
+        }
+        if (StringUtils.hasText(situacao)) {
+            filtros.add(cb.equal(root.get("sitReg"), situacao));
+        }
+        if (StringUtils.hasText(nome)) {
+            filtros.add(cb.like(cb.lower(root.get("tickerIndcd")), "%" + nome.trim().toLowerCase(Locale.ROOT) + "%"));
+        }
+        if (StringUtils.hasText(dono)) {
+            filtros.add(cb.like(cb.lower(root.get("pprioDado")), "%" + dono.trim().toLowerCase(Locale.ROOT) + "%"));
+        }
+        if (StringUtils.hasText(provedor)) {
+            Subquery<Integer> ligacao = query.subquery(Integer.class);
+            var p = ligacao.from(CurvaPrvdrEntity.class);
+            ligacao.select(cb.literal(1)).where(
+                cb.equal(p.get("nomeCurva"), root.get("tickerIndcd")),
+                cb.equal(cb.trim(p.get("provedor")), provedor.trim()));
+            filtros.add(cb.exists(ligacao));
+        }
+        return cb.and(filtros.toArray(Predicate[]::new));
+    };
     Sort ordem = Sort.by("tickerIdtfdUnic").ascending().and(Sort.by("tickerIndcd").ascending());
     return repository.findAll(filtro, ordem).stream().map(this::toDomain).toList();
 }
-
-private static Specification<CurvaMercdEntity> igual(String atributo, String valor) {
-    if (!temTexto(valor)) {
-        return null;
-    }
-    return (root, query, cb) -> cb.equal(root.get(atributo), valor);
-}
-
-private static Specification<CurvaMercdEntity> contem(String atributo, String texto) {
-    if (!temTexto(texto)) {
-        return null;
-    }
-    String padrao = "%" + texto.toLowerCase(Locale.ROOT).trim() + "%";
-    return (root, query, cb) -> cb.like(cb.lower(root.get(atributo)), padrao);
-}
-
-/** Curvas que têm o provedor ligado em tCurvaPrvdr. */
-private static Specification<CurvaMercdEntity> comProvedor(String provedor) {
-    if (!temTexto(provedor)) {
-        return null;
-    }
-    return (root, query, cb) -> {
-        Subquery<Integer> subquery = query.subquery(Integer.class);
-        var p = subquery.from(CurvaPrvdrEntity.class);
-        subquery.select(cb.literal(1));
-        subquery.where(
-            cb.equal(p.get("nomeCurva"), root.get("tickerIndcd")),
-            cb.equal(cb.trim(p.get("provedor")), provedor.trim())
-        );
-        return cb.exists(subquery);
-    };
-}
-
-private static boolean temTexto(String texto) {
-    return texto != null && !texto.isBlank();
-}
 ```
 
-Imports: `org.springframework.data.domain.Sort`, `org.springframework.data.jpa.domain.Specification`, `jakarta.persistence.criteria.Subquery` e `java.util.Locale`; saem `Predicate`, `Root`, `CriteriaQuery`, `CriteriaBuilder` e `ArrayList`, se ficarem sem uso. Mudança única de comportamento: `toLowerCase(Locale.ROOT)` (sem isso, num servidor com locale turco, "I" vira "ı" e o filtro erra).
+Imports: `org.springframework.util.StringUtils`, `org.springframework.data.domain.Sort`, `org.springframework.data.jpa.domain.Specification`, `jakarta.persistence.criteria.Predicate`, `jakarta.persistence.criteria.Subquery`, `java.util.ArrayList`, `java.util.List` e `java.util.Locale`. Saem `igual`, `contem`, `comProvedor` e `temTexto`. Mudança única de comportamento: `toLowerCase(Locale.ROOT)` (num servidor com locale turco, "I" vira "ı" e o filtro erra).
 
 ## `CurvaProvedorService` (provedor da curva)
 
