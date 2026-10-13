@@ -75,7 +75,7 @@ public class BtrsCurvaPrimrController {
             @Parameter(description = "Nome da curva", example = "DIxPRE") @PathVariable String nome,
             @Parameter(description = "Data-base (AAAA-MM-DD)", example = "2026-09-14")
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase,
-            @Parameter(description = "Id do vértice") @PathVariable  id,
+            @Parameter(description = "Id do vértice") @PathVariable Long id,
             @RequestBody BtrsCurvaPrimrVerticeRequest request) {
         return ResponseEntity.ok(BtrsCurvaPrimrVerticeResponse.fromDomain(useCase.alterar(nome, dataBase, id, request.toDomain())));
     }
@@ -86,7 +86,7 @@ public class BtrsCurvaPrimrController {
             @Parameter(description = "Nome da curva", example = "DIxPRE") @PathVariable String nome,
             @Parameter(description = "Data-base (AAAA-MM-DD)", example = "2026-09-14")
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase,
-            @Parameter(description = "Id do vértice") @PathVariable  id) {
+            @Parameter(description = "Id do vértice") @PathVariable Long id) {
         useCase.excluir(nome, dataBase, id);
         return ResponseEntity.ok().build();
     }
