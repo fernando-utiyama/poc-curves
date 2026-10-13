@@ -1,6 +1,6 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 11 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
+Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 12 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
 
 | Arquivo | Onde |
 |---|---|
@@ -13,6 +13,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 | `CurvaProvedorUseCase.java` | `application/port/in/usecase/` (deduzido do service: confira os imports dos inputs) |
 | `ValidadorParametros.java` | `domain/cadastro/` (sem avisos) |
 | `ValidadorParametrosTest.java` | teste do validador (substitui) |
+| `CurvaMercdRepositoryPort.java` | `application/port/out/` (porta inteira, sem paginação e sem `findAllValidas`) |
 | `CurvaMercadoAcoesUseCase.java` | `application/port/in/usecase/` (novo) |
 | `CurvaMercadoAcoesService.java` | `application/service/` (implementa o use case; parte do que está em `aplicado/06-excluir-vertices/`) |
 
@@ -63,9 +64,9 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 
 `GET /api/v1/curvas-mercado?nome=&codigo=&unidade=&situacao=&provedor=&dono=` responde **200 com o array JSON** das curvas que atendem aos filtros (os itens são os mesmos de antes, com `provedores`, `dono` e `ultimaExecucao`). Sem `pagina`, `tamanho`, `total` nem envelope; ordenado por código, desempate pelo nome. A tela de cadastro (`fed-curvas-mercado`) mostra o total como a quantidade de itens. As specs da v1 e da v1.1 (`cadastro-curva-mercado`, `listagem-curvas-v1-1`) ficam como estavam: a regra vale a partir daqui.
 
-## `CurvaMercdRepositoryPort` e `CurvaMercdPersistenceAdapter.listar` (à mão)
+## `CurvaMercdRepositoryPort` e `CurvaMercdPersistenceAdapter` (à mão)
 
-**Porta:** `List<CurvaMercado> listar(String nome, String codigo, String unidade, String situacao, String provedor, String dono);`
+**Porta:** copiar o `CurvaMercdRepositoryPort.java` desta pasta por cima do seu. Os dois `listar` com `Pageable` (o abstrato e o `default` de 4 filtros) viram um só, `List<CurvaMercado> listar(nome, codigo, unidade, situacao, provedor, dono)`, e saem os imports de `Page` e `Pageable`. Sai também o `findAllValidas()`: só o `listarPorOrigem` o usava, e agora ele não consulta as curvas (apague a implementação no adaptador; confirme com Alt+F7 que está com zero usos). Reconstruída da sua foto: os outros métodos estão como lá.
 
 **`listar` do adaptador:** troque o `listar` inteiro por este (cada filtro vira uma `Specification` pequena que devolve `null` quando o parâmetro não vem, e o `allOf` ignora os nulos):
 
