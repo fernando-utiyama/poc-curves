@@ -52,7 +52,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 2. **Quem chamava `listar`** com `pagina` e `tamanho` (Alt+F7 antes de colar): o `CurvaMercadoController` desta pasta já chama `useCase.listar(...)` com 6 filtros e devolve o array. Apague `CurvasMercadoPaginadaResponse` (e o `Page` do controller) se ficar sem uso. **O front** que lê o formato de página (conteúdo e totais) precisa ler a lista direto.
 3. **Teste de `alterar`** que confere a mensagem de valores aceitos: ela continua `Valores aceitos: [...]` com os mesmos nomes, na ordem do enum.
 4. **Outros chamadores de `ValidadorParametros.validar`** (Alt+F7): a assinatura mudou (sem `modeloConstrucao` e sem a lista de provedores). Aqui só o `ConfiguracaoCurvaService` chama; se aparecer outro no seu repo, o compilador acusa.
-5. **Sobras dos avisos de cálculo** (Alt+F7): `AvisoCurva`, `CodigoAvisoCurva` e as constantes `NATIVE_CONSTRUCTION_MODELS`, `NATIVE_INTERPOLATORS`, `NATIVE_CALENDARS` do validador (mantidas porque são públicas e não vi todos os usos). Sem outro uso, apague.
+5. **Sobras dos avisos de cálculo** (Alt+F7): as constantes `NATIVE_CONSTRUCTION_MODELS`, `NATIVE_INTERPOLATORS`, `NATIVE_CALENDARS` do validador (mantidas porque são públicas e não vi todos os usos). Sem outro uso, apague. **`AvisoCurva` e `CodigoAvisoCurva` ficam por enquanto**: as curvas primárias (B3, ANBIMA e Bloomberg) ainda os usam; a limpeza deles é depois da `14-dado-bruto`.
 6. **`ConfiguracaoCurvaServiceTest`**: o service perdeu o `CurvaPrvdrRepositoryPort` (4 portas no construtor) e o teste de `validar` passa a mockar `findUltimaVersao`.
 7. **Código de país**: a normalização para maiúsculas não foi aplicada; confirmar com o Copilot se o engine lê `cPaisInstt` antes de fazer.
 
@@ -60,7 +60,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 
 Nenhum chamador preenchia os avisos (só o de curva derivada, que saiu). O `CurvaMercadoResponse` perde o campo `avisos` e o `fromDomain(c, avisos)`: ficam `fromDomain(c)` e `fromDomain(c, provedores)`; o construtor de 12 argumentos continua. O JSON de `GET /curvas-mercado` e do detalhe deixa de trazer `avisos: []`.
 
-- **Conferir (Alt+F7):** testes (`CurvaMercadoControllerWebTest` etc.) e o front que leiam `avisos` da curva; chamadas antigas de `fromDomain(c, List.of())`, que agora passariam a ser lidas como `provedores` (compila, mas confira o que cada uma quer); `AvisoCurva` sem uso: apague, junto com `CodigoAvisoCurva` e os campos `NATIVE_*` do validador, se nada mais usar.
+- **Conferir (Alt+F7):** testes (`CurvaMercadoControllerWebTest` etc.) e o front que leiam `avisos` da curva; chamadas antigas de `fromDomain(c, List.of())`, que agora passariam a ser lidas como `provedores` (compila, mas confira o que cada uma quer); `AvisoCurva` e `CodigoAvisoCurva` ficam até a `14-dado-bruto` (as primárias ainda os usam).
 
 ## Validação da configuração (`POST /api/v1/curvas-mercado/{nome}/configuracoes/validacao`)
 
@@ -167,6 +167,6 @@ Copiar por cima do seu, junto com o `CurvaProvedorCurvaResponse`. Muda:
 - `listarPorOrigem` converte `CurvaProvedor` em `CurvaProvedorCurvaResponse(nome, prioridade)`: o `codigo` saiu da resposta. O `CurvaProvedorCurvaResponse` desta pasta é o seu (da foto: `@JsonInclude(ALWAYS)`, `nome`, `prioridade`) sem o `codigo`; confira os 2 usos do `codigo()` antes de colar.
 - O `validarParametros` ficou como estava, mas repete o que `@Validated`, `@NotBlank` e `@Positive` já fazem nos parâmetros: pode ser que um deles sobre.
 
-Depois apague `CurvaProvedorResultado` e `CurvaProvedorComAvisosResponse` (Alt+F7: devem ficar sem uso) e o `AvisoCurva`, se for a última referência.
+Depois apague `CurvaProvedorResultado` e `CurvaProvedorComAvisosResponse` (Alt+F7: devem ficar sem uso) e o `AvisoCurva` só depois da `14-dado-bruto` (as primárias ainda o usam).
 
 **`ConfiguracaoCurvaRepositoryPort`:** o `findModeloConstrucaoVigente` (que só servia aos avisos de origem do provedor) sai da porta, e a implementação sai do adaptador e do repositório JPA. Na sua foto ele aparece com 1 uso: veja qual é (deve ser o `CurvaProvedorServiceTest` antigo ou o service antes da limpeza) e apague junto. O `findByNomeCurvaEVersao` aparece com 0 usos; não mexi, mas pode sair também.
