@@ -134,3 +134,35 @@ Mesmo padrão do (5), agora nos 4 controllers do cadastro: `CurvaMercadoControll
 
 **Não copie por cima sem comparar**: são os arquivos que você já aplicou e ajustou (por exemplo, o `@Tag` do `CurvaMercadoAcoesController` na sua tela é "Gestão das curvas"). Use o diff do IDE (Clipboard vs arquivo) e leve só os `@Parameter`, o `@ApiResponses` e os 3 imports (`io.swagger.v3.oas.annotations.Parameter`, `...responses.ApiResponse` e `...responses.ApiResponses`).
 
+## Por último (7): o que fazer à mão, passo a passo (sem dúvida)
+
+Siga nesta ordem. O que não está aqui é copiar por cima (tabela "Arquivos" e as seções "Por último" anteriores).
+
+### Passo 1. Renomear no IDE, antes de colar
+Para cada linha da tabela "Nomes": no seu repositório, clique no **nome na declaração** (a classe, o método ou o campo), aperte **Shift+F6**, digite o nome novo e Enter. O IDE troca em todos os usos, inclusive nos testes. Faça um de cada vez.
+- métodos: `listarAgregado` para `listarDatasBase`, `listarUltimaData` para `listarUltimaDataBase`, `existsCurvaConstruida` para `existeVerticeConstruido`, e `consultarLinhasPorData`, `incluirLinha`, `alterarLinha`, `excluirLinha` para `consultar`, `incluir`, `alterar`, `excluir`;
+- classes: `CurvaPrimrResumo` para `CurvaPrimrDataBase`, `CurvaPrimrResumoResponse` para `CurvaPrimrDataBaseResponse`, `AgregadoProjection` (ou `CurvaPrimrAgregadoProjection`) para `CurvaPrimrDataBaseProjection`, `AgregadoPrimr` para `CurvaPrimrDataBaseMapper`;
+- `BtrsCurvaPrimrLinhaRequest` e `BtrsCurvaPrimrLinhaResponse` para `BtrsCurvaPrimrVerticeRequest` e `BtrsCurvaPrimrVerticeResponse` (e os equivalentes da ANBIMA e da Bloomberg, se ainda tiverem o nome `Linha`);
+- `dataPonto()` do record da B3 para `dataVertice()`;
+- Bloomberg: `reserveNextIdentifier()` para `proximoId()` (porta, adaptador e usos). Avise quem mexe nesse repositório.
+
+### Passo 2. Colar os arquivos
+Copie os arquivos desta pasta por cima dos seus, **menos** os que estão no Passo 3. Cole de baixo para cima (domínio, porta, persistência, service, controller) para o IDE não encher de erro no meio. Inclui os 4 arquivos do "Por último (2)" e (3) (`RegrasCurvaPrimr` e os 3 services) e os 2 DTOs do (4).
+
+### Passo 3. Arquivos que ficam os seus (confira, não copie)
+- **`...VerticeRequest` (3):** o `toDomain()` tem que chamar o `Input` da fonte com estes argumentos, nesta ordem: B3 `(diasCorridos, diasUteis, valor, fatorAcumulado, fatorDia)`; ANBIMA `(prazoDiasCorridos, taxa)`; Bloomberg `(tickerBloomberg, precoUltimo, precoLiquidacao, precoMedio, diaVencimento, dataLiquidacaoFinanceira, formaLiquidacao, dataVencimentoContrato, dataUltimoNegocio)`.
+- **`...VerticeResponse` (3):** o `fromDomain` tem os campos da tabela do "Por último (3)".
+- **Records `AnbmaCurvaPrimr` e `BbergCurvaPrimr`:** os services os constroem na ordem ANBIMA `(id, nomeCurva, dataBase, taxa, vertice)` e Bloomberg `(id, nomeCurva, dataBase, precoLiquidacao, precoMedio, precoUltimo, diaVencimento, dataLiquidacaoFinanceira, tickerBloomberg, formaLiquidacao, dataVencimentoContrato, dataUltimoNegocio)`. Se o seu for outra ordem, o erro aparece no `novoVertice` do service e no `toDomain` do adaptador: ajuste lá.
+- **`EventoCurvaPrimariaEditada`:** o seu record tem 10 componentes e os services passam 11 (o 4º é `curva.nome()`). No record, **acrescente `String nome` como 4º componente** (Alt+Shift+Enter no erro e "Add 'String' as 4th record component", depois renomeie o parâmetro para `nome`). Se algum teste ou outro lugar criar o evento, acrescente o argumento lá.
+
+### Passo 4. Testes
+- Copie `CurvaPrimrDataBaseMapperTest`, `BtrsCurvaPrimrServiceListagemTest` e `BtrsCurvaPrimrServiceTest`.
+- Nos testes antigos dos services e controllers do bruto: apague os de avisos; troque os ids `1L` da B3 por `1`; o construtor dos 3 services tem 3 argumentos, `new XCurvaPrimrService(xRepositoryPort, curvaRepositoryPort, eventosPort)`.
+
+### Passo 5. Apagar o que ficou sem uso
+Para cada classe da lista "Apague" acima: clique no nome, **Alt+F7** (Find Usages). Se não houver usos (fora dela mesma), **Alt+Delete** (Safe Delete). No `CodigoAvisoCurva`, **não apague nada agora**: os valores de aviso do bruto e a própria classe saem no fim (seção "No fim da 14").
+
+### Passo 6. Compilar e testar
+1. Compile o projeto e rode os testes. Erros comuns e a causa: `Expected 10 arguments but found 11` é o evento (Passo 3); `Required type ErrorCode, provided String` é o `InvalidInputException` (já corrigido no `RegrasCurvaPrimr` desta pasta); acessor que não existe no record é o Passo 3.
+2. Suba a aplicação e teste, nas 3 fontes: a listagem sem `de` e `ate` e com período; a consulta de uma data; incluir (201), alterar (200), apagar vértice (200) e apagar a data (200); uma curva que não existe (404).
+
