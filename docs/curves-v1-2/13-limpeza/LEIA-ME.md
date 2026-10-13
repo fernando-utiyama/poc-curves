@@ -1,6 +1,6 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 15 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
+Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 17 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
 
 | Arquivo | Onde |
 |---|---|
@@ -17,6 +17,8 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 | `CurvaMercadoController.java` | `adapter/in/api/rest/controller/` (reconstruído das suas fotos: `listar` sem paginação; o resto como está) |
 | `CurvaMercadoResponse.java` | `adapter/in/api/rest/dto/` (reconstruído das suas fotos, sem o campo `avisos`) |
 | `CurvaMercadoDetalhadaResponse.java` | `adapter/in/api/rest/dto/` (chama `fromDomain(d.curva())`) |
+| `CurvaProvedorController.java` | `adapter/in/api/rest/controller/` (reconstruído das suas fotos; rotas por `{nome}`, sem avisos) |
+| `CurvaProvedorCurvaResponse.java` | `adapter/in/api/rest/dto/` (`nome` e `prioridade`, sem `codigo`) |
 | `CurvaMercadoAcoesUseCase.java` | `application/port/in/usecase/` (novo) |
 | `CurvaMercadoAcoesService.java` | `application/service/` (implementa o use case; parte do que está em `aplicado/06-excluir-vertices/`) |
 
@@ -154,10 +156,14 @@ Imports: `org.springframework.data.domain.Sort`, `org.springframework.data.jpa.d
 - O use case devolve `List<CurvaProvedor>` (domínio) no lugar do `CurvaProvedorCurvaResponse`, sem classe nova.
 - **À mão no controller:** no endpoint de listar por origem, `.map(c -> new CurvaProvedorCurvaResponse(c.nomeCurva(), c.prioridade()))`, sem o campo `codigo` (tire o `codigo` do record do response). O tipo de `prioridade` é `Integer`, como está em `CurvaProvedor`.
 
-## `CurvaProvedorController` (à mão, 2 minutos)
+## `CurvaProvedorController` (arquivo inteiro, das suas fotos)
 
-O Swagger ainda mostra `/api/v1/curvas-mercado/{codigo}/provedores...`. O service já recebe o nome, então é só renomear:
-- nas 4 rotas, `{codigo}` → `{nome}` e `@PathVariable String codigo` → `@PathVariable String nome` (Shift+F6 no parâmetro);
-- no `@Tag`, a descrição vira "Gestão de provedores da curva de mercado (tCurvaPrvdr)" (sai "e curvas componentes");
-- `criar` devolve `201` com `CurvaProvedorResponse.fromDomain(...)`, `alterar` `200` com o response, `excluir` `200` vazio (item 1 do "À mão" acima);
-- `listarPorOrigem` converte `CurvaProvedor` em `CurvaProvedorCurvaResponse` (seção "Hexagonal").
+Copiar por cima do seu, junto com o `CurvaProvedorCurvaResponse`. Muda:
+- nas 4 rotas com curva, `{codigo}` vira `{nome}` (e o `@PathVariable String nome`); `listarPorOrigem` continua em `/api/v1/curvas-mercado/provedores`;
+- o `@Tag` fica "Gestão de provedores da curva de mercado (tCurvaPrvdr)" (sai "e curvas componentes");
+- `criar` devolve `201` com `CurvaProvedorResponse`, `alterar` `200` com o response e `excluir` `200` vazio: sem `CurvaProvedorResultado` nem `CurvaProvedorComAvisosResponse`;
+- `listarPorOrigem` converte `CurvaProvedor` em `CurvaProvedorCurvaResponse(nome, prioridade)`: o `codigo` saiu da resposta. Não vi o seu `CurvaProvedorCurvaResponse`; o desta pasta usa os campos `nome` e `prioridade`, confira se o front ou algum teste lê outro nome.
+- O `validarParametros` ficou como estava, mas repete o que `@Validated`, `@NotBlank` e `@Positive` já fazem nos parâmetros: pode ser que um deles sobre.
+
+Depois apague `CurvaProvedorResultado` e `CurvaProvedorComAvisosResponse` (Alt+F7: devem ficar sem uso) e o `AvisoCurva`, se for a última referência.
+
