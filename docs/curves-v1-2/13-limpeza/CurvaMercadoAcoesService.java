@@ -5,7 +5,7 @@ import br.com.poc.application.exception.CadastroErrorCode;
 import br.com.poc.application.exception.InvalidInputException;
 import br.com.poc.application.exception.NotFoundException;
 import br.com.poc.application.port.in.usecase.CurvaMercadoAcoesUseCase;
-import br.com.poc.application.port.in.usecase.RespostaAcao;
+import br.com.poc.application.port.in.usecase.CurvaMercadoEngineResultado;
 import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
 import br.com.poc.application.port.out.DadoVertcCurvaRepositoryPort;
 import br.com.poc.application.port.out.EnginePort;
@@ -33,35 +33,35 @@ public class CurvaMercadoAcoesService implements CurvaMercadoAcoesUseCase {
     private final EventosPort eventosPort;
 
     @Override
-    public RespostaAcao construir(String nome, LocalDate dataBase, Boolean forcar, String fonte, String produto, String cid) {
+    public CurvaMercadoEngineResultado construir(String nome, LocalDate dataBase, Boolean forcar, String fonte, String produto, String cid) {
         String codigo = codigoDaCurva(nome);
         if ((fonte == null) != (produto == null)) {
             throw parametroInvalido("Informe fonte e produto juntos.");
         }
         RespostaEngine r = engine.construir(codigo, dataBase, forcar, fonte, produto, cid);
-        return new RespostaAcao(r.status(), r.corpoJson());
+        return new CurvaMercadoEngineResultado(r.status(), r.corpoJson());
     }
 
     @Override
-    public RespostaAcao regravarInterpolada(String nome, LocalDate dataBase, String cid) {
+    public CurvaMercadoEngineResultado regravarInterpolada(String nome, LocalDate dataBase, String cid) {
         RespostaEngine r = engine.regravarInterpolada(codigoDaCurva(nome), dataBase, cid);
-        return new RespostaAcao(r.status(), r.corpoJson());
+        return new CurvaMercadoEngineResultado(r.status(), r.corpoJson());
     }
 
     @Override
-    public RespostaAcao consultarVertices(String nome, LocalDate dataBase, String cid) {
+    public CurvaMercadoEngineResultado consultarVertices(String nome, LocalDate dataBase, String cid) {
         RespostaEngine r = engine.consultarVertices(codigoDaCurva(nome), dataBase, cid);
-        return new RespostaAcao(r.status(), r.corpoJson());
+        return new CurvaMercadoEngineResultado(r.status(), r.corpoJson());
     }
 
     @Override
-    public RespostaAcao interpolar(String nome, LocalDate dataBase, String queryString, String cid) {
+    public CurvaMercadoEngineResultado interpolar(String nome, LocalDate dataBase, String queryString, String cid) {
         String codigo = codigoDaCurva(nome);
         if (queryString == null || !(queryString.contains("du=") || queryString.contains("data="))) {
             throw parametroInvalido("Informe ao menos um du ou uma data.");
         }
         RespostaEngine r = engine.interpolar(codigo, dataBase, queryString, cid);
-        return new RespostaAcao(r.status(), r.corpoJson());
+        return new CurvaMercadoEngineResultado(r.status(), r.corpoJson());
     }
 
     /** Apaga os vértices construídos e a interpolada da data, numa transação. A data volta a ficar não construída. */

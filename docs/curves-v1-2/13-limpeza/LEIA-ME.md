@@ -19,7 +19,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 | `CurvaMercadoDetalhadaResponse.java` | `adapter/in/api/rest/dto/` (chama `fromDomain(d.curva())`) |
 | `CurvaProvedorController.java` | `adapter/in/api/rest/controller/` (reconstruído das suas fotos; rotas por `{nome}`, sem avisos) |
 | `CurvaProvedorCurvaResponse.java` | `adapter/in/api/rest/dto/` (o seu, sem o `codigo`) |
-| `RespostaAcao.java` | `application/port/in/usecase/` (novo: `status` e `corpoJson`; antes era um record dentro do use case) |
+| `CurvaMercadoEngineResultado.java` | `application/port/in/usecase/` (novo: `status` e `corpoJson`; antes era um record dentro do use case) |
 | `CurvaMercadoAcoesUseCase.java` | `application/port/in/usecase/` (novo) |
 | `CurvaMercadoAcoesService.java` | `application/service/` (implementa o use case; parte do que está em `aplicado/06-excluir-vertices/`) |
 
@@ -43,7 +43,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 
 **`CurvaMercadoUseCase`**: `listar` sem paginação; saem os `default listar(...)` antigos.
 
-**Ações da curva (hexagonal)**: o controller chamava o `CurvaMercadoAcoesService` direto e usava o `EnginePort.RespostaEngine` (tipo da porta de saída). Agora há o `CurvaMercadoAcoesUseCase`, com o record `RespostaAcao(status, corpoJson)` em arquivo próprio, e o service converte a resposta do engine. No `CurvaMercadoAcoesServiceTest`, troque o tipo da variável `resposta` por `var` (os acessores `status()` e `corpoJson()` são os mesmos; o mock do engine continua `RespostaEngine`).
+**Ações da curva (hexagonal)**: o controller chamava o `CurvaMercadoAcoesService` direto e usava o `EnginePort.RespostaEngine` (tipo da porta de saída). Agora há o `CurvaMercadoAcoesUseCase`, com o record `CurvaMercadoEngineResultado(status, corpoJson)` em arquivo próprio, e o service converte a resposta do engine. No `CurvaMercadoAcoesServiceTest`, troque o tipo da variável `resposta` por `var` (os acessores `status()` e `corpoJson()` são os mesmos; o mock do engine continua `RespostaEngine`).
 
 ## Conferir
 
