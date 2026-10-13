@@ -3,6 +3,7 @@ package br.com.poc.application.service;
 import br.com.poc.application.exception.BusinessException;
 import br.com.poc.application.exception.CadastroErrorCode;
 import br.com.poc.application.exception.ConflictException;
+import br.com.poc.application.exception.CurvaComDadosVinculadosException;
 import br.com.poc.application.exception.NotFoundException;
 import br.com.poc.application.port.in.usecase.CurvaMercadoUseCase;
 import br.com.poc.application.port.out.ConfiguracaoCurvaRepositoryPort;
@@ -17,11 +18,6 @@ import br.com.poc.domain.aviso.Detalhe;
 import br.com.poc.domain.cadastro.*;
 import br.com.poc.domain.evento.EventoCadastroAlterado;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,14 +41,8 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<CurvaMercado> listar(String nome, String codigo, String unidade, String situacao,
-                                     String provedor, String dono, int pagina, int tamanho) {
-        int paginaAjustada = Math.max(pagina, 0);
-        int tamanhoAjustado = tamanho <= 0 ? 50 : Math.min(tamanho, 500);
-        // desempate pelo nome (PK)
-        Pageable pageable = PageRequest.of(paginaAjustada, tamanhoAjustado,
-            Sort.by("tickerIdtfdUnic").ascending().and(Sort.by("tickerIndcd").ascending()));
-        return repositoryPort.listar(nome, codigo, unidade, situacao, provedor, dono, pageable);
+    public List<CurvaMercado> listar(String nome, String codigo, String unidade, String situacao, String provedor, String dono) {
+        return repositoryPort.listar(nome, codigo, unidade, situacao, provedor, dono);
     }
 
     @Override
@@ -162,8 +152,6 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
         DayCounterCotacao dayCounter = parseEnum(DayCounterCotacao.class, input.dayCounterCotacao());
         CompoundingCotacao compounding = parseEnum(CompoundingCotacao.class, input.compounding());
 
-        validarCoerenciaComConfiguracoes(atual, unidade, compounding);
-
         CurvaMercado alterada = new CurvaMercado(
             novoCodigo,
             atual.nome(), // Nome é imutável
@@ -214,10 +202,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
         return detalhar(salva);
     }
 
-    /**
-     * Exclui a curva com os provedores e as configurações dela. Quem recusa quando ainda há dados dela em outra tabela
-     * (construído, dado bruto) é o próprio banco, pelas chaves estrangeiras: tudo é desfeito e a mensagem diz o que fazer.
-     */
+    /** Exclui a curva com provedores e configurações; com dados em outra tabela, a FK do banco recusa. */
     @Override
     @Transactional
     public void excluir(String nome) {
@@ -229,7 +214,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
             curvaPrvdrRepositoryPort.findByNomeCurva(curva.nome())
                 .forEach(p -> curvaPrvdrRepositoryPort.excluir(p.idCurvaProvedor(), curva.nome()));
             repositoryPort.excluir(curva.nome());
-        } catch (DataIntegrityViolationException e) {
+        } catch (CurvaComDadosVinculadosException e) {
             throw new BusinessException(CadastroErrorCode.CURVA_COM_HISTORICO, new Object[]{
                 new Detalhe("nome", null, nome, "A curva ainda tem dados vinculados (vértices construídos ou dado bruto dos provedores). "
                     + "Apague as datas construídas e o dado bruto antes, ou use a inativação")
@@ -237,27 +222,6 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
         }
 
         publicarEvento(curva.codigo(), curva.nome(), "EXCLUSAO", curva, null);
-    }
-
-    /** Confere a curva alterada contra as versões vigentes e futuras. */
-    private void validarCoerenciaComConfiguracoes(CurvaMercado curva, Unidade unidade, CompoundingCotacao compounding) {
-        LocalDate hoje = LocalDate.now();
-        List<CurvaProvedor> provedores = provedoresDe(curva.nome());
-        for (ConfiguracaoCurva cfg : configuracaoRepositoryPort.findByNomeCurva(curva.nome())) {
-            boolean vigenteOuFutura = cfg.fimVigencia() == null || !cfg.fimVigencia().isBefore(hoje);
-            if (!vigenteOuFutura) {
-                continue;
-            }
-            ValidadorParametros.ValidacaoResultado resultado = ValidadorParametros.validar(
-                cfg.modeloConstrucao(), cfg.interpolador(), cfg.parametros(), unidade, compounding, provedores);
-            if (!resultado.isValido()) {
-                throw new BusinessException(CadastroErrorCode.DADOS_INVALIDOS, new Object[]{
-                    new Detalhe("unidade", null, unidade != null ? unidade.name() : null,
-                        "Alteração da curva invalida a versão " + cfg.versao() + " de configuração: "
-                            + resultado.erros().getFirst().motivo())
-                });
-            }
-        }
     }
 
     private CurvaMercado obterCurva(String nome) {

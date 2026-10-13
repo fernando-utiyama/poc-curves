@@ -23,7 +23,7 @@ Base: `{urlAPI}/api/v1/curvas-mercado` (proxy `/api`). `{p}` = `b3`, `anbima` ou
 | Excluir todos da data | `DELETE /{nome}/primaria-{p}/{dataBase}` | 3 s |
 | Enviar arquivo da fonte | `POST /api/v1/cargas/upload` (`FormData`: `fonte` = `B3`/`ANBIMA`/`BLOOMBERG`, `arquivo`) | 130 s |
 
-Referência: a B3 (guia `docs/curves-v1-2/10-dado-bruto/` do poc). ANBIMA: `prazoDiasCorridos`, `taxa`, `vencimento`; Bloomberg: `tickerBloomberg`, `precoUltimo`, `precoLiquidacao`, `precoMedio`, `diaVencimento`, `dataLiquidacaoFinanceira`, `formaLiquidacao`, `dataVencimentoContrato`, `dataUltimoNegocio`. Decimais sempre em texto.
+Referência: a B3 (guia `docs/curves-v1-2/14-dado-bruto/` do poc). ANBIMA: `prazoDiasCorridos`, `taxa`, `vencimento`; Bloomberg: `tickerBloomberg`, `precoUltimo`, `precoLiquidacao`, `precoMedio`, `diaVencimento`, `dataLiquidacaoFinanceira`, `formaLiquidacao`, `dataVencimentoContrato`, `dataUltimoNegocio`. Decimais sempre em texto.
 
 ```jsonc
 // GET /primaria-b3 → lista:

@@ -93,10 +93,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
         return salva;
     }
 
-    /**
-     * Exclui a versão informada (sem versão: a vigente hoje). Recusa se há curva construída na vigência dela.
-     * A vizinha cobre a vigência da excluída: a anterior estende o fim; sem anterior, a seguinte antecipa o início.
-     */
+    /** Exclui a versão (sem versão: a vigente hoje); a vizinha cobre a vigência da excluída. */
     @Override
     @Transactional
     public void excluir(String nomeCurva, Integer versao) {
@@ -157,7 +154,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
     /** Valida o início de vigência da nova versão. */
     private void validarInicioDaVersao(CurvaMercado curva, Optional<ConfiguracaoCurva> ultimaOpt, LocalDate inicio, List<Detalhe> erros) {
         if (inicio == null) {
-            return;   // a ausência já foi apontada em validarCamposBasicos
+            return;   // a ausência já foi apontada em validarCamposObrigatorios
         }
         if (ultimaOpt.isPresent()) {
             ConfiguracaoCurva ultima = ultimaOpt.get();
@@ -177,7 +174,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
     }
 
     private ValidadorParametros.ValidacaoResultado validarSemLancar(CurvaMercado curva, CriarConfiguracaoCurvaInput input, List<Detalhe> erros) {
-        validarCamposBasicos(input, erros);
+        validarCamposObrigatorios(input, erros);
         ValidadorParametros.ValidacaoResultado res = ValidadorParametros.validar(
             input.modeloConstrucao(),
             input.interpolador(),
@@ -195,7 +192,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
             .orElseThrow(() -> new NotFoundException(CadastroErrorCode.NAO_ENCONTRADO.getCode(), "Curva " + nomeCurva + " não encontrada"));
     }
 
-    private void validarCamposBasicos(CriarConfiguracaoCurvaInput input, List<Detalhe> erros) {
+    private void validarCamposObrigatorios(CriarConfiguracaoCurvaInput input, List<Detalhe> erros) {
         validarTexto("modeloConstrucao", input.modeloConstrucao(), 100, erros);
         validarTexto("interpolador", input.interpolador(), 100, erros);
         if (input.inicioVigencia() == null) {

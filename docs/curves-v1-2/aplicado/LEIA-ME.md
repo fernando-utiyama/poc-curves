@@ -2,7 +2,7 @@
 
 # Curves v1.2: itens 5, 6 e 7 (excluir curva, apagar construção da data e excluir versão de configuração)
 
-Pacotes estão como `br.com.poc`: troque por `br.com.bradesco`. **Sem trava por nome** (`travarPorNome` não é usado em nenhum arquivo daqui; entra depois, junto com a trava das versões).
+Pacotes estão como `br.com.poc`: troque pelo pacote do seu repositório. **Sem trava por nome** (`travarPorNome` não é usado em nenhum arquivo daqui; entra depois, junto com a trava das versões).
 
 Todos os arquivos desta pasta já identificam a curva pelo **nome** (`findByNome`, rotas `/{nome}`). O que mais muda por causa disso (controllers do bruto, ações do engine e chamadas do front) está em `docs/backlog-curves-v1-2.md`, seção "Identificador da curva = nome".
 
@@ -36,9 +36,9 @@ Todos os arquivos desta pasta já identificam a curva pelo **nome** (`findByNome
 
 A troca de `codigo` para `nome` (a PK) no `CurvaMercadoUseCase`, no service, no controller e no repositório já foi feita no repositório real. `09-identificador-nome/` fica só como referência. O `CurvaMercadoAcoesService` (recebe o nome e repassa `curva.codigo()` ao engine; curva sem código → 422) está na pasta `06-excluir-vertices/`, junto com o apagar da construção.
 
-## Dado bruto (itens 3, 4 e 9 do backlog), `10-dado-bruto/`
+## Dado bruto (itens 3, 4 e 9 do backlog), `14-dado-bruto/`
 
-Começar por `10-dado-bruto/LEIA-ME.md`: deixa os três repositórios, a entidade da B3 e a projection com a mesma forma (B3, ANBIMA e Bloomberg).
+Começar por `14-dado-bruto/LEIA-ME.md`: deixa os três repositórios, a entidade da B3 e a projection com a mesma forma (B3, ANBIMA e Bloomberg).
 
 Substituem arquivos: `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository.java` e `BbergCurvaPrimrRepository.java` (`adapter/out/persistence/repository/`), `CurvaPrimrDataBase.java` (`domain/cadastro/`), `CurvaPrimrDataBaseResponse.java` (`adapter/in/api/rest/dto/`) e `BtrsCurvaPrimrRepositoryPort.java` (`application/port/out/`). o `LEIA-ME.md` da pasta traz o que trocar à mão no repositório JPA, no adaptador e no service; `BtrsCurvaPrimrServiceListagemTest.java` é teste novo.
 
@@ -46,7 +46,7 @@ Substituem arquivos: `BtrsCurvaPrimrRepository.java`, `AnbmaCurvaPrimrRepository
 - `codigosNaFonte` vira `tickersProvedor`; a query deixa de esconder curvas sem código.
 - Sem calendário: os dias úteis sem dado ficaram para a v2 (`docs/backlog-v2.md`).
 - Item 1 (`produces` JSON): nos 3 controllers (`BbergCurvaPrimrController`, `AnbmaCurvaPrimrController` e `BtrsCurvaPrimrController`), `@RequestMapping(value = "/api/v1/curvas-mercado", produces = MediaType.APPLICATION_JSON_VALUE)` e importar `org.springframework.http.MediaType`.
-- ANBIMA e Bloomberg: veja o `LEIA-ME.md` da pasta `10-dado-bruto/` (guia único das três fontes). O `CurvaPrimrDataBaseMapper.java` tira da listagem a duplicação entre as três fontes (item 9 do backlog).
+- ANBIMA e Bloomberg: veja o `LEIA-ME.md` da pasta `14-dado-bruto/` (guia único das três fontes). O `CurvaPrimrDataBaseMapper.java` tira da listagem a duplicação entre as três fontes (item 9 do backlog).
 
 ## Renomeado: `codigoNaFonte` → `tickerProvedor` (provedor da curva)
 

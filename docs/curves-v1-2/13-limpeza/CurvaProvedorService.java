@@ -155,7 +155,7 @@ public class CurvaProvedorService implements CurvaProvedorUseCase {
             detalhes.add(new Detalhe("produto", null, produto, "Produto deve ter entre 1 e 50 caracteres"));
         }
         if (tickerProvedor == null || tickerProvedor.isBlank() || tickerProvedor.length() > 1024) {
-            detalhes.add(new Detalhe("tickerProvedor", null, tickerProvedor, "Código na fonte deve ter entre 1 e 1024 caracteres"));
+            detalhes.add(new Detalhe("tickerProvedor", null, tickerProvedor, "Ticker do provedor deve ter entre 1 e 1024 caracteres"));
         }
         if (prioridade == null || prioridade < 1) {
             detalhes.add(new Detalhe("prioridade", null, prioridade != null ? prioridade.toString() : null,

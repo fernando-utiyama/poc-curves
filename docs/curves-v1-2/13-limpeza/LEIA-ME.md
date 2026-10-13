@@ -1,6 +1,6 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de comportamento nem de rota: só tira código sobrando e repartido em métodos. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Os 8 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/12-sem-avisos/`).
+Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo) e a listagem de curvas (sem paginação). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 11 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` e `CurvaComDadosVinculadosException` são novos.
 
 | Arquivo | Onde |
 |---|---|
@@ -9,42 +9,70 @@ Sem mudança de comportamento nem de rota: só tira código sobrando e repartido
 | `CurvaMercadoUseCase.java` | `application/port/in/usecase/` |
 | `CurvaMercado.java` | `domain/cadastro/` |
 | `CurvaProvedorService.java` | `application/service/` |
-| `CurvaMercadoAcoesController.java` | `adapter/in/api/rest/controller/` (só ganha `@Operation` nas 4 rotas que estavam sem descrição no Swagger; nada mais mudou) |
+| `CurvaMercadoAcoesController.java` | `adapter/in/api/rest/controller/` (ganha `@Operation` nas rotas e passa a chamar o use case, não o service) |
 | `CurvaPorOrigem.java` | `domain/cadastro/` |
 | `CurvaProvedorUseCase.java` | `application/port/in/usecase/` (deduzido do service: confira os imports dos inputs) |
+| `CurvaMercadoAcoesUseCase.java` | `application/port/in/usecase/` (novo) |
+| `CurvaMercadoAcoesService.java` | `application/service/` (implementa o use case; parte do que está em `aplicado/06-excluir-vertices/`) |
+| `CurvaComDadosVinculadosException.java` | `application/exception/` (novo) |
 
 ## O que mudou
 
 **`CurvaMercadoService`**
 - **Sem `if (porta != null)`:** as três portas entram pelo construtor e nunca são nulas (`buscarProvedoresPorNomes`, `consultarAuditoria`, `excluir`, `provedoresDe`, `configuracaoVigenteDe` e o bloco do `alterar`).
+- **Sem paginação:** `listar` devolve `List<CurvaMercado>` (6 filtros, sem `pagina` e `tamanho`); sem `Page`, `Pageable` nem `Sort` no use case e no service. A ordem (código e, no desempate, o nome) fica no adaptador.
 - **Valores aceitos vêm dos enums:** `Arrays.toString(Unidade.values())` (e `DayCounterCotacao`, `CompoundingCotacao`) no lugar das listas escritas à mão nas mensagens.
-- **`detalhar` agora é privado** e saiu o overload `listar` de 6 argumentos.
+- **`detalhar` agora é privado** e saíram os overloads antigos de `listar`.
 - **`inativar` e `reativar` em 3 linhas:** usam o novo `CurvaMercado.comSituacao(situacao, atualizadoEm)` em vez de copiar os 18 argumentos do construtor. **Pequena mudança de comportamento:** o `reativar` passa a devolver o detalhe completo (provedores e configuração vigente), como o `inativar` já fazia; antes devolvia o detalhe vazio.
-- **`alterar` mais curto:** a conferência "alterar a curva não invalida uma versão vigente ou futura" virou o método privado `validarCoerenciaComConfiguracoes`.
+- **`excluir` sem `DataIntegrityViolationException`:** o service captura `CurvaComDadosVinculadosException` (da aplicação); quem traduz a exceção do banco é o adaptador (ver abaixo).
+- **`alterar` mais curto:** saiu a conferência "alterar a curva não invalida uma versão vigente ou futura" (`ValidadorParametros` contra cada versão de configuração). Era regra de negócio, o banco não exige; a versão nova continua validada contra a curva no `ConfiguracaoCurvaService.criar`.
 
 **`ConfiguracaoCurvaService`**
 - Sem o `obterProvedores` (chama a porta direto, sem checar nulo).
 - `criar` mais curto: as regras do início da nova versão viraram `validarInicioDaVersao` (mesmas mensagens).
-- `validarCamposBasicos` sem repetição: `validarTexto(campo, valor, máximo, erros)` serve a `modeloConstrucao` e `interpolador`.
+- `validarCamposObrigatorios` sem repetição: `validarTexto(campo, valor, máximo, erros)` serve a `modeloConstrucao` e `interpolador`.
 
 **`CurvaMercado`** (record): ganha `comSituacao`; o resto é o que você já tem (construtor de 17 argumentos sem dono e `normalizarNome` iguais).
 
-**`CurvaMercadoUseCase`**: sai o `default listar(...)` de 6 argumentos.
+**`CurvaMercadoUseCase`**: `listar` sem paginação; saem os `default listar(...)` antigos.
+
+**Ações da curva (hexagonal)**: o controller chamava o `CurvaMercadoAcoesService` direto e usava o `EnginePort.RespostaEngine` (tipo da porta de saída). Agora há o `CurvaMercadoAcoesUseCase`, com o record `RespostaAcao(status, corpoJson)`, e o service converte a resposta do engine. No `CurvaMercadoAcoesServiceTest`, troque o tipo da variável `resposta` por `var` (os acessores `status()` e `corpoJson()` são os mesmos; o mock do engine continua `RespostaEngine`).
 
 ## Conferir
 
 1. **Testes que montam o service com portas `null`**: sem os `if`, o `NullPointerException` aparece. Com `@Mock`/`@InjectMocks` não há problema.
-2. **Quem chamava `listar` com 6 argumentos** (Alt+F7 no overload antes de colar): passa a usar o de 8, com `null, null` para provedor e dono.
-3. **Teste de `alterar`** que confere a mensagem de valores aceitos: ela continua `Valores aceitos: [...]` com os mesmos nomes, na ordem do enum.
+2. **Quem chamava `listar`** com `pagina` e `tamanho` (Alt+F7 antes de colar): o `CurvaMercadoController` passa a chamar `useCase.listar(nome, codigo, unidade, situacao, provedor, dono)`, sem os parâmetros `pagina` e `tamanho`, e devolve a lista; o `CurvaMercadoResponse` já existe por item. **O front** que lê o formato de página (conteúdo e totais) precisa ler a lista direto.
+3. **Teste de `excluir` do `CurvaMercadoServiceTest`** (recusa por histórico): o `doThrow` passa a lançar `new CurvaComDadosVinculadosException(new RuntimeException())` em vez de `DataIntegrityViolationException`.
+4. **Teste de `alterar`** que confere a mensagem de valores aceitos: ela continua `Valores aceitos: [...]` com os mesmos nomes, na ordem do enum.
 
-## `CurvaMercdPersistenceAdapter.listar` (à mão, sem mudar a assinatura)
+## Contrato da listagem sem paginação (substitui o que a v1 e a v1.1 definiram)
 
-Troque o `listar` inteiro por este (cada filtro vira uma `Specification` pequena que devolve `null` quando o parâmetro não vem, e o `allOf` ignora os nulos):
+`GET /api/v1/curvas-mercado?nome=&codigo=&unidade=&situacao=&provedor=&dono=` responde **200 com o array JSON** das curvas que atendem aos filtros (os itens são os mesmos de antes, com `provedores`, `dono` e `ultimaExecucao`). Sem `pagina`, `tamanho`, `total` nem envelope; ordenado por código, desempate pelo nome. A tela de cadastro (`fed-curvas-mercado`) mostra o total como a quantidade de itens. As specs da v1 e da v1.1 (`cadastro-curva-mercado`, `listagem-curvas-v1-1`) ficam como estavam: a regra vale a partir daqui.
+
+## `CurvaMercdRepositoryPort` e `CurvaMercdPersistenceAdapter` (à mão)
+
+**Porta:** `List<CurvaMercado> listar(String nome, String codigo, String unidade, String situacao, String provedor, String dono);`
+
+**`excluir` do adaptador** traduz a exceção do banco:
 
 ```java
 @Override
-public Page<CurvaMercado> listar(String nome, String codigo, String unidade, String situacao,
-                                 String provedor, String dono, Pageable pageable) {
+public void excluir(String nome) {
+    try {
+        repository.deleteById(nome);
+        repository.flush();   // a violação de chave estrangeira aparece aqui, não no commit
+    } catch (DataIntegrityViolationException e) {
+        throw new CurvaComDadosVinculadosException(e);
+    }
+}
+```
+
+**`listar` do adaptador:** troque o `listar` inteiro por este (cada filtro vira uma `Specification` pequena que devolve `null` quando o parâmetro não vem, e o `allOf` ignora os nulos):
+
+```java
+@Override
+public List<CurvaMercado> listar(String nome, String codigo, String unidade, String situacao,
+                                 String provedor, String dono) {
     Specification<CurvaMercdEntity> filtro = Specification.allOf(
         igual("tickerIdtfdUnic", codigo),
         igual("tpoVlr", unidade),
@@ -52,7 +80,8 @@ public Page<CurvaMercado> listar(String nome, String codigo, String unidade, Str
         contem("tickerIndcd", nome),
         contem("pprioDado", dono),
         comProvedor(provedor));
-    return repository.findAll(filtro, pageable).map(this::toDomain);
+    Sort ordem = Sort.by("tickerIdtfdUnic").ascending().and(Sort.by("tickerIndcd").ascending());
+    return repository.findAll(filtro, ordem).stream().map(this::toDomain).toList();
 }
 
 private static Specification<CurvaMercdEntity> igual(String atributo, String valor) {
@@ -92,7 +121,7 @@ private static boolean temTexto(String texto) {
 }
 ```
 
-Imports: `org.springframework.data.jpa.domain.Specification`, `jakarta.persistence.criteria.Subquery` e `java.util.Locale`; saem `Predicate`, `Root`, `CriteriaQuery`, `CriteriaBuilder` e `ArrayList`, se ficarem sem uso. Mudança única de comportamento: `toLowerCase(Locale.ROOT)` (sem isso, num servidor com locale turco, "I" vira "ı" e o filtro erra).
+Imports: `org.springframework.data.domain.Sort`, `org.springframework.data.jpa.domain.Specification`, `jakarta.persistence.criteria.Subquery` e `java.util.Locale`; saem `Predicate`, `Root`, `CriteriaQuery`, `CriteriaBuilder` e `ArrayList`, se ficarem sem uso. Mudança única de comportamento: `toLowerCase(Locale.ROOT)` (sem isso, num servidor com locale turco, "I" vira "ı" e o filtro erra).
 
 ## `CurvaProvedorService` (provedor da curva)
 

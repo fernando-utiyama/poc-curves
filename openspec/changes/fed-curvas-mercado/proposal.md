@@ -4,7 +4,7 @@ O front (`web/fed`) tem telas de curva que são protótipo: listam, criam e edit
 
 ## What Changes
 
-- **Tela "Cadastro de curvas"** no `fed` (`/cadastro-curvas`): pesquisa com os filtros da API (trecho de nome, código, provedor, dono, unidade, situação) e paginação; cadastro de curva nova; detalhe com alteração, inativação, reativação, exclusão, auditoria em JSON e os provedores da curva (incluir, alterar, excluir). É o CRUD completo do cadastro, sem ações sobre datas.
+- **Tela "Cadastro de curvas"** no `fed` (`/cadastro-curvas`): pesquisa com os filtros da API (trecho de nome, código, provedor, dono, unidade, situação), sem paginação; cadastro de curva nova; detalhe com alteração, inativação, reativação, exclusão, auditoria em JSON e os provedores da curva (incluir, alterar, excluir). É o CRUD completo do cadastro, sem ações sobre datas.
 - **Tela "Configuração de cálculo"** (`/cadastro-curvas/{nome}/configuracoes`): lista das versões, nova versão (com validação) e exclusão de versão.
 - **Tela "Curvas"** no `fed` (`/curvas`), para o dia a dia: escolher a curva e a data-base e, nessa curva e data, ver os **vértices** construídos, interpolar prazos pedidos, e disparar construir, recalcular, recalcular por origem secundária, regravar a curva interpolada e apagar a curva construída da data.
 - O front fala só com a curves (o proxy `/api` continua apontando só para ela); a curves repassa ao engine (change `curves-v1-1`).

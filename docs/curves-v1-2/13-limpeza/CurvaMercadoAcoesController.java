@@ -1,7 +1,7 @@
 package br.com.poc.adapter.in.api.rest.controller;
 
-import br.com.poc.application.port.out.EnginePort.RespostaEngine;
-import br.com.poc.application.service.CurvaMercadoAcoesService;
+import br.com.poc.application.port.in.usecase.CurvaMercadoAcoesUseCase;
+import br.com.poc.application.port.in.usecase.CurvaMercadoAcoesUseCase.RespostaAcao;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +21,7 @@ import java.util.UUID;
 @Tag(name = "Ações da curva", description = "Repasse ao engine para a tela Curvas")
 public class CurvaMercadoAcoesController {
 
-    private final CurvaMercadoAcoesService service;
+    private final CurvaMercadoAcoesUseCase service;
 
     @Operation(summary = "Construir curva da data",
         description = "Constrói os vértices e a interpolada. forcarRecalculo=true refaz data já construída")
@@ -73,7 +73,7 @@ public class CurvaMercadoAcoesController {
         return respostaDoEngine(service.interpolar(nome, dataBase, request.getQueryString(), cid()));
     }
 
-    private ResponseEntity<String> respostaDoEngine(RespostaEngine r) {
+    private ResponseEntity<String> respostaDoEngine(RespostaAcao r) {
         return ResponseEntity.status(r.status()).contentType(MediaType.APPLICATION_JSON).body(r.corpoJson());
     }
 

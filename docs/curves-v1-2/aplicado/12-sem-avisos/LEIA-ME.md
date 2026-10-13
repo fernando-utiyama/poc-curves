@@ -1,6 +1,6 @@
 # Sem avisos (detalhe da curva e configuração)
 
-Só o que muda agora. Pacotes como `br.com.poc`: troque por `br.com.bradesco`. O front por enquanto só mostra o texto do erro: sucesso é `200` simples, e o erro vem com mensagem explicada. Os avisos não eram necessários para o fluxo.
+Só o que muda agora. Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. O front por enquanto só mostra o texto do erro: sucesso é `200` simples, e o erro vem com mensagem explicada. Os avisos não eram necessários para o fluxo.
 
 ## Arquivos (7, todos inteiros, copiar por cima)
 

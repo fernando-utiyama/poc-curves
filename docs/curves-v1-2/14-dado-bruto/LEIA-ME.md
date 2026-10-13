@@ -1,6 +1,6 @@
 # Dado bruto (B3, ANBIMA e Bloomberg): guia único
 
-Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Todos os arquivos `.java` desta pasta são **inteiros** (copiar por cima), exceto o que está em "À mão".
+Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Todos os arquivos `.java` desta pasta são **inteiros** (copiar por cima), exceto o que está em "À mão".
 
 ## Padrão das três fontes
 

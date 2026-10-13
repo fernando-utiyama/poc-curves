@@ -1,6 +1,6 @@
 # Item 5: excluir curva de mercado, dentro do `CurvaMercadoService` (trechos para acrescentar)
 
-Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Não há service nem use case novos: a exclusão fica ao lado de criar, alterar, inativar e reativar. Não precisa de porta nova: a recusa vem do banco.
+Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Não há service nem use case novos: a exclusão fica ao lado de criar, alterar, inativar e reativar. Não precisa de porta nova: a recusa vem do banco.
 
 ## 1. `CurvaMercadoUseCase`
 

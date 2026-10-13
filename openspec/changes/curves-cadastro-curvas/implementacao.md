@@ -415,7 +415,7 @@ Nível `AVISO`: `correlationId`, `usuario`, `codigo`, `nome`, `dataBase`, `opera
 
 ## 11. Vértices brutos dos provedores (spec `vertices-brutos-provedor`)
 
-Substituído na v1.2: as rotas `/dados-mercado` não serão feitas. Cada provedor mantém o próprio CRUD em `/api/v1/curvas-mercado/{nome}/primaria-{b3|anbima|bloomberg}/...`, com a listagem geral em `/api/v1/curvas-mercado/primaria-{p}`. O código completo das três fontes (persistência, services, use cases, controllers, DTOs e testes) está em `docs/curves-v1-2/10-dado-bruto/` do poc, com o `LEIA-ME.md` da pasta.
+Substituído na v1.2: as rotas `/dados-mercado` não serão feitas. Cada provedor mantém o próprio CRUD em `/api/v1/curvas-mercado/{nome}/primaria-{b3|anbima|bloomberg}/...`, com a listagem geral em `/api/v1/curvas-mercado/primaria-{p}`. O código completo das três fontes (persistência, services, use cases, controllers, DTOs e testes) está em `docs/curves-v1-2/14-dado-bruto/` do poc, com o `LEIA-ME.md` da pasta.
 
 ## 12. Remover e conferir
 

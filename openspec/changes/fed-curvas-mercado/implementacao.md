@@ -84,9 +84,8 @@ export interface ItemListaCurvas extends Pick<CurvaMercado, 'nome' | 'codigo' | 
   provedores: string[];                                       // ordem de prioridade; [0] = principal
   ultimaExecucao: { dataBase: string; usuario: string | null } | null;
 }
-export interface PaginaCurvas { /* nomes do CurvasMercadoPaginadaResponse real: a lista de itens, totalElementos, totalPaginas */ itens: ItemListaCurvas[]; totalElementos: number; totalPaginas: number; }
 export interface ProvedorDaCurva { idCurvaProvedor: number; provedor: string; produto: string; tickerProvedor: string; prioridade: number; }
-export interface FiltroCurvas { nome?: string; codigo?: string; provedor?: string; dono?: string; unidade?: string; situacao?: string; pagina: number; tamanho: number; }
+export interface FiltroCurvas { nome?: string; codigo?: string; provedor?: string; dono?: string; unidade?: string; situacao?: string; }
 
 const ctx = (ms: number) => ({ context: new HttpContext().set(TEMPO_LIMITE_MS, ms) });
 const base = (nome: string, dataBase: string) => `${url}/${encodeURIComponent(nome)}/${dataBase}`;
@@ -97,7 +96,7 @@ export interface NovaVersao { modeloConstrucao: string; interpolador: string; pa
 
 | Método | Chamada |
 |---|---|
-| `listar(f: FiltroCurvas)` → `PaginaCurvas` | `GET url` com `HttpParams` só dos filtros preenchidos |
+| `listar(f: FiltroCurvas)` → `ItemListaCurvas[]` | `GET url` com `HttpParams` só dos filtros preenchidos |
 | `consultar(nome)` | `GET url/{nome}` (curva + `provedores` + `configuracaoVigente`) |
 | `criar(c)` / `alterar(nome, c)` | `POST url` / `PUT url/{nome}` |
 | `excluir(nome)` | `DELETE url/{nome}` (409 `CURVA_COM_HISTORICO` com a mensagem) |

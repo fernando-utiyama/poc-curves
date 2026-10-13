@@ -1,6 +1,6 @@
 # Item 6: apagar a curva construída da data, dentro do `CurvaMercadoAcoesService`
 
-Pacotes como `br.com.poc`: troque por `br.com.bradesco`. Requer a porta `DadoVertcCurvaRepositoryPort` e o adaptador (pasta `../compartilhado/`).
+Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Requer a porta `DadoVertcCurvaRepositoryPort` e o adaptador (pasta `../compartilhado/`).
 
 | Arquivo | O que muda |
 |---|---|

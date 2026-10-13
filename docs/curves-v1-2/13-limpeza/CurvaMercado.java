@@ -10,9 +10,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Locale;
 
-/**
- * Modelo de domínio para Curva de Mercado.
- */
+/** Curva de mercado (tCurvaMercd). */
 public record CurvaMercado(
     String codigo,
     String nome,
