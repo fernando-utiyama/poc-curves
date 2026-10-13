@@ -232,3 +232,38 @@ void deveListarCurvasPorOrigem() throws Exception {
 
 Imports a apagar depois: `PageImpl`, `eq`, `AvisoCurva`, `CodigoAvisoCurva` (este fica até a `14`), `CurvaProvedorResultado` e `CurvaProvedorCurvaResponse`, nos testes em que não forem mais usados. `CurvaProvedor` (ordem: id, nome da curva, provedor, produto, ticker, prioridade) e `org.mockito.Mockito.verify` entram.
 
+**`CurvaProvedorServiceTest`** (service com 4 portas; as stubs que o service novo não chama saem, senão o Mockito estrito acusa `UnnecessaryStubbingException`):
+
+- **Apague** `cenarioCicloTresCurvasRecusado` (TCEN), `cenarioOrigemIncompativelComModelo` e todo teste que fale de aviso, de TCEN ou de `findModeloConstrucaoVigente`.
+- Nos testes de `criar` e `alterar` que ficarem: `CurvaProvedor resultado = service.criar(...)`, sem `resultado.curvaProvedor()` nem `avisos()`, e sem os stubs de `findByNomeCurva` e `findModeloConstrucaoVigente`.
+
+```java
+@Test
+@DisplayName("Scenario: Quais curvas recebem o PRE da B3")
+void cenarioListarCurvasPorOrigem() {
+    CurvaProvedor cp1 = new CurvaProvedor(1L, "DIxPRE", "B3", "TS", "PRE", 1);
+    CurvaProvedor cp2 = new CurvaProvedor(2L, "DI_MERCADO", "B3", "TS", "PRE", 2);
+    when(curvaPrvdrRepositoryPort.buscarCurvasProvedor("B3", "TS", "PRE")).thenReturn(List.of(cp2, cp1));
+
+    List<CurvaProvedor> lista = service.listarPorOrigem("B3", "TS", "PRE");
+
+    assertEquals(2, lista.size());
+    assertEquals("DIxPRE", lista.get(0).nomeCurva());   // ordenada por prioridade
+    assertEquals(1, lista.get(0).prioridade());
+    assertEquals("DI_MERCADO", lista.get(1).nomeCurva());
+    assertEquals(2, lista.get(1).prioridade());
+}
+
+@Test
+@DisplayName("Scenario: Excluir o último provedor da curva")
+void cenarioUltimoProvedorExcluido() {
+    CurvaProvedor cp = new CurvaProvedor(1L, "DIxPRE", "B3", "TS", "PRE", 1);
+    when(curvaRepositoryPort.findByNome("PRE")).thenReturn(Optional.of(curvaPre));
+    when(curvaPrvdrRepositoryPort.findByIdAndNomeCurva(1L, "DIxPRE")).thenReturn(Optional.of(cp));
+
+    service.excluir("PRE", 1L);
+
+    verify(curvaPrvdrRepositoryPort).excluir(1L, "DIxPRE");
+}
+```
+
