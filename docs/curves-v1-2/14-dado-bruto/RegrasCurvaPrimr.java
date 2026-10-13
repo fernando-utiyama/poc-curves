@@ -26,11 +26,11 @@ final class RegrasCurvaPrimr {
             LocalDate fim = ate != null ? ate : LocalDate.now(BRASILIA);
             LocalDate inicio = de != null ? de : fim.minusDays(30);
             if (inicio.isAfter(fim)) {
-                throw new InvalidInputException(CadastroErrorCode.PARAMETRO_INVALIDO.getCode(),
+                throw new InvalidInputException(CadastroErrorCode.PARAMETRO_INVALIDO,
                     "O início do período (" + inicio + ") é depois do fim (" + fim + ")");
             }
             if (ChronoUnit.DAYS.between(inicio, fim) > 366) {
-                throw new InvalidInputException(CadastroErrorCode.PARAMETRO_INVALIDO.getCode(),
+                throw new InvalidInputException(CadastroErrorCode.PARAMETRO_INVALIDO,
                     "O período de " + inicio + " a " + fim + " passa de 366 dias");
             }
             return new Periodo(inicio, fim);

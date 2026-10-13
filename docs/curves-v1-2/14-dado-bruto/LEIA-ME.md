@@ -78,3 +78,7 @@ Com as primárias copiadas, apague, com Alt+F7 confirmando 0 usos:
 - no `ValidadorParametros` (já sem avisos desde a `aplicado/13-limpeza`), as constantes `NATIVE_CONSTRUCTION_MODELS`, `NATIVE_INTERPOLATORS` e `NATIVE_CALENDARS`, se nada mais as usar;
 - no `CadastroErrorCode`, os códigos de aviso que sobrarem sem uso.
 
+## Por último: `InvalidInputException` no `RegrasCurvaPrimr` (erro de compilação)
+
+No seu repo, o `InvalidInputException` recebe o `ErrorCode` (o enum), e não a `String` do código. Nas duas exceções do `Periodo` (período invertido e período acima de 366 dias), troque `CadastroErrorCode.PARAMETRO_INVALIDO.getCode()` por `CadastroErrorCode.PARAMETRO_INVALIDO`. O `NotFoundException` dos services continua com `.getCode()`, como está.
+
