@@ -214,3 +214,8 @@ O `ValoresService` (rota `GET /api/v1/curvas-mercado/valores`) ainda usava `Avis
 3. **`ValoresServiceTest`:** tire as asserções de `avisos`.
 
 **As constantes `NATIVE_*` do `ValidadorParametros` NÃO são todas sobra** (corrige o "No fim da 14"): o `ValoresService` usa `NATIVE_CONSTRUCTION_MODELS` (modelos de construção) e `NATIVE_CALENDARS` (calendários) para montar a lista de valores aceitos. Só o `NATIVE_INTERPOLATORS` parece ficar sem uso (a lista de interpoladores vem de `INTERPOLADORES_DISPONIVEIS`): apague-o só se o Alt+F7 mostrar 0 usos. No fim da 14, apague `AvisoCurva` e `CodigoAvisoCurva` depois de tirar estes usos.
+
+
+## Atenção (14): o `Detalhe` mora no pacote `domain.aviso`, mas NÃO é de aviso
+
+No "No fim da 14", apague **só** `AvisoCurva` e `CodigoAvisoCurva`. **Não apague o `Detalhe`** (`br.com...domain.aviso.Detalhe`) nem o pacote `domain.aviso` inteiro: o `Detalhe` (campo, ponto, valor e motivo) é o erro de campo que todas as validações montam (`erros.add(new Detalhe(...))`) e que o `BusinessException(DADOS_INVALIDOS, ...)` leva. É usado nos services do bruto, no `CurvaMercadoService`, no `ConfiguracaoCurvaService`, no `CurvaProvedorService`, no `ValidadorParametros` e no `RegrasCurvaPrimr`. Se ele foi apagado, restaure do Git (ou recrie: `public record Detalhe(String campo, String ponto, String valor, String motivo)`).
