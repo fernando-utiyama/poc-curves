@@ -117,3 +117,12 @@ Import: `org.springframework.util.StringUtils`. Copie os 4 arquivos (`RegrasCurv
 
 `CurvaPrimrDataBaseResponse` e `VerticesPrimrDaDataResponse` ganham `@Schema` (descrição e exemplo por campo), no mesmo estilo dos seus Requests. Copie os 2 arquivos desta pasta por cima. Import: `io.swagger.v3.oas.annotations.media.Schema`.
 
+## Por último (5): Swagger simples nos 3 controllers do bruto
+
+Copie os 3 controllers (`Btrs`, `Anbma` e `Bberg`) por cima. Mudou só a documentação:
+- no nível da classe, as respostas de erro `404` (curva ou vértice não encontrado) e `422` (dados inválidos, a mensagem diz o campo);
+- `@Parameter` com descrição (e exemplo) em `nome`, `dataBase`, `id` e nos filtros da listagem (`de`, `ate`, `codigo`, `nome`);
+- o "Apagar vértice" ganhou uma descrição.
+
+Imports: `io.swagger.v3.oas.annotations.Parameter`, `...responses.ApiResponse` e `...responses.ApiResponses`. A `15-dado-bruto-alter` já tem os mesmos controllers com isso e com o id `Long`.
+
