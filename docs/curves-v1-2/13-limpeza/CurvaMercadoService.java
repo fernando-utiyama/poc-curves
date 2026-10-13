@@ -108,7 +108,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
             dayCounter,
             compounding,
             input.moeda(),
-            input.pais(),
+            input.pais().toUpperCase(Locale.ROOT),
             input.classificacao(),
             input.classeAtivo(),
             input.dono(),
@@ -141,8 +141,8 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
             throw new BusinessException(CadastroErrorCode.DADOS_INVALIDOS, detalhes.toArray());
         }
 
-        // Se alterou o código, verifica unicidade (a curva legada pode estar sem código)
-        String novoCodigo = input.codigo() != null ? input.codigo() : atual.codigo();
+        // Se alterou o código, verifica unicidade
+        String novoCodigo = input.codigo();
         if (!Objects.equals(novoCodigo, atual.codigo()) && repositoryPort.existsByCodigoDiferente(novoCodigo, atual.nome())) {
             throw new ConflictException(CadastroErrorCode.CODIGO_EM_USO);
         }
@@ -158,7 +158,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
             dayCounter,
             compounding,
             input.moeda(),
-            input.pais(),
+            input.pais().toUpperCase(Locale.ROOT),
             input.classificacao(),
             input.classeAtivo(),
             input.dono(),
@@ -292,7 +292,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
         // País
         if (input.pais() == null || input.pais().isBlank()) {
             detalhes.add(new Detalhe("pais", null, input.pais(), "País é obrigatório"));
-        } else if (!PAISES_VALIDOS.contains(input.pais().toUpperCase())) {
+        } else if (!PAISES_VALIDOS.contains(input.pais().toUpperCase(Locale.ROOT))) {
             detalhes.add(new Detalhe("pais", null, input.pais(), "Código de país ISO 3166-1 alfa-2 inválido"));
         }
 

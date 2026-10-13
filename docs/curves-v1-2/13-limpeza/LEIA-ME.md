@@ -23,6 +23,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 - **Valores aceitos vêm dos enums:** `Arrays.toString(Unidade.values())` (e `DayCounterCotacao`, `CompoundingCotacao`) no lugar das listas escritas à mão nas mensagens.
 - **`detalhar` agora é privado** e saíram os overloads antigos de `listar`.
 - **`inativar` e `reativar` em 3 linhas:** usam o novo `CurvaMercado.comSituacao(situacao, atualizadoEm)` em vez de copiar os 18 argumentos do construtor. **Pequena mudança de comportamento:** o `reativar` passa a devolver o detalhe completo (provedores e configuração vigente), como o `inativar` já fazia; antes devolvia o detalhe vazio.
+- **País sempre em maiúsculas:** `criar` e `alterar` gravam `input.pais().toUpperCase(Locale.ROOT)` (a validação ISO já ignorava a caixa; `br` era aceito e gravado como veio).
 - **`alterar` mais curto:** saiu a conferência "alterar a curva não invalida uma versão vigente ou futura" (`ValidadorParametros` contra cada versão de configuração). Era regra de negócio, o banco não exige; a versão nova continua validada contra a curva no `ConfiguracaoCurvaService.criar`.
 
 **`ConfiguracaoCurvaService`**
@@ -120,6 +121,8 @@ Imports: `org.springframework.data.domain.Sort`, `org.springframework.data.jpa.d
 2. **Ficou sem uso**: `ConfiguracaoCurvaRepositoryPort.findModeloConstrucaoVigente` (porta, adaptador e repositório JPA) e os códigos `CURVA_SEM_ORIGEM` e `ORIGEM_INCOMPATIVEL_COM_MODELO` do `CodigoAvisoCurva`. Confirme com Alt+F7 antes de apagar.
 3. **Testes**: `CurvaProvedorServiceTest` monta o service com 4 mocks; saem os testes de TCEN e de avisos, e os que liam `resultado.curvaProvedor()` passam a ler o retorno direto. `CurvaProvedorControllerWebTest` também perde os avisos.
 4. **Front**: as respostas de provedor da curva não trazem mais `avisos`.
+
+**`listarPorOrigem`:** busca só as curvas do resultado (antes carregava todas as válidas) e ordena com `nullsLast`, para ligação antiga sem prioridade não dar `NullPointerException`. Porta nova: `List<CurvaMercado> findByNomes(Collection<String> nomes);` na `CurvaMercdRepositoryPort`; no adaptador, `return repository.findAllById(nomes).stream().map(this::toDomain).toList();` (o nome é o id da entidade). No `CurvaProvedorServiceTest`, o que mockava `findAllValidas()` passa a mockar `findByNomes(...)`.
 
 **Hexagonal (feito)**
 - O service não importa mais `adapter.out` nem `adapter.in`: o `SpringDataProvedorRepository` virou o `ProvedorRepositoryPort` (já existe, com `existsById`; troque só o tipo e o nome do campo no construtor do `CurvaProvedorServiceTest`).

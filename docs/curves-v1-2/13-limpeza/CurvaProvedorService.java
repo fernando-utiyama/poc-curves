@@ -109,18 +109,16 @@ public class CurvaProvedorService implements CurvaProvedorUseCase {
     @Override
     @Transactional(readOnly = true)
     public List<CurvaPorOrigem> listarPorOrigem(String provedor, String produto, String tickerProvedor) {
+        List<CurvaProvedor> ligacoes = curvaPrvdrRepositoryPort.buscarCurvasProvedor(provedor, produto, tickerProvedor);
+
         Map<String, String> codigoPorNome = new HashMap<>();
-        for (CurvaMercado c : curvaRepositoryPort.findAllValidas()) {
-            codigoPorNome.put(c.nome(), c.codigo());
+        for (CurvaMercado c : curvaRepositoryPort.findByNomes(ligacoes.stream().map(CurvaProvedor::nomeCurva).distinct().toList())) {
+            codigoPorNome.put(c.nome(), c.codigo() != null ? c.codigo() : c.nome());
         }
 
-        return curvaPrvdrRepositoryPort.buscarCurvasProvedor(provedor, produto, tickerProvedor).stream()
-            .map(l -> new CurvaPorOrigem(
-                codigoPorNome.getOrDefault(l.nomeCurva(), l.nomeCurva()),
-                l.nomeCurva(),
-                l.prioridade()
-            ))
-            .sorted(Comparator.comparing(CurvaPorOrigem::prioridade))
+        return ligacoes.stream()
+            .map(l -> new CurvaPorOrigem(codigoPorNome.getOrDefault(l.nomeCurva(), l.nomeCurva()), l.nomeCurva(), l.prioridade()))
+            .sorted(Comparator.comparing(CurvaPorOrigem::prioridade, Comparator.nullsLast(Comparator.naturalOrder())))
             .toList();
     }
 
