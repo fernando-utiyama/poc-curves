@@ -192,3 +192,7 @@ O seu Request da ANBIMA ainda tem o contrato antigo (`@NotNull BigDecimal vertic
 
 **Front:** no corpo do incluir e do alterar da ANBIMA, o campo `vertice` passa a se chamar `prazoDiasCorridos`. A spec do front já usa esse nome. O seu `AnbmaCurvaPrimrVerticeResponse` precisa devolver `prazoDiasCorridos`, `vencimento` e `taxa` (tabela do "Por último (3)").
 
+## Por último (11): `BtrsCurvaPrimrVerticeRequest` com `@Schema`
+
+O `BtrsCurvaPrimrVerticeRequest` da B3 que você tem já compila com a `14` (o `toDomain()` bate com o `BtrsCurvaPrimrInput`). Esta versão só acrescenta o `@Schema` (descrição e exemplo) e o `@NotNull` nos três campos obrigatórios (`diasCorridos`, `diasUteis` e `valor`), no mesmo estilo dos da ANBIMA e da Bloomberg. Copie por cima do seu, se quiser a documentação.
+
