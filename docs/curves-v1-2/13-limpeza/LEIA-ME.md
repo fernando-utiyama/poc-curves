@@ -1,6 +1,6 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 12 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
+Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 11 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
 
 | Arquivo | Onde |
 |---|---|
@@ -10,7 +10,6 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 | `CurvaMercado.java` | `domain/cadastro/` |
 | `CurvaProvedorService.java` | `application/service/` |
 | `CurvaMercadoAcoesController.java` | `adapter/in/api/rest/controller/` (ganha `@Operation` nas rotas e passa a chamar o use case, não o service) |
-| `CurvaPorOrigem.java` | `domain/cadastro/` |
 | `CurvaProvedorUseCase.java` | `application/port/in/usecase/` (deduzido do service: confira os imports dos inputs) |
 | `ValidadorParametros.java` | `domain/cadastro/` (sem avisos) |
 | `ValidadorParametrosTest.java` | teste do validador (substitui) |
@@ -47,8 +46,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 4. **Outros chamadores de `ValidadorParametros.validar`** (Alt+F7): a assinatura mudou (sem `modeloConstrucao` e sem a lista de provedores). Aqui só o `ConfiguracaoCurvaService` chama; se aparecer outro no seu repo, o compilador acusa.
 5. **Sobras dos avisos de cálculo** (Alt+F7): `AvisoCurva`, `CodigoAvisoCurva` e as constantes `NATIVE_CONSTRUCTION_MODELS`, `NATIVE_INTERPOLATORS`, `NATIVE_CALENDARS` do validador (mantidas porque são públicas e não vi todos os usos). Sem outro uso, apague.
 6. **`ConfiguracaoCurvaServiceTest`**: o service perdeu o `CurvaPrvdrRepositoryPort` (4 portas no construtor) e o teste de `validar` passa a mockar `findUltimaVersao`.
-7. **`findAllValidas()`** da `CurvaMercdRepositoryPort`: depois do `findByNomes` no `listarPorOrigem`, pode ficar sem uso.
-8. **Código de país**: a normalização para maiúsculas não foi aplicada; confirmar com o Copilot se o engine lê `cPaisInstt` antes de fazer.
+7. **Código de país**: a normalização para maiúsculas não foi aplicada; confirmar com o Copilot se o engine lê `cPaisInstt` antes de fazer.
 
 ## Validação da configuração (`POST /api/v1/curvas-mercado/{nome}/configuracoes/validacao`)
 
@@ -139,12 +137,12 @@ Imports: `org.springframework.data.domain.Sort`, `org.springframework.data.jpa.d
 3. **Testes**: `CurvaProvedorServiceTest` monta o service com 4 mocks; saem os testes de TCEN e de avisos, e os que liam `resultado.curvaProvedor()` passam a ler o retorno direto. `CurvaProvedorControllerWebTest` também perde os avisos.
 4. **Front**: as respostas de provedor da curva não trazem mais `avisos`.
 
-**`listarPorOrigem`:** busca só as curvas do resultado (antes carregava todas as válidas) e ordena com `nullsLast`, para ligação antiga sem prioridade não dar `NullPointerException`. Porta nova: `List<CurvaMercado> findByNomes(Collection<String> nomes);` na `CurvaMercdRepositoryPort`; no adaptador, `return repository.findAllById(nomes).stream().map(this::toDomain).toList();` (o nome é o id da entidade). No `CurvaProvedorServiceTest`, o que mockava `findAllValidas()` passa a mockar `findByNomes(...)`.
+**`listarPorOrigem`:** devolve as próprias ligações (`List<CurvaProvedor>`) ordenadas por prioridade, com `nullsLast` para ligação antiga sem prioridade não dar `NullPointerException`. Não consulta mais as curvas (antes carregava todas as válidas só para achar o código), então não há porta nova. **O `codigo` saiu da resposta** da rota `GET /curvas-mercado/provedores`: a curva se identifica pelo nome.
 
 **Hexagonal (feito)**
 - O service não importa mais `adapter.out` nem `adapter.in`: o `SpringDataProvedorRepository` virou o `ProvedorRepositoryPort` (já existe, com `existsById`; troque só o tipo e o nome do campo no construtor do `CurvaProvedorServiceTest`).
-- Novo record de domínio `CurvaPorOrigem(codigo, nome, prioridade)` (em `domain/cadastro/`) no lugar do `CurvaProvedorCurvaResponse`. O use case devolve `List<CurvaPorOrigem>`.
-- **À mão no controller:** no endpoint de listar por origem, `.map(c -> new CurvaProvedorCurvaResponse(c.codigo(), c.nome(), c.prioridade()))` (ou `fromDomain` no response, se preferir). Se a ordem dos campos do seu response for outra, ajuste. O tipo de `prioridade` é `Integer`, como está em `CurvaProvedor`.
+- O use case devolve `List<CurvaProvedor>` (domínio) no lugar do `CurvaProvedorCurvaResponse`, sem classe nova.
+- **À mão no controller:** no endpoint de listar por origem, `.map(c -> new CurvaProvedorCurvaResponse(c.nomeCurva(), c.prioridade()))`, sem o campo `codigo` (tire o `codigo` do record do response). O tipo de `prioridade` é `Integer`, como está em `CurvaProvedor`.
 
 ## `CurvaProvedorController` (à mão, 2 minutos)
 
@@ -152,4 +150,4 @@ O Swagger ainda mostra `/api/v1/curvas-mercado/{codigo}/provedores...`. O servic
 - nas 4 rotas, `{codigo}` → `{nome}` e `@PathVariable String codigo` → `@PathVariable String nome` (Shift+F6 no parâmetro);
 - no `@Tag`, a descrição vira "Gestão de provedores da curva de mercado (tCurvaPrvdr)" (sai "e curvas componentes");
 - `criar` devolve `201` com `CurvaProvedorResponse.fromDomain(...)`, `alterar` `200` com o response, `excluir` `200` vazio (item 1 do "À mão" acima);
-- `listarPorOrigem` converte `CurvaPorOrigem` em `CurvaProvedorCurvaResponse` (seção "Hexagonal").
+- `listarPorOrigem` converte `CurvaProvedor` em `CurvaProvedorCurvaResponse` (seção "Hexagonal").
