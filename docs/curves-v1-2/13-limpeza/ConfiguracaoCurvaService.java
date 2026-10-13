@@ -23,6 +23,8 @@ import java.util.*;
 @RequiredArgsConstructor
 public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
 
+    private static final int TAMANHO_MAXIMO_TEXTO = 100;
+
     /** Fim de janela para versão sem fimVigencia (aberta). */
     private static final LocalDate SEM_FIM = LocalDate.of(9999, 12, 31);
 
@@ -63,7 +65,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
         ValidadorParametros.ValidacaoResultado res = validarSemLancar(curva, input, erros);
 
         Optional<ConfiguracaoCurva> ultimaOpt = configuracaoRepositoryPort.findUltimaVersao(curva.nome());
-        validarInicioDaVersao(curva, ultimaOpt, input.inicioVigencia(), erros);
+        validarInicioDaVersao(curva, ultimaOpt.orElse(null), input.inicioVigencia(), erros);
         int proximaVersao = ultimaOpt.map(ultima -> ultima.versao() + 1).orElse(1);
 
         if (!erros.isEmpty()) {
@@ -144,19 +146,18 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
     private void validarEntrada(CurvaMercado curva, CriarConfiguracaoCurvaInput input) {
         List<Detalhe> erros = new ArrayList<>();
         validarSemLancar(curva, input, erros);
-        validarInicioDaVersao(curva, configuracaoRepositoryPort.findUltimaVersao(curva.nome()), input.inicioVigencia(), erros);
+        validarInicioDaVersao(curva, configuracaoRepositoryPort.findUltimaVersao(curva.nome()).orElse(null), input.inicioVigencia(), erros);
         if (!erros.isEmpty()) {
             throw new BusinessException(CadastroErrorCode.DADOS_INVALIDOS, erros.toArray());
         }
     }
 
     /** Valida o início de vigência da nova versão. */
-    private void validarInicioDaVersao(CurvaMercado curva, Optional<ConfiguracaoCurva> ultimaOpt, LocalDate inicio, List<Detalhe> erros) {
+    private void validarInicioDaVersao(CurvaMercado curva, ConfiguracaoCurva ultima, LocalDate inicio, List<Detalhe> erros) {
         if (inicio == null) {
             return;   // a ausência já foi apontada em validarCamposObrigatorios
         }
-        if (ultimaOpt.isPresent()) {
-            ConfiguracaoCurva ultima = ultimaOpt.get();
+        if (ultima != null) {
             if (!inicio.isAfter(ultima.inicioVigencia())) {
                 erros.add(new Detalhe("inicioVigencia", null, inicio.toString(),
                     "Início de vigência da nova versão deve ser posterior ao da versão " + ultima.versao() + " (" + ultima.inicioVigencia() + ")"));
@@ -190,18 +191,18 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
     }
 
     private void validarCamposObrigatorios(CriarConfiguracaoCurvaInput input, List<Detalhe> erros) {
-        validarTexto("modeloConstrucao", input.modeloConstrucao(), 100, erros);
-        validarTexto("interpolador", input.interpolador(), 100, erros);
+        validarTexto("modeloConstrucao", input.modeloConstrucao(), erros);
+        validarTexto("interpolador", input.interpolador(), erros);
         if (input.inicioVigencia() == null) {
             erros.add(new Detalhe("inicioVigencia", null, null, "inicioVigencia é obrigatório"));
         }
     }
 
-    private void validarTexto(String campo, String valor, int maximo, List<Detalhe> erros) {
+    private void validarTexto(String campo, String valor, List<Detalhe> erros) {
         if (valor == null || valor.isBlank()) {
             erros.add(new Detalhe(campo, null, valor, campo + " é obrigatório"));
-        } else if (valor.length() > maximo) {
-            erros.add(new Detalhe(campo, null, valor, campo + " deve ter até " + maximo + " caracteres"));
+        } else if (valor.length() > TAMANHO_MAXIMO_TEXTO) {
+            erros.add(new Detalhe(campo, null, valor, campo + " deve ter até " + TAMANHO_MAXIMO_TEXTO + " caracteres"));
         }
     }
 

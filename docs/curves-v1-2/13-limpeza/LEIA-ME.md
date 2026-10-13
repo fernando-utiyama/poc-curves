@@ -324,3 +324,43 @@ public List<CurvaMercado> listar(String nome, String codigo, String unidade, Str
 
 Imports: `org.springframework.util.StringUtils`, `org.springframework.data.domain.Sort`, `org.springframework.data.jpa.domain.Specification`, `jakarta.persistence.criteria.Predicate`, `jakarta.persistence.criteria.Subquery`, `java.util.ArrayList`, `java.util.List` e `java.util.Locale`. A consulta é a mesma de antes.
 
+## Por último (3): dois avisos do IDE no `ConfiguracaoCurvaService`
+
+Copie o `ConfiguracaoCurvaService.java` desta pasta por cima do seu, ou aplique à mão:
+
+1. **`Optional` como parâmetro** (`validarInicioDaVersao`, linha 157): o método passa a receber `ConfiguracaoCurva ultima` (pode ser `null`), e quem chama manda `.orElse(null)`.
+
+```java
+// criar
+validarInicioDaVersao(curva, ultimaOpt.orElse(null), input.inicioVigencia(), erros);
+// validarEntrada
+validarInicioDaVersao(curva, configuracaoRepositoryPort.findUltimaVersao(curva.nome()).orElse(null), input.inicioVigencia(), erros);
+
+private void validarInicioDaVersao(CurvaMercado curva, ConfiguracaoCurva ultima, LocalDate inicio, List<Detalhe> erros) {
+    if (inicio == null) {
+        return;
+    }
+    if (ultima != null) {
+        // ...o corpo de antes, sem o ultimaOpt.get()
+    }
+    // ...
+}
+```
+
+2. **`maximo` sempre `100`** (`validarTexto`, linha 203): vira a constante `TAMANHO_MAXIMO_TEXTO` e o parâmetro sai.
+
+```java
+private static final int TAMANHO_MAXIMO_TEXTO = 100;
+
+validarTexto("modeloConstrucao", input.modeloConstrucao(), erros);
+validarTexto("interpolador", input.interpolador(), erros);
+
+private void validarTexto(String campo, String valor, List<Detalhe> erros) {
+    if (valor == null || valor.isBlank()) {
+        erros.add(new Detalhe(campo, null, valor, campo + " é obrigatório"));
+    } else if (valor.length() > TAMANHO_MAXIMO_TEXTO) {
+        erros.add(new Detalhe(campo, null, valor, campo + " deve ter até " + TAMANHO_MAXIMO_TEXTO + " caracteres"));
+    }
+}
+```
+
