@@ -19,7 +19,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 | `CurvaMercadoDetalhadaResponse.java` | `adapter/in/api/rest/dto/` (chama `fromDomain(d.curva())`) |
 | `CurvaProvedorController.java` | `adapter/in/api/rest/controller/` (reconstruído das suas fotos; rotas por `{nome}`, sem avisos) |
 | `CurvaProvedorCurvaResponse.java` | `adapter/in/api/rest/dto/` (o seu, sem o `codigo`) |
-| `CurvaMercadoEngineResultado.java` | `application/port/in/usecase/` (novo: `status` e `corpoJson`; antes era um record dentro do use case) |
+| `CurvaMercadoEngineResultado.java` | `domain/cadastro/` (novo: `status` e `corpoJson`; antes era um record dentro do use case) |
 | `CurvaMercadoAcoesUseCase.java` | `application/port/in/usecase/` (novo) |
 | `CurvaMercadoAcoesService.java` | `application/service/` (implementa o use case; parte do que está em `aplicado/06-excluir-vertices/`) |
 

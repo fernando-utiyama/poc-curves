@@ -1,7 +1,7 @@
 package br.com.poc.adapter.in.api.rest.controller;
 
 import br.com.poc.application.port.in.usecase.CurvaMercadoAcoesUseCase;
-import br.com.poc.application.port.in.usecase.CurvaMercadoEngineResultado;
+import br.com.poc.domain.cadastro.CurvaMercadoEngineResultado;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;

@@ -1,5 +1,7 @@
 package br.com.poc.application.port.in.usecase;
 
+import br.com.poc.domain.cadastro.CurvaMercadoEngineResultado;
+
 import java.time.LocalDate;
 
 /** Ações da curva numa data-base; a curva é identificada pelo nome. */
