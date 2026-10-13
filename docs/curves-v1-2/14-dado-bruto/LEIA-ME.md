@@ -71,10 +71,10 @@ O que a listagem devolve: por curva, **as datas que têm dado bruto gravado**, c
 - **`EventoCurvaPrimariaEditada`**: mantive os 11 argumentos que o service da B3 usava (correlationId, fonte, código, nome, data, operação, antes, depois, quantidade antes, quantidade depois, quando).
 - **Obrigatórios da Bloomberg e da ANBIMA**: segui a spec `vertices-brutos-provedor` (Bloomberg: ticker e preço último; ANBIMA: prazo; taxa opcional).
 
-## No fim da 14: apagar o que sobrou dos avisos (veio da `13-limpeza`)
+## No fim da 14: apagar o que sobrou dos avisos (veio da `aplicado/13-limpeza`)
 
 Com as primárias copiadas, apague, com Alt+F7 confirmando 0 usos:
 - `AvisoCurva` e `CodigoAvisoCurva` (`domain/aviso/`);
-- no `ValidadorParametros` (já sem avisos desde a `13-limpeza`), as constantes `NATIVE_CONSTRUCTION_MODELS`, `NATIVE_INTERPOLATORS` e `NATIVE_CALENDARS`, se nada mais as usar;
+- no `ValidadorParametros` (já sem avisos desde a `aplicado/13-limpeza`), as constantes `NATIVE_CONSTRUCTION_MODELS`, `NATIVE_INTERPOLATORS` e `NATIVE_CALENDARS`, se nada mais as usar;
 - no `CadastroErrorCode`, os códigos de aviso que sobrarem sem uso.
 

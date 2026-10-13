@@ -71,3 +71,10 @@ Os dois records passam a carregar o próprio domínio, e o `...CanonicoState` de
 - **Conferir:** o `ConfiguracaoCurvaResponse.fromDomain` e o `CurvaMercadoResponse.fromDomain(curva, avisos)` precisam existir com essas assinaturas (o do `CurvaMercadoResponse` está na sua foto; o da configuração eu não vi, mas a rota de configurações já o usa).
 - **Sem `avisos` no detalhe da curva:** `CurvaMercadoDetalhada` e `CurvaMercadoDetalhadaResponse` perdem o campo `avisos` (só o aviso `CURVA_COM_FILHAS` do `inativar` o preenchia, e ele saiu). O JSON do detalhe não traz mais `avisos: []`; confira se o front lê esse campo. No `CurvaMercadoResponse`, o `fromDomain(curva, avisos)` continua com a assinatura atual (recebe `List.of()` do detalhe); se o `avisos` do `CurvaMercadoResponse` também não tiver mais uso, tire-o junto (Alt+F7 em `avisos`; preciso da foto dele para escrever). A validação da configuração (`ValidadorParametros`) mantém os avisos, que são informativos.
 - **Sem avisos na configuração:** `validar` responde 200 vazio (ou o erro explicado), `criar` devolve só a versão criada (201) e `excluir` 200 vazio. Os avisos de cálculo do `ValidadorParametros` (`MODELO_NAO_NATIVO`, `ORIGEM_INCOMPATIVEL_COM_MODELO`, `MODELO_POR_ORIGEM_SEM_PROVEDOR`) deixam de ter quem os leia; o `ValidacaoResultado.avisos()` e os testes que os conferem podem sair na limpeza do validador.
+
+## Limpeza do cadastro (aplicada), `13-limpeza/`
+
+Aplicada e conferida em 13/10/2026 (33 arquivos no commit do repo real, build com os 779 testes passando): `CurvaMercadoService`, `ConfiguracaoCurvaService`, `CurvaProvedorService` (sem TCEN, sem avisos, só portas), listagem de curvas sem paginação (array), `CurvaMercadoAcoesUseCase`, `RespostaEngine` de domínio, `ValidadorParametros` sem avisos, controllers e DTOs sem `avisos`. O guia, com os arquivos, está em `13-limpeza/LEIA-ME.md`, só como referência.
+
+Ficou para o fim da `14-dado-bruto`: apagar `AvisoCurva`, `CodigoAvisoCurva` e as constantes `NATIVE_*` do validador (as primárias ainda os usam).
+
