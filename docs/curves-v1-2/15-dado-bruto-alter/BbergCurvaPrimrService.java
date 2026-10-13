@@ -14,7 +14,6 @@ import br.com.poc.domain.cadastro.CurvaPrimrDataBase;
 import br.com.poc.domain.cadastro.VerticesPrimrDaData;
 import br.com.poc.domain.evento.EventoCurvaPrimariaEditada;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
@@ -146,7 +145,7 @@ public class BbergCurvaPrimrService implements BbergCurvaPrimrUseCase {
     private void publicarEvento(CurvaMercado curva, LocalDate dataBase, String operacao,
                                 Object antes, Object depois, int quantidadeAntes, int quantidadeDepois) {
         eventosPort.publicarCurvaPrimariaEditada(new EventoCurvaPrimariaEditada(
-            MDC.get("correlationId"), FONTE, curva.codigo(), curva.nome(), dataBase, operacao,
+            FONTE, curva.codigo(), curva.nome(), dataBase, operacao,
             antes, depois, quantidadeAntes, quantidadeDepois, OffsetDateTime.now()));
     }
 }

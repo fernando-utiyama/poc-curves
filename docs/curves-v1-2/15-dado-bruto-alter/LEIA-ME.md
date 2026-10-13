@@ -52,3 +52,5 @@ Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os arquivos s
 - **Acessores do `AnbmaCurvaPrimr`**: o record acima segue a ordem da sua foto (`id, nomeCurva, dataBase, taxa, vertice`) com os dois campos no fim. Se o seu tiver outra ordem, o erro aparece no `novoVertice` do service e no `toDomain` do adaptador.
 - **Processor**: ele também grava nessas tabelas. Com `IDENTITY`, quem insere não pode mais informar o `cIdtfdUnic`. Confirme como o processor gera o id antes de aplicar o `004`.
 - **Tesouro (`003`)**: não há dado bruto do Tesouro na curves; fica fora desta pasta.
+
+Os 3 services desta pasta já chamam o `EventoCurvaPrimariaEditada` com 10 argumentos, sem o `correlationId` (ver o "Por último (14)" da `14`).

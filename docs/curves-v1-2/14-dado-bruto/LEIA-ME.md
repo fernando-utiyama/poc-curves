@@ -153,7 +153,7 @@ Copie os arquivos desta pasta por cima dos seus, **menos** os que estão no Pass
 - **`...VerticeRequest` (3):** o `toDomain()` tem que chamar o `Input` da fonte com estes argumentos, nesta ordem: B3 `(diasCorridos, diasUteis, valor, fatorAcumulado, fatorDia)`; ANBIMA `(prazoDiasCorridos, taxa)`; Bloomberg `(tickerBloomberg, precoUltimo, precoLiquidacao, precoMedio, diaVencimento, dataLiquidacaoFinanceira, formaLiquidacao, dataVencimentoContrato, dataUltimoNegocio)`.
 - **`...VerticeResponse` (3):** o `fromDomain` tem os campos da tabela do "Por último (3)".
 - **Records `AnbmaCurvaPrimr` e `BbergCurvaPrimr`:** os services os constroem na ordem ANBIMA `(id, nomeCurva, dataBase, taxa, vertice)` e Bloomberg `(id, nomeCurva, dataBase, precoLiquidacao, precoMedio, precoUltimo, diaVencimento, dataLiquidacaoFinanceira, tickerBloomberg, formaLiquidacao, dataVencimentoContrato, dataUltimoNegocio)`. Se o seu for outra ordem, o erro aparece no `novoVertice` do service e no `toDomain` do adaptador: ajuste lá.
-- **`EventoCurvaPrimariaEditada`:** o seu record tem 10 componentes e os services passam 11 (o 4º é `curva.nome()`). No record, **acrescente `String nome` como 4º componente** (Alt+Shift+Enter no erro e "Add 'String' as 4th record component", depois renomeie o parâmetro para `nome`). Se algum teste ou outro lugar criar o evento, acrescente o argumento lá.
+- **`EventoCurvaPrimariaEditada`:** o seu record tem 10 componentes (`fonte, codigo, nome, dataBase, operacao, pontoAntes, pontoDepois, quantidadePontosAntes, quantidadePontosDepois, instante`) e **já tem o `nome`**. Os services desta pasta passam esses mesmos 10, **sem o `correlationId`** (o log já o leva do MDC). Não mude o record.
 
 ### Passo 4. Testes
 - Copie `CurvaPrimrDataBaseMapperTest`, `BtrsCurvaPrimrServiceListagemTest` e `BtrsCurvaPrimrServiceTest`.
@@ -219,3 +219,8 @@ O `ValoresService` (rota `GET /api/v1/curvas-mercado/valores`) ainda usava `Avis
 ## Atenção (14): o `Detalhe` mora no pacote `domain.aviso`, mas NÃO é de aviso
 
 No "No fim da 14", apague **só** `AvisoCurva` e `CodigoAvisoCurva`. **Não apague o `Detalhe`** (`br.com...domain.aviso.Detalhe`) nem o pacote `domain.aviso` inteiro: o `Detalhe` (campo, ponto, valor e motivo) é o erro de campo que todas as validações montam (`erros.add(new Detalhe(...))`) e que o `BusinessException(DADOS_INVALIDOS, ...)` leva. É usado nos services do bruto, no `CurvaMercadoService`, no `ConfiguracaoCurvaService`, no `CurvaProvedorService`, no `ValidadorParametros` e no `RegrasCurvaPrimr`. Se ele foi apagado, restaure do Git (ou recrie: `public record Detalhe(String campo, String ponto, String valor, String motivo)`).
+
+## Por último (14): o evento tem 10 componentes, sem `correlationId` (corrige o "Por último (8)")
+
+Pela foto do seu `EventoCurvaPrimariaEditada`, ele já tem o `nome` e **não tem** `correlationId`. O que sobrava era o primeiro argumento (`MDC.get("correlationId")`) que os 3 services passavam, e por isso o erro "constructor cannot be applied" (11 argumentos para 10). Os 3 services desta pasta agora chamam `new EventoCurvaPrimariaEditada(FONTE, curva.codigo(), curva.nome(), dataBase, operacao, antes, depois, quantidadeAntes, quantidadeDepois, OffsetDateTime.now())`. **Nada a mudar no record, no adaptador nem no `EventosPort`**; saiu o import de `org.slf4j.MDC` dos services. Copie os 3 services por cima. Ignore o que o "Por último (8)" e o Passo 3 do "(7)" diziam sobre acrescentar `nome` ao record.
+
