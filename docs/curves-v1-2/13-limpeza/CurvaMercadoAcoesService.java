@@ -5,6 +5,7 @@ import br.com.poc.application.exception.CadastroErrorCode;
 import br.com.poc.application.exception.InvalidInputException;
 import br.com.poc.application.exception.NotFoundException;
 import br.com.poc.application.port.in.usecase.CurvaMercadoAcoesUseCase;
+import br.com.poc.application.port.in.usecase.RespostaAcao;
 import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
 import br.com.poc.application.port.out.DadoVertcCurvaRepositoryPort;
 import br.com.poc.application.port.out.EnginePort;
