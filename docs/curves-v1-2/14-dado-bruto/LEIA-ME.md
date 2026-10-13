@@ -200,3 +200,17 @@ O `BtrsCurvaPrimrVerticeRequest` da B3 que você tem já compila com a `14` (o `
 
 `CurvaMercadoRequest`, `CriarCurvaProvedorRequest`, `AtualizarCurvaProvedorRequest` e `CriarConfiguracaoCurvaRequest` ganham `@Schema` (descrição e exemplo por campo), no mesmo estilo dos do dado bruto. Copie os 4 por cima dos seus. Mantive o que você tem: `@JsonInclude(ALWAYS)` nos dois de provedor, `@JsonFormat` no `inicioVigencia` da configuração e o `toInput()` e os `toDomain()` iguais. Não acrescentei validação (`@NotNull`), porque os services já validam e devolvem a mensagem de cada campo. Imports novos: `io.swagger.v3.oas.annotations.media.Schema`.
 
+
+
+## Por último (13): `ValoresService` sem avisos (e as constantes `NATIVE_*`)
+
+O `ValoresService` (rota `GET /api/v1/curvas-mercado/valores`) ainda usava `AvisoCurva` e `CodigoAvisoCurva`: a resposta tinha o campo `avisos` (sempre vazio) e o catálogo `"avisos"` (`itemAviso` e `itensAvisos`). Copie o `ValoresService.java` desta pasta por cima do seu. Mudou só:
+- `RespostaValores` agora é `RespostaValores(Map<String, Object> valores)`, sem `avisos`;
+- saíram `itemAviso`, `itensAvisos`, o `resultado.put("avisos", ...)` e os imports de `AvisoCurva` e `CodigoAvisoCurva`.
+
+**À mão (precisa conferir):**
+1. **`ValoresController`:** onde ele usa `.avisos()` da resposta (a sua foto mostra 1 uso do campo), tire. Se ele devolve o record inteiro, o JSON passa de `{ "valores": {...}, "avisos": [] }` para `{ "valores": {...} }`: confirme se o front lê `avisos` de `/valores`.
+2. **Chaves de mensagem:** no `messages*.properties`, apague as chaves `curvas.avisos.*.mensagem`.
+3. **`ValoresServiceTest`:** tire as asserções de `avisos`.
+
+**As constantes `NATIVE_*` do `ValidadorParametros` NÃO são todas sobra** (corrige o "No fim da 14"): o `ValoresService` usa `NATIVE_CONSTRUCTION_MODELS` (modelos de construção) e `NATIVE_CALENDARS` (calendários) para montar a lista de valores aceitos. Só o `NATIVE_INTERPOLATORS` parece ficar sem uso (a lista de interpoladores vem de `INTERPOLADORES_DISPONIVEIS`): apague-o só se o Alt+F7 mostrar 0 usos. No fim da 14, apague `AvisoCurva` e `CodigoAvisoCurva` depois de tirar estes usos.
