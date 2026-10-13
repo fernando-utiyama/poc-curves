@@ -4,7 +4,7 @@ Troca o `Map<String, Object> parametros` por `ParametrosCalculo` (record com enu
 request → input → validador → domínio → adaptador (cModDado) → response. O JSON gravado em `cModDado`
 continua com as mesmas chaves (`BASE_INTERPOLACAO`...), então o engine não muda.
 
-Pacotes estão como `br.com.poc`: troque por `br.com.bradesco` (Ctrl+R no arquivo).
+Pacotes estão como `br.com.poc`: troque pelo pacote do seu repositório (Ctrl+R no arquivo).
 
 | Arquivo deste diretório | Onde fica no repositório | O que muda |
 |---|---|---|

@@ -2,7 +2,7 @@
 
 Troca o `Map<String, Object>` lido de `cModDado` por `ParametrosCalculo` (record com os enums que o engine já tem) e renomeia `CurvaMercadoLida` para `CadastroCurva`. O JSON de `cModDado` é o mesmo que a curves grava.
 
-Pacotes estão como `br.com.poc`: troque por `br.com.bradesco`.
+Pacotes estão como `br.com.poc`: troque pelo pacote do seu repositório.
 
 ## Ordem
 

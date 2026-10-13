@@ -1,6 +1,6 @@
 # B3: do download ao TaxaSwap.txt (exemplo para o processor)
 
-Pacotes como `br.com.poc`: troque por `br.com.bradesco`.
+Pacotes como `br.com.poc`: troque pelo pacote do seu repositório.
 
 | Arquivo | Onde fica | O que faz |
 |---|---|---|

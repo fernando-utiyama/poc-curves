@@ -1,6 +1,6 @@
 # Inspeção do engine (v1) — somente leitura
 
-> Transcrito das fotos do relatório gerado pelo Copilot no repositório real (2026-10-06, branch `feature/ACECSPB-33149`, PR #3), conforme `openspec/changes/engine-construcao-curvas/verificacao.md` e o guia `implementacao.md`. O Copilot não alterou código nem `tasks.md`; não compilou nem rodou testes. Pacote `bradesco` trocado por `poc` nos caminhos.
+> Transcrito das fotos do relatório gerado pelo Copilot no repositório real (2026-10-06, branch `feature/ACECSPB-33149`, PR #3), conforme `openspec/changes/engine-construcao-curvas/verificacao.md` e o guia `implementacao.md`. O Copilot não alterou código nem `tasks.md`; não compilou nem rodou testes. Pacote do repositório real trocado por `poc` nos caminhos.
 
 Status: `pronto` = implementação visível no código atende ao item; `diverge` = há implementação, mas existe divergência demonstrável; `falta` = não encontrei a funcionalidade no código; `não sei` = o código disponível não permite concluir.
 
