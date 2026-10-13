@@ -128,6 +128,21 @@ class BtrsCurvaPrimrServiceTest {
     }
 
     @Test
+    @DisplayName("Alterar: grava o vértice com o mesmo id e publica o evento")
+    void alterarGrava() {
+        when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curva));
+        when(btrsRepositoryPort.findByIdAndNomeCurvaAndDataBase(7L, "DIxPRE", dataBase)).thenReturn(Optional.of(vertice));
+        when(btrsRepositoryPort.findByNomeCurvaAndDataBase("DIxPRE", dataBase)).thenReturn(List.of(vertice));
+        when(btrsRepositoryPort.salvar(any())).thenReturn(vertice);
+
+        BtrsCurvaPrimr salvo = service.alterar("DIxPRE", dataBase, 7L,
+            new BtrsCurvaPrimrInput(1, 1, new BigDecimal("13.900000000000"), null, null));
+
+        assertEquals(vertice, salvo);
+        verify(eventosPort).publicarCurvaPrimariaEditada(any());
+    }
+
+    @Test
     @DisplayName("Excluir vértice: apaga pelo id, nome e data")
     void excluirVertice() {
         when(curvaRepositoryPort.findByNome("DIxPRE")).thenReturn(Optional.of(curva));

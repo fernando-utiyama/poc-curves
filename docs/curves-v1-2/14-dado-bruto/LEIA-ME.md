@@ -224,3 +224,17 @@ No "No fim da 14", apague **só** `AvisoCurva` e `CodigoAvisoCurva`. **Não apag
 
 Pela foto do seu `EventoCurvaPrimariaEditada`, ele já tem o `nome` e **não tem** `correlationId`. O que sobrava era o primeiro argumento (`MDC.get("correlationId")`) que os 3 services passavam, e por isso o erro "constructor cannot be applied" (11 argumentos para 10). Os 3 services desta pasta agora chamam `new EventoCurvaPrimariaEditada(FONTE, curva.codigo(), curva.nome(), dataBase, operacao, antes, depois, quantidadeAntes, quantidadeDepois, OffsetDateTime.now())`. **Nada a mudar no record, no adaptador nem no `EventosPort`**; saiu o import de `org.slf4j.MDC` dos services. Copie os 3 services por cima. Ignore o que o "Por último (8)" e o Passo 3 do "(7)" diziam sobre acrescentar `nome` ao record.
 
+## Por último (15): testes dos 3 services (B3, ANBIMA e Bloomberg)
+
+Os 3 testes de service têm a mesma estrutura, cada um num arquivo só: `BtrsCurvaPrimrServiceTest`, `AnbmaCurvaPrimrServiceTest` e `BbergCurvaPrimrServiceTest`. Substituem os testes antigos de `consultarLinhas`, `incluirLinha`, `alterarLinha` e `excluirLinha`, que usavam `listarAgregado`, `AnbmaCurvaPrimrResultado` e `avisos`, e que não compilam mais. Copie os 3 por cima (`src/test/java/.../application/service/`).
+
+Cobertura de cada um:
+- **Consultar:** devolve os vértices e se a data foi construída; curva inexistente responde 404.
+- **Incluir:** grava com o próximo id (o id vem do `proximoId()` mockado) e publica o evento; campos obrigatórios ausentes respondem 422 sem tocar em porta nenhuma; valor com mais de 12 casas responde 422.
+- **Casos de cada fonte:** B3 (sem dias úteis, sem valor); ANBIMA (prazo menor que 1 e taxa opcional gravada nula); Bloomberg (sem ticker e sem preço último, ticker com mais de 50 caracteres, forma de liquidação com mais de 20).
+- **Alterar:** vértice de outra data responde 404; grava com o mesmo id e publica o evento.
+- **Excluir vértice** e **excluir data** (esta não consulta a curva construída).
+- **Listar** (6 testes): última data sem período, filtros aparados, período, só `ate` com 30 dias antes, início depois do fim e período maior que 366 dias.
+
+Não há mais asserção de `avisos`. Os testes dos **controllers** do bruto (se existirem) ficam por sua conta: tire os `avisos` e troque o id da B3 de `1L` para `1`.
+

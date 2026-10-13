@@ -54,3 +54,8 @@ Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os arquivos s
 - **Tesouro (`003`)**: não há dado bruto do Tesouro na curves; fica fora desta pasta.
 
 Os 3 services desta pasta já chamam o `EventoCurvaPrimariaEditada` com 10 argumentos, sem o `correlationId` (ver o "Por último (14)" da `14`).
+
+## Testes dos 3 services (com os ALTERs)
+
+`BtrsCurvaPrimrServiceTest`, `AnbmaCurvaPrimrServiceTest` e `BbergCurvaPrimrServiceTest` desta pasta são os da `14` com o id `Long`: o `incluir` não mocka o `proximoId()` (não existe mais) e o `salvar` usa `any()`. No da ANBIMA, o record e o input têm os 2 campos novos (`tipoInstrumento` e `vencimento`), passados como `null`. Copie os 3 por cima dos da `14`.
+
