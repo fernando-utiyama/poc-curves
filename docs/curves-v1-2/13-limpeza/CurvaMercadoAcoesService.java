@@ -37,17 +37,17 @@ public class CurvaMercadoAcoesService implements CurvaMercadoAcoesUseCase {
         if ((fonte == null) != (produto == null)) {
             throw parametroInvalido("Informe fonte e produto juntos.");
         }
-        return daResposta(engine.construir(codigo, dataBase, forcar, fonte, produto, cid));
+        return paraRespostaAcao(engine.construir(codigo, dataBase, forcar, fonte, produto, cid));
     }
 
     @Override
     public RespostaAcao regravarInterpolada(String nome, LocalDate dataBase, String cid) {
-        return daResposta(engine.regravarInterpolada(codigoDaCurva(nome), dataBase, cid));
+        return paraRespostaAcao(engine.regravarInterpolada(codigoDaCurva(nome), dataBase, cid));
     }
 
     @Override
     public RespostaAcao consultarVertices(String nome, LocalDate dataBase, String cid) {
-        return daResposta(engine.consultarVertices(codigoDaCurva(nome), dataBase, cid));
+        return paraRespostaAcao(engine.consultarVertices(codigoDaCurva(nome), dataBase, cid));
     }
 
     @Override
@@ -56,7 +56,7 @@ public class CurvaMercadoAcoesService implements CurvaMercadoAcoesUseCase {
         if (queryString == null || !(queryString.contains("du=") || queryString.contains("data="))) {
             throw parametroInvalido("Informe ao menos um du ou uma data.");
         }
-        return daResposta(engine.interpolar(codigo, dataBase, queryString, cid));
+        return paraRespostaAcao(engine.interpolar(codigo, dataBase, queryString, cid));
     }
 
     /** Apaga os vértices construídos e a interpolada da data, numa transação. A data volta a ficar não construída. */
@@ -99,7 +99,7 @@ public class CurvaMercadoAcoesService implements CurvaMercadoAcoesUseCase {
         return curva.codigo();
     }
 
-    private static RespostaAcao daResposta(RespostaEngine r) {
+    private static RespostaAcao paraRespostaAcao(RespostaEngine r) {
         return new RespostaAcao(r.status(), r.corpoJson());
     }
 

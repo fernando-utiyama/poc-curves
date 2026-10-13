@@ -32,7 +32,7 @@ public class CurvaMercadoAcoesController {
             @RequestParam(required = false) Boolean forcarRecalculo,
             @RequestParam(required = false) String fonte,
             @RequestParam(required = false) String produto) {
-        return respostaDoEngine(service.construir(nome, dataBase, forcarRecalculo, fonte, produto, cid()));
+        return responder(service.construir(nome, dataBase, forcarRecalculo, fonte, produto, cid()));
     }
 
     @Operation(summary = "Regravar interpolada da data",
@@ -41,7 +41,7 @@ public class CurvaMercadoAcoesController {
     public ResponseEntity<String> regravar(
             @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase) {
-        return respostaDoEngine(service.regravarInterpolada(nome, dataBase, cid()));
+        return responder(service.regravarInterpolada(nome, dataBase, cid()));
     }
 
     @Operation(summary = "Consultar vértices da data",
@@ -50,7 +50,7 @@ public class CurvaMercadoAcoesController {
     public ResponseEntity<String> vertices(
             @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase) {
-        return respostaDoEngine(service.consultarVertices(nome, dataBase, cid()));
+        return responder(service.consultarVertices(nome, dataBase, cid()));
     }
 
     @DeleteMapping("/vertices")
@@ -70,10 +70,10 @@ public class CurvaMercadoAcoesController {
             @PathVariable String nome,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataBase,
             HttpServletRequest request) {
-        return respostaDoEngine(service.interpolar(nome, dataBase, request.getQueryString(), cid()));
+        return responder(service.interpolar(nome, dataBase, request.getQueryString(), cid()));
     }
 
-    private ResponseEntity<String> respostaDoEngine(RespostaAcao r) {
+    private ResponseEntity<String> responder(RespostaAcao r) {
         return ResponseEntity.status(r.status()).contentType(MediaType.APPLICATION_JSON).body(r.corpoJson());
     }
 
