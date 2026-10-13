@@ -166,3 +166,13 @@ Para cada classe da lista "Apague" acima: clique no nome, **Alt+F7** (Find Usage
 1. Compile o projeto e rode os testes. Erros comuns e a causa: `Expected 10 arguments but found 11` é o evento (Passo 3); `Required type ErrorCode, provided String` é o `InvalidInputException` (já corrigido no `RegrasCurvaPrimr` desta pasta); acessor que não existe no record é o Passo 3.
 2. Suba a aplicação e teste, nas 3 fontes: a listagem sem `de` e `ate` e com período; a consulta de uma data; incluir (201), alterar (200), apagar vértice (200) e apagar a data (200); uma curva que não existe (404).
 
+## Por último (8): o evento `CURVA_PRIMARIA_EDITADA` e o `nome` (adaptador não muda)
+
+O `EventoCurvaPrimariaEditada` vai para o **log**: o `LogCloudEventosAdapter` registra um `afterCommit` e escreve `log.warn("{} {}", "CURVA_PRIMARIA_EDITADA", json)`, onde o `json` é o record inteiro serializado pelo `JsonMapper`. Por isso, para o `nome` (Passo 3 do "Por último (7)"):
+
+1. No record `EventoCurvaPrimariaEditada`, acrescente `String nome` como 4º componente (depois do código da curva). O Jackson o serializa sozinho, e o log passa a ter `"nome": "DIxPRE"`.
+2. **Não mude** o `LogCloudEventosAdapter` nem o `EventosPort`: o adaptador não monta campo por campo.
+3. Só se algum teste ou outro lugar criar o evento à mão, acrescente o argumento lá.
+
+Quem busca `CURVA_PRIMARIA_EDITADA` no log passa a ter um campo a mais; nada quebra.
+
