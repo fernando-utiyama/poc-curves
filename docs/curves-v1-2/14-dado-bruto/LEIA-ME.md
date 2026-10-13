@@ -126,3 +126,11 @@ Copie os 3 controllers (`Btrs`, `Anbma` e `Bberg`) por cima. Mudou só a documen
 
 Imports: `io.swagger.v3.oas.annotations.Parameter`, `...responses.ApiResponse` e `...responses.ApiResponses`. A `15-dado-bruto-alter` já tem os mesmos controllers com isso e com o id `Long`.
 
+## Por último (6): Swagger simples nos controllers de curva de mercado
+
+Mesmo padrão do (5), agora nos 4 controllers do cadastro: `CurvaMercadoController`, `CurvaProvedorController`, `CurvaMercadoAcoesController` e `ConfiguracaoCurvaController`. Cada um ganha:
+- respostas de erro no nível da classe (404 e 422; 409 onde há conflito: código ou nome em uso e curva com dados vinculados, no cadastro; provedor ou prioridade em uso, nos provedores; versão em uso, na configuração);
+- `@Parameter` com descrição (e exemplo) em `nome`, `dataBase`, `idCurvaProvedor` e nos filtros e parâmetros de consulta.
+
+**Não copie por cima sem comparar**: são os arquivos que você já aplicou e ajustou (por exemplo, o `@Tag` do `CurvaMercadoAcoesController` na sua tela é "Gestão das curvas"). Use o diff do IDE (Clipboard vs arquivo) e leve só os `@Parameter`, o `@ApiResponses` e os 3 imports (`io.swagger.v3.oas.annotations.Parameter`, `...responses.ApiResponse` e `...responses.ApiResponses`).
+
