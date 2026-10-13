@@ -37,17 +37,20 @@ public class CurvaMercadoAcoesService implements CurvaMercadoAcoesUseCase {
         if ((fonte == null) != (produto == null)) {
             throw parametroInvalido("Informe fonte e produto juntos.");
         }
-        return paraRespostaAcao(engine.construir(codigo, dataBase, forcar, fonte, produto, cid));
+        RespostaEngine r = engine.construir(codigo, dataBase, forcar, fonte, produto, cid);
+        return new RespostaAcao(r.status(), r.corpoJson());
     }
 
     @Override
     public RespostaAcao regravarInterpolada(String nome, LocalDate dataBase, String cid) {
-        return paraRespostaAcao(engine.regravarInterpolada(codigoDaCurva(nome), dataBase, cid));
+        RespostaEngine r = engine.regravarInterpolada(codigoDaCurva(nome), dataBase, cid);
+        return new RespostaAcao(r.status(), r.corpoJson());
     }
 
     @Override
     public RespostaAcao consultarVertices(String nome, LocalDate dataBase, String cid) {
-        return paraRespostaAcao(engine.consultarVertices(codigoDaCurva(nome), dataBase, cid));
+        RespostaEngine r = engine.consultarVertices(codigoDaCurva(nome), dataBase, cid);
+        return new RespostaAcao(r.status(), r.corpoJson());
     }
 
     @Override
@@ -56,7 +59,8 @@ public class CurvaMercadoAcoesService implements CurvaMercadoAcoesUseCase {
         if (queryString == null || !(queryString.contains("du=") || queryString.contains("data="))) {
             throw parametroInvalido("Informe ao menos um du ou uma data.");
         }
-        return paraRespostaAcao(engine.interpolar(codigo, dataBase, queryString, cid));
+        RespostaEngine r = engine.interpolar(codigo, dataBase, queryString, cid);
+        return new RespostaAcao(r.status(), r.corpoJson());
     }
 
     /** Apaga os vértices construídos e a interpolada da data, numa transação. A data volta a ficar não construída. */
@@ -97,10 +101,6 @@ public class CurvaMercadoAcoesService implements CurvaMercadoAcoesUseCase {
             });
         }
         return curva.codigo();
-    }
-
-    private static RespostaAcao paraRespostaAcao(RespostaEngine r) {
-        return new RespostaAcao(r.status(), r.corpoJson());
     }
 
     private RuntimeException parametroInvalido(String msg) {
