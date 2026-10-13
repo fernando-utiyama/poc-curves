@@ -3,7 +3,6 @@ package br.com.poc.application.service;
 import br.com.poc.application.exception.BusinessException;
 import br.com.poc.application.exception.CadastroErrorCode;
 import br.com.poc.application.exception.ConflictException;
-import br.com.poc.application.exception.CurvaComDadosVinculadosException;
 import br.com.poc.application.exception.NotFoundException;
 import br.com.poc.application.port.in.usecase.CurvaMercadoUseCase;
 import br.com.poc.application.port.out.ConfiguracaoCurvaRepositoryPort;
@@ -18,6 +17,7 @@ import br.com.poc.domain.aviso.Detalhe;
 import br.com.poc.domain.cadastro.*;
 import br.com.poc.domain.evento.EventoCadastroAlterado;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -133,7 +133,6 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
     @Transactional
     public CurvaMercadoDetalhada alterar(String nome, CurvaMercadoInput input) {
         CurvaMercado atual = obterCurva(nome);
-        List<CurvaProvedor> curvaProvedores = provedoresDe(atual.nome());
 
         List<Detalhe> detalhes = new ArrayList<>();
         validarCampos(input, false, atual, detalhes);
@@ -177,7 +176,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
 
         publicarEvento(salva.codigo(), salva.nome(), "ALTERACAO", atual, salva);
 
-        return new CurvaMercadoDetalhada(salva, curvaProvedores, configuracaoVigenteDe(salva.nome()));
+        return detalhar(salva);
     }
 
     @Override
@@ -214,7 +213,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
             curvaPrvdrRepositoryPort.findByNomeCurva(curva.nome())
                 .forEach(p -> curvaPrvdrRepositoryPort.excluir(p.idCurvaProvedor(), curva.nome()));
             repositoryPort.excluir(curva.nome());
-        } catch (CurvaComDadosVinculadosException e) {
+        } catch (DataIntegrityViolationException e) {
             throw new BusinessException(CadastroErrorCode.CURVA_COM_HISTORICO, new Object[]{
                 new Detalhe("nome", null, nome, "A curva ainda tem dados vinculados (vértices construídos ou dado bruto dos provedores). "
                     + "Apague as datas construídas e o dado bruto antes, ou use a inativação")
@@ -260,42 +259,21 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
 
         // Unidade
         Unidade unidade = null;
-        if (input.unidade() == null || input.unidade().isBlank()) {
+        if (vazio(input.unidade())) {
             detalhes.add(new Detalhe("unidade", null, input.unidade(), "Unidade é obrigatória"));
         } else {
-            try {
-                unidade = Unidade.valueOf(input.unidade());
-            } catch (IllegalArgumentException e) {
-                detalhes.add(new Detalhe("unidade", null, input.unidade(), "Valores aceitos: " + Arrays.toString(Unidade.values())));
-            }
+            unidade = validarEnum("unidade", input.unidade(), Unidade.class, detalhes);
         }
 
-        // DayCounter e Compounding
+        // DayCounter e Compounding: só para TAXA
         if (unidade == Unidade.TAXA) {
-            if (input.dayCounterCotacao() == null || input.dayCounterCotacao().isBlank()) {
-                detalhes.add(new Detalhe("dayCounterCotacao", null, input.dayCounterCotacao(), "dayCounterCotacao é obrigatório para unidade TAXA"));
-            } else {
-                try {
-                    DayCounterCotacao.valueOf(input.dayCounterCotacao());
-                } catch (IllegalArgumentException e) {
-                    detalhes.add(new Detalhe("dayCounterCotacao", null, input.dayCounterCotacao(), "Valores aceitos: " + Arrays.toString(DayCounterCotacao.values())));
-                }
-            }
-
-            if (input.compounding() == null || input.compounding().isBlank()) {
-                detalhes.add(new Detalhe("compounding", null, input.compounding(), "compounding é obrigatório para unidade TAXA"));
-            } else {
-                try {
-                    CompoundingCotacao.valueOf(input.compounding());
-                } catch (IllegalArgumentException e) {
-                    detalhes.add(new Detalhe("compounding", null, input.compounding(), "Valores aceitos: " + Arrays.toString(CompoundingCotacao.values())));
-                }
-            }
+            validarEnumDaTaxa("dayCounterCotacao", input.dayCounterCotacao(), DayCounterCotacao.class, detalhes);
+            validarEnumDaTaxa("compounding", input.compounding(), CompoundingCotacao.class, detalhes);
         } else if (unidade != null) {
-            if (input.dayCounterCotacao() != null && !input.dayCounterCotacao().isBlank()) {
+            if (!vazio(input.dayCounterCotacao())) {
                 detalhes.add(new Detalhe("dayCounterCotacao", null, input.dayCounterCotacao(), "Não deve ser preenchido quando unidade não for TAXA"));
             }
-            if (input.compounding() != null && !input.compounding().isBlank()) {
+            if (!vazio(input.compounding())) {
                 detalhes.add(new Detalhe("compounding", null, input.compounding(), "Não deve ser preenchido quando unidade não for TAXA"));
             }
         }
@@ -340,6 +318,27 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
         if (input.dono() != null && input.dono().length() > 50) {
             detalhes.add(new Detalhe("dono", null, input.dono(), "Dono deve ter até 50 caracteres"));
         }
+    }
+
+    private <E extends Enum<E>> E validarEnum(String campo, String valor, Class<E> tipo, List<Detalhe> detalhes) {
+        try {
+            return Enum.valueOf(tipo, valor);
+        } catch (IllegalArgumentException e) {
+            detalhes.add(new Detalhe(campo, null, valor, "Valores aceitos: " + Arrays.toString(tipo.getEnumConstants())));
+            return null;
+        }
+    }
+
+    private <E extends Enum<E>> void validarEnumDaTaxa(String campo, String valor, Class<E> tipo, List<Detalhe> detalhes) {
+        if (vazio(valor)) {
+            detalhes.add(new Detalhe(campo, null, valor, campo + " é obrigatório para unidade TAXA"));
+        } else {
+            validarEnum(campo, valor, tipo, detalhes);
+        }
+    }
+
+    private static boolean vazio(String texto) {
+        return texto == null || texto.isBlank();
     }
 
     private <E extends Enum<E>> E parseEnum(Class<E> enumClass, String valor) {

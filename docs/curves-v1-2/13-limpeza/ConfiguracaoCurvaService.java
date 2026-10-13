@@ -146,6 +146,7 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
     private void validarEntrada(CurvaMercado curva, CriarConfiguracaoCurvaInput input) {
         List<Detalhe> erros = new ArrayList<>();
         validarSemLancar(curva, input, erros);
+        validarInicioDaVersao(curva, configuracaoRepositoryPort.findUltimaVersao(curva.nome()), input.inicioVigencia(), erros);
         if (!erros.isEmpty()) {
             throw new BusinessException(CadastroErrorCode.DADOS_INVALIDOS, erros.toArray());
         }
