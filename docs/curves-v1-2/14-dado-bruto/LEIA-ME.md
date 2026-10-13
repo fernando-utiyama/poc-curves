@@ -176,3 +176,11 @@ O `EventoCurvaPrimariaEditada` vai para o **log**: o `LogCloudEventosAdapter` re
 
 Quem busca `CURVA_PRIMARIA_EDITADA` no log passa a ter um campo a mais; nada quebra.
 
+## Por último (9): testes da B3 num arquivo só
+
+O `BtrsCurvaPrimrServiceListagemTest` **não existe mais** nesta pasta: os 6 testes de listagem (última data, filtros aparados, período, só `ate`, início depois do fim e período maior que 366 dias) foram para o `BtrsCurvaPrimrServiceTest`, que agora cobre o service da B3 inteiro (consultar, incluir, alterar, excluir e listar). A fixture da listagem virou o campo `dataBaseListada`.
+
+- Copie só o `BtrsCurvaPrimrServiceTest.java` por cima do seu.
+- Onde a tabela "Arquivos" e o Passo 4 do "Por último (7)" citam o `...ListagemTest`, ignore: se você já o tinha colado, apague-o.
+- A `15-dado-bruto-alter` tem o mesmo teste, com o id `Long`.
+

@@ -2,6 +2,7 @@ package br.com.poc.application.service;
 
 import br.com.poc.application.exception.BusinessException;
 import br.com.poc.application.exception.CadastroErrorCode;
+import br.com.poc.application.exception.InvalidInputException;
 import br.com.poc.application.exception.NotFoundException;
 import br.com.poc.application.port.out.BtrsCurvaPrimrRepositoryPort;
 import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
@@ -11,6 +12,7 @@ import br.com.poc.domain.Unidade;
 import br.com.poc.domain.cadastro.BtrsCurvaPrimr;
 import br.com.poc.domain.cadastro.BtrsCurvaPrimrInput;
 import br.com.poc.domain.cadastro.CurvaMercado;
+import br.com.poc.domain.cadastro.CurvaPrimrDataBase;
 import br.com.poc.domain.cadastro.VerticesPrimrDaData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,6 +52,9 @@ class BtrsCurvaPrimrServiceTest {
 
     private final BtrsCurvaPrimr vertice = new BtrsCurvaPrimr(
         7L, "DIxPRE", dataBase, 1, 1, new BigDecimal("13.900000000000"), null, null);
+
+    private final CurvaPrimrDataBase dataBaseListada = new CurvaPrimrDataBase(
+        null, "TBD-B3-DIXPRE", SituacaoCurva.ATIVO, LocalDate.of(2026, 9, 14), 278L, List.of("PRE"), false);
 
     @BeforeEach
     void setUp() {
@@ -144,5 +149,66 @@ class BtrsCurvaPrimrServiceTest {
 
         verify(btrsRepositoryPort).excluirPorNomeCurvaEDataBase("DIxPRE", dataBase);
         verify(btrsRepositoryPort, never()).existeVerticeConstruido(any(), any());
+    }
+
+    @Test
+    @DisplayName("Sem período, devolve a última data de cada curva, inclusive a sem código")
+    void semPeriodoUsaUltimaData() {
+        when(btrsRepositoryPort.listarUltimaDataBase(null, null)).thenReturn(List.of(dataBaseListada));
+
+        List<CurvaPrimrDataBase> res = service.listarDatasBase(null, null, " ", "");
+
+        assertEquals(List.of(dataBaseListada), res);
+        verify(btrsRepositoryPort, never()).listarDatasBase(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Filtros de código e nome chegam sem espaços nas pontas")
+    void filtrosAparados() {
+        when(btrsRepositoryPort.listarUltimaDataBase("PRE", "DIxPRE")).thenReturn(List.of(dataBaseListada));
+
+        service.listarDatasBase(null, null, " PRE ", " DIxPRE ");
+
+        verify(btrsRepositoryPort).listarUltimaDataBase("PRE", "DIxPRE");
+    }
+
+    @Test
+    @DisplayName("Com período, devolve todas as datas dele")
+    void comPeriodoUsaAgregado() {
+        LocalDate de = LocalDate.of(2026, 9, 1);
+        LocalDate ate = LocalDate.of(2026, 9, 30);
+        when(btrsRepositoryPort.listarDatasBase(de, ate, null, null)).thenReturn(List.of(dataBaseListada));
+
+        List<CurvaPrimrDataBase> res = service.listarDatasBase(de, ate, null, null);
+
+        assertEquals(List.of(dataBaseListada), res);
+        verify(btrsRepositoryPort, never()).listarUltimaDataBase(any(), any());
+    }
+
+    @Test
+    @DisplayName("Só com 'ate', começa 30 dias antes")
+    void soAteComecaTrintaDiasAntes() {
+        LocalDate ate = LocalDate.of(2026, 9, 30);
+        when(btrsRepositoryPort.listarDatasBase(ate.minusDays(30), ate, null, null)).thenReturn(List.of());
+
+        service.listarDatasBase(null, ate, null, null);
+
+        verify(btrsRepositoryPort).listarDatasBase(ate.minusDays(30), ate, null, null);
+    }
+
+    @Test
+    @DisplayName("Início depois do fim é recusado")
+    void inicioDepoisDoFim() {
+        assertThrows(InvalidInputException.class,
+            () -> service.listarDatasBase(LocalDate.of(2026, 9, 30), LocalDate.of(2026, 9, 1), null, null));
+        verifyNoInteractions(btrsRepositoryPort);
+    }
+
+    @Test
+    @DisplayName("Período maior que 366 dias é recusado")
+    void periodoMuitoLongo() {
+        assertThrows(InvalidInputException.class,
+            () -> service.listarDatasBase(LocalDate.of(2025, 1, 1), LocalDate.of(2026, 9, 30), null, null));
+        verifyNoInteractions(btrsRepositoryPort);
     }
 }

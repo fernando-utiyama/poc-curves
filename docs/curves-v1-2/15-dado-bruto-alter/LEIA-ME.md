@@ -23,7 +23,7 @@ Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os arquivos s
 | `Btrs/Anbma/BbergCurvaPrimrService.java` | `application/service/` |
 | `Btrs/Anbma/BbergCurvaPrimrController.java` | `adapter/in/api/rest/controller/` |
 | `BtrsCurvaPrimr.java` | `domain/cadastro/` |
-| `BtrsCurvaPrimrServiceTest.java` | `src/test/java/...` |
+| `BtrsCurvaPrimrServiceTest.java` (com os testes de listagem, que ficam só nele) | `src/test/java/...` |
 
 **À mão:** no record `BbergCurvaPrimr` (é o seu, não está aqui), `Integer id` vira `Long id`. Qualquer outro lugar que use o id da primária como `Integer` (Alt+F7 no `proximoId` antes de apagar; deve ficar com 0 usos).
 
