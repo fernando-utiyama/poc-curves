@@ -70,3 +70,11 @@ O que a listagem devolve: por curva, **as datas que têm dado bruto gravado**, c
 - **Acessores dos records de domínio**: ANBIMA `AnbmaCurvaPrimr(id, nomeCurva, dataBase, taxa, vertice)` (da sua foto); Bloomberg na ordem do adaptador (`precoLiquidacao, precoMedio, precoUltimo, diaVencimento, dataLiquidacaoFinanceira, tickerBloomberg, formaLiquidacao, dataVencimentoContrato, dataUltimoNegocio`). Se o seu record tiver outra ordem, o erro aparece no `novoVertice` do service.
 - **`EventoCurvaPrimariaEditada`**: mantive os 11 argumentos que o service da B3 usava (correlationId, fonte, código, nome, data, operação, antes, depois, quantidade antes, quantidade depois, quando).
 - **Obrigatórios da Bloomberg e da ANBIMA**: segui a spec `vertices-brutos-provedor` (Bloomberg: ticker e preço último; ANBIMA: prazo; taxa opcional).
+
+## No fim da 14: apagar o que sobrou dos avisos (veio da `13-limpeza`)
+
+Com as primárias copiadas, apague, com Alt+F7 confirmando 0 usos:
+- `AvisoCurva` e `CodigoAvisoCurva` (`domain/aviso/`);
+- no `ValidadorParametros` (já sem avisos desde a `13-limpeza`), as constantes `NATIVE_CONSTRUCTION_MODELS`, `NATIVE_INTERPOLATORS` e `NATIVE_CALENDARS`, se nada mais as usar;
+- no `CadastroErrorCode`, os códigos de aviso que sobrarem sem uso.
+
