@@ -1,6 +1,6 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 18 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
+Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 19 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
 
 | Arquivo | Onde |
 |---|---|
@@ -20,6 +20,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 | `CurvaProvedorController.java` | `adapter/in/api/rest/controller/` (reconstruído das suas fotos; rotas por `{nome}`, sem avisos) |
 | `CurvaProvedorCurvaResponse.java` | `adapter/in/api/rest/dto/` (o seu, sem o `codigo`) |
 | `CurvaMercadoEngineResultado.java` | `domain/cadastro/` (novo: `status` e `corpoJson`; antes era um record dentro do use case) |
+| `ConfiguracaoCurvaRepositoryPort.java` | `application/port/out/` (sem `findModeloConstrucaoVigente`; reconstruída da sua foto) |
 | `CurvaMercadoAcoesUseCase.java` | `application/port/in/usecase/` (novo) |
 | `CurvaMercadoAcoesService.java` | `application/service/` (implementa o use case; parte do que está em `aplicado/06-excluir-vertices/`) |
 
@@ -168,3 +169,4 @@ Copiar por cima do seu, junto com o `CurvaProvedorCurvaResponse`. Muda:
 
 Depois apague `CurvaProvedorResultado` e `CurvaProvedorComAvisosResponse` (Alt+F7: devem ficar sem uso) e o `AvisoCurva`, se for a última referência.
 
+**`ConfiguracaoCurvaRepositoryPort`:** o `findModeloConstrucaoVigente` (que só servia aos avisos de origem do provedor) sai da porta, e a implementação sai do adaptador e do repositório JPA. Na sua foto ele aparece com 1 uso: veja qual é (deve ser o `CurvaProvedorServiceTest` antigo ou o service antes da limpeza) e apague junto. O `findByNomeCurvaEVersao` aparece com 0 usos; não mexi, mas pode sair também.
