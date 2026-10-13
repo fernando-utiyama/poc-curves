@@ -26,7 +26,7 @@ Agora a pasta tem as **três camadas** de cada fonte (persistência, service/use
 | `BtrsCurvaPrimrService.java`, `AnbmaCurvaPrimrService.java`, `BbergCurvaPrimrService.java`, `RegrasCurvaPrimr.java` (regras comuns: período, obrigatórios, decimais) | `application/service/` |
 | `BtrsCurvaPrimr.java` (id `Integer`, `dataVertice()`), `BtrsCurvaPrimrInput.java`, `AnbmaCurvaPrimrInput.java`, `BbergCurvaPrimrInput.java`, `CurvaPrimrDataBase.java`, `VerticesPrimrDaData.java` | `domain/cadastro/` |
 | `BtrsCurvaPrimrController.java`, `AnbmaCurvaPrimrController.java`, `BbergCurvaPrimrController.java` | `adapter/in/api/rest/controller/` |
-| `CurvaPrimrDataBaseResponse.java`, `VerticesPrimrDaDataResponse.java`, `Btrs/Anbma/BbergCurvaPrimrVerticeRequest.java`, `Btrs/Anbma/BbergCurvaPrimrVerticeResponse.java` | `adapter/in/api/rest/dto/` |
+| `CurvaPrimrDataBaseResponse.java`, `VerticesPrimrDaDataResponse.java` | `adapter/in/api/rest/dto/` |
 | `CurvaPrimrDataBaseMapperTest.java`, `BtrsCurvaPrimrServiceListagemTest.java`, `BtrsCurvaPrimrServiceTest.java` | `src/test/java/...` |
 
 Os records `AnbmaCurvaPrimr` e `BbergCurvaPrimr` ficam os seus (não estão aqui).
@@ -90,4 +90,26 @@ O `Application` fixa o fuso do JVM (`TimeZone.setDefault` para `America/Sao_Paul
 - Os 3 services (`Btrs`, `Anbma`, `Bberg`): o `publicarEvento` usa `OffsetDateTime.now()`.
 
 Copie os 4 arquivos desta pasta por cima, ou troque à mão. A `15-dado-bruto-alter` já está sem o `BRASILIA`.
+
+## Por último (3): Request e Response ficam os seus; `textoOuNulo` saiu
+
+**`...VerticeRequest` e `...VerticeResponse` (B3, ANBIMA e Bloomberg): não copie.** Os meus não tinham os `@Schema` (descrição e exemplo) e os `@Size` que os seus têm, e apagariam a documentação do Swagger. Eles saíram desta pasta. Use os seus, renomeando de `...LinhaRequest` e `...LinhaResponse` se ainda tiverem esse nome (Shift+F6), e só confira o que cada um precisa para a `14` compilar:
+
+| Arquivo | O que precisa ter |
+|---|---|
+| `BtrsCurvaPrimrVerticeRequest` | `toDomain()` = `new BtrsCurvaPrimrInput(diasCorridos, diasUteis, valor, fatorAcumulado, fatorDia)` |
+| `AnbmaCurvaPrimrVerticeRequest` | `toDomain()` = `new AnbmaCurvaPrimrInput(prazoDiasCorridos, taxa)` |
+| `BbergCurvaPrimrVerticeRequest` | `toDomain()` = `new BbergCurvaPrimrInput(tickerBloomberg, precoUltimo, precoLiquidacao, precoMedio, diaVencimento, dataLiquidacaoFinanceira, formaLiquidacao, dataVencimentoContrato, dataUltimoNegocio)` |
+| `BtrsCurvaPrimrVerticeResponse` | `fromDomain(BtrsCurvaPrimr)`: `id`, `diasCorridos`, `diasUteis`, `dataVertice` (data), `valor`, `fatorAcumulado`, `fatorDia` (os três decimais como texto, `toPlainString`) |
+| `AnbmaCurvaPrimrVerticeResponse` | `fromDomain(AnbmaCurvaPrimr)`: `id`, `prazoDiasCorridos` (do `vertice`), `vencimento` (`dataBase + prazo`), `taxa` como texto |
+| `BbergCurvaPrimrVerticeResponse` | `fromDomain(BbergCurvaPrimr)`: `id`, `tickerBloomberg`, `precoUltimo`, `precoLiquidacao`, `precoMedio` (como texto), `diaVencimento`, `dataLiquidacaoFinanceira`, `formaLiquidacao`, `dataVencimentoContrato`, `dataUltimoNegocio` |
+
+**`textoOuNulo` saiu do `RegrasCurvaPrimr`.** Nos 3 services, o filtro da listagem agora é o `StringUtils.hasText` do Spring:
+
+```java
+String codigoFiltro = StringUtils.hasText(codigo) ? codigo.trim() : null;
+String nomeFiltro = StringUtils.hasText(nome) ? nome.trim() : null;
+```
+
+Import: `org.springframework.util.StringUtils`. Copie os 4 arquivos (`RegrasCurvaPrimr` e os 3 services) por cima, ou troque à mão.
 

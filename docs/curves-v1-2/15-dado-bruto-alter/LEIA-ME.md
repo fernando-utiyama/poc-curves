@@ -10,7 +10,7 @@ Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os arquivos s
 - Repositórios: `JpaRepository<..., Long>`, sem a query `proximoId`, ids `Long`.
 - Portas e adaptadores: sem `proximoId()`, ids `Long`.
 - Services: o `incluir` grava com id `null` (o banco gera), e `alterar`, `excluir` e `obterVertice` usam `Long`.
-- Use cases, controllers e `...VerticeResponse`: ids `Long` (no JSON continua número).
+- Use cases e controllers: ids `Long`. Nos `...VerticeResponse` (que são os seus), `Integer id` vira `Long id` (no JSON continua número).
 - `BtrsCurvaPrimr` (domínio): `Long id`. Teste `BtrsCurvaPrimrServiceTest`: sem o mock de `proximoId`, e o `salvar` com `any()`.
 
 | Arquivos | Onde |
@@ -22,7 +22,6 @@ Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os arquivos s
 | `Btrs/Anbma/BbergCurvaPrimrUseCase.java` | `application/port/in/usecase/` |
 | `Btrs/Anbma/BbergCurvaPrimrService.java` | `application/service/` |
 | `Btrs/Anbma/BbergCurvaPrimrController.java` | `adapter/in/api/rest/controller/` |
-| `Btrs/Anbma/BbergCurvaPrimrVerticeResponse.java` | `adapter/in/api/rest/dto/` |
 | `BtrsCurvaPrimr.java` | `domain/cadastro/` |
 | `BtrsCurvaPrimrServiceTest.java` | `src/test/java/...` |
 
@@ -32,14 +31,13 @@ Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os arquivos s
 
 - Entidade: `cTpoInstt` (`tpoInstt`) e `dVctoContr` (`dataVctoContr`), opcionais.
 - Domínio `AnbmaCurvaPrimr` (este arquivo **substitui o seu**, reconstruído da sua foto): `id`, `nomeCurva`, `dataBase`, `taxa`, `vertice`, mais `tipoInstrumento` e `vencimento`.
-- `AnbmaCurvaPrimrInput` e `AnbmaCurvaPrimrVerticeRequest`: `tipoInstrumento` e `vencimento` opcionais, gravados como vierem (sem regra de consistência com `prazoDiasCorridos`; só o limite de 50 caracteres do tipo, que é do banco).
-- `AnbmaCurvaPrimrVerticeResponse`: devolve o `vencimento` gravado e, se for nulo, `dataBase + prazo` como antes; ganha `tipoInstrumento`.
+- `AnbmaCurvaPrimrInput`: `tipoInstrumento` e `vencimento` opcionais, gravados como vierem (sem regra de consistência com `prazoDiasCorridos`; só o limite de 50 caracteres do tipo, que é do banco). No **seu** `AnbmaCurvaPrimrVerticeRequest`, acrescente os dois campos (com `@Schema`) e passe-os no `toDomain()`: `new AnbmaCurvaPrimrInput(prazoDiasCorridos, taxa, tipoInstrumento, vencimento)`.
+- No **seu** `AnbmaCurvaPrimrVerticeResponse`: o `vencimento` passa a ser `v.vencimento()` (e, se for nulo, `dataBase + prazo` como antes), e ganha `tipoInstrumento` (`v.tipoInstrumento()`).
 - Adaptador e service: passam os dois campos novos.
 
 | Arquivos | Onde |
 |---|---|
 | `AnbmaCurvaPrimr.java`, `AnbmaCurvaPrimrInput.java` | `domain/cadastro/` |
-| `AnbmaCurvaPrimrVerticeRequest.java`, `AnbmaCurvaPrimrVerticeResponse.java` | `adapter/in/api/rest/dto/` |
 
 (a entidade, o adaptador e o service da ANBIMA já vêm na tabela da seção 1, com as duas mudanças juntas.)
 

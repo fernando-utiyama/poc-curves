@@ -34,10 +34,6 @@ final class RegrasCurvaPrimr {
         }
     }
 
-    static String textoOuNulo(String texto) {
-        return texto != null && !texto.isBlank() ? texto.trim() : null;
-    }
-
     static void obrigatorio(String campo, Object valor, List<Detalhe> erros) {
         if (valor == null || (valor instanceof String s && s.isBlank())) {
             erros.add(new Detalhe(campo, null, null, campo + " é obrigatório"));

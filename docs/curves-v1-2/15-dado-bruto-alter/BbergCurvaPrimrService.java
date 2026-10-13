@@ -16,6 +16,7 @@ import br.com.poc.domain.evento.EventoCurvaPrimariaEditada;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -39,8 +40,8 @@ public class BbergCurvaPrimrService implements BbergCurvaPrimrUseCase {
     @Override
     @Transactional(readOnly = true)
     public List<CurvaPrimrDataBase> listarDatasBase(LocalDate de, LocalDate ate, String codigo, String nome) {
-        String codigoFiltro = textoOuNulo(codigo);
-        String nomeFiltro = textoOuNulo(nome);
+        String codigoFiltro = StringUtils.hasText(codigo) ? codigo.trim() : null;
+        String nomeFiltro = StringUtils.hasText(nome) ? nome.trim() : null;
 
         if (de == null && ate == null) {
             return bbergRepositoryPort.listarUltimaDataBase(codigoFiltro, nomeFiltro);
