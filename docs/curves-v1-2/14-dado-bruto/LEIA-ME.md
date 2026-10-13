@@ -259,4 +259,4 @@ Os 6 testes de controller que falhavam (ANBIMA e Bloomberg, consultar, incluir e
 - `AnbmaCurvaPrimrVerticeResponse`: `id`, `prazoDiasCorridos`, `vencimento` (data-base mais o prazo), `taxa` (texto);
 - `BbergCurvaPrimrVerticeResponse`: `id`, `tickerBloomberg`, `precoUltimo`, `precoLiquidacao` e `precoMedio` (texto), `diaVencimento` e as 3 datas.
 
-O da B3 (`valor`, `fatorAcumulado` e `fatorDia` em texto) já estava certo, e por isso passa. **Para o front:** na ANBIMA, o campo do prazo passa a se chamar `prazoDiasCorridos`, e os valores decimais da ANBIMA e da Bloomberg chegam como texto, não número.
+O da B3 (`valor`, `fatorAcumulado` e `fatorDia` em texto) já estava certo, e por isso passa; esta pasta traz também o `BtrsCurvaPrimrVerticeResponse`, só com o `@Schema` no mesmo padrão (sem mudar o JSON). **Para o front:** na ANBIMA, o campo do prazo passa a se chamar `prazoDiasCorridos`, e os valores decimais da ANBIMA e da Bloomberg chegam como texto, não número.
