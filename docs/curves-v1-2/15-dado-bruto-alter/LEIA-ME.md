@@ -64,3 +64,6 @@ Os 3 services desta pasta já chamam o `EventoCurvaPrimariaEditada` com 10 argum
 ## Testes dos 3 controllers (com os ALTERs)
 
 Os `...CurvaPrimrControllerTest` desta pasta são os da `14` com o id `Long` (`eq(1L)`, `1L` nos vértices). No da ANBIMA, o `AnbmaCurvaPrimr` tem os 2 campos novos (`null, null`). Copie os 3 por cima dos da `14`.
+
+
+Os `AnbmaCurvaPrimrVerticeResponse` e `BbergCurvaPrimrVerticeResponse` desta pasta são os da `14` (decimal em texto) com o id `Long`; no da ANBIMA, o `vencimento` é o gravado (e, se for nulo, data-base mais o prazo) e há o `tipoInstrumento`. Substituem o que o "Por último (17)" da `14` mandou copiar.

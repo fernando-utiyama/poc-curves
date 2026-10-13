@@ -251,3 +251,12 @@ Não há mais asserção de `avisos`. Os testes dos **controllers** do bruto (se
 - **Excluir vértice** e **excluir a data:** 200 vazio, com `verify` do use case (a exclusão da data só apaga o bruto).
 
 O `@DisplayName` usa `{nome}` (não `{codigo}`). Se o seu `@WebMvcTest` precisar de alguma configuração extra (por exemplo, o `@Import` do tratador de erros), acrescente como nos seus outros testes de controller.
+
+
+## Por último (17): `AnbmaCurvaPrimrVerticeResponse` e `BbergCurvaPrimrVerticeResponse` (decimal em texto)
+
+Os 6 testes de controller que falhavam (ANBIMA e Bloomberg, consultar, incluir e alterar) mostraram que os seus dois `...VerticeResponse` ainda tinham o contrato antigo: `BigDecimal` (o JSON sai `10.5`, número) e, na ANBIMA, sem o `prazoDiasCorridos`. O contrato da `14` é decimal **em texto, como gravado** (`toPlainString()`, `"10.500000000000"`). Copie os 2 arquivos desta pasta por cima dos seus (mantive o estilo de `@Schema` dos seus Requests; ajuste os textos se quiser):
+- `AnbmaCurvaPrimrVerticeResponse`: `id`, `prazoDiasCorridos`, `vencimento` (data-base mais o prazo), `taxa` (texto);
+- `BbergCurvaPrimrVerticeResponse`: `id`, `tickerBloomberg`, `precoUltimo`, `precoLiquidacao` e `precoMedio` (texto), `diaVencimento` e as 3 datas.
+
+O da B3 (`valor`, `fatorAcumulado` e `fatorDia` em texto) já estava certo, e por isso passa. **Para o front:** na ANBIMA, o campo do prazo passa a se chamar `prazoDiasCorridos`, e os valores decimais da ANBIMA e da Bloomberg chegam como texto, não número.
