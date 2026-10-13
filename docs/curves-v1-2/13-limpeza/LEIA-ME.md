@@ -18,7 +18,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 | `CurvaMercadoResponse.java` | `adapter/in/api/rest/dto/` (reconstruído das suas fotos, sem o campo `avisos`) |
 | `CurvaMercadoDetalhadaResponse.java` | `adapter/in/api/rest/dto/` (chama `fromDomain(d.curva())`) |
 | `CurvaProvedorController.java` | `adapter/in/api/rest/controller/` (reconstruído das suas fotos; rotas por `{nome}`, sem avisos) |
-| `CurvaProvedorCurvaResponse.java` | `adapter/in/api/rest/dto/` (`nome` e `prioridade`, sem `codigo`) |
+| `CurvaProvedorCurvaResponse.java` | `adapter/in/api/rest/dto/` (o seu, sem o `codigo`) |
 | `CurvaMercadoAcoesUseCase.java` | `application/port/in/usecase/` (novo) |
 | `CurvaMercadoAcoesService.java` | `application/service/` (implementa o use case; parte do que está em `aplicado/06-excluir-vertices/`) |
 
@@ -162,7 +162,7 @@ Copiar por cima do seu, junto com o `CurvaProvedorCurvaResponse`. Muda:
 - nas 4 rotas com curva, `{codigo}` vira `{nome}` (e o `@PathVariable String nome`); `listarPorOrigem` continua em `/api/v1/curvas-mercado/provedores`;
 - o `@Tag` fica "Gestão de provedores da curva de mercado (tCurvaPrvdr)" (sai "e curvas componentes");
 - `criar` devolve `201` com `CurvaProvedorResponse`, `alterar` `200` com o response e `excluir` `200` vazio: sem `CurvaProvedorResultado` nem `CurvaProvedorComAvisosResponse`;
-- `listarPorOrigem` converte `CurvaProvedor` em `CurvaProvedorCurvaResponse(nome, prioridade)`: o `codigo` saiu da resposta. Não vi o seu `CurvaProvedorCurvaResponse`; o desta pasta usa os campos `nome` e `prioridade`, confira se o front ou algum teste lê outro nome.
+- `listarPorOrigem` converte `CurvaProvedor` em `CurvaProvedorCurvaResponse(nome, prioridade)`: o `codigo` saiu da resposta. O `CurvaProvedorCurvaResponse` desta pasta é o seu (da foto: `@JsonInclude(ALWAYS)`, `nome`, `prioridade`) sem o `codigo`; confira os 2 usos do `codigo()` antes de colar.
 - O `validarParametros` ficou como estava, mas repete o que `@Validated`, `@NotBlank` e `@Positive` já fazem nos parâmetros: pode ser que um deles sobre.
 
 Depois apague `CurvaProvedorResultado` e `CurvaProvedorComAvisosResponse` (Alt+F7: devem ficar sem uso) e o `AvisoCurva`, se for a última referência.
