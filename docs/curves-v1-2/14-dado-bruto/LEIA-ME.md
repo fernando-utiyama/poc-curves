@@ -196,3 +196,7 @@ O seu Request da ANBIMA ainda tem o contrato antigo (`@NotNull BigDecimal vertic
 
 O `BtrsCurvaPrimrVerticeRequest` da B3 que você tem já compila com a `14` (o `toDomain()` bate com o `BtrsCurvaPrimrInput`). Esta versão só acrescenta o `@Schema` (descrição e exemplo) e o `@NotNull` nos três campos obrigatórios (`diasCorridos`, `diasUteis` e `valor`), no mesmo estilo dos da ANBIMA e da Bloomberg. Copie por cima do seu, se quiser a documentação.
 
+## Por último (12): `@Schema` nos 4 Requests do cadastro
+
+`CurvaMercadoRequest`, `CriarCurvaProvedorRequest`, `AtualizarCurvaProvedorRequest` e `CriarConfiguracaoCurvaRequest` ganham `@Schema` (descrição e exemplo por campo), no mesmo estilo dos do dado bruto. Copie os 4 por cima dos seus. Mantive o que você tem: `@JsonInclude(ALWAYS)` nos dois de provedor, `@JsonFormat` no `inicioVigencia` da configuração e o `toInput()` e os `toDomain()` iguais. Não acrescentei validação (`@NotNull`), porque os services já validam e devolvem a mensagem de cada campo. Imports novos: `io.swagger.v3.oas.annotations.media.Schema`.
+
