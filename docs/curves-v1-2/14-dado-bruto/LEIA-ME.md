@@ -238,3 +238,16 @@ Cobertura de cada um:
 
 Não há mais asserção de `avisos`. Os testes dos **controllers** do bruto (se existirem) ficam por sua conta: tire os `avisos` e troque o id da B3 de `1L` para `1`.
 
+
+
+## Por último (16): testes dos 3 controllers do bruto
+
+`BtrsCurvaPrimrControllerTest`, `AnbmaCurvaPrimrControllerTest` e `BbergCurvaPrimrControllerTest` (`@WebMvcTest` com o use case mockado) substituem os seus, que usavam `BtrsCurvaPrimrResumo`, `consultarVerticesPorData`, `incluirVertice`, `BtrsCurvaPrimrResultado`, `avisos` e o JSON com `$.vertice` e `codigosNaFonte`. Copie os 3 por cima (`src/test/java/.../adapter/in/api/rest/controller/`). Cada um tem 7 testes:
+- **Listar** (`GET primaria-*`): array direto (`$[0].codigo`, `nome`, `dataBase`, `quantidadeVertices`, `tickersProvedor[0]`, `curvaConstruida`), sem paginação.
+- **Consultar a data:** `{ curvaConstruida, vertices: [...] }` com os campos de cada fonte (na ANBIMA, `prazoDiasCorridos`, `vencimento` e `taxa`).
+- **Curva inexistente:** 404.
+- **Incluir:** 201 com o vértice direto (`$.id`, sem o `$.vertice` e sem `avisos`).
+- **Alterar:** 200 com o vértice.
+- **Excluir vértice** e **excluir a data:** 200 vazio, com `verify` do use case (a exclusão da data só apaga o bruto).
+
+O `@DisplayName` usa `{nome}` (não `{codigo}`). Se o seu `@WebMvcTest` precisar de alguma configuração extra (por exemplo, o `@Import` do tratador de erros), acrescente como nos seus outros testes de controller.

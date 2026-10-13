@@ -59,3 +59,8 @@ Os 3 services desta pasta já chamam o `EventoCurvaPrimariaEditada` com 10 argum
 
 `BtrsCurvaPrimrServiceTest`, `AnbmaCurvaPrimrServiceTest` e `BbergCurvaPrimrServiceTest` desta pasta são os da `14` com o id `Long`: o `incluir` não mocka o `proximoId()` (não existe mais) e o `salvar` usa `any()`. No da ANBIMA, o record e o input têm os 2 campos novos (`tipoInstrumento` e `vencimento`), passados como `null`. Copie os 3 por cima dos da `14`.
 
+
+
+## Testes dos 3 controllers (com os ALTERs)
+
+Os `...CurvaPrimrControllerTest` desta pasta são os da `14` com o id `Long` (`eq(1L)`, `1L` nos vértices). No da ANBIMA, o `AnbmaCurvaPrimr` tem os 2 campos novos (`null, null`). Copie os 3 por cima dos da `14`.
