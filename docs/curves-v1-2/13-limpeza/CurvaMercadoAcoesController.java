@@ -1,7 +1,7 @@
 package br.com.poc.adapter.in.api.rest.controller;
 
 import br.com.poc.application.port.in.usecase.CurvaMercadoAcoesUseCase;
-import br.com.poc.domain.cadastro.CurvaMercadoEngineResultado;
+import br.com.poc.domain.cadastro.RespostaEngine;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -73,7 +73,7 @@ public class CurvaMercadoAcoesController {
         return responder(service.interpolar(nome, dataBase, request.getQueryString(), cid()));
     }
 
-    private ResponseEntity<String> responder(CurvaMercadoEngineResultado r) {
+    private ResponseEntity<String> responder(RespostaEngine r) {
         return ResponseEntity.status(r.status()).contentType(MediaType.APPLICATION_JSON).body(r.corpoJson());
     }
 

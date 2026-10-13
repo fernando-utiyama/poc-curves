@@ -1,6 +1,6 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 19 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
+Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 20 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
 
 | Arquivo | Onde |
 |---|---|
@@ -19,7 +19,8 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 | `CurvaMercadoDetalhadaResponse.java` | `adapter/in/api/rest/dto/` (chama `fromDomain(d.curva())`) |
 | `CurvaProvedorController.java` | `adapter/in/api/rest/controller/` (reconstruído das suas fotos; rotas por `{nome}`, sem avisos) |
 | `CurvaProvedorCurvaResponse.java` | `adapter/in/api/rest/dto/` (o seu, sem o `codigo`) |
-| `CurvaMercadoEngineResultado.java` | `domain/cadastro/` (novo: `status` e `corpoJson`; antes era um record dentro do use case) |
+| `RespostaEngine.java` | `domain/cadastro/` (o record que estava dentro do `EnginePort`, movido para fora: `status` e `corpoJson`) |
+| `EnginePort.java` | `application/port/out/` (sem o record aninhado; devolve o `RespostaEngine` de domínio) |
 | `ConfiguracaoCurvaRepositoryPort.java` | `application/port/out/` (sem `findModeloConstrucaoVigente`; reconstruída da sua foto) |
 | `CurvaMercadoAcoesUseCase.java` | `application/port/in/usecase/` (novo) |
 | `CurvaMercadoAcoesService.java` | `application/service/` (implementa o use case; parte do que está em `aplicado/06-excluir-vertices/`) |
@@ -44,7 +45,7 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 
 **`CurvaMercadoUseCase`**: `listar` sem paginação; saem os `default listar(...)` antigos.
 
-**Ações da curva (hexagonal)**: o controller chamava o `CurvaMercadoAcoesService` direto e usava o `EnginePort.RespostaEngine` (tipo da porta de saída). Agora há o `CurvaMercadoAcoesUseCase`, com o record `CurvaMercadoEngineResultado(status, corpoJson)` em arquivo próprio, e o service converte a resposta do engine. No `CurvaMercadoAcoesServiceTest`, troque o tipo da variável `resposta` por `var` (os acessores `status()` e `corpoJson()` são os mesmos; o mock do engine continua `RespostaEngine`).
+**Ações da curva (hexagonal)**: o controller chamava o `CurvaMercadoAcoesService` direto e usava o `EnginePort.RespostaEngine` (tipo da porta de saída). Agora há o `CurvaMercadoAcoesUseCase`, e o `RespostaEngine` saiu de dentro do `EnginePort` para `domain/cadastro/` (no IDE: F6, "Move Inner Class to Upper Level", que corrige as referências). A porta, o use case e o controller usam o mesmo tipo: o service só repassa o que o engine devolve, sem converter. Os testes não mudam (`RespostaEngine resposta = service.construir(...)` continua valendo).
 
 ## Conferir
 
