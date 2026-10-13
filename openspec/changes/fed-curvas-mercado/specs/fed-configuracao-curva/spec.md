@@ -12,14 +12,18 @@ A tela `/cadastro-curvas/{nome}/configuracoes` SHALL listar as versões por `GET
 - **THEN** a tabela mostra a 2 primeiro, e a vigente hoje está marcada
 
 ### Requirement: Nova versão
-O botão "Nova versão" SHALL abrir um formulário com modelo de construção, interpolador, início de vigência e parâmetros (caixa de texto em JSON, já preenchida com os parâmetros da versão mais nova quando houver). Modelo e interpolador SHALL ser listas de `GET /api/v1/curvas-mercado/valores` (com os nativos; um nome de script que não esteja na lista também é aceito digitado). "Validar" SHALL chamar `POST .../configuracoes/validacao` e mostrar os erros devolvidos, sem gravar. "Salvar" SHALL chamar `POST .../configuracoes`; com 201, a lista é recarregada com o aviso "Versão criada". Em erro (422 `DADOS_INVALIDOS`, por exemplo chave desconhecida ou início no passado), o formulário SHALL mostrar a mensagem da API e manter o que foi digitado. JSON malformado SHALL ser apontado no front, sem chamar a API.
+O botão "Nova versão" SHALL abrir um formulário com modelo de construção, interpolador, início de vigência e parâmetros (caixa de texto em JSON, já preenchida com os parâmetros da versão mais nova quando houver). Modelo e interpolador SHALL ser listas de `GET /api/v1/curvas-mercado/valores` (com os nativos; um nome de script que não esteja na lista também é aceito digitado). "Validar" SHALL chamar `POST .../configuracoes/validacao` e mostrar os erros devolvidos, sem gravar. "Salvar" SHALL chamar `POST .../configuracoes`; com 201, a lista é recarregada com o aviso "Versão criada". Em erro (422 `DADOS_INVALIDOS`, por exemplo chave desconhecida ou início igual ou anterior ao da versão anterior), o formulário SHALL mostrar a mensagem da API e manter o que foi digitado. JSON malformado SHALL ser apontado no front, sem chamar a API.
 
 #### Scenario: Chave escrita errada
 - **WHEN** o gestor valida parâmetros com a chave `EXTRAPOLACAO_FINAL`
 - **THEN** a tela mostra a mensagem 422 da API citando a chave, e nada é gravado
 
-#### Scenario: Início no passado
-- **WHEN** o gestor salva uma versão com início anterior a hoje
+#### Scenario: Início retroativo
+- **WHEN** o gestor salva uma versão com início anterior a hoje, mas posterior ao da versão anterior
+- **THEN** a API aceita (201), a versão anterior é fechada no dia anterior ao início da nova e a lista é recarregada com o aviso "Versão criada"
+
+#### Scenario: Início anterior ao da versão anterior
+- **WHEN** o gestor salva uma versão com início igual ou anterior ao da última versão
 - **THEN** a tela mostra a mensagem do erro `DADOS_INVALIDOS` e o formulário continua preenchido
 
 ### Requirement: Excluir versão

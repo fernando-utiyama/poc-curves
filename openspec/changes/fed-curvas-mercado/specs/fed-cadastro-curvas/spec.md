@@ -42,7 +42,7 @@ A tela `/cadastro-curvas/{nome}` SHALL carregar a curva por `GET /api/v1/curvas-
 - **THEN** todos os campos ficam editáveis, menos o nome e a situação
 
 ### Requirement: Excluir curva
-O detalhe SHALL ter o botão "Excluir curva", com modal de confirmação que cita o nome da curva, chamando `DELETE /api/v1/curvas-mercado/{nome}`. Com 200, o front SHALL voltar para `/cadastro-curvas` com o aviso "Curva excluída". Com 409 `CURVA_COM_HISTORICO` (ainda há vértice construído ou dado bruto), o modal SHALL continuar aberto com a mensagem da API, que explica o que apagar antes.
+O detalhe SHALL ter o botão "Excluir curva", com modal de confirmação que cita o nome da curva, chamando `DELETE /api/v1/curvas-mercado/{nome}`. Com 204 (sem corpo), o front SHALL voltar para `/cadastro-curvas` com o aviso "Curva excluída". Com 409 `CURVA_COM_HISTORICO` (ainda há vértice construído ou dado bruto), o modal SHALL continuar aberto com a mensagem da API, que explica o que apagar antes.
 
 #### Scenario: Curva com histórico
 - **WHEN** o gestor tenta excluir uma curva que tem datas construídas
