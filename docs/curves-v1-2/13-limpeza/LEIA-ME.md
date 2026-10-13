@@ -1,6 +1,6 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 13 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
+Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 15 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
 
 | Arquivo | Onde |
 |---|---|
@@ -15,6 +15,8 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 | `ValidadorParametrosTest.java` | teste do validador (substitui) |
 | `CurvaMercdRepositoryPort.java` | `application/port/out/` (porta inteira, sem paginação e sem `findAllValidas`) |
 | `CurvaMercadoController.java` | `adapter/in/api/rest/controller/` (reconstruído das suas fotos: `listar` sem paginação; o resto como está) |
+| `CurvaMercadoResponse.java` | `adapter/in/api/rest/dto/` (reconstruído das suas fotos, sem o campo `avisos`) |
+| `CurvaMercadoDetalhadaResponse.java` | `adapter/in/api/rest/dto/` (chama `fromDomain(d.curva())`) |
 | `CurvaMercadoAcoesUseCase.java` | `application/port/in/usecase/` (novo) |
 | `CurvaMercadoAcoesService.java` | `application/service/` (implementa o use case; parte do que está em `aplicado/06-excluir-vertices/`) |
 
@@ -49,6 +51,12 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 5. **Sobras dos avisos de cálculo** (Alt+F7): `AvisoCurva`, `CodigoAvisoCurva` e as constantes `NATIVE_CONSTRUCTION_MODELS`, `NATIVE_INTERPOLATORS`, `NATIVE_CALENDARS` do validador (mantidas porque são públicas e não vi todos os usos). Sem outro uso, apague.
 6. **`ConfiguracaoCurvaServiceTest`**: o service perdeu o `CurvaPrvdrRepositoryPort` (4 portas no construtor) e o teste de `validar` passa a mockar `findUltimaVersao`.
 7. **Código de país**: a normalização para maiúsculas não foi aplicada; confirmar com o Copilot se o engine lê `cPaisInstt` antes de fazer.
+
+## `avisos` fora do `CurvaMercadoResponse`
+
+Nenhum chamador preenchia os avisos (só o de curva derivada, que saiu). O `CurvaMercadoResponse` perde o campo `avisos` e o `fromDomain(c, avisos)`: ficam `fromDomain(c)` e `fromDomain(c, provedores)`; o construtor de 12 argumentos continua. O JSON de `GET /curvas-mercado` e do detalhe deixa de trazer `avisos: []`.
+
+- **Conferir (Alt+F7):** testes (`CurvaMercadoControllerWebTest` etc.) e o front que leiam `avisos` da curva; chamadas antigas de `fromDomain(c, List.of())`, que agora passariam a ser lidas como `provedores` (compila, mas confira o que cada uma quer); `AvisoCurva` sem uso: apague, junto com `CodigoAvisoCurva` e os campos `NATIVE_*` do validador, se nada mais usar.
 
 ## Validação da configuração (`POST /api/v1/curvas-mercado/{nome}/configuracoes/validacao`)
 

@@ -47,7 +47,7 @@ public class CurvaMercadoController {
             useCase.buscarProvedoresPorNomes(curvas.stream().map(CurvaMercado::nome).toList());
 
         return ResponseEntity.ok(curvas.stream()
-            .map(c -> CurvaMercadoResponse.fromDomain(c, List.of(), provedoresPorCurva.getOrDefault(c.nome(), List.of())))
+            .map(c -> CurvaMercadoResponse.fromDomain(c, provedoresPorCurva.getOrDefault(c.nome(), List.of())))
             .toList());
     }
 
