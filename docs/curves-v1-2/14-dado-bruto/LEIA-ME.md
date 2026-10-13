@@ -113,3 +113,7 @@ String nomeFiltro = StringUtils.hasText(nome) ? nome.trim() : null;
 
 Import: `org.springframework.util.StringUtils`. Copie os 4 arquivos (`RegrasCurvaPrimr` e os 3 services) por cima, ou troque à mão.
 
+## Por último (4): `@Schema` nos dois DTOs novos
+
+`CurvaPrimrDataBaseResponse` e `VerticesPrimrDaDataResponse` ganham `@Schema` (descrição e exemplo por campo), no mesmo estilo dos seus Requests. Copie os 2 arquivos desta pasta por cima. Import: `io.swagger.v3.oas.annotations.media.Schema`.
+
