@@ -26,5 +26,7 @@ public interface CurvaMercadoUseCase {
 
     CurvaMercadoDetalhada reativar(String nome);
 
+    void excluir(String nome);
+
     CurvaAuditoria consultarAuditoria(String nome);
 }
