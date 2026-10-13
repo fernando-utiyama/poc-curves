@@ -1,6 +1,6 @@
 # Limpeza do cadastro (CurvaMercadoService, ConfiguracaoCurvaService e use case)
 
-Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 10 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
+Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arquitetura. Mudam de comportamento só o `reativar` (devolve o detalhe completo), a listagem de curvas (sem paginação) e o `validar` da configuração (confere o início de vigência). Pacotes como `br.com.poc`: troque pelo pacote do seu repositório. Os 12 arquivos são inteiros, copiar por cima (partem das versões já aplicadas em `aplicado/`); `CurvaMercadoAcoesUseCase` é novo.
 
 | Arquivo | Onde |
 |---|---|
@@ -12,6 +12,8 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 | `CurvaMercadoAcoesController.java` | `adapter/in/api/rest/controller/` (ganha `@Operation` nas rotas e passa a chamar o use case, não o service) |
 | `CurvaPorOrigem.java` | `domain/cadastro/` |
 | `CurvaProvedorUseCase.java` | `application/port/in/usecase/` (deduzido do service: confira os imports dos inputs) |
+| `ValidadorParametros.java` | `domain/cadastro/` (sem avisos) |
+| `ValidadorParametrosTest.java` | teste do validador (substitui) |
 | `CurvaMercadoAcoesUseCase.java` | `application/port/in/usecase/` (novo) |
 | `CurvaMercadoAcoesService.java` | `application/service/` (implementa o use case; parte do que está em `aplicado/06-excluir-vertices/`) |
 
@@ -42,6 +44,22 @@ Sem mudança de rota: tira código sobrando, reparte em métodos e ajusta a arqu
 1. **Testes que montam o service com portas `null`**: sem os `if`, o `NullPointerException` aparece. Com `@Mock`/`@InjectMocks` não há problema.
 2. **Quem chamava `listar`** com `pagina` e `tamanho` (Alt+F7 antes de colar): o `CurvaMercadoController` passa a chamar `useCase.listar(nome, codigo, unidade, situacao, provedor, dono)`, sem os parâmetros `pagina` e `tamanho`, e devolve a lista; o `CurvaMercadoResponse` já existe por item. **O front** que lê o formato de página (conteúdo e totais) precisa ler a lista direto.
 3. **Teste de `alterar`** que confere a mensagem de valores aceitos: ela continua `Valores aceitos: [...]` com os mesmos nomes, na ordem do enum.
+4. **Outros chamadores de `ValidadorParametros.validar`** (Alt+F7): a assinatura mudou (sem `modeloConstrucao` e sem a lista de provedores). Aqui só o `ConfiguracaoCurvaService` chama; se aparecer outro no seu repo, o compilador acusa.
+5. **Sobras dos avisos de cálculo** (Alt+F7): `AvisoCurva`, `CodigoAvisoCurva` e as constantes `NATIVE_CONSTRUCTION_MODELS`, `NATIVE_INTERPOLATORS`, `NATIVE_CALENDARS` do validador (mantidas porque são públicas e não vi todos os usos). Sem outro uso, apague.
+6. **`ConfiguracaoCurvaServiceTest`**: o service perdeu o `CurvaPrvdrRepositoryPort` (4 portas no construtor) e o teste de `validar` passa a mockar `findUltimaVersao`.
+7. **`findAllValidas()`** da `CurvaMercdRepositoryPort`: depois do `findByNomes` no `listarPorOrigem`, pode ficar sem uso.
+8. **Código de país**: a normalização para maiúsculas não foi aplicada; confirmar com o Copilot se o engine lê `cPaisInstt` antes de fazer.
+
+## Validação da configuração (`POST /api/v1/curvas-mercado/{nome}/configuracoes/validacao`)
+
+É a rota do `ConfiguracaoCurvaController` (`aplicado/12-sem-avisos/`) que chama `ConfiguracaoCurvaService.validar`, sem gravar nada: 200 vazio se a versão está correta, ou o erro explicado. O `validar` passa a conferir **também o início de vigência**, como o `criar` (depois da versão anterior, não no passado e não antes do início da curva), então o 200 dessa rota vale só se o `criar` for aceitar.
+
+**`ValidadorParametros` sem avisos:** os avisos de cálculo (`MODELO_NAO_NATIVO`, `ORIGEM_INCOMPATIVEL_COM_MODELO`, `MODELO_POR_ORIGEM_SEM_PROVEDOR`) não tinham mais quem os lesse. Saem `ValidacaoResultado.avisos`, `avisosDeModelo`, `avisosDeProvedor` e `origemIncompativel`. A assinatura fica `validar(interpolador, parametros, unidade, compounding)`: sem `modeloConstrucao` e sem a lista de provedores, que só serviam aos avisos. Com isso o `ConfiguracaoCurvaService` deixa de buscar os provedores da curva a cada validação e perde o `CurvaPrvdrRepositoryPort` (o construtor passa a ter 4 portas: quem monta o service à mão, como o `ConfiguracaoCurvaServiceTest`, tira esse argumento).
+
+- **Teste:** `ValidadorParametrosTest` sem o caso do aviso e sem as asserções de `avisos()`.
+
+- **Teste:** no `ConfiguracaoCurvaServiceTest`, o teste de `validar` precisa mockar `configuracaoRepositoryPort.findUltimaVersao(nome)` (vazio, `Optional.empty()`, se não importa) e ganha um caso: início de vigência igual ou anterior ao da última versão devolve `DADOS_INVALIDOS`.
+- **Spec antiga:** a `configuracao-calculo-curva` da v1 (linha da rota) ainda diz `/{codigo}/...` e "devolvendo erros e avisos"; vale a rota acima, por nome e sem avisos. A spec não foi alterada.
 
 ## Contrato da listagem sem paginação (substitui o que a v1 e a v1.1 definiram)
 

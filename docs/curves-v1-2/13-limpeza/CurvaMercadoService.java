@@ -259,7 +259,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
 
         // Unidade
         Unidade unidade = null;
-        if (vazio(input.unidade())) {
+        if (input.unidade() == null || input.unidade().isBlank()) {
             detalhes.add(new Detalhe("unidade", null, input.unidade(), "Unidade é obrigatória"));
         } else {
             unidade = validarEnum("unidade", input.unidade(), Unidade.class, detalhes);
@@ -270,10 +270,10 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
             validarEnumDaTaxa("dayCounterCotacao", input.dayCounterCotacao(), DayCounterCotacao.class, detalhes);
             validarEnumDaTaxa("compounding", input.compounding(), CompoundingCotacao.class, detalhes);
         } else if (unidade != null) {
-            if (!vazio(input.dayCounterCotacao())) {
+            if (input.dayCounterCotacao() != null && !input.dayCounterCotacao().isBlank()) {
                 detalhes.add(new Detalhe("dayCounterCotacao", null, input.dayCounterCotacao(), "Não deve ser preenchido quando unidade não for TAXA"));
             }
-            if (!vazio(input.compounding())) {
+            if (input.compounding() != null && !input.compounding().isBlank()) {
                 detalhes.add(new Detalhe("compounding", null, input.compounding(), "Não deve ser preenchido quando unidade não for TAXA"));
             }
         }
@@ -330,15 +330,11 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
     }
 
     private <E extends Enum<E>> void validarEnumDaTaxa(String campo, String valor, Class<E> tipo, List<Detalhe> detalhes) {
-        if (vazio(valor)) {
+        if (valor == null || valor.isBlank()) {
             detalhes.add(new Detalhe(campo, null, valor, campo + " é obrigatório para unidade TAXA"));
         } else {
             validarEnum(campo, valor, tipo, detalhes);
         }
-    }
-
-    private static boolean vazio(String texto) {
-        return texto == null || texto.isBlank();
     }
 
     private <E extends Enum<E>> E parseEnum(Class<E> enumClass, String valor) {

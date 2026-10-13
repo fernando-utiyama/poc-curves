@@ -6,7 +6,6 @@ import br.com.poc.application.exception.NotFoundException;
 import br.com.poc.application.port.in.usecase.ConfiguracaoCurvaUseCase;
 import br.com.poc.application.port.out.ConfiguracaoCurvaRepositoryPort;
 import br.com.poc.application.port.out.CurvaMercdRepositoryPort;
-import br.com.poc.application.port.out.CurvaPrvdrRepositoryPort;
 import br.com.poc.application.port.out.DadoVertcCurvaRepositoryPort;
 import br.com.poc.application.port.out.EventosPort;
 import br.com.poc.domain.aviso.Detalhe;
@@ -28,7 +27,6 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
     private static final LocalDate SEM_FIM = LocalDate.of(9999, 12, 31);
 
     private final CurvaMercdRepositoryPort curvaRepositoryPort;
-    private final CurvaPrvdrRepositoryPort curvaPrvdrRepositoryPort;
     private final ConfiguracaoCurvaRepositoryPort configuracaoRepositoryPort;
     private final EventosPort eventosPort;
     private final DadoVertcCurvaRepositoryPort dadoVertcCurvaRepositoryPort;
@@ -177,12 +175,10 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
     private ValidadorParametros.ValidacaoResultado validarSemLancar(CurvaMercado curva, CriarConfiguracaoCurvaInput input, List<Detalhe> erros) {
         validarCamposObrigatorios(input, erros);
         ValidadorParametros.ValidacaoResultado res = ValidadorParametros.validar(
-            input.modeloConstrucao(),
             input.interpolador(),
             input.parametros(),
             curva.unidade(),
-            curva.compounding(),
-            curvaPrvdrRepositoryPort.findByNomeCurva(curva.nome())
+            curva.compounding()
         );
         erros.addAll(res.erros());
         return res;
