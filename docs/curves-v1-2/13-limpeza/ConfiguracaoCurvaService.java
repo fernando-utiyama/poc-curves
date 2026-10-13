@@ -162,11 +162,6 @@ public class ConfiguracaoCurvaService implements ConfiguracaoCurvaUseCase {
                 erros.add(new Detalhe("inicioVigencia", null, inicio.toString(),
                     "Início de vigência da nova versão deve ser posterior ao da versão " + ultima.versao() + " (" + ultima.inicioVigencia() + ")"));
             }
-            LocalDate hoje = LocalDate.now();
-            if (inicio.isBefore(hoje)) {
-                erros.add(new Detalhe("inicioVigencia", null, inicio.toString(),
-                    "Início de vigência não pode ser no passado (deve ser maior ou igual a hoje " + hoje + ")"));
-            }
         } else if (curva.inicioVigencia() != null && inicio.isBefore(curva.inicioVigencia())) {
             erros.add(new Detalhe("inicioVigencia", null, inicio.toString(),
                 "Início de vigência não pode ser anterior ao início de vigência da curva (" + curva.inicioVigencia() + ")"));

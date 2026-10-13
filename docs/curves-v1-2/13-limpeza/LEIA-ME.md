@@ -364,3 +364,15 @@ private void validarTexto(String campo, String valor, List<Detalhe> erros) {
 }
 ```
 
+## Por último (4): versão da configuração pode começar no passado
+
+Saiu a regra "início de vigência não pode ser no passado" (`validarInicioDaVersao`): o gestor pode cadastrar uma versão com data retroativa. Ficam as duas regras que o engine precisa e a do início da curva:
+- o início da nova versão tem que ser posterior ao da versão anterior (senão a ordem das versões se perde);
+- ao criar, a anterior é fechada no dia anterior ao início da nova (só uma versão vigente por data);
+- a primeira versão não pode começar antes do início da curva.
+
+Copie o `ConfiguracaoCurvaService.java` desta pasta, ou apague à mão o bloco com `LocalDate hoje = LocalDate.now();` e o `if (inicio.isBefore(hoje))` dentro do `if (ultima != null)`.
+
+- **Teste:** no `ConfiguracaoCurvaServiceTest`, apague o teste que espera erro por início no passado (ou troque para esperar sucesso).
+- **Spec e front:** a regra "não pode ser no passado" também aparece nas specs de configuração e na tela (`fed-configuracao-curva`); a mensagem deixa de existir, e o campo de data não deve bloquear datas anteriores a hoje.
+
