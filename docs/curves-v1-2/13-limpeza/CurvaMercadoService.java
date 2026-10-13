@@ -108,7 +108,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
             dayCounter,
             compounding,
             input.moeda(),
-            input.pais().toUpperCase(Locale.ROOT),
+            input.pais(),
             input.classificacao(),
             input.classeAtivo(),
             input.dono(),
@@ -158,7 +158,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
             dayCounter,
             compounding,
             input.moeda(),
-            input.pais().toUpperCase(Locale.ROOT),
+            input.pais(),
             input.classificacao(),
             input.classeAtivo(),
             input.dono(),
@@ -292,7 +292,7 @@ public class CurvaMercadoService implements CurvaMercadoUseCase {
         // País
         if (input.pais() == null || input.pais().isBlank()) {
             detalhes.add(new Detalhe("pais", null, input.pais(), "País é obrigatório"));
-        } else if (!PAISES_VALIDOS.contains(input.pais().toUpperCase(Locale.ROOT))) {
+        } else if (!PAISES_VALIDOS.contains(input.pais().toUpperCase())) {
             detalhes.add(new Detalhe("pais", null, input.pais(), "Código de país ISO 3166-1 alfa-2 inválido"));
         }
 
