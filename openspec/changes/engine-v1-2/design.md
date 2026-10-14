@@ -6,7 +6,7 @@ O engine v1 (change `engine-construcao-curvas`) e a v1.1 já estão aplicados. A
 
 ## Goals / Non-Goals
 
-**Goals:** (1) o vencimento nominal da NTN-B passa a ser exatamente `base + vVertcCurva`; (2) conferir a estrutura do engine contra as convenções da `curves` v1.2 e corrigir só o que diverge.
+**Goals:** (1) o vencimento nominal da NTN-B passa a ser exatamente `base + vVertcCurva`; (2) a SOFR só constrói com o conjunto esperado de tenores; (3) conferir a estrutura do engine contra as convenções da `curves` v1.2 e corrigir só o que diverge.
 
 **Non-Goals:** a lista "Fica para a v2" da proposta; mudar contrato de rota, formato de erro ou schema; criar infra nova (Kafka, tabela, DLQ); mexer em `curves`, `processor` ou `fed`.
 
@@ -24,12 +24,16 @@ As tarefas de conferência são por leitura, com prova `arquivo:linha`; compila-
 ### D4. Lista de excluídos do processor fica
 Mesmo sem nenhum `760198` nos 7 pregões vistos, a exclusão no processor continua: custa nada e protege a curva se a ANBIMA passar a publicar o desmembrado. O engine não filtra por código SELIC (não recebe o código).
 
+### D5. SOFR: conjunto esperado de tenores, recusa com `INSUMO_INVALIDO`
+O modelo compara os tenores lidos (após descartar o duplicado idêntico) com o conjunto esperado. Se faltar ou sobrar tenor, a construção falha com `INSUMO_INVALIDO` e uma mensagem completa: `SOFR de {data}: faltam {lista} e sobram {lista}; carregue o arquivo completo da Bloomberg`. **Por quê:** o processor já recusa a carga com ticker sem valor, mas o engine lê a tabela também depois de reprocessamento e de carga manual, e hoje uma curva com tenor a menos "parece normal". **Alternativa rejeitada:** código novo `INSUMO_INCOMPLETO` (é item da v2, mexe no contrato de erro). **Onde mora a lista:** constante do modelo em `domain/construcao/SofrZeroBloomberg.java` (sem tabela nem parâmetro novo); trocar por parâmetro do cadastro fica para a v2.
+
 ## Risks / Trade-offs
 
 - [Um prazo gravado que não cai em dia 15 passa a gerar uma curva diferente da de hoje] → é o comportamento da spec; o teste novo cobre.
 - [Conferência por leitura pode deixar passar algo que só aparece rodando] → aceitável: cada correção é pequena e compilada; vetores reais ficam para a v2.
-- [A SOFR sem validação dos 21 tenores continua] → registrada como v2; uma carga incompleta da Bloomberg gera curva com menos tenores sem aviso.
+- [A lista esperada fica fixa no código] → se a Bloomberg mudar o conjunto de tenores, a SOFR deixa de construir até alguém atualizar a constante; é o efeito desejado (falha visível, não curva truncada).
 
 ## Open Questions
 
-1. Os 21 tenores da SOFR devem virar validação já na v1.2? (Hoje: v2.)
+1. **Qual é a lista real de tenores?** O processor tem 20 tickers na reserva (`TickersSofrReserva`: 1D, 1M, 3M, 6M, 9M, 1Y, 15M, 2Y, 3Y, 4Y, 5Y, 7Y, 10Y, 12Y, 15Y, 20Y, 25Y, 30Y, 40Y, 50Y), e a spec e as tarefas do engine falam em **21** tenores. Um dos dois está errado; a validação só pode ser escrita depois de confirmar o conjunto da Bloomberg (`S0490Z`).
+2. A lista fica só no engine ou também vem do orquestrador (tickers por tarefa)? Hoje ela está em dois lugares (reserva do processor e spec do engine).

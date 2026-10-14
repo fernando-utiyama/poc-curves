@@ -14,7 +14,7 @@
 
 > **Spec não crava código real:** nomes de pacote, de exceção, de handler e de log seguem o repositório real; este guia dá o padrão e você troca pelos nomes que existem lá.
 
-Duas partes: a correção da NTN-B (§1) e a conferência de estrutura (§2). Linhas citadas são as do relatório de inspeção (`docs/inspecao/inspecao-engine.md` do poc); confira no código, porque podem ter mudado.
+Três partes: a correção da NTN-B (§1), a SOFR (§2) e a conferência de estrutura (§3). Linhas citadas são as do relatório de inspeção (`docs/inspecao/inspecao-engine.md` do poc); confira no código, porque podem ter mudado.
 
 ## 1. NTN-B: vencimento nominal exato
 
@@ -59,14 +59,54 @@ No primeiro caso, confira também o fluxo: o pagamento de `2026-11-16` entra (po
 
 Abra `application/service/ProcessarCargaService.java:93-105` e `domain/interpolacao/PreparacaoVertices.java:27-30`. O processor só encaminha a carga; a preparação trata prazo não positivo e repetido. Se nenhum altera o prazo da NTN-B, registre **manter** com `arquivo:linha`.
 
-## 2. Conferência de estrutura
+## 2. SOFR: conjunto esperado de tenores
+
+**Onde:** `domain/construcao/SofrZeroBloomberg.java:48-107, 110-158, 160-173` (parse dos tenores, membro, datas e duplicatas já existem).
+
+### 2.1 Antes: a lista real
+A spec do engine fala em 21 tenores e a reserva do processor tem 20 (`TickersSofrReserva`). **Confirme a lista com quem conhece o membro `S0490Z`** e use a mesma nos dois lados. Sem isso, não escreva a constante.
+
+### 2.2 O que fazer
+
+```java
+// no modelo: o conjunto esperado, em ordem de tenor (a lista final vem da 2.1)
+private static final Set<String> TENORES_ESPERADOS = Set.of(/* "1D", "1M", "3M", ... */);
+
+// depois de descartar o duplicado idêntico e antes de montar os pontos:
+Set<String> lidos = nosPorTenor.keySet();
+Set<String> faltam = new TreeSet<>(TENORES_ESPERADOS);
+faltam.removeAll(lidos);
+Set<String> sobram = new TreeSet<>(lidos);
+sobram.removeAll(TENORES_ESPERADOS);
+if (!faltam.isEmpty() || !sobram.isEmpty()) {
+    throw /* a exceção que o modelo já usa para INSUMO_INVALIDO */(
+        "SOFR de " + dataBase + ": faltam " + faltam + " e sobram " + sobram
+            + "; carregue o arquivo completo da Bloomberg");
+}
+```
+
+- Troque `nosPorTenor` e a exceção pelos nomes reais do modelo (o modelo já falha com `INSUMO_INVALIDO` em outros casos: use o mesmo mecanismo).
+- A mensagem é completa e explicada (o front só mostra o texto). Sem código de erro novo.
+- Ordene por prazo (não por texto) se quiser a lista legível: `TreeSet` com comparador pela data do tenor, ou deixe em texto, que já informa.
+
+### 2.3 Teste
+Quatro casos, com data-base `2026-09-14` e o conjunto esperado do modelo:
+
+| Caso | Entrada | Esperado |
+|---|---|---|
+| Completo | todos os tenores | um ponto por tenor |
+| Ausente | sem `15M` | `INSUMO_INVALIDO`, mensagem com `faltam [15M]`, nada gravado |
+| A mais | com `18M` | `INSUMO_INVALIDO`, mensagem com `sobram [18M]` |
+| Duplicado idêntico | `1D` duas vezes, mesmo valor | fica um nó; completo |
+
+## 3. Conferência de estrutura
 
 Cada subseção traz **o que olhar**, **o que registrar** e **como corrigir** (o padrão vem da `curves` v1.2). Resultado de cada item: **manter**, **alterar** ou **criar**.
 
-### 2.1 Imports proibidos
+### 3.1 Imports proibidos
 Em cada arquivo de `application/service/` e `domain/`, olhe só os `import`. Proibido em `domain` e `application`: `br.com.poc.adapter.*`, `org.springframework.data.*`, `jakarta.persistence.*`, `com.fasterxml.jackson.databind.*`, `tools.jackson.*`. Permitido: anotações de Jackson, `@Service`, `@Transactional` e `lombok`. **Correção:** troque a classe de adaptador pela porta de saída (`application/port/out/...Port`).
 
-### 2.2 Controller chama use case
+### 3.2 Controller chama use case
 Padrão da `curves`:
 
 ```java
@@ -85,19 +125,19 @@ private final CurvaUseCase useCase;      // e não ConstruirCurvaService
 
 Registre também o controller que importa tipo de `application/port/out` (na `curves`, foi o `RespostaEngine` da porta de saída usado direto no controller): o tipo passa a ser um record de `domain`, usado pela porta e pelo use case.
 
-### 2.3 Tipos fortes e um tipo por arquivo
+### 3.3 Tipos fortes e um tipo por arquivo
 Olhe os arquivos de `application/port/` e os três de `domain/curva/`. Registre `Map<String, Object>`, `Object`, `String` com JSON e record dentro de interface ou duplicado. **Correção:** record próprio em `domain`; as variantes de `ResultadoConstrucao` ficam como estão (sealed).
 
-### 2.4 Nomes e comentários
+### 3.4 Nomes e comentários
 Registre: nome com "canônico"; método privado de uma linha usado uma vez; javadoc com mais de uma linha. **Correção:** renomear (Shift+F6), inlinar o método, cortar o javadoc para uma linha.
 
-### 2.5 Jackson e parâmetros em objeto
+### 3.5 Jackson e parâmetros em objeto
 Registre `com.fasterxml.jackson.databind` e controller com mais de dois `@RequestParam`. **Correção:** `tools.jackson.databind.ObjectMapper` ou `JsonMapper`; `@ModelAttribute FiltroX` (GET) e `@RequestBody PedidoX` (POST e PUT).
 
-### 2.6 Tempo
+### 3.6 Tempo
 `config/TimeZoneConfig.java` deve fixar `America/Sao_Paulo` e recusar subida em outro fuso. Registre `ZoneId.of(...)` em services e `now(zona)`. **Correção:** `LocalDate.now()` e `OffsetDateTime.now()`.
 
-### 2.7 Swagger completo
+### 3.7 Swagger completo
 Para cada rota dos 4 controllers: `@Operation(summary, description)`, `@Parameter(description, example)` em `codigo`, `dataBase` e nos filtros, `@ApiResponses` no nível da classe e `produces = APPLICATION_JSON_VALUE`. Nos DTOs: `@Schema(description, example)` por campo. Padrão (da `curves`):
 
 ```java
@@ -119,8 +159,8 @@ public class CurvaController {
 
 Imports: `io.swagger.v3.oas.annotations.Operation`, `Parameter`, `responses.ApiResponse`, `responses.ApiResponses` e `media.Schema`. Cada recusa tem **mensagem completa**: o front só mostra o texto.
 
-### 2.8 Testes
+### 3.8 Testes
 Em `src/test/java/br/com/poc/adapter/out/persistence/`: um `...AdapterTest` que só mocka o repositório e confere delegação ou `toDomain` é apagado (a persistência é conferida pelo teste manual). Confirme que `ConstruirCurvaService`, `ConstruirDataService`, `InterpolarCurvaService` e os três modelos de construção têm teste de regra com valor de referência, e que os testes de controller (`@WebMvcTest`) conferem JSON e status.
 
-### 2.9 Registro
+### 3.9 Registro
 No fim do `tasks.md`, uma tabela por item: **o que olhei** (arquivo:linha), **resultado** (manter, alterar ou criar) e **o que mudou**. Nada de infra nova: se uma correção pedir tópico, tabela ou cache, deixe `TODO(revisao)`.
