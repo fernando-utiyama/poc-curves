@@ -4,7 +4,6 @@ import br.com.poc.domain.cadastro.BbergCurvaPrimr;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Schema(description = "Vértice de dado bruto da Bloomberg")
@@ -26,11 +25,15 @@ public record BbergCurvaPrimrVerticeResponse(
 
     public static BbergCurvaPrimrVerticeResponse fromDomain(BbergCurvaPrimr v) {
         return new BbergCurvaPrimrVerticeResponse(
-            v.id(), v.tickerBloomberg(), texto(v.precoUltimo()), texto(v.precoLiquidacao()), texto(v.precoMedio()),
-            v.diaVencimento(), v.dataLiquidacaoFinanceira(), v.formaLiquidacao(), v.dataVencimentoContrato(), v.dataUltimoNegocio());
-    }
-
-    private static String texto(BigDecimal valor) {
-        return valor != null ? valor.toPlainString() : null;
+            v.id(),
+            v.tickerBloomberg(),
+            v.precoUltimo() != null ? v.precoUltimo().toPlainString() : null,
+            v.precoLiquidacao() != null ? v.precoLiquidacao().toPlainString() : null,
+            v.precoMedio() != null ? v.precoMedio().toPlainString() : null,
+            v.diaVencimento(),
+            v.dataLiquidacaoFinanceira(),
+            v.formaLiquidacao(),
+            v.dataVencimentoContrato(),
+            v.dataUltimoNegocio());
     }
 }

@@ -4,7 +4,6 @@ import br.com.poc.domain.cadastro.BtrsCurvaPrimr;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Schema(description = "Vértice de dado bruto da B3")
@@ -22,10 +21,8 @@ public record BtrsCurvaPrimrVerticeResponse(
     public static BtrsCurvaPrimrVerticeResponse fromDomain(BtrsCurvaPrimr v) {
         return new BtrsCurvaPrimrVerticeResponse(
             v.id(), v.diasCorridos(), v.diasUteis(), v.dataVertice(),
-            texto(v.valor()), texto(v.fatorAcumulado()), texto(v.fatorDia()));
-    }
-
-    private static String texto(BigDecimal valor) {
-        return valor != null ? valor.toPlainString() : null;
+            v.valor() != null ? v.valor().toPlainString() : null,
+            v.fatorAcumulado() != null ? v.fatorAcumulado().toPlainString() : null,
+            v.fatorDia() != null ? v.fatorDia().toPlainString() : null);
     }
 }
