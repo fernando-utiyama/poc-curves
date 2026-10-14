@@ -119,10 +119,10 @@ dataBase e idCarga). Os dois caminhos abaixo são SUGESTÃO de nome de rota.
 Os tickers vêm da tarefa, e podem ser trocados por PATCH sem redeploy. O valor
 de "tickers" abaixo é a lista dos vértices da SOFR passada pela operação
 (S0490Z <tenor> BLC2 Curncy).
-[A CONFIRMAR] Na lista recebida o tenor "1D" aparece duas vezes (digitação
-repetida, ou o segundo seria outro tenor); aqui entra uma vez só, 20 tickers.
-Se faltar um tenor, acrescentar por PATCH em "tickers". Conferência contra o
-banco (os nós da SOFR já gravados):
+Na lista recebida o tenor "1D" aparecia duas vezes: era cópia repetida
+(confirmado), então são 20 tickers. A mesma lista de 20 vale no processor
+(reserva) e na validação do engine (change engine-v1-2). Conferência contra o
+banco (os nós da SOFR já gravados; deve devolver exatamente os 20):
 
   SELECT STRING_AGG(cTickerBberg, ',') WITHIN GROUP (ORDER BY cTickerBberg)
   FROM (SELECT DISTINCT cTickerBberg FROM dbo.tBbergCurvaPrimr
