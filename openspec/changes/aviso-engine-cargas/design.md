@@ -1,0 +1,38 @@
+## Context
+
+O processor grava cada carga numa única transação e, depois do commit, chama `POST /api/v1/cargas` do engine (spec `curve-load-trigger`). O engine constrói na hora as curvas cuja origem principal tem a fonte e o produto da carga e um código presente em `verticesPorCodigo`, cada curva na sua transação, e devolve o resultado por curva. A recuperação de uma falha do aviso é o reprocessamento da data (relê o original do Blob e avisa de novo). O orquestrador só espera o 200 do download, e **não** espera o aviso.
+
+Três fontes, três donos: B3 e ANBIMA (outros desenvolvedores) e Bloomberg (`processor-bloomberg`). A base comum do aviso é da `processor-v0` (tarefa 1.7).
+
+## Goals / Non-Goals
+
+**Goals:** o mesmo aviso, o mesmo `verticesPorCodigo`, a mesma repetição e o mesmo log nas três fontes; o engine conferindo a quantidade.
+
+**Non-Goals:** mudar a rota do engine, o formato de erro, o agendamento; construir curva derivada; guardar a carga no engine.
+
+## Decisions
+
+### D1. Um aviso por carga, depois do commit, em segundo plano
+O aviso só sai depois do commit e roda em segundo plano (virtual thread), sem segurar a resposta ao orquestrador. **Por quê:** o engine pode levar minutos para construir; o orquestrador só precisa saber que o arquivo foi recebido e gravado. **Alternativa rejeitada:** esperar o engine antes de responder (estoura o tempo limite de 120 s do orquestrador).
+
+### D2. A recuperação é o reprocessamento
+Se o aviso se esgota, o log tem `CARGA_FALHOU` e a recuperação é executar o reprocessamento da data, que relê o original e avisa de novo com o mesmo `idCarga`. **Por quê:** o dado bruto já está gravado e o engine não guarda estado da carga; não precisa de fila nem de tabela. **Alternativa rejeitada:** fila persistente de avisos (infra nova).
+
+### D3. `verticesPorCodigo` conta o que foi **gravado**
+A quantidade por código é a de linhas gravadas na tabela bruta, **inclusive as que o modelo vier a descartar**. **Por quê:** o engine confere o que leu da tabela; se a contagem fosse depois do descarte, a conferência diria "ok" para uma carga truncada. O código é a chave que liga ao `tCurvaPrvdr`: B3 = código da curva na B3 (`PRE`), ANBIMA = `Titulo` (`NTN-B`), Bloomberg = membro (`S0490Z`).
+
+### D4. Conferência da quantidade no engine
+O engine lê as linhas da curva e da data na tabela bruta e compara com a quantidade avisada para o código. **Diferente = a curva falha** com `INSUMO_INVALIDO` e uma mensagem com as duas quantidades (avisadas e lidas). **Por quê:** é o que a spec do webhook já diz e a inspeção mostrou que não é feito; protege contra leitura de uma gravação ainda não visível ou truncada. **Alternativa rejeitada:** só logar a diferença (a curva truncada seria construída).
+
+### D5. Código de erro existente
+Sem `INSUMO_INCOMPLETO` (item da v2 do engine); a conferência usa `INSUMO_INVALIDO`, que o engine já tem.
+
+## Risks / Trade-offs
+
+- [O engine é avisado antes de o dado bruto estar visível para ele] → o aviso só sai depois do commit; a conferência da quantidade (D4) cobre o resto.
+- [Aviso esgotado e ninguém olha o log] → `CARGA_FALHOU` é log de erro e contador por fonte; o alerta no front fica para o dashboard do orquestrador (fora desta change).
+- [Reprocessar avisa de novo e reconstrói curvas] → o engine nunca recalcula curva existente pela carga: devolve `EXISTENTE` (com `PONTOS_DIFERENTES_DA_FONTE` se mudou); só recálculo forçado reconstrói.
+
+## Open Questions
+
+1. O alerta de `CARGA_FALHOU` deve ir também para o dashboard do front (via orquestrador), ou basta log e métrica nesta etapa?
