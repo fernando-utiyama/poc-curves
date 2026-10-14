@@ -56,6 +56,9 @@ O upload é o plano B quando a fonte está fora ou o arquivo veio errado: o oper
 ### D11. Base comum primeiro, um provedor por dev
 As rotas, o caso de uso (`CargaArquivoUseCase`, porta de entrada), o roteiro comum (Blob, identidade, gravação, aviso ao engine) e uma porta de saída por fonte (`ProvedorCargaPort`) são feitos primeiro. Cada fonte nasce com um provedor provisório que responde 501. Depois, cada dev implementa o provedor da sua fonte (cliente, leiaute e o `INSERT` da sua tabela) sem tocar no código das outras, e cada fonte entra em produção quando fica pronta. **Alternativa rejeitada:** um serviço inteiro por fonte, que repetiria três vezes o Blob, a trava, o `MAX + 1` e o aviso.
 
+### D-Banco. Scripts 002 e 004 antes da gravação
+O processor grava sem informar `cIdtfdUnic` (coluna `bigint IDENTITY`, `004_ALTER_PRIMARIAS_IDENTITY.sql`) e, na ANBIMA, grava também `cTpoInstt` e `dVctoContr` (`002_ALTER_ANBIMA_TITULO_VENCIMENTO.sql`). Os dois scripts MUST estar aplicados no banco antes da primeira carga; sem o `004`, o `INSERT` sem id falha, e sem o `002`, o `INSERT` da ANBIMA falha por coluna inexistente. Nenhuma tabela de bruto tem chave estrangeira para `cIdtfdUnic`, então o tipo novo não se propaga.
+
 ## Risks / Trade-offs
 
 - **Aviso ao engine perdido se a instância cair.** → `CARGA_FALHOU` não chega a ser registrado; as curvas não constroem. Recuperação: reprocessar a data (D2). A tela de curvas mostra a curva sem pontos.
@@ -78,6 +81,6 @@ As rotas, o caso de uso (`CargaArquivoUseCase`, porta de entrada), o roteiro com
 
 ## Open Questions
 
-- [A CONFIRMAR] Catálogo da conta do Data License, campo do valor (padrão `PX_LAST`) e formato do arquivo de resposta (padrão CSV com ticker, data e valor).
+- [A CONFIRMAR] Catálogo da conta do Data License, campo do valor (padrão `PX_MID`, gravado em `vPrecoUlt`; confirmar no pedido de teste que vem preenchido para os 20 tickers) e formato do arquivo de resposta (padrão CSV com ticker, data e valor).
 - [A CONFIRMAR] Faixas de horário das janelas (sugestão 18h às 22h nas três fontes).
 - [A CONFIRMAR] Causa do `1D` repetido na lista recebida da SOFR; a reserva usa 20 tickers distintos.

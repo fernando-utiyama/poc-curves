@@ -235,7 +235,7 @@ processor:
   bloomberg:
     base-url: ${BLOOMBERG_DL_BASE_URL}               # [A CONFIRMAR] host da API do Data License
     catalogo: ${BLOOMBERG_DL_CATALOGO}               # [A CONFIRMAR] catálogo da conta
-    campo: PX_LAST
+    campo: PX_MID                                    # valor do fechamento; gravado em vPrecoUlt
     faixa-pedido: 30m
     espera: 90s
     # id e segredo da credencial: Key Vault, nunca no yml
@@ -326,20 +326,19 @@ Uma transação por carga (`@Transactional`), `JdbcTemplate`:
 SELECT cTickerPrvdr, cTickerIndcd FROM tCurvaPrvdr WHERE iPrvdrDados = ? AND cPrvdrMercd = ?;   -- B3/TS, ANBIMA/MS, BLOOMBERG/BLC2
 SELECT cTickerIndcd FROM tCurvaMercd WITH (UPDLOCK, ROWLOCK) WHERE cTickerIndcd = ?;           -- cada curva, em ordem do nome
 DELETE FROM {tabela} WHERE cTickerIndcd = ? AND dBaseReft = ?;
-SELECT ISNULL(MAX(cIdtfdUnic), 0) FROM {tabela} WITH (UPDLOCK, HOLDLOCK);
-INSERT ...;                                                                                      -- feito pela *CurvaPrimrInsercao
+INSERT ...;                                                                                      -- feito pela *CurvaPrimrInsercao (sem cIdtfdUnic: a coluna é IDENTITY, script 004)
 SELECT COUNT(*) FROM {tabela} WHERE cTickerIndcd = ? AND dBaseReft = ?;                         -- = vértices do código, senão desfaz
 ```
 
 - `{tabela}` vem da `CurvaPrimrInsercao` da fonte, nunca da requisição.
 - `trim()` nas colunas `CHAR` lidas; um código pode ligar a mais de uma curva (grava para cada uma).
-- Tempo limite de 60 s nos comandos de trava e de `MAX` (`jdbc.setQueryTimeout` num `JdbcTemplate` próprio do adapter); estouro ou banco fora = `ServiceUnavailableException(SERVICO_INDISPONIVEL)`.
+- Tempo limite de 60 s nos comandos de trava (`jdbc.setQueryTimeout` num `JdbcTemplate` próprio do adapter); estouro ou banco fora = `ServiceUnavailableException(SERVICO_INDISPONIVEL)`.
 - Código sem curva ligada: fica fora do resultado e vai para o log como ignorado.
 
 `INSERT` da ANBIMA (`AnbmaCurvaPrimrInsercao`):
 
 ```sql
-INSERT INTO tAnbmaCurvaPrimr (cIdtfdUnic, cTickerIndcd, dBaseReft, vPrecoTx, vVertcCurva) VALUES (?, ?, ?, ?, ?);
+INSERT INTO tAnbmaCurvaPrimr (cTickerIndcd, dBaseReft, vPrecoTx, vVertcCurva, cTpoInstt, dVctoContr) VALUES (?, ?, ?, ?, ?, ?);   -- cTpoInstt = Titulo, dVctoContr = Data Vencimento (script 002)
 ```
 
 ## 8. Aviso ao engine
@@ -415,7 +414,7 @@ public final class LeiauteTaxaSwap {
   - por linha: `dc` = 42–46, `du` = 47–51, `sinal` = 52, `taxa` = 53–66. O código é rejeitado (vai para `codigosRejeitados` e para de ser lido) se `dc` ou `du` não são só dígitos, `dc < 1`, `du < 1`, `du > dc`, `sinal` não é `+` nem `-`, `taxa` não é só dígitos, ou `dc` repete no código;
   - `valor = new BigDecimal(taxa).movePointLeft(7)`, com `negate()` se o sinal é `-`; escala 7; nunca `double`.
 - `B3DownloadSiteProvedor`: `baixar` = cliente + extração + `canonizar`, nome `TaxaSwap.txt`; `preparar` = extração (se `.ex_`) + `canonizar`; `dataBase` e `interpretar` = `LeiauteTaxaSwap`.
-- `INSERT INTO tBtrsCurvaPrimr (cIdtfdUnic, cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)`; `vPrecoTx` recebe o `BigDecimal` de escala 7 sem arredondar.
+- `INSERT INTO tBtrsCurvaPrimr (cTickerIndcd, dBaseReft, cDiaCorri, cDiaUtil, vPrecoTx, vFatorAcum, vFatorDia) VALUES (?, ?, ?, ?, ?, NULL, NULL)`; `vPrecoTx` recebe o `BigDecimal` de escala 7 sem arredondar.
 - Vetores (`docs/TaxaSwap.txt`, copiado para `src/test/resources/b3/`): 30.481 linhas de 72 caracteres, data `20260914`, 114 códigos, 278 vértices em `PRE`, `DCL`, `DPL`, `INP` e `PTX`, nenhum rejeitado; forma canônica com 2.225.113 bytes e SHA-256 `46a249c60bec1ac111d69934b8486213eedecdf9b772246df86a11b5f120d9e8` → `idCarga` `B3-TS-20260914-46a249c60bec`; primeiro vértice da `PRE` = `13.9000000`; a linha `0049060010120260914T1DCL  CUPOM LIMPO - S0000100001-00001179600000F00001` → `DCL`, 1, 1, `-117.9600000`.
 
 ### 11.2 Bloomberg (`adapter/out/client/bloomberg/`)
@@ -426,7 +425,7 @@ Pedido de histórico (`BloombergDataLicenseClient`; endpoints exatos [A CONFIRMA
 3. Criar o pedido (universo = tickers, campo = `campo`, datas = data-base, saída CSV); "identificador já existe" = seguir para o passo 4.
 4. Consultar a cada 5 s até `espera`; pronta, baixar. Não pronta = 503 `ARQUIVO_INDISPONIVEL` com o identificador.
 
-Resposta (`LeiauteRespostaDataLicense`, colunas [A CONFIRMAR]): para cada ticker pedido, um vértice com a data-base e valor numérico; faltou algum = 503 no download, 422 no upload, citando os tickers. `INSERT INTO tBbergCurvaPrimr (cIdtfdUnic, cTickerIndcd, dBaseReft, cTickerBberg, vPrecoUlt) VALUES (?, ?, ?, ?, ?)`, com `cTickerBberg` = ticker completo (`VARCHAR(50)`); código na fonte = primeiro termo (`S0490Z`).
+Resposta (`LeiauteRespostaDataLicense`, colunas [A CONFIRMAR]): para cada ticker pedido, um vértice com a data-base e valor numérico; faltou algum = 503 no download, 422 no upload, citando os tickers. `INSERT INTO tBbergCurvaPrimr (cTickerIndcd, dBaseReft, cTickerBberg, vPrecoUlt) VALUES (?, ?, ?, ?)`, com `cTickerBberg` = ticker completo (`VARCHAR(50)`); código na fonte = primeiro termo (`S0490Z`).
 
 Reserva temporária (`TickersSofrReserva`), usada só no `parametros(...)` do `CargaController` (seção 5):
 
