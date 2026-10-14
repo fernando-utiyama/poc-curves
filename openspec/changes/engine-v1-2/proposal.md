@@ -10,6 +10,7 @@ O engine v1 e a v1.1 já estão aplicados e as 7 curvas têm modelo nativo. A in
 
 - **`NtnbBootstrapAnbima`:** o vencimento nominal do título é `dataBase + vVertcCurva`, sem forçar o dia do mês. As datas nominais de evento são `V`, `V − 6 meses`, `V − 12 meses`...; cada pagamento é a data nominal ajustada por *Following* no calendário cadastrado. Teste com o vencimento fora do dia 15 e com vencimento em dia não útil.
 - **`SOFR_ZERO_BLOOMBERG`:** valida que os tenores lidos de `tBbergCurvaPrimr` são exatamente os esperados e recusa a construção com `INSUMO_INVALIDO`, cuja mensagem lista os tenores que faltam e os que sobram (sem código novo). O conjunto esperado são os **20 tenores** da lista do processor (`TickersSofrReserva`): `1D`, `1M`, `3M`, `6M`, `9M`, `1Y`, `15M`, `2Y`, `3Y`, `4Y`, `5Y`, `7Y`, `10Y`, `12Y`, `15Y`, `20Y`, `25Y`, `30Y`, `40Y` e `50Y`. A spec do v1 fala em "21 tenores", número que não confere com a lista: o 21º é o `1D` copiado duas vezes no fixture, não um tenor.
+- **Webhook de carga por nome da curva:** `verticesPorCodigo` vira `verticesPorCurva` (nome da curva → linhas gravadas), a seleção das curvas passa a ser pelo nome, e o engine passa a **conferir** a quantidade lida com a avisada (`INSUMO_INVALIDO` com as duas quantidades). Acompanha a change `aviso-engine-cargas`, que define o disparo nos serviços de B3, ANBIMA e Bloomberg.
 - **Conferência de estrutura (leitura, sem teste de suíte):** cada item da spec `convencoes-engine` é conferido nos arquivos citados na tarefa, com `arquivo:linha`, e fica como **manter**, **alterar** ou **criar**. Só o que diverge é corrigido.
 - **Dado real conferido:** nos arquivos `ms` de 02/10 a 13/10/2026 (7 pregões) todas as NTN-B vêm com `Codigo SELIC` `760199` (título inteiro) e vencimento no dia 15; **nenhum desmembrado** (`760198`) apareceu. A lista de excluídos do processor continua como proteção e não muda.
 
@@ -20,6 +21,7 @@ Fica para a v2 do engine (não entra aqui): `cDiaUtil` com o DU calculado, `X-Us
 ### New Capabilities
 - `ntnb-vencimento-exato`: vencimento nominal da NTN-B em `base + vVertcCurva`, sem forçar o dia, com pagamento por *Following*.
 - `sofr-tenores-esperados`: a SOFR só é construída com o conjunto de tenores esperado.
+- `carga-por-curva`: o webhook de carga recebe as linhas por nome da curva e o engine confere a quantidade avisada.
 - `convencoes-engine`: as convenções de estrutura e de código que o engine confere, vindas da `curves` v1.2.
 
 ### Modified Capabilities

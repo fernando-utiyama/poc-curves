@@ -16,6 +16,12 @@
 - [ ] 2.2 [forte] (guia §2) `domain/construcao/SofrZeroBloomberg.java:48-107, 110-158, 160-173`: constante com o conjunto esperado; depois de descartar o duplicado idêntico, comparar com os tenores lidos e falhar com `INSUMO_INVALIDO` listando os que faltam e os que sobram. Pronto quando `mvn -q compile` passa e a regra aparece uma vez só.
 - [ ] 2.3 [forte] (guia §2.2) Teste do modelo (`SofrZeroBloombergTest`; se não existir, criar) com os quatro cenários da spec `sofr-tenores-esperados`: completo, tenor ausente, tenor a mais e duplicado idêntico. Pronto quando passam e o teste atual da SOFR continua passando.
 
+## 2B. Webhook de carga por nome da curva
+
+- [ ] 2B.1 [forte] (guia §2B) No controller, no DTO e no use case do webhook de carga (`POST /api/v1/cargas`), trocar `verticesPorCodigo` por `verticesPorCurva` (nome da curva → quantidade) e selecionar as curvas pelo nome, sem usar o código da fonte; validação 400 `PARAMETRO_INVALIDO` e `AVISO` no log para nome sem curva. Pronto quando `mvn -q compile` passa.
+- [ ] 2B.2 [forte] (guia §2B) Em `application/service/ProcessarCargaService.java:93-105`, onde `linhasAvisadas` só é repassada: comparar as linhas lidas com a avisada; diferente = `INSUMO_INVALIDO` com "avisadas N, lidas M", só naquela curva. Pronto quando `mvn -q compile` passa.
+- [ ] 2B.3 [básico] (guia §2B) Teste do webhook: carga pelo nome, dois nomes no mesmo código da fonte, nome sem curva, quantidade igual e diferente. Pronto quando passa.
+
 ## 3. Conferência de estrutura (spec `convencoes-engine`)
 
 - [ ] 3.1 [básico] (guia §3.1) Imports proibidos: abrir só os 10 services de `application/service/` (`ConstruirCurvaService`, `ConstruirDataService`, `ConsultarFeriadosService`, `ConsultarSituacaoService`, `ConsultarValoresCadastroService`, `ConsultarVerticesService`, `InterpolarCurvaService`, `ProcessarCargaService`, `RegravarInterpoladaService`, `ResolverModelos`) e os arquivos de `domain/curva/`, `domain/cadastro/`, `domain/construcao/`, `domain/interpolacao/` citados no guia; ver só os `import`. Registrar o que importa `adapter.*`, `org.springframework.data`, `jakarta.persistence` ou `com.fasterxml.jackson.databind`.

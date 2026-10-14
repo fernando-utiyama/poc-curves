@@ -100,6 +100,21 @@ Quatro casos, com data-base `2026-09-14` e o conjunto esperado do modelo:
 | A mais | com `18M` | `INSUMO_INVALIDO`, mensagem com `sobram [18M]` |
 | Duplicado idêntico | `1D` duas vezes, mesmo valor | fica um nó; completo |
 
+## 2B. Webhook de carga por nome da curva
+
+Corpo: `{ "idCarga", "fonte", "produto", "dataBase", "verticesPorCurva": { "PRE": 278 } }` (a chave é o nome da curva; o código da fonte não vai no corpo). Selecionar as curvas com origem principal na fonte e no produto da carga e nome presente no mapa. Nomes de classe, DTO e erro: os do repo real.
+
+```java
+long lidas = leitura.contar(curva, dataBase);
+int avisadas = verticesPorCurva.get(curva.codigo());   // codigo() = nome da curva
+if (lidas != avisadas) {
+    throw new CurvaBusinessException(CurvaErrorCode.INSUMO_INVALIDO,
+        "Quantidade de vértices diferente do aviso: avisadas " + avisadas + ", lidas " + lidas + ".");
+}
+```
+
+A exceção é por curva: as outras da carga seguem. Se o campo antigo `verticesPorCodigo` estiver em testes ou em outro serviço, trocar junto.
+
 ## 3. Conferência de estrutura
 
 Cada subseção traz **o que olhar**, **o que registrar** e **como corrigir** (o padrão vem da `curves` v1.2). Resultado de cada item: **manter**, **alterar** ou **criar**.
