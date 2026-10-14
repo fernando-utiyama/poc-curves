@@ -64,7 +64,7 @@ Abra `application/service/ProcessarCargaService.java:93-105` e `domain/interpola
 **Onde:** `domain/construcao/SofrZeroBloomberg.java:48-107, 110-158, 160-173` (parse dos tenores, membro, datas e duplicatas já existem).
 
 ### 2.1 A lista
-Os 20 tenores do processor: `1D`, `1M`, `3M`, `6M`, `9M`, `1Y`, `15M`, `2Y`, `3Y`, `4Y`, `5Y`, `7Y`, `10Y`, `12Y`, `15Y`, `20Y`, `25Y`, `30Y`, `40Y` e `50Y`. A spec do v1 diz "21": são 21 linhas do fixture (20 tenores mais o `1D` duplicado). Use a lista de 20 na constante; confira com o fixture do teste da SOFR.
+Os 20 tenores do processor: `1D`, `1M`, `3M`, `6M`, `9M`, `1Y`, `15M`, `2Y`, `3Y`, `4Y`, `5Y`, `7Y`, `10Y`, `12Y`, `15Y`, `20Y`, `25Y`, `30Y`, `40Y` e `50Y`. A spec do v1 diz "21" porque o `1D` foi copiado duas vezes no fixture; os tenores são 20. Use a lista de 20 na constante; confira com o fixture do teste da SOFR.
 
 ### 2.2 O que fazer
 
