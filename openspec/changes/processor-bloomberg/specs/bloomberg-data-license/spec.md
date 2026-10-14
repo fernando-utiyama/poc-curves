@@ -5,7 +5,7 @@ As rotas `POST /api/v1/cargas/bloomberg/download`, `.../reprocessamento` e `.../
 
 #### Scenario: Download com tickers
 - **WHEN** o orquestrador chama `POST /api/v1/cargas/bloomberg/download` com `dataBase` = `2026-09-14` e os 20 tickers
-- **THEN** o processor faz o pedido ao Data License e, com os 20 valores, grava e responde 200 com `verticesPorCodigo` = `{ "S0490Z": 20 }`
+- **THEN** o processor faz o pedido ao Data License e, com os 20 valores, grava e responde 200 com `verticesPorCurva` = `{ "SOFR": 20 }`
 
 ### Requirement: Pedido de histórico ao Data License
 O processor SHALL obter os nós da SOFR por um pedido de histórico (`HistoryRequest`) do Bloomberg Data License, com o universo = tickers, o campo do valor configurado (padrão `PX_MID`) e as datas inicial e final iguais à data-base. O pedido SHALL ter um identificador determinístico, formado pela data-base, pelos 8 primeiros caracteres do SHA-256 da lista ordenada de tickers e pela faixa de horário de Brasília (`processor.bloomberg.faixa-pedido`, padrão 30 minutos). Na mesma faixa, uma nova chamada SHALL reaproveitar o pedido já feito, em qualquer instância, sem pagar outro. O processor SHALL esperar a resposta por até `processor.bloomberg.espera` (padrão 90 segundos). Sem resposta pronta, a resposta SHALL ser 503 `ARQUIVO_INDISPONIVEL`, citando o identificador do pedido.
@@ -54,7 +54,7 @@ O processor SHALL aceitar em `POST /api/v1/cargas/bloomberg/upload` (`multipart/
 - **THEN** a resposta é 422 `ARQUIVO_INVALIDO` citando o ticker que falta, nada é gravado, e o original fica arquivado
 
 ### Requirement: Gravação em `tBbergCurvaPrimr`
-Para a carga, o processor SHALL buscar em `tCurvaPrvdr` as curvas de mercado com `iPrvdrDados` = `BLOOMBERG`, `cPrvdrMercd` = `BLC2` e `cTickerPrvdr` = o membro (primeiro termo do ticker, ex.: `S0490Z`). Em uma única transação por carga, SHALL travar a curva em `tCurvaMercd` (`UPDLOCK, ROWLOCK`, tempo limite de 60 segundos), apagar os nós da curva e da data e inserir os novos **sem informar `cIdtfdUnic`** (a coluna é `bigint IDENTITY`, script `004`). As colunas SHALL ser `cTickerIndcd` = nome da curva, `dBaseReft`, `cTickerBberg` = ticker completo como pedido (`VARCHAR(50)`) e `vPrecoUlt` = valor; as demais ficam nulas. O processor MUST NOT escrever em `tCurvaMercd` nem em `tCurvaPrvdr`. Membro sem curva ligada é ignorado e aparece no log; uma carga sem curva mapeada responde 200 com `verticesPorCodigo` vazio e não avisa o engine.
+Para a carga, o processor SHALL buscar em `tCurvaPrvdr` as curvas de mercado com `iPrvdrDados` = `BLOOMBERG`, `cPrvdrMercd` = `BLC2` e `cTickerPrvdr` = o membro (primeiro termo do ticker, ex.: `S0490Z`). Em uma única transação por carga, SHALL travar a curva em `tCurvaMercd` (`UPDLOCK, ROWLOCK`, tempo limite de 60 segundos), apagar os nós da curva e da data e inserir os novos **sem informar `cIdtfdUnic`** (a coluna é `bigint IDENTITY`, script `004`). As colunas SHALL ser `cTickerIndcd` = nome da curva, `dBaseReft`, `cTickerBberg` = ticker completo como pedido (`VARCHAR(50)`) e `vPrecoUlt` = valor; as demais ficam nulas. O processor MUST NOT escrever em `tCurvaMercd` nem em `tCurvaPrvdr`. Membro sem curva ligada é ignorado e aparece no log; uma carga sem curva mapeada responde 200 com `verticesPorCurva` vazio e não avisa o engine.
 
 #### Scenario: Ticker completo
 - **WHEN** o nó `S0490Z 15M BLC2 Curncy` é gravado
@@ -62,7 +62,7 @@ Para a carga, o processor SHALL buscar em `tCurvaPrvdr` as curvas de mercado com
 
 #### Scenario: SOFR sem curva ligada
 - **WHEN** não há curva ligada a `BLOOMBERG`/`BLC2`/`S0490Z` em `tCurvaPrvdr`
-- **THEN** a resposta é 200 com `verticesPorCodigo` vazio, nada é gravado, e o log cita o membro como ignorado
+- **THEN** a resposta é 200 com `verticesPorCurva` vazio, nada é gravado, e o log cita o membro como ignorado
 
 ### Requirement: Identidade e original da carga Bloomberg
 O `idCarga` SHALL ser `BLOOMBERG-BLC2-{AAAAMMDD}-{12 primeiros do SHA-256 dos bytes}` e o original SHALL ser arquivado em `bloomberg/{AAAAMMDD}/cargas/{idCarga}/{nome do arquivo de resposta}` (bytes recebidos), antes de interpretar o conteúdo, como na `processor-v0`. `{AAAAMMDD}` é a data-base do conteúdo. O reprocessamento SHALL reler o original mais recente, sem chamar o Data License.

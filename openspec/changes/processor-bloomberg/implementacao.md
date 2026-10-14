@@ -64,7 +64,7 @@ public List<NoSofr> ler(byte[] bytes, LocalDate dataBase, List<String> esperados
 ```
 
 - `dataBase(arquivo)`: a data lida da resposta (422 se ilegível).
-- `interpretar`: devolve `Map<String, List<CurvaPrimr>>` com a chave = membro (`S0490Z`) e os 20 `BbergCurvaPrimr(ticker, valor)`.
+- `interpretar`: devolve `Map<String, List<CurvaPrimr>>` agrupados pelo código da fonte (membro `S0490Z`, só para achar a curva `SOFR` em `tCurvaPrvdr`) com os 20 `BbergCurvaPrimr(ticker, valor)`.
 - Download: tickers = os do corpo, ou os da reserva (`TICKERS_RESERVA` no log). Upload: tickers = os do arquivo; a conferência dos 20 vale também aqui (422 citando os que faltam e os que sobram).
 - Faltou ticker no download = 503; no upload = 422 (a base comum já traduz pela origem).
 

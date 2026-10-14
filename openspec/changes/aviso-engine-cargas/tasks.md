@@ -3,7 +3,7 @@
 ## 1. Processor (base comum do aviso)
 
 - [ ] 1.1 [básico] (guia §1) Conferir o `AvisoEngineService`/`AvisoEngineAdapter` da `processor-v0` contra a spec: corpo, cabeçalho `X-Correlation-Id`, sem `Authorization`, repetição (erro de rede, 5xx e 409), `AVISO_ATRASADO`, `CARGA_FALHOU` e contador por fonte; manter, alterar ou criar. Pronto quando `mvn -q compile` passa.
-- [ ] 1.2 [básico] (guia §2) Conferir que cada provedor (B3, ANBIMA, Bloomberg) monta `verticesPorCodigo` com o que foi **gravado** (inclusive o que o modelo descarta), só para códigos com curva ligada; carga sem código gravado não avisa. Pronto quando `mvn -q compile` passa.
+- [ ] 1.2 [básico] (guia §2) Conferir que cada provedor (B3, ANBIMA, Bloomberg) monta `verticesPorCurva` com o que foi **gravado** (inclusive o que o modelo descarta), só para códigos com curva ligada; carga sem código gravado não avisa. Pronto quando `mvn -q compile` passa.
 - [ ] 1.3 [forte] (guia §3) `AvisoEngineServiceTest`: sucesso, 5xx até 2xx, 409 repetido, 400 sem repetir, janela esgotada (`CARGA_FALHOU` e contador), falha de uma fonte sem atrasar outra. Pronto quando passa.
 
 ## 2. Engine (conferência da quantidade)

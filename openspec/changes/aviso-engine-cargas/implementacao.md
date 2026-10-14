@@ -4,20 +4,22 @@
 
 ## 1. Aviso no processor
 
-Corpo (`POST {engine.base-url}/api/v1/cargas`): `{ "idCarga", "fonte", "produto", "dataBase", "verticesPorCodigo" }`; cabeçalho `X-Correlation-Id`; sem `Authorization`.
+Corpo (`POST {engine.base-url}/api/v1/cargas`): `{ "idCarga", "fonte", "produto", "dataBase", "verticesPorCurva" }`; cabeçalho `X-Correlation-Id`; sem `Authorization`.
 
 - `avisarEmSegundoPlano(...)`: chamado depois do commit, fora da transação, em virtual thread; retorna na hora.
 - Repetir em erro de rede, 5xx e 409: espera inicial 1 s dobrando até 60 s, variação de até 20%, janela de 10 min, tempo limite de 150 s por chamada.
 - Aos 2 min sem 2xx: log `AVISO_ATRASADO` (uma vez). No fim da janela, ou em 4xx diferente de 409: log de erro `CARGA_FALHOU` (idCarga, fonte, dataBase) e `counter("processor.carga.falhou", "fonte", fonte).increment()`.
 - 2xx: logar o corpo devolvido.
 
-## 2. `verticesPorCodigo` por fonte
+## 2. `verticesPorCurva` por fonte
 
-| Fonte | Código | Quantidade |
+| Fonte | Chave (nome da curva) | Quantidade |
 |---|---|---|
-| B3 (`TS`) | código da curva (`PRE`, `DCL`, `DPL`, `INP`, `PTX`) | vértices gravados |
-| ANBIMA (`MS`) | `Titulo` (`NTN-B`) | títulos gravados daquele `Titulo` |
-| Bloomberg (`BLC2`) | membro (`S0490Z`) | 20 nós |
+| B3 (`TS`) | `PRE`, `DCL`, `DPL`, `INP`, `PTX` | vértices gravados da curva |
+| ANBIMA (`MS`) | `NTN-B` | títulos gravados na curva |
+| Bloomberg (`BLC2`) | `SOFR` | 20 nós |
+
+O código da fonte só acha a curva em `tCurvaPrvdr`; no aviso vai o nome da curva.
 
 Contar o gravado, não o que sobra depois do modelo. Não avisar com mapa vazio.
 
@@ -31,7 +33,7 @@ No tratamento da carga (pela inspeção, `ProcessarCargaService`, onde `linhasAv
 
 ```java
 long lidas = leitura.contar(curva, dataBase);          // linhas da tabela bruta
-int avisadas = verticesPorCodigo.get(codigoNaFonte);
+int avisadas = verticesPorCurva.get(curva.codigo());   // codigo() = nome da curva
 if (lidas != avisadas) {
     throw new CurvaBusinessException(CurvaErrorCode.INSUMO_INVALIDO,
         "Quantidade de vértices diferente do aviso: avisadas " + avisadas + ", lidas " + lidas + ".");
