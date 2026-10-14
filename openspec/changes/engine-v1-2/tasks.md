@@ -12,7 +12,7 @@
 
 ## 2. SOFR: conjunto esperado de tenores
 
-- [ ] 2.1 [forte] **Antes de codar, confirmar a lista real de tenores** da SOFR (`S0490Z`): o processor tem 20 tickers na reserva e a spec do engine diz 21 (ver `design.md`, pergunta 1). Registrar a lista final no `design.md` e usar a mesma no processor, na spec `sofr-bloomberg-curve-model` e aqui. Sem essa confirmação, a 2.2 fica como `TODO(revisao)`.
+- [ ] 2.1 [básico] Conferir que a lista de 20 tenores do `design.md` (D6) bate com a que o processor pede (`TickersSofrReserva`) e com o fixture do teste da SOFR do engine (20 tenores mais o `1D` duplicado). Se o fixture tiver outro conjunto, registrar a diferença como `TODO(revisao)` e seguir com a lista do D6.
 - [ ] 2.2 [forte] (guia §2) `domain/construcao/SofrZeroBloomberg.java:48-107, 110-158, 160-173`: constante com o conjunto esperado; depois de descartar o duplicado idêntico, comparar com os tenores lidos e falhar com `INSUMO_INVALIDO` listando os que faltam e os que sobram. Pronto quando `mvn -q compile` passa e a regra aparece uma vez só.
 - [ ] 2.3 [forte] (guia §2.2) Teste do modelo (`SofrZeroBloombergTest`; se não existir, criar) com os quatro cenários da spec `sofr-tenores-esperados`: completo, tenor ausente, tenor a mais e duplicado idêntico. Pronto quando passam e o teste atual da SOFR continua passando.
 

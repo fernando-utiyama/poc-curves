@@ -63,14 +63,15 @@ Abra `application/service/ProcessarCargaService.java:93-105` e `domain/interpola
 
 **Onde:** `domain/construcao/SofrZeroBloomberg.java:48-107, 110-158, 160-173` (parse dos tenores, membro, datas e duplicatas já existem).
 
-### 2.1 Antes: a lista real
-A spec do engine fala em 21 tenores e a reserva do processor tem 20 (`TickersSofrReserva`). **Confirme a lista com quem conhece o membro `S0490Z`** e use a mesma nos dois lados. Sem isso, não escreva a constante.
+### 2.1 A lista
+Os 20 tenores do processor: `1D`, `1M`, `3M`, `6M`, `9M`, `1Y`, `15M`, `2Y`, `3Y`, `4Y`, `5Y`, `7Y`, `10Y`, `12Y`, `15Y`, `20Y`, `25Y`, `30Y`, `40Y` e `50Y`. A spec do v1 diz "21": são 21 linhas do fixture (20 tenores mais o `1D` duplicado). Use a lista de 20 na constante; confira com o fixture do teste da SOFR.
 
 ### 2.2 O que fazer
 
 ```java
-// no modelo: o conjunto esperado, em ordem de tenor (a lista final vem da 2.1)
-private static final Set<String> TENORES_ESPERADOS = Set.of(/* "1D", "1M", "3M", ... */);
+// no modelo: o conjunto esperado (os 20 tenores da 2.1)
+private static final Set<String> TENORES_ESPERADOS = Set.of("1D", "1M", "3M", "6M", "9M", "1Y", "15M", "2Y", "3Y", "4Y", "5Y",
+        "7Y", "10Y", "12Y", "15Y", "20Y", "25Y", "30Y", "40Y", "50Y");
 
 // depois de descartar o duplicado idêntico e antes de montar os pontos:
 Set<String> lidos = nosPorTenor.keySet();

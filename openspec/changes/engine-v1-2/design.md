@@ -33,7 +33,9 @@ O modelo compara os tenores lidos (após descartar o duplicado idêntico) com o 
 - [Conferência por leitura pode deixar passar algo que só aparece rodando] → aceitável: cada correção é pequena e compilada; vetores reais ficam para a v2.
 - [A lista esperada fica fixa no código] → se a Bloomberg mudar o conjunto de tenores, a SOFR deixa de construir até alguém atualizar a constante; é o efeito desejado (falha visível, não curva truncada).
 
+### D6. A lista são os 20 tenores do processor
+O conjunto esperado é o que o processor pede à Bloomberg (`S0490Z <tenor> BLC2 Curncy`): `1D`, `1M`, `3M`, `6M`, `9M`, `1Y`, `15M`, `2Y`, `3Y`, `4Y`, `5Y`, `7Y`, `10Y`, `12Y`, `15Y`, `20Y`, `25Y`, `30Y`, `40Y` e `50Y`. A spec e as tarefas do v1 (`engine-construcao-curvas`) citam "21 tenores mais um `1D` duplicado"; isso é lido como 21 **linhas** (20 tenores mais o `1D` repetido do fixture), não 21 tenores distintos. A spec do v1 já está aplicada e não é alterada: vale a lista desta change.
+
 ## Open Questions
 
-1. **Qual é a lista real de tenores?** O processor tem 20 tickers na reserva (`TickersSofrReserva`: 1D, 1M, 3M, 6M, 9M, 1Y, 15M, 2Y, 3Y, 4Y, 5Y, 7Y, 10Y, 12Y, 15Y, 20Y, 25Y, 30Y, 40Y, 50Y), e a spec e as tarefas do engine falam em **21** tenores. Um dos dois está errado; a validação só pode ser escrita depois de confirmar o conjunto da Bloomberg (`S0490Z`).
-2. A lista fica só no engine ou também vem do orquestrador (tickers por tarefa)? Hoje ela está em dois lugares (reserva do processor e spec do engine).
+1. A lista fica só no engine ou também vem do orquestrador (tickers por tarefa)? Hoje ela está em dois lugares (reserva do processor e esta constante); decisão adiada para a v2.
