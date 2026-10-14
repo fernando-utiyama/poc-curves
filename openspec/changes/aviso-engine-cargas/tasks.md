@@ -1,8 +1,8 @@
 > **Como executar com `/opsx-apply`** (o apply já leu `proposal.md`, `design.md` e a spec; não releia): leia só a seção do guia ([`implementacao.md`](implementacao.md)) citada na tarefa; abra só os arquivos que ela manda alterar; não pare para perguntar (deixe `// TODO(revisao): <dúvida>`); termine cada tarefa no "Pronto quando".
 
-## 1. Processor (base comum do aviso)
+## 1. Disparo no fim de cada endpoint (B3, ANBIMA, Bloomberg)
 
-- [ ] 1.1 [básico] (guia §1) Conferir o `AvisoEngineService`/`AvisoEngineAdapter` da `processor-v0` contra a spec: corpo, cabeçalho `X-Correlation-Id`, sem `Authorization`, repetição (erro de rede, 5xx e 409), `AVISO_ATRASADO`, `CARGA_FALHOU` e contador por fonte; manter, alterar ou criar. Pronto quando `mvn -q compile` passa.
+- [ ] 1.1 [básico] (guia §1) Conferir, no endpoint existente de cada fonte, o disparo do engine (ou criar, se não houver) contra a spec: corpo, cabeçalho `X-Correlation-Id`, sem `Authorization`, repetição (erro de rede, 5xx e 409), `AVISO_ATRASADO`, `CARGA_FALHOU` e contador por fonte; manter, alterar ou criar. Pronto quando `mvn -q compile` passa.
 - [ ] 1.2 [básico] (guia §2) Conferir que cada provedor (B3, ANBIMA, Bloomberg) monta `verticesPorCurva` com o que foi **gravado** (inclusive o que o modelo descarta), só para códigos com curva ligada; carga sem código gravado não avisa. Pronto quando `mvn -q compile` passa.
 - [ ] 1.3 [forte] (guia §3) `AvisoEngineServiceTest`: sucesso, 5xx até 2xx, 409 repetido, 400 sem repetir, janela esgotada (`CARGA_FALHOU` e contador), falha de uma fonte sem atrasar outra. Pronto quando passa.
 

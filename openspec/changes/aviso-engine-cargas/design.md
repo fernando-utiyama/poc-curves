@@ -1,8 +1,8 @@
 ## Context
 
-O processor grava cada carga numa única transação e, depois do commit, chama `POST /api/v1/cargas` do engine (spec `curve-load-trigger`). O engine constrói na hora as curvas cuja origem principal tem a fonte e o produto da carga e um código presente em `verticesPorCurva`, cada curva na sua transação, e devolve o resultado por curva. A recuperação de uma falha do aviso é o reprocessamento da data (relê o original do Blob e avisa de novo). O orquestrador só espera o 200 do download, e **não** espera o aviso.
+Cada fonte tem **um endpoint só**, chamado pelo orquestrador, que baixa do site, grava o original no Blob e grava o dado no banco. Esta change acrescenta, no fim de cada um, a chamada `POST /api/v1/cargas` do engine (spec `curve-load-trigger`). O engine constrói na hora as curvas da carga, cada uma na sua transação, e devolve o resultado por curva. Se o disparo falha, a recuperação é executar o endpoint de novo para a data (reprocessamento). O orquestrador só espera o 200 do endpoint e **não** espera o engine.
 
-Três fontes, três donos: B3 e ANBIMA (outros desenvolvedores) e Bloomberg (`processor-bloomberg`). A base comum do aviso é da `processor-v0` (tarefa 1.7).
+Três fontes, três donos: B3 e ANBIMA (outros desenvolvedores) e Bloomberg (`processor-bloomberg`). Cada dono acrescenta o disparo no seu endpoint, com o mesmo corpo e as mesmas regras.
 
 ## Goals / Non-Goals
 

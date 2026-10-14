@@ -1,10 +1,8 @@
 ## Why
 
-Depois que um alimentador (B3, ANBIMA ou Bloomberg) grava o dado bruto, o engine precisa saber, para construir as curvas daquela carga. Hoje isso está espalhado: o aviso do processor está na base comum da `processor-v0` (seção 8), o webhook do engine está na spec `curve-load-trigger` (`engine-construcao-curvas`), e cada fonte está com uma pessoa (B3 e ANBIMA com outros desenvolvedores, a Bloomberg na `processor-bloomberg`). Sem um contrato único dos três alimentadores, cada um pode contar os vértices de um jeito, repetir de outro e logar de outro.
+Os endpoints de B3 e ANBIMA já existem (feitos por outros desenvolvedores): o orquestrador chama **um endpoint por fonte**, e ele baixa do site, grava o original no Blob e grava o dado no banco. A Bloomberg (`processor-bloomberg`) segue o mesmo molde. Falta o último passo, igual nas três: **disparar o engine** para construir as curvas daquela carga. Sem um contrato único, cada endpoint pode disparar de um jeito, ou nem disparar.
 
-A inspeção do engine também mostrou que o webhook recebe `verticesPorCurva` mas **não compara** a quantidade lida com a avisada (`linhasAvisadas` só é repassada), embora a spec do webhook diga que compara.
-
-Esta change define **um contrato só, dos três alimentadores para o engine**, e fecha a conferência da quantidade no engine.
+Esta change define só esse último passo: o que cada endpoint manda ao engine depois de gravar, e o que o engine faz com isso.
 
 ## What Changes
 
