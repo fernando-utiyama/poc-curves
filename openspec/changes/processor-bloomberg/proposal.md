@@ -2,7 +2,7 @@
 
 A SOFR (a sétima das 7 curvas) é a única que depende da Bloomberg, e o `services/processor` vai acessá-la **direto**, pela API do Data License, sem function intermediária. A `processor-v0` cobre as três fontes numa change só; B3 e ANBIMA ficaram com outros desenvolvedores, e esta change separa **só a Bloomberg**, para uma pessoa levar de ponta a ponta: o pedido ao Data License, a lista dos 20 tickers, o campo do valor, o upload do arquivo de resposta, a gravação em `tBbergCurvaPrimr` e as credenciais.
 
-O contrato comum do processor (rotas `/api/v1/cargas/{fonte}/...`, respostas, erros, identidade da carga, original no Blob, reprocessamento e log) continua na `processor-v0` e **não** é repetido aqui; esta change só acrescenta o que é da Bloomberg e substitui as partes da Bloomberg dessa change.
+O contrato comum do processor (o endpoint único de carga com o provedor no corpo, respostas, erros, identidade da carga, original no Blob, reprocessamento e log) continua na `processor-v0` e **não** é repetido aqui; esta change só acrescenta o que é da Bloomberg e substitui as partes da Bloomberg dessa change.
 
 ## What Changes
 

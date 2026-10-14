@@ -1,11 +1,11 @@
 ## ADDED Requirements
 
-### Requirement: Rotas da Bloomberg
-As rotas `POST /api/v1/cargas/bloomberg/download`, `.../reprocessamento` e `.../upload` SHALL seguir o contrato comum da `processor-v0` (corpo, respostas, erros, `X-Correlation-Id`). No download, o corpo SHALL aceitar `tickers` (lista JSON de textos, opcional); no reprocessamento, `tickers` SHALL ser aceito e ignorado (valem os tickers do original arquivado). A fonte `bloomberg` MUST NOT usar calendário nem converter o valor.
+### Requirement: Bloomberg como provedor do endpoint único
+A Bloomberg SHALL ser mais um provedor do **endpoint de carga existente**, que recebe o provedor no corpo e o entrega ao caso de uso e ao serviço da fonte. O endpoint MUST NOT ganhar rota nova por fonte: o corpo, as respostas, os erros e o `X-Correlation-Id` são os que o endpoint já tem. A Bloomberg SHALL ter o seu caso de uso e o seu serviço, no molde dos de B3 e ANBIMA. Para a Bloomberg, o corpo SHALL aceitar `tickers` (lista JSON de textos, opcional); ele MUST NOT usar calendário nem converter o valor. O upload do arquivo de resposta SHALL seguir o caminho que o projeto já usa para os uploads das outras fontes.
 
 #### Scenario: Download com tickers
-- **WHEN** o orquestrador chama `POST /api/v1/cargas/bloomberg/download` com `dataBase` = `2026-09-14` e os 20 tickers
-- **THEN** o processor faz o pedido ao Data License e, com os 20 valores, grava e responde 200 com `verticesPorCurva` = `{ "SOFR": 20 }`
+- **WHEN** o orquestrador chama o endpoint de carga com o provedor Bloomberg, `dataBase` = `2026-09-14` e os 20 tickers
+- **THEN** o serviço da Bloomberg faz o pedido ao Data License e, com os 20 valores, grava e responde 200 com `verticesPorCurva` = `{ "SOFR": 20 }`
 
 ### Requirement: Pedido de histórico ao Data License
 O processor SHALL obter os nós da SOFR por um pedido de histórico (`HistoryRequest`) do Bloomberg Data License, com o universo = tickers, o campo do valor configurado (padrão `PX_MID`) e as datas inicial e final iguais à data-base. O pedido SHALL ter um identificador determinístico, formado pela data-base, pelos 8 primeiros caracteres do SHA-256 da lista ordenada de tickers e pela faixa de horário de Brasília (`processor.bloomberg.faixa-pedido`, padrão 30 minutos). Na mesma faixa, uma nova chamada SHALL reaproveitar o pedido já feito, em qualquer instância, sem pagar outro. O processor SHALL esperar a resposta por até `processor.bloomberg.espera` (padrão 90 segundos). Sem resposta pronta, a resposta SHALL ser 503 `ARQUIVO_INDISPONIVEL`, citando o identificador do pedido.
@@ -43,7 +43,7 @@ A carga SHALL ser **completa ou nenhuma**: com algum ticker pedido sem valor na 
 - **THEN** a resposta é 400 `PARAMETRO_INVALIDO`, sem nenhuma chamada ao Data License
 
 ### Requirement: Upload do arquivo de resposta
-O processor SHALL aceitar em `POST /api/v1/cargas/bloomberg/upload` (`multipart/form-data`, parte `arquivo`, até 10 MB, `X-Usuario` opcional) o arquivo de resposta do pedido de histórico do Data License. Os tickers SHALL ser os do arquivo. O envio SHALL seguir o mesmo caminho do download (identidade da carga, original no Blob, parse, validação, gravação e aviso ao engine), com `origem` = `UPLOAD` e o usuário no log. Um ticker sem valor, ou um conjunto de tickers diferente dos 20 esperados, MUST rejeitar o envio com 422 `ARQUIVO_INVALIDO`, citando os tickers que faltam e os que sobram. Arquivo vazio, maior que 10 MB ou de formato diferente MUST resultar em 422 `ARQUIVO_INVALIDO`. A data-base SHALL ser a do conteúdo; sem data legível, o original não é arquivado.
+O processor SHALL aceitar, no caminho de upload do projeto, (`multipart/form-data`, parte `arquivo`, até 10 MB, `X-Usuario` opcional) o arquivo de resposta do pedido de histórico do Data License. Os tickers SHALL ser os do arquivo. O envio SHALL seguir o mesmo caminho do download (identidade da carga, original no Blob, parse, validação, gravação e aviso ao engine), com `origem` = `UPLOAD` e o usuário no log. Um ticker sem valor, ou um conjunto de tickers diferente dos 20 esperados, MUST rejeitar o envio com 422 `ARQUIVO_INVALIDO`, citando os tickers que faltam e os que sobram. Arquivo vazio, maior que 10 MB ou de formato diferente MUST resultar em 422 `ARQUIVO_INVALIDO`. A data-base SHALL ser a do conteúdo; sem data legível, o original não é arquivado.
 
 #### Scenario: Upload completo
 - **WHEN** o operador envia o arquivo de resposta com os 20 tickers de `2026-09-14`

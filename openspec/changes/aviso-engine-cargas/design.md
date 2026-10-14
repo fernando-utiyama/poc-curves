@@ -1,8 +1,8 @@
 ## Context
 
-Cada fonte tem **um endpoint só**, chamado pelo orquestrador, que baixa do site, grava o original no Blob e grava o dado no banco. Esta change acrescenta, no fim de cada um, a chamada `POST /api/v1/cargas` do engine (spec `curve-load-trigger`). O engine constrói na hora as curvas da carga, cada uma na sua transação, e devolve o resultado por curva. Se o disparo falha, a recuperação é executar o endpoint de novo para a data (reprocessamento). O orquestrador só espera o 200 do endpoint e **não** espera o engine.
+Existe **um endpoint só**, chamado pelo orquestrador, que recebe o provedor (B3, ANBIMA, Bloomberg) no corpo e o entrega ao caso de uso e ao serviço daquela fonte. O serviço baixa do site, grava o original no Blob e grava o dado no banco. Esta change acrescenta, no fim do serviço de cada fonte, o disparo do engine pela mesma porta de saída (`POST /api/v1/cargas` do engine, spec `curve-load-trigger`), com uma implementação só. O engine constrói na hora as curvas da carga, cada uma na sua transação, e devolve o resultado por curva. Se o disparo falha, a recuperação é chamar o endpoint de novo para a data (reprocessamento). O orquestrador só espera o 200 do endpoint e **não** espera o engine.
 
-Três fontes, três donos: B3 e ANBIMA (outros desenvolvedores) e Bloomberg (`processor-bloomberg`). Cada dono acrescenta o disparo no seu endpoint, com o mesmo corpo e as mesmas regras.
+Três fontes, três donos: B3 e ANBIMA (outros desenvolvedores) e Bloomberg (`processor-bloomberg`). Cada dono acrescenta o disparo no serviço da sua fonte, com o mesmo corpo e as mesmas regras.
 
 ## Goals / Non-Goals
 

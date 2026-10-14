@@ -1,8 +1,8 @@
 ## Why
 
-Os endpoints de B3 e ANBIMA já existem (feitos por outros desenvolvedores): o orquestrador chama **um endpoint por fonte**, e ele baixa do site, grava o original no Blob e grava o dado no banco. A Bloomberg (`processor-bloomberg`) segue o mesmo molde. Falta o último passo, igual nas três: **disparar o engine** para construir as curvas daquela carga. Sem um contrato único, cada endpoint pode disparar de um jeito, ou nem disparar.
+O endpoint de carga já existe (feito por outros desenvolvedores para B3 e ANBIMA): o orquestrador chama **um endpoint só**, com o provedor no corpo, e ele entrega ao caso de uso e ao serviço da fonte, que baixa do site, grava o original no Blob e grava o dado no banco. A Bloomberg (`processor-bloomberg`) entra como mais um provedor desse mesmo endpoint. Falta o último passo, igual nas três: **disparar o engine** para construir as curvas daquela carga. Sem um contrato único, cada serviço pode disparar de um jeito, ou nem disparar.
 
-Esta change define só esse último passo: o que cada endpoint manda ao engine depois de gravar, e o que o engine faz com isso.
+Esta change define só esse último passo: o que o serviço de cada fonte manda ao engine depois de gravar, e o que o engine faz com isso.
 
 ## What Changes
 
