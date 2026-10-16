@@ -1,0 +1,108 @@
+=== 01-PRE.json ===
+{
+  "codigo": "PRE",
+  "nome": "DIxPRE",
+  "unidade": "TAXA",
+  "dayCounterCotacao": "Business252",
+  "compounding": "Compounded",
+  "moeda": "BRL",
+  "pais": "BR",
+  "classificacao": "Juros",
+  "classeAtivo": "Swap DI x Pré",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}
+
+
+=== 02-DCL.json ===
+{
+  "codigo": "DCL",
+  "nome": "Cupom limpo de dólar",
+  "unidade": "TAXA",
+  "dayCounterCotacao": "Actual360",
+  "compounding": "Simple",
+  "moeda": "USD",
+  "pais": "BR",
+  "classificacao": "Juros",
+  "classeAtivo": "Cupom cambial",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}
+
+
+=== 03-DPL.json ===
+{
+  "codigo": "DPL",
+  "nome": "Cupom Limpo DI X IPCA",
+  "unidade": "TAXA",
+  "dayCounterCotacao": "Business252",
+  "compounding": "Compounded",
+  "moeda": "BRL",
+  "pais": "BR",
+  "classificacao": "Juros",
+  "classeAtivo": "Swap DI x IPCA",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}
+
+
+=== 04-INP.json ===
+{
+  "codigo": "INP",
+  "nome": "IBOVESPA",
+  "unidade": "PONTOS",
+  "moeda": "BRL",
+  "pais": "BR",
+  "classificacao": "Índice",
+  "classeAtivo": "Índice de ações",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}
+
+
+=== 05-PTX.json ===
+{
+  "codigo": "PTX",
+  "nome": "PTAX - USD",
+  "unidade": "PRECO",
+  "moeda": "BRL",
+  "pais": "BR",
+  "classificacao": "Câmbio",
+  "classeAtivo": "Taxa de câmbio",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}
+
+
+=== 06-NTNB.json ===
+{
+  "codigo": "NTNB",
+  "nome": "NTN-B",
+  "unidade": "TAXA",
+  "dayCounterCotacao": "Business252",
+  "compounding": "Compounded",
+  "moeda": "BRL",
+  "pais": "BR",
+  "classificacao": "Juros reais",
+  "classeAtivo": "Título público",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}
+
+
+=== 07-SOFR.json ===
+{
+  "codigo": "SOFR",
+  "nome": "SOFR",
+  "unidade": "TAXA",
+  "dayCounterCotacao": "Actual360",
+  "compounding": "Simple",
+  "moeda": "USD",
+  "pais": "US",
+  "classificacao": "Juros",
+  "classeAtivo": "Taxa de referência",
+  "dono": "Mesa de Mercado",
+  "inicioVigencia": "2026-01-01"
+}
+
+
