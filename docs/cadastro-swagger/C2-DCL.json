@@ -1,0 +1,17 @@
+{
+  "modeloConstrucao": "PRONTA_TS_B3",
+  "interpolador": "FlatForward",
+  "inicioVigencia": "2026-01-01",
+  "parametros": {
+    "BASE_INTERPOLACAO": "Discount",
+    "DAY_COUNTER_TEMPO": "Business252",
+    "CALENDARIO": "Brazil",
+    "MERCADO_CALENDARIO": "Settlement",
+    "BUSINESS_DAY_CONVENTION": "Following",
+    "EXTRAPOLACAO_INICIO": "Disabled",
+    "EXTRAPOLACAO_FIM": "FlatForward",
+    "HORIZONTE": "10Y",
+    "CASAS_DECIMAIS": 7,
+    "MODO_ARREDONDAMENTO": "HALF_UP"
+  }
+}

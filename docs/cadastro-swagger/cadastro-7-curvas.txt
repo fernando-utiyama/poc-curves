@@ -1,4 +1,40 @@
-=== 01-PRE.json ===
+CADASTRO PELO SWAGGER - 3 provedores e 7 curvas (provedor, curva, ligacao e configuracao de calculo)
+Ordem: 1) POST /api/v1/provedores  2) POST /api/v1/curvas-mercado  3) POST /api/v1/curvas-mercado/{nome}/provedores  4) POST /api/v1/curvas-mercado/{nome}/configuracoes
+
+##### 1) PROVEDORES - POST /api/v1/provedores #####
+
+=== P1-B3 ===
+{
+  "nomeProvedor": "B3",
+  "descricao": "B3 - Taxas de mercado para swaps (TaxaSwap)",
+  "produto": "TS",
+  "nomeCompletoAtivoOuInstrumento": "Taxas de Mercado para Swaps"
+}
+
+
+=== P2-ANBIMA ===
+{
+  "nomeProvedor": "ANBIMA",
+  "descricao": "ANBIMA - Mercado secundário de títulos públicos",
+  "produto": "MS",
+  "nomeCompletoAtivoOuInstrumento": "Mercado Secundário de Títulos Públicos"
+}
+
+
+=== P3-BLOOMBERG ===
+{
+  "nomeProvedor": "BLOOMBERG",
+  "descricao": "Bloomberg - Data License (zero rates SOFR)",
+  "produto": "BLC2",
+  "nomeCompletoAtivoOuInstrumento": "Bloomberg Curncy Zero Rates"
+}
+
+
+##################################################
+##### CURVA PRE - DIxPRE #####
+##################################################
+
+=== 01-PRE - POST /api/v1/curvas-mercado ===
 {
   "codigo": "PRE",
   "nome": "DIxPRE",
@@ -14,7 +50,40 @@
 }
 
 
-=== 02-DCL.json ===
+=== V1-PRE - POST /api/v1/curvas-mercado/DIxPRE/provedores ===
+{
+  "provedor": "B3",
+  "produto": "TS",
+  "tickerProvedor": "PRE",
+  "prioridade": 1
+}
+
+
+=== CONFIG PRE - POST /api/v1/curvas-mercado/DIxPRE/configuracoes ===
+{
+  "modeloConstrucao": "PRONTA_TS_B3",
+  "interpolador": "FlatForward",
+  "inicioVigencia": "2026-01-01",
+  "parametros": {
+    "BASE_INTERPOLACAO": "Discount",
+    "DAY_COUNTER_TEMPO": "Business252",
+    "FREQUENCY": "Annual",
+    "CALENDARIO": "Brazil",
+    "MERCADO_CALENDARIO": "Settlement",
+    "BUSINESS_DAY_CONVENTION": "Following",
+    "EXTRAPOLACAO_INICIO": "Disabled",
+    "EXTRAPOLACAO_FIM": "FlatForward",
+    "HORIZONTE": "10Y",
+    "CASAS_DECIMAIS": 7,
+    "MODO_ARREDONDAMENTO": "HALF_UP"
+  }
+}
+
+##################################################
+##### CURVA DCL - Cupom limpo de dólar #####
+##################################################
+
+=== 02-DCL - POST /api/v1/curvas-mercado ===
 {
   "codigo": "DCL",
   "nome": "Cupom limpo de dólar",
@@ -30,7 +99,39 @@
 }
 
 
-=== 03-DPL.json ===
+=== V2-DCL - POST /api/v1/curvas-mercado/Cupom limpo de dólar/provedores ===
+{
+  "provedor": "B3",
+  "produto": "TS",
+  "tickerProvedor": "DCL",
+  "prioridade": 1
+}
+
+
+=== CONFIG DCL - POST /api/v1/curvas-mercado/Cupom limpo de dólar/configuracoes ===
+{
+  "modeloConstrucao": "PRONTA_TS_B3",
+  "interpolador": "FlatForward",
+  "inicioVigencia": "2026-01-01",
+  "parametros": {
+    "BASE_INTERPOLACAO": "Discount",
+    "DAY_COUNTER_TEMPO": "Business252",
+    "CALENDARIO": "Brazil",
+    "MERCADO_CALENDARIO": "Settlement",
+    "BUSINESS_DAY_CONVENTION": "Following",
+    "EXTRAPOLACAO_INICIO": "Disabled",
+    "EXTRAPOLACAO_FIM": "FlatForward",
+    "HORIZONTE": "10Y",
+    "CASAS_DECIMAIS": 7,
+    "MODO_ARREDONDAMENTO": "HALF_UP"
+  }
+}
+
+##################################################
+##### CURVA DPL - Cupom Limpo DI X IPCA #####
+##################################################
+
+=== 03-DPL - POST /api/v1/curvas-mercado ===
 {
   "codigo": "DPL",
   "nome": "Cupom Limpo DI X IPCA",
@@ -46,7 +147,40 @@
 }
 
 
-=== 04-INP.json ===
+=== V3-DPL - POST /api/v1/curvas-mercado/Cupom Limpo DI X IPCA/provedores ===
+{
+  "provedor": "B3",
+  "produto": "TS",
+  "tickerProvedor": "DPL",
+  "prioridade": 1
+}
+
+
+=== CONFIG DPL - POST /api/v1/curvas-mercado/Cupom Limpo DI X IPCA/configuracoes ===
+{
+  "modeloConstrucao": "PRONTA_TS_B3",
+  "interpolador": "FlatForward",
+  "inicioVigencia": "2026-01-01",
+  "parametros": {
+    "BASE_INTERPOLACAO": "Discount",
+    "DAY_COUNTER_TEMPO": "Business252",
+    "FREQUENCY": "Annual",
+    "CALENDARIO": "Brazil",
+    "MERCADO_CALENDARIO": "Settlement",
+    "BUSINESS_DAY_CONVENTION": "Following",
+    "EXTRAPOLACAO_INICIO": "Disabled",
+    "EXTRAPOLACAO_FIM": "FlatForward",
+    "HORIZONTE": "10Y",
+    "CASAS_DECIMAIS": 7,
+    "MODO_ARREDONDAMENTO": "HALF_UP"
+  }
+}
+
+##################################################
+##### CURVA INP - IBOVESPA #####
+##################################################
+
+=== 04-INP - POST /api/v1/curvas-mercado ===
 {
   "codigo": "INP",
   "nome": "IBOVESPA",
@@ -60,7 +194,39 @@
 }
 
 
-=== 05-PTX.json ===
+=== V4-INP - POST /api/v1/curvas-mercado/IBOVESPA/provedores ===
+{
+  "provedor": "B3",
+  "produto": "TS",
+  "tickerProvedor": "INP",
+  "prioridade": 1
+}
+
+
+=== CONFIG INP - POST /api/v1/curvas-mercado/IBOVESPA/configuracoes ===
+{
+  "modeloConstrucao": "PRONTA_TS_B3",
+  "interpolador": "FlatForward",
+  "inicioVigencia": "2026-01-01",
+  "parametros": {
+    "BASE_INTERPOLACAO": "Price",
+    "DAY_COUNTER_TEMPO": "Business252",
+    "CALENDARIO": "Brazil",
+    "MERCADO_CALENDARIO": "Settlement",
+    "BUSINESS_DAY_CONVENTION": "Following",
+    "EXTRAPOLACAO_INICIO": "Disabled",
+    "EXTRAPOLACAO_FIM": "FlatValue",
+    "HORIZONTE": "10Y",
+    "CASAS_DECIMAIS": 7,
+    "MODO_ARREDONDAMENTO": "HALF_UP"
+  }
+}
+
+##################################################
+##### CURVA PTX - PTAX - USD #####
+##################################################
+
+=== 05-PTX - POST /api/v1/curvas-mercado ===
 {
   "codigo": "PTX",
   "nome": "PTAX - USD",
@@ -74,7 +240,39 @@
 }
 
 
-=== 06-NTNB.json ===
+=== V5-PTX - POST /api/v1/curvas-mercado/PTAX - USD/provedores ===
+{
+  "provedor": "B3",
+  "produto": "TS",
+  "tickerProvedor": "PTX",
+  "prioridade": 1
+}
+
+
+=== CONFIG PTX - POST /api/v1/curvas-mercado/PTAX - USD/configuracoes ===
+{
+  "modeloConstrucao": "PRONTA_TS_B3",
+  "interpolador": "FlatForward",
+  "inicioVigencia": "2026-01-01",
+  "parametros": {
+    "BASE_INTERPOLACAO": "Price",
+    "DAY_COUNTER_TEMPO": "Business252",
+    "CALENDARIO": "Brazil",
+    "MERCADO_CALENDARIO": "Settlement",
+    "BUSINESS_DAY_CONVENTION": "Following",
+    "EXTRAPOLACAO_INICIO": "Disabled",
+    "EXTRAPOLACAO_FIM": "Disabled",
+    "HORIZONTE": "10Y",
+    "CASAS_DECIMAIS": 7,
+    "MODO_ARREDONDAMENTO": "DOWN"
+  }
+}
+
+##################################################
+##### CURVA NTNB - NTN-B #####
+##################################################
+
+=== 06-NTNB - POST /api/v1/curvas-mercado ===
 {
   "codigo": "NTNB",
   "nome": "NTN-B",
@@ -90,7 +288,40 @@
 }
 
 
-=== 07-SOFR.json ===
+=== V6-NTNB - POST /api/v1/curvas-mercado/NTN-B/provedores ===
+{
+  "provedor": "ANBIMA",
+  "produto": "MS",
+  "tickerProvedor": "NTN-B",
+  "prioridade": 1
+}
+
+
+=== CONFIG NTNB - POST /api/v1/curvas-mercado/NTN-B/configuracoes ===
+{
+  "modeloConstrucao": "NTNB_BOOTSTRAP_ANBIMA",
+  "interpolador": "FlatForward",
+  "inicioVigencia": "2026-01-01",
+  "parametros": {
+    "BASE_INTERPOLACAO": "Discount",
+    "DAY_COUNTER_TEMPO": "Business252",
+    "FREQUENCY": "Annual",
+    "CALENDARIO": "Brazil",
+    "MERCADO_CALENDARIO": "Settlement",
+    "BUSINESS_DAY_CONVENTION": "Following",
+    "EXTRAPOLACAO_INICIO": "FlatValue",
+    "EXTRAPOLACAO_FIM": "FlatForward",
+    "HORIZONTE": "10Y",
+    "CASAS_DECIMAIS": 8,
+    "MODO_ARREDONDAMENTO": "HALF_UP"
+  }
+}
+
+##################################################
+##### CURVA SOFR - SOFR #####
+##################################################
+
+=== 07-SOFR - POST /api/v1/curvas-mercado ===
 {
   "codigo": "SOFR",
   "nome": "SOFR",
@@ -106,3 +337,30 @@
 }
 
 
+=== V7-SOFR - POST /api/v1/curvas-mercado/SOFR/provedores ===
+{
+  "provedor": "BLOOMBERG",
+  "produto": "BLC2",
+  "tickerProvedor": "S0490Z",
+  "prioridade": 1
+}
+
+
+=== CONFIG SOFR - POST /api/v1/curvas-mercado/SOFR/configuracoes ===
+{
+  "modeloConstrucao": "SOFR_ZERO_BLOOMBERG",
+  "interpolador": "Linear",
+  "inicioVigencia": "2026-01-01",
+  "parametros": {
+    "BASE_INTERPOLACAO": "CompoundFactor",
+    "DAY_COUNTER_TEMPO": "Actual360",
+    "CALENDARIO": "UnitedStates",
+    "MERCADO_CALENDARIO": "FederalReserve",
+    "BUSINESS_DAY_CONVENTION": "ModifiedFollowing",
+    "EXTRAPOLACAO_INICIO": "Disabled",
+    "EXTRAPOLACAO_FIM": "FlatValue",
+    "HORIZONTE": "10Y",
+    "CASAS_DECIMAIS": 7,
+    "MODO_ARREDONDAMENTO": "HALF_UP"
+  }
+}

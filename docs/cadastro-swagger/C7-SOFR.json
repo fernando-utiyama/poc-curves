@@ -1,0 +1,17 @@
+{
+  "modeloConstrucao": "SOFR_ZERO_BLOOMBERG",
+  "interpolador": "Linear",
+  "inicioVigencia": "2026-01-01",
+  "parametros": {
+    "BASE_INTERPOLACAO": "CompoundFactor",
+    "DAY_COUNTER_TEMPO": "Actual360",
+    "CALENDARIO": "UnitedStates",
+    "MERCADO_CALENDARIO": "FederalReserve",
+    "BUSINESS_DAY_CONVENTION": "ModifiedFollowing",
+    "EXTRAPOLACAO_INICIO": "Disabled",
+    "EXTRAPOLACAO_FIM": "FlatValue",
+    "HORIZONTE": "10Y",
+    "CASAS_DECIMAIS": 7,
+    "MODO_ARREDONDAMENTO": "HALF_UP"
+  }
+}

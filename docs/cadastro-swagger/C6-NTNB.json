@@ -1,0 +1,18 @@
+{
+  "modeloConstrucao": "NTNB_BOOTSTRAP_ANBIMA",
+  "interpolador": "FlatForward",
+  "inicioVigencia": "2026-01-01",
+  "parametros": {
+    "BASE_INTERPOLACAO": "Discount",
+    "DAY_COUNTER_TEMPO": "Business252",
+    "FREQUENCY": "Annual",
+    "CALENDARIO": "Brazil",
+    "MERCADO_CALENDARIO": "Settlement",
+    "BUSINESS_DAY_CONVENTION": "Following",
+    "EXTRAPOLACAO_INICIO": "FlatValue",
+    "EXTRAPOLACAO_FIM": "FlatForward",
+    "HORIZONTE": "10Y",
+    "CASAS_DECIMAIS": 8,
+    "MODO_ARREDONDAMENTO": "HALF_UP"
+  }
+}

@@ -38,4 +38,18 @@ Sem isso a carga não grava nada. Corpo: `provedor`, `produto`, `tickerProvedor`
 
 O `provedor` tem que existir nos 3 provedores cadastrados antes (`P1`, `P2`, `P3`); senão, 404. `NTN-B` e `SOFR` não repetem prioridade com outra ligação da mesma curva. O `tickerProvedor` da ANBIMA é o `Titulo` do arquivo (`NTN-B`); da Bloomberg, o membro do ticker (`S0490Z`).
 
+## Por fim: a configuração de cálculo (os 7 `C*.json`)
+
+`POST /api/v1/curvas-mercado/{nome}/configuracoes`, um arquivo por curva, com `modeloConstrucao`, `interpolador`, `inicioVigencia` e o mapa `parametros`. O `{nome}` da URL é o mesmo da tabela das ligações.
+
+| Arquivo | Curva (`{nome}` na URL) | Modelo | Interpolador |
+|---|---|---|---|
+| `C1-PRE.json` | `DIxPRE` | PRONTA_TS_B3 | FlatForward |
+| `C2-DCL.json` | `Cupom limpo de dólar` | PRONTA_TS_B3 | FlatForward |
+| `C3-DPL.json` | `Cupom Limpo DI X IPCA` | PRONTA_TS_B3 | FlatForward |
+| `C4-INP.json` | `IBOVESPA` | PRONTA_TS_B3 | FlatForward |
+| `C5-PTX.json` | `PTAX - USD` | PRONTA_TS_B3 | FlatForward |
+| `C6-NTNB.json` | `NTN-B` | NTNB_BOOTSTRAP_ANBIMA | FlatForward |
+| `C7-SOFR.json` | `SOFR` | SOFR_ZERO_BLOOMBERG | Linear |
+
 Ordem completa: provedores (`P1` a `P3`), curvas (`01` a `07`), ligações (`V1` a `V7`) e, por fim, a configuração de cálculo de cada curva (`POST .../configuracoes`).
